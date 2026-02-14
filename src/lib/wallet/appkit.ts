@@ -288,13 +288,14 @@ export function connectWallet(): Promise<string> {
       } else if (event.data.event === "MODAL_CLOSE") {
         // Check if we're connected after modal closes
         const address = appKit.getAddressByChainNamespace("eip155");
+        clearTimeout(timeoutId);
+        unsubscribe();
         if (address) {
-          clearTimeout(timeoutId);
-          unsubscribe();
           log.info(COMPONENT_NAME, `Connected: ${address}`);
           resolve(address);
+        } else {
+          reject(new Error("Wallet modal closed without connecting"));
         }
-        // Don't reject on modal close - user might still be connecting
       }
     });
 
