@@ -1285,11 +1285,20 @@ export const config: ConfigTypes = {
   "changelog": {
     "versions": [
       {
+        "version": "0.2.0",
+        "date": "2026-02-14",
+        "title": "Leaderboard",
+        "notes": [
+          "Add Leaderboard",
+          "Add CI Pipelines"
+        ]
+      },
+      {
         "version": "0.1.0",
         "date": "2026-02-11",
         "title": "Genesis Drop",
         "notes": [
-          "Initial MVP release",
+          "Initial MVP release pushed straight to main like a savage",
           "Beat-em-up combat with 2.5D physics",
           "Phaser 3 Arcade Engine",
           "Single enemy sprite with multiple AI behaviors",
@@ -1300,7 +1309,8 @@ export const config: ConfigTypes = {
           "Guest and authenticated play modes",
           "AI generated Art, SFX and Music",
           "Mobile touch controls and Game Pad support",
-          "An initial half-arsed attempt at cheating prevention"
+          "An initial half-arsed attempt at cheating prevention",
+          "No working backend or smart contracts yet"
         ]
       }
     ]

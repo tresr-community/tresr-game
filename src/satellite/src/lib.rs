@@ -39,7 +39,7 @@ use tiny_keccak::{Hasher, Keccak};
 
 use types::{
     BalanceRefreshRequest, ClaimRequest, ClaimStatus, DepositRequest, DepositStatus, GameSession,
-    RefreshStatus, UserProfile,
+    LeaderboardEntry, RefreshStatus, UserProfile,
 };
 
 // =============================================================================
@@ -223,9 +223,47 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
         "claims" => on_claim_created(context).await,
         "balance_refresh" => on_balance_refresh(context).await,
         "game_sessions" => on_game_session_update(context).await,
-        "users" => Ok(()), // No post-processing needed for user updates
+        "users" => on_user_profile_updated(context).await,
         _ => Ok(()),
     }
+}
+
+/// Sync sanitized leaderboard entry when a user profile is saved.
+/// Only writes public-safe data: nickname, highScore, gamesWon.
+async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String> {
+    let profile: UserProfile = decode_doc_data(&context.data.data.after.data)?;
+
+    // Only create leaderboard entries for users who have played at least once
+    if profile.stats.high_score == 0 {
+        return Ok(());
+    }
+
+    let entry = LeaderboardEntry {
+        nickname: profile.nickname.clone(),
+        high_score: profile.stats.high_score,
+        games_won: profile.stats.total_games_won,
+    };
+
+    let leaderboard_doc = SetDoc {
+        data: encode_doc_data(&entry)?,
+        description: Some("Leaderboard entry".to_string()),
+        // Use None for version to allow upsert (create or update)
+        version: None,
+    };
+
+    set_doc_store(
+        context.caller,
+        "leaderboard".to_string(),
+        context.data.key.clone(),
+        leaderboard_doc,
+    )?;
+
+    ic_cdk::print(format!(
+        "Leaderboard updated for user {}: score={}, nickname={}",
+        context.data.key, profile.stats.high_score, profile.nickname
+    ));
+
+    Ok(())
 }
 
 /// Process deposit requests - verify on EVM chain

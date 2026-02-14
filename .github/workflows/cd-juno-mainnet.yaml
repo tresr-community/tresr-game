@@ -1,22 +1,27 @@
 ---
 ##################################################
-# Name: cd-juno-deploy.yaml
-# Description: Deploy Juno hosting to testnet
+# Name: cd-juno-mainnet.yaml
+# Description: Deploy Juno to mainnet (hosting + functions + config)
+#
+# Trigger: released event (from cd-release.yaml)
+#
+# Steps:
+#   1. Build serverless functions
+#   2. Deploy hosting assets
+#   3. Apply collection configuration
+#   4. Publish serverless functions
 ##################################################
 
-name: Juno Deploy
+name: Juno Deploy (Mainnet)
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-      - master
-      - trunk
+  release:
+    types:
+      - released
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -37,8 +42,8 @@ env:
   SECRETSPEC_PROVIDER: env
 
   # Juno
-  VITE_ASTRO_SITE_URL: ${{ vars.VITE_ASTRO_SITE_URL }}
   VITE_SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
+  VITE_ASTRO_SITE_URL: ${{ vars.VITE_ASTRO_SITE_URL }}
   VITE_ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
   VITE_SIWA_PROVIDER_ID: ${{ vars.VITE_SIWA_PROVIDER_ID }}
   PUBLIC_WALLETCONNECT_PROJECT_ID: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
@@ -49,20 +54,14 @@ defaults:
 
 jobs:
   deploy:
-    name: Deploy
+    name: Deploy (Mainnet)
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     timeout-minutes: 30
     continue-on-error: false
 
-    environment: Testnet
-
-    strategy:
-      fail-fast: true
-      matrix:
-        os:
-          - ubuntu-latest
+    environment: Mainnet
 
     steps:
       - id: check_vars
@@ -94,15 +93,49 @@ jobs:
           cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+      - id: parse_tag
+        name: Parse Release Tag
+        if: github.event.release.tag_name != ''
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
       - uses: ./.github/actions/version
+        if: steps.parse_tag.outputs.version != ''
         with:
-          mode: bump
+          mode: explicit
+          version: ${{ steps.parse_tag.outputs.version }}
+
+      - uses: ./.github/actions/version
+        if: steps.parse_tag.outputs.version == ''
+        with:
+          mode: current
 
       - uses: ./.github/actions/setup-juno
 
-      - name: Deploy to Juno
+      - name: Build Juno Functions
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          juno functions build
+
+      - name: Deploy Hosting (Mainnet)
         env:
           JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           juno hosting deploy --mode production
+
+      - name: Apply Configuration (Mainnet)
+        env:
+          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          juno config apply --force --mode production
+
+      - name: Publish Functions (Mainnet)
+        env:
+          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          juno functions publish --mode production

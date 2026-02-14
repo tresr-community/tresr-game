@@ -85,6 +85,12 @@ jobs:
         run: |
           juno-dev build-functions
 
+      - id: build_functions_prod
+        name: Build Functions (Production)
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          juno functions build
+
       - if: always()
         uses: ./.github/actions/report-status
         with:

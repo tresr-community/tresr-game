@@ -1,15 +1,19 @@
 ---
 ##################################################
 # Name: cd-release.yaml
-# Description: Automated testnet release pipeline
+# Description: Single entrypoint for all deployments
 #
-# Trigger: Push to trunk
+# Triggers:
+#   - Push to trunk → Testnet pre-release (automatic)
+#   - Manual dispatch → Select Testnet or Mainnet
 #
 # Flow:
 #   1. Compute next version via convco (conventional commits)
 #   2. Bump version in package.json, manifest.json, Cargo.toml
-#   3. Tag as v{version}-testnet
-#   4. Create GitHub pre-release with convco changelog
+#   3. Testnet: Tag as v{version}-testnet, create pre-release
+#      → triggers cd-juno-testnet.yaml (on: prereleased)
+#   4. Mainnet: Tag as v{version}, create release
+#      → triggers cd-juno-mainnet.yaml (on: released)
 ##################################################
 
 name: Release
@@ -20,6 +24,17 @@ on:
       - main
       - master
       - trunk
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - Testnet
+          - Mainnet
+        default: Testnet
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -44,11 +59,16 @@ defaults:
 
 jobs:
   ##################################################
-  # Create a testnet pre-release on trunk merge
+  # Create a testnet pre-release
+  # Triggers: push to trunk (auto) OR manual with Testnet
   ##################################################
 
   pre-release:
-    name: Pre-Release
+    name: Pre-Release (Testnet)
+
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'Testnet')
 
     runs-on: ubuntu-latest
     environment: Testnet
@@ -124,4 +144,80 @@ jobs:
             --title "Pre-Release ${{ steps.compute_version.outputs.tag }}" \
             --notes-file /tmp/changelog.md \
             --prerelease \
+            --target "${{ github.sha }}"
+
+  ##################################################
+  # Create a mainnet release
+  # Triggers: manual dispatch with Mainnet
+  # Requires GitHub Environment "Mainnet" approvers
+  ##################################################
+
+  release:
+    name: Release (Mainnet)
+
+    if: >-
+      github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'Mainnet'
+
+    runs-on: ubuntu-latest
+    environment: Mainnet
+
+    timeout-minutes: 15
+    continue-on-error: false
+
+    steps:
+      - id: checkout_repository
+        name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: setup_devenv
+        name: Setup devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: compute_version
+        name: Compute version
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          VERSION=$(convco version)
+          TAG="v${VERSION}"
+
+          # Check if tag already exists
+          if git tag --list | grep -q "^${TAG}$"; then
+            echo "Tag ${TAG} already exists, skipping release"
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "Version: ${VERSION}, Tag: ${TAG}"
+
+      - id: bump_version
+        name: Bump version files
+        if: steps.compute_version.outputs.skip != 'true'
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          bun run version-set ${{ steps.compute_version.outputs.version }}
+
+      - id: generate_changelog
+        name: Generate changelog
+        if: steps.compute_version.outputs.skip != 'true'
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          CHANGELOG=$(convco changelog --unreleased 2>/dev/null || echo "No changelog available")
+          echo "${CHANGELOG}" > /tmp/changelog.md
+
+      - id: create_release
+        name: Create Release
+        if: steps.compute_version.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.compute_version.outputs.tag }}" \
+            --title "Release ${{ steps.compute_version.outputs.tag }}" \
+            --notes-file /tmp/changelog.md \
             --target "${{ github.sha }}"
