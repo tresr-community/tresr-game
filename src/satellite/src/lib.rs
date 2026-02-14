@@ -159,6 +159,16 @@ fn assert_deposit_request(context: &AssertSetDocContext) -> Result<(), String> {
         return Err("Deposits must be created with 'pending' status.".to_string());
     }
 
+    // Enforce document key == tx_hash to prevent deposit replay (ticket #288).
+    // Juno enforces key uniqueness per user, so the same tx_hash cannot be
+    // submitted twice under different keys. Combined with tx.from validation
+    // (ticket #285), this prevents any user from replaying another's deposit.
+    if context.data.key != data.tx_hash {
+        return Err(
+            "Deposit document key must equal the transaction hash.".to_string(),
+        );
+    }
+
     Ok(())
 }
 
