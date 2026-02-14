@@ -538,14 +538,19 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
             let mut session: GameSession = decode_doc_data(&session_doc.data)?;
             session.reward_claimed = true;
 
+            let description = session_doc
+                .description
+                .ok_or_else(|| "session description missing".to_string())?;
+            let version = session_doc
+                .version
+                .ok_or_else(|| "session version missing".to_string())?;
+
             update_session_doc(
                 &context,
                 &session,
                 claim.game_session_id.clone(),
-                session_doc
-                    .description
-                    .expect("session description missing"),
-                session_doc.version.expect("session version missing"),
+                description,
+                version,
             )
             .await?;
         }
