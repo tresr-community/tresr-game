@@ -67,16 +67,15 @@ jobs:
         name: Read config from tresr.yaml
         run: |
           {
-            echo "RPC_URL=$(yq '.game.blockchain.avalanche.mainnet.rpc_url' config/tresr.yaml)"
-            echo "TOKEN_ADDRESS=$(yq '.game.blockchain.avalanche.mainnet.tresr_token_contract' config/tresr.yaml)"
-            echo "ORACLE_ADDRESS=$(yq '.game.blockchain.avalanche.mainnet.oracle_address' config/tresr.yaml)"
-            echo "ADMIN_ADDRESS=$(yq '.game.blockchain.avalanche.mainnet.safe_address' config/tresr.yaml)"
+            echo "RPC_URL=$(yq '.client.blockchain.avalanche.mainnet.rpc_url' config/tresr.yaml)"
+            echo "TOKEN_ADDRESS=$(yq '.client.blockchain.avalanche.mainnet.tresr_token_contract' config/tresr.yaml)"
+            echo "ORACLE_ADDRESS=$(yq '.client.blockchain.avalanche.mainnet.oracle_address' config/tresr.yaml)"
+            echo "ADMIN_ADDRESS=$(yq '.client.blockchain.avalanche.mainnet.safe_address' config/tresr.yaml)"
           } >> "$GITHUB_OUTPUT"
 
       - id: deploy_mainnet
         name: Deploy to Avalanche Mainnet
         shell: devenv shell --quiet bash -- -e {0}
-        working-directory: contracts
         env:
           DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
           TOKEN_ADDRESS: ${{ steps.read_config.outputs.TOKEN_ADDRESS }}
@@ -85,6 +84,7 @@ jobs:
           SNOWTRACE_API_KEY: ${{ secrets.SNOWTRACE_API_KEY }}
         run: |
           forge script script/Vault.s.sol:DeployVault \
+            --root contracts \
             --rpc-url ${{ steps.read_config.outputs.RPC_URL }} \
             --broadcast \
             --verify \
