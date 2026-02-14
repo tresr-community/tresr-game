@@ -269,17 +269,17 @@ class MusicManager {
     const volumeStep = fadeOut.volume / steps;
     let remaining = steps;
 
-    this.fadeInterval = setInterval(() => {
-      // Stale callback — this interval was already cleared by the new
-      // startCrossfade(). Just return; do NOT clear this.fadeInterval
-      // since it now belongs to the new crossfade (ticket #227).
+    const intervalId = setInterval(() => {
+      // Stale callback — a new startCrossfade() replaced this.fadingOut.
+      // Clear our own interval and bail (ticket #291).
       if (fadeOut !== this.fadingOut) {
+        clearInterval(intervalId);
         return;
       }
       remaining--;
       if (remaining <= 0 || !fadeOut) {
-        if (this.fadeInterval) clearInterval(this.fadeInterval);
-        this.fadeInterval = null;
+        clearInterval(intervalId);
+        if (this.fadeInterval === intervalId) this.fadeInterval = null;
         fadeOut.pause();
         fadeOut.src = "";
         this.fadingOut = null;
@@ -287,6 +287,7 @@ class MusicManager {
       }
       fadeOut.volume = Math.max(0, fadeOut.volume - volumeStep);
     }, crossfadeStep);
+    this.fadeInterval = intervalId;
   }
 
   /**
