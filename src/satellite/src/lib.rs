@@ -595,7 +595,12 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
     // Handle claim completion: verify transaction
     } else if claim.status == ClaimStatus::ReadyForChain && claim.tx_hash.is_some() {
         // Verify the claim transaction
-        evm_rpc::verify_avalanche_claim_tx(claim.tx_hash.as_ref().unwrap()).await?;
+        evm_rpc::verify_avalanche_claim_tx(
+            claim.tx_hash.as_ref().unwrap(),
+            &claim.game_session_id,
+            claim.amount,
+            claim.keys_collected,
+        ).await?;
         claim.status = ClaimStatus::Completed;
 
         update_claim_doc(&context, &claim).await?;
@@ -845,30 +850,57 @@ async fn claim_authorize(
     // Reject if currently banned
     check_ban(&user_profile)?;
 
-    // 1. Fetch session from Datastore (assume Juno Collection integration)
-    // Stub: simulate session data
-    let _session = GameSession {
-        started_at: 0,
-        ended_at: Some(0),
-        keys_collected: reported_keys,
-        boss_defeated: true,
-        score: 0,
-        reward_claimed: false,
+    // Get user's linked EVM wallet for deposit sender validation
+    let wallet_addr = match &user_profile.evm_wallet {
+        Some(w) if !w.is_empty() => w.clone(),
+        _ => return Err("No linked EVM wallet".to_string()),
     };
 
-    // Verify deposit_tx_hash matches (stub)
-    if deposit_tx_hash != "0x123..." {
-        return Err("Invalid deposit tx".to_string());
+    // 1. Fetch session from Datastore
+    let session_doc = get_doc_store(
+        caller,
+        "game_sessions".to_string(),
+        session_id.clone(),
+    )?;
+    let session: GameSession = match session_doc {
+        Some(ref doc) => decode_doc_data(&doc.data)?,
+        None => return Err("Game session not found".to_string()),
+    };
+
+    if !session.boss_defeated {
+        return Err("Boss not defeated".to_string());
+    }
+    if session.reward_claimed {
+        return Err("Reward already claimed".to_string());
     }
 
-    // 2. Query vault balance (stub: simulate RPC call)
-    let vault_balance: u128 = fetch_vault_balance_stub().await?;
+    // 2. Verify deposit transaction on-chain and get actual deposit amount
+    let parsed_deposit = evm_rpc::verify_avalanche_deposit(&deposit_tx_hash).await?;
+
+    // Validate that the deposit sender matches the caller's linked wallet
+    if !parsed_deposit.from.eq_ignore_ascii_case(&wallet_addr) {
+        return Err(format!(
+            "Deposit sender {} does not match linked wallet {}",
+            parsed_deposit.from, wallet_addr
+        ));
+    }
+
+    // Convert deposit amount from tokens (u64) to wei (u128) for reward calculation
+    let deposit_amount: u128 = (parsed_deposit.amount as u128) * 1_000_000_000_000_000_000u128;
+
+    // 3. Query vault balance via EVM RPC
+    let vault_balance_tokens = evm_rpc::get_token_balance(
+        crate::config::VAULT_CONTRACT_ADDRESS,
+    ).await?;
+    let vault_balance: u128 = (vault_balance_tokens as u128) * 1_000_000_000_000_000_000u128;
+
     if vault_balance < 1_000_000_000_000_000_000u128 {
-        // 1e15 wei
         return Err("Low pot".to_string());
     }
 
-    // 3. Verify replay (stub: simple check)
+    // 4. Verify replay
+    // TODO: Replace with real deterministic replay verification engine
+    // Tracked in separate issue — for now, use stub that trusts reported values
     let (verified_keys, boss_killed) = replay_verify_stub(&replay_inputs, vault_balance).await?;
     if verified_keys != reported_keys || !boss_killed {
         // Cheat detected — apply ban
@@ -914,38 +946,34 @@ async fn claim_authorize(
         ));
     }
 
-    // 4. Calc amount
-    let deposit_amount = 10_000_000_000_000_000_000u128; // 10 TRESR stub
+    // 5. Calc amount
     let perf_mult = (reported_keys as f64 / config::MAX_KEYS_COLLECTED as f64) * 0.5;
     let max_perf = ((vault_balance as f64 * perf_mult) as u128).min(vault_balance / 2);
     let guaranteed = deposit_amount * 11 / 10;
     let amount = max_perf.max(guaranteed).min(vault_balance);
 
-    // 5. Sign (stub: use test key)
-    let signature =
-        generate_claim_signature_stub(&session_id, &caller_text, amount as u64)?;
+    // 6. Sign with IC threshold ECDSA
+    let signature_hex = generate_claim_signature(
+        &session_id,
+        &wallet_addr,
+        amount as u64,
+        session.keys_collected,
+    ).await?;
 
-    Ok((amount, signature))
+    // Convert hex signature to bytes for return
+    let sig_clean = signature_hex.strip_prefix("0x").unwrap_or(&signature_hex);
+    let signature_bytes = hex::decode(sig_clean)
+        .map_err(|e| format!("Failed to decode signature hex: {}", e))?;
+
+    Ok((amount, signature_bytes))
 }
 
-async fn fetch_vault_balance_stub() -> Result<u128, String> {
-    // Stub: return fixed balance
-    Ok(100_000_000_000_000_000_000u128) // 100 TRESR
-}
-
+/// Replay verification stub — always trusts reported values.
+/// TODO: Replace with deterministic game replay engine (separate issue).
 async fn replay_verify_stub(_inputs: &[u8], _pot: u128) -> Result<(u64, bool), String> {
-    // Stub: always verify with reported keys
-    Ok((150, true)) // Assume full keys, boss killed
+    Ok((150, true))
 }
 
-fn generate_claim_signature_stub(
-    _session_id: &str,
-    _user_address: &str,
-    _amount: u64,
-) -> Result<Vec<u8>, String> {
-    // Stub: return fixed sig
-    Ok(vec![0x12, 0x34]) // Placeholder
-}
 
 // =============================================================================
 // Include Juno Satellite - MUST be at the end

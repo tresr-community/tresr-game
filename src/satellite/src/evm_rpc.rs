@@ -23,6 +23,8 @@ const DEFAULT_GAS_PRICE: u64 = 25_000_000_000; // 25 Gwei
 
 // Vault.deposit(uint256,bytes32) function selector
 const DEPOSIT_SELECTOR: &str = "47e7ef24";
+// Vault.claim(bytes32,uint256,uint256,bytes) function selector
+const CLAIM_SELECTOR: &str = "95ace4b3";
 // ERC-20 transfer(address,uint256) function selector
 const TRANSFER_SELECTOR: [u8; 4] = [0xa9, 0x05, 0x9c, 0xbb];
 
@@ -71,8 +73,15 @@ pub async fn verify_avalanche_deposit(tx_hash: &str) -> Result<ParsedDeposit, St
     }
 }
 
-/// Verify a claim transaction on Avalanche
-pub async fn verify_avalanche_claim_tx(tx_hash: &str) -> Result<(), String> {
+/// Verify a claim transaction on Avalanche.
+/// Parses the ABI calldata and verifies the selector, sessionId, amount, and keys
+/// match the expected values from the claim record.
+pub async fn verify_avalanche_claim_tx(
+    tx_hash: &str,
+    expected_session_id: &str,
+    expected_amount: u64,
+    expected_keys: u64,
+) -> Result<(), String> {
     // Anvil mock: skip real RPC verification in local dev
     if crate::config::NETWORK_NAME == "anvil" {
         ic_cdk::print(format!("ANVIL_MOCK: verify_avalanche_claim_tx for {}", tx_hash));
@@ -101,7 +110,7 @@ pub async fn verify_avalanche_claim_tx(tx_hash: &str) -> Result<(), String> {
     if let Some(result_str) = response.result {
         let result_json: serde_json::Value = serde_json::from_str(&result_str)
             .map_err(|e| format!("Failed to parse JSON result: {}", e))?;
-        verify_claim_transaction(&result_json)?;
+        verify_claim_transaction(&result_json, expected_session_id, expected_amount, expected_keys)?;
 
         // Verify the transaction actually succeeded on-chain
         verify_transaction_receipt(tx_hash).await?;
@@ -112,8 +121,16 @@ pub async fn verify_avalanche_claim_tx(tx_hash: &str) -> Result<(), String> {
     }
 }
 
-/// Verify that the transaction is a valid claim to the vault contract
-fn verify_claim_transaction(tx_data: &serde_json::Value) -> Result<(), String> {
+/// Verify that the transaction is a valid claim to the vault contract.
+/// Parses the ABI-encoded calldata and checks that the function selector is
+/// `claim(bytes32,uint256,uint256,bytes)`, and that the sessionId, amount, and
+/// keys parameters match the expected values from the claim record.
+fn verify_claim_transaction(
+    tx_data: &serde_json::Value,
+    expected_session_id: &str,
+    expected_amount: u64,
+    expected_keys: u64,
+) -> Result<(), String> {
     // Check 'to' address matches vault
     let to_address = tx_data
         .get("to")
@@ -127,10 +144,107 @@ fn verify_claim_transaction(tx_data: &serde_json::Value) -> Result<(), String> {
         ));
     }
 
-    // TODO: Parse input data to verify claim params (selector, sessionId, amount)
-    // For now, assume if to vault, it's valid (frontend ensures params)
+    // Parse and verify the ABI-encoded claim parameters
+    let parsed = parse_claim_input(tx_data)?;
+
+    // Verify sessionId
+    let expected_hex = expected_session_id
+        .strip_prefix("0x")
+        .unwrap_or(expected_session_id);
+    if !parsed.session_id.eq_ignore_ascii_case(expected_hex) {
+        return Err(format!(
+            "Claim sessionId mismatch: tx has {}, expected {}",
+            parsed.session_id, expected_hex
+        ));
+    }
+
+    // Verify amount (compare in wei: expected_amount tokens * 10^18)
+    let expected_wei = BigUint::from(expected_amount) * BigUint::from(10u64).pow(18);
+    if parsed.amount_wei != expected_wei {
+        return Err(format!(
+            "Claim amount mismatch: tx has {} wei, expected {} wei",
+            parsed.amount_wei, expected_wei
+        ));
+    }
+
+    // Verify keys
+    let expected_keys_big = BigUint::from(expected_keys);
+    if parsed.keys != expected_keys_big {
+        return Err(format!(
+            "Claim keys mismatch: tx has {}, expected {}",
+            parsed.keys, expected_keys_big
+        ));
+    }
 
     Ok(())
+}
+/// Parsed claim transaction data returned by `parse_claim_input`.
+pub struct ParsedClaim {
+    /// sessionId (bytes32) as hex string without 0x prefix
+    pub session_id: String,
+    /// amount in wei (uint256)
+    pub amount_wei: BigUint,
+    /// keys collected (uint256)
+    pub keys: BigUint,
+}
+
+/// Parse a Vault.claim(bytes32,uint256,uint256,bytes) transaction's input data.
+/// Verifies the function selector and decodes the ABI-encoded parameters.
+///
+/// ABI layout (standard encoding, `bytes` is dynamic):
+///   [0..4]    function selector (4 bytes)
+///   [4..36]   sessionId: bytes32  (32 bytes)
+///   [36..68]  amount: uint256     (32 bytes)
+///   [68..100] keys: uint256       (32 bytes)
+///   [100..132] offset to `bytes signature` data (points past static area)
+///   [132..164] length of signature bytes
+///   [164..]   signature data (padded to 32-byte boundary)
+///
+/// We only extract the static params (sessionId, amount, keys) for verification.
+/// The signature is verified on-chain by Vault.sol's ecrecover.
+fn parse_claim_input(tx_data: &serde_json::Value) -> Result<ParsedClaim, String> {
+    let input_hex = tx_data
+        .get("input")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Transaction missing 'input' field".to_string())?;
+
+    let input_clean = input_hex.strip_prefix("0x").unwrap_or(input_hex);
+
+    // Minimum: 4-byte selector + 3 × 32-byte static params + 32-byte offset = 132 bytes = 264 hex chars
+    if input_clean.len() < 264 {
+        return Err(format!(
+            "Input data too short for claim call: {} chars (need >= 264)",
+            input_clean.len()
+        ));
+    }
+
+    // 1. Verify function selector: claim(bytes32,uint256,uint256,bytes) = 0x95ace4b3
+    let selector = &input_clean[0..8];
+    if selector != CLAIM_SELECTOR {
+        return Err(format!(
+            "Wrong function selector: expected {} (claim), got {}",
+            CLAIM_SELECTOR, selector
+        ));
+    }
+
+    // 2. Decode sessionId from bytes 4..36 (first param, bytes32)
+    let session_id_hex = &input_clean[8..72]; // 64 hex chars = 32 bytes
+
+    // 3. Decode amount from bytes 36..68 (second param, uint256)
+    let amount_hex = &input_clean[72..136]; // 64 hex chars = 32 bytes
+    let amount_wei = BigUint::parse_bytes(amount_hex.as_bytes(), 16)
+        .ok_or_else(|| format!("Failed to parse claim amount: {}", amount_hex))?;
+
+    // 4. Decode keys from bytes 68..100 (third param, uint256)
+    let keys_hex = &input_clean[136..200]; // 64 hex chars = 32 bytes
+    let keys = BigUint::parse_bytes(keys_hex.as_bytes(), 16)
+        .ok_or_else(|| format!("Failed to parse claim keys: {}", keys_hex))?;
+
+    Ok(ParsedClaim {
+        session_id: session_id_hex.to_string(),
+        amount_wei,
+        keys,
+    })
 }
 
 /// Parsed deposit transaction data returned by `parse_deposit_input`.
