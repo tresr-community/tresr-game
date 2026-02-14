@@ -8,7 +8,10 @@ It is made with ❤️ love ❤️ for the tresr community.
 
 ## Overview
 
-Tresr is a decentralized game where Degens control the hero `Ron Jay` through a cyberpunk Tron-inspired battle grid environment featuring electric grid lines. The protagonist, a crypto degenerate hero in 70s-style clothing with a moustache, fights against evil bankers in suits who oppose cryptocurrency.
+Tresr is a decentralized game where Degens control the hero `Ron Jay` through a cyberpunk
+Tron-inspired battle grid environment featuring electric grid lines. The protagonist, a crypto
+degenerate hero in 70s-style clothing with a moustache, fights against evil bankers in suits
+who oppose cryptocurrency.
 
 Degens collect keys, fight enemies, and face the final boss Gary Gensler.
 
@@ -20,14 +23,14 @@ This project follows **Juno's "One Repo, One App"** architecture, where the fron
 
 ### Tech Stack
 
-| Component           | Technology                             | Purpose                                             |
-| ------------------- | -------------------------------------- | --------------------------------------------------- |
-| **Frontend**        | Astro + Phaser + Vanilla TypeScript + Tailwind  | Game UI, rendering, and user interface                          |
-| **Functions**         | Rust (Juno Serverless Functions)       | Game logic, user management, blockchain integration |
-| **Authentication**  | Juno + Internet Identity               | Decentralized user authentication                   |
-| **Blockchain**      | Internet Computer (ICP)                | Host platform                                       |
-| **EVM Integration** | Avalanche C-Chain via EVM RPC Canister | Token deposits and withdrawals                      |
-| **Development**     | devenv (Nix)                           | Hermetic development environment                    |
+| Component           | Technology                                     | Purpose                                             |
+| ------------------- | ---------------------------------------------- | --------------------------------------------------- |
+| **Frontend**        | Astro + Phaser + Vanilla TypeScript + Tailwind | Game UI, rendering, and user interface              |
+| **Functions**       | Rust (Juno Serverless Functions)               | Game logic, user management, blockchain integration |
+| **Authentication**  | Juno + Internet Identity                       | Decentralized user authentication                   |
+| **Blockchain**      | Internet Computer (ICP)                        | Host platform                                       |
+| **EVM Integration** | Avalanche C-Chain via EVM RPC Canister         | Token deposits and withdrawals                      |
+| **Development**     | devenv (Nix)                                   | Hermetic development environment                    |
 
 ### TypeScript Components
 
@@ -132,14 +135,14 @@ direnv allow
 
 ### Tools Included
 
-| Tool      | Version | Purpose                        |
-| --------- | ------- | ------------------------------ |
-| **Bun**   | Latest  | Fast package manager & runtime |
-| **Rust**  | Latest  | Backend compilation            |
-| **dfx**   | Latest  | IC SDK for canister management |
-| **juno**  | Latest  | Deployment and hosting         |
-| **Astro** | Latest  | Frontend Framework             |
-| **Phaser**| Latest  | Game rendering and physics     |
+| Tool       | Version | Purpose                        |
+| ---------- | ------- | ------------------------------ |
+| **Bun**    | Latest  | Fast package manager & runtime |
+| **Rust**   | Latest  | Backend compilation            |
+| **dfx**    | Latest  | IC SDK for canister management |
+| **juno**   | Latest  | Deployment and hosting         |
+| **Astro**  | Latest  | Frontend Framework             |
+| **Phaser** | Latest  | Game rendering and physics     |
 
 - This project uses `bun` in place of `npm`
 - This project uses `bunx` in place of `npx`
@@ -224,7 +227,7 @@ Access points:
 | `juno-dev logs`          | Tail all logs (Astro, Juno, global) with colors            |
 | `juno-dev rebuild`       | Rebuild Rust functions, Astro, and TypeScript declarations |
 | `juno-dev update`        | Update bun and cargo dependencies                          |
-| `juno-dev cleanup`        | Remove build artifacts (target/, node_modules/)            |
+| `juno-dev cleanup`       | Remove build artifacts (target/, node_modules/)            |
 | `juno-dev cleanup_state` | Remove Juno CLI state files                                |
 
 ### Manual Workflow (Alternative)
@@ -274,7 +277,7 @@ All game parameters are configurable in `public/config-public.json`:
     "max_keys": 150
   },
   "player": {
-    "initial_position": { "x": 50, "y": 300 },
+    "initial_position": {"x": 50, "y": 300},
     "movement_speed": 4.5,
     "jump_force": 12,
     "gravity": 1.5
