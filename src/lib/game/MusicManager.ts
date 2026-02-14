@@ -577,14 +577,21 @@ class MusicManager {
   /**
    * Shuffles the queue using Fisher-Yates algorithm.
    * Ensures the last track of the previous queue isn't the first of the new one.
+   *
+   * NOTE (ticket #266): Music shuffle is a non-gameplay path — it does not
+   * affect replay validation, anti-cheat hashes, or seeded-RNG determinism.
+   * We use crypto.getRandomValues() instead of Math.random() to avoid any
+   * argument that the seeded-RNG invariant is not enforced.
    */
   private shuffleQueue() {
     const current = gameState.get().music.currentTrack;
     this.shuffledQueue = [...this.tracks];
 
-    // Fisher-Yates shuffle
+    // Fisher-Yates shuffle using crypto RNG (non-gameplay, see note above)
     for (let i = this.shuffledQueue.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const arr = new Uint32Array(1);
+      crypto.getRandomValues(arr);
+      const j = arr[0] % (i + 1);
       [this.shuffledQueue[i], this.shuffledQueue[j]] = [
         this.shuffledQueue[j],
         this.shuffledQueue[i],

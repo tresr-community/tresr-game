@@ -437,35 +437,9 @@ async fn generate_claim_signature(
     let r = &sig_bytes[0..32];
     let s = &sig_bytes[32..64];
 
-    // --- Determine recovery ID (v) ---
-    // IC t-ECDSA returns r||s without v. Try both recovery IDs (0 and 1)
-    // and check which one recovers to the canister's Ethereum address.
-    let canister_address = evm_rpc::get_eth_address().await?;
-    let canister_addr_lower = canister_address.trim_start_matches("0x").to_lowercase();
-
-    let mut v: u8 = 27; // default
-    for recovery_id in 0u8..2u8 {
-        let recid = RecoveryId::parse(recovery_id)
-            .map_err(|e| format!("Invalid recovery ID: {:?}", e))?;
-        let signature = Signature::parse_standard_slice(&sig_bytes)
-            .map_err(|e| format!("Invalid signature: {:?}", e))?;
-        let message = Message::parse(&eth_signed_hash);
-
-        if let Ok(pubkey) = recover(&message, &signature, &recid) {
-            // Derive Ethereum address from recovered public key
-            let pubkey_serialized = pubkey.serialize();
-            let mut pubkey_hash = [0u8; 32];
-            let mut keccak = Keccak::v256();
-            keccak.update(&pubkey_serialized[1..65]);
-            keccak.finalize(&mut pubkey_hash);
-            let recovered_addr = hex::encode(&pubkey_hash[12..32]);
-
-            if recovered_addr == canister_addr_lower {
-                v = 27 + recovery_id;
-                break;
-            }
-        }
-    }
+    // --- Determine recovery ID (v) using shared helper (ticket #268) ---
+    let recovery_id = evm_rpc::determine_recovery_id(&sig_bytes, &eth_signed_hash).await?;
+    let v = 27 + recovery_id;
 
     // Build 65-byte Ethereum signature: r (32) + s (32) + v (1)
     let mut full_sig = [0u8; 65];

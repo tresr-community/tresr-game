@@ -81,13 +81,6 @@ import NotificationToast from "@/components/notifications/NotificationToast.astr
 
   const COMPONENT_NAME = "Header";
 
-  declare global {
-    interface Window {
-      handleProfileClick: () => boolean;
-      openProfileModal?: () => void;
-    }
-  }
-
   // Dynamic themes from config
   const availableThemes = config.daisyui?.themes || [];
 
@@ -185,11 +178,7 @@ import NotificationToast from "@/components/notifications/NotificationToast.astr
     if (authBtn) {
       authBtn.addEventListener("click", () => {
         log.info(COMPONENT_NAME, "Auth Profile button clicked");
-        if (window.openProfileModal) {
-          window.openProfileModal();
-        } else {
-          log.warn(COMPONENT_NAME, "Profile modal not found on window");
-        }
+        document.dispatchEvent(new CustomEvent("tresr:open-profile"));
       });
     }
   }

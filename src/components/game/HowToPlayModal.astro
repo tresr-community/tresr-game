@@ -79,6 +79,27 @@ const instructions: ConfigTypes["app"]["instructions"] = processor
     .getElementById("btn-backdrop-close-how-to-play")
     ?.addEventListener("click", closeHowToPlayModal);
 
-  // @ts-ignore
-  window.openHowToPlayModal = openHowToPlayModal;
+  // Listen for custom event instead of window global (ticket #263)
+  function handleOpenHowToPlay() {
+    openHowToPlayModal();
+  }
+  document.addEventListener("tresr:open-how-to-play", handleOpenHowToPlay);
+
+  // Cleanup document-level listener on navigation (ticket #241)
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      document.removeEventListener(
+        "tresr:open-how-to-play",
+        handleOpenHowToPlay
+      );
+      document
+        .getElementById("btn-close-how-to-play")
+        ?.removeEventListener("click", closeHowToPlayModal);
+      document
+        .getElementById("btn-backdrop-close-how-to-play")
+        ?.removeEventListener("click", closeHowToPlayModal);
+    },
+    {once: true}
+  );
 </script>

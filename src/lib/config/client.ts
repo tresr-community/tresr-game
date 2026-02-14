@@ -82,7 +82,7 @@ export const config: ConfigTypes = {
       "No rugs"
     ],
     "custom_404": "404, degen not found.\n",
-    "instructions": "## 🎯 Goal\n\n- 🚀 Collect keys to multiply rewards\n- ⚔️ Defeat enemies for points\n- ⏱️Survive the time limit\n- 👑 Defeat the final boss\n- 💎 And finally, open the treasure chest for your **$TRESR** reward!\n\n## Controls\n\n**Keyboard** (both schemes active simultaneously):\n\n| Action       | WASD Scheme | Arrow Scheme |\n|--------------|-------------|--------------|\n| Move         | W/A/S/D     | Arrow Keys   |\n| Jump         | Space       | Space        |\n| Attack       | J           | Z            |\n| Super Attack | K           | X            |\n| Pause        | Escape      | Escape       |\n\n**Gamepad**:\n\n| Action       | Button               |\n|--------------|-----------------------|\n| Move         | Left Stick / D-Pad    |\n| Jump         | A (Xbox) / Cross (PS) |\n| Attack       | X (Xbox) / Square (PS)|\n| Super Attack | RB (Xbox) / R1 (PS)  |\n\n**Touch**:\n\n- Virtual joystick on left half of screen for movement\n- Right side control for attack, jump and super.\n\n## 💰 Economy\n\n- 💵 Pay a fee in **$TRESR** to start your epic adventure\n- 🔑 Keys boost your rewards big time\n- 🏆 Beat the boss to claim the **$TRESR** prize\n- ⚠️ **Warning:** Die and lose your **TRESR** Stay alive! 💀\n"
+    "instructions": "## 🎯 Goal\n\n- 🚀 Collect keys to multiply rewards\n- ⚔️ Defeat enemies for points\n- ⏱️Survive the time limit\n- 👑 Defeat the final boss\n- 💎 And finally, open the treasure chest for your **$TRESR** reward!\n\n## Controls\n\n**Keyboard** (both schemes active simultaneously):\n\n| Action       | WASD Scheme | Arrow Scheme |\n|--------------|-------------|--------------|\n| Move         | W/A/S/D     | Arrow Keys   |\n| Jump         | Space       | Space        |\n| Attack       | J           | Z            |\n| Super Attack | K           | X            |\n| Pause        | Escape      | Escape       |\n\n**Gamepad**:\n\n| Action       | Button               |\n|--------------|---------------------- |\n| Move         | Left Stick / D-Pad    |\n| Jump         | A (Xbox) / Cross (PS) |\n| Attack       | X (Xbox) / Square (PS)|\n| Super Attack | RB (Xbox) / R1 (PS)   |\n\n**Touch**:\n\n- Virtual joystick on left half of screen for movement\n- Right side control for attack, jump and super.\n\n## 💰 Economy\n\n- 💵 Pay a fee in **$TRESR** to start your epic adventure\n- 🔑 Keys boost your rewards big time\n- 🏆 Beat the boss to claim the **$TRESR** prize\n- ⚠️ **Warning:** Die and lose your **TRESR** Stay alive! 💀\n"
   },
   "blockchain": {
     "avalanche": {
@@ -94,7 +94,7 @@ export const config: ConfigTypes = {
         "tresr_token_contract": "0x6EB523A381e725F115b7454BaA3cb199E4770970",
         "tresr_token_treasury": "0x533d95Fa7D5CEd8f09e38aa359E406A3809Bc0e0",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0xEB0320b1Fe1bB9A6972FbC14F09Fd4D3bCA102a4",
+        "vault_contract": "0x24AF790c2A3095FE2200E4EC466eaF83094cd08A",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       },
       "testnet": {

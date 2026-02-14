@@ -346,9 +346,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].tresr_token_ticker}`
 
   // Named handlers for cleanup (ticket #241)
   function handleOpenProfile() {
-    if (window.openProfileModal) {
-      window.openProfileModal();
-    }
+    document.dispatchEvent(new CustomEvent("tresr:open-profile"));
     const label = openProfileBtn
       .closest(".card")
       ?.closest(".dropdown")

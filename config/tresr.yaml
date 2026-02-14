@@ -39,7 +39,6 @@ server:
           read: "public"
           write: "managed"
           memory: "stable"
-
   anti_cheat:
     ban_durations_hours: [24, 72, 168]
     permanent_after_offence: 4
@@ -49,13 +48,11 @@ server:
       - score_exceeds_maximum
       - is_a_sore_loser
       - wallet_tampering
-
 ##################################################
 # Client side configuration.
 #
 # Read from typescript at /config-client.json
 ##################################################
-
 client:
   daisyui:
     themes:
@@ -162,11 +159,11 @@ client:
       **Gamepad**:
 
       | Action       | Button               |
-      |--------------|-----------------------|
+      |--------------|---------------------- |
       | Move         | Left Stick / D-Pad    |
       | Jump         | A (Xbox) / Cross (PS) |
       | Attack       | X (Xbox) / Square (PS)|
-      | Super Attack | RB (Xbox) / R1 (PS)  |
+      | Super Attack | RB (Xbox) / R1 (PS)   |
 
       **Touch**:
 
@@ -191,7 +188,7 @@ client:
         tresr_token_contract: "0x6EB523A381e725F115b7454BaA3cb199E4770970"
         tresr_token_treasury: "0x533d95Fa7D5CEd8f09e38aa359E406A3809Bc0e0"
         deployer_address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-        vault_contract: "0xEB0320b1Fe1bB9A6972FbC14F09Fd4D3bCA102a4"
+        vault_contract: "0x24AF790c2A3095FE2200E4EC466eaF83094cd08A"
         player_wallet: "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       testnet:
         fee: 10
@@ -230,20 +227,16 @@ client:
     height: 720
     background_color: "#000000"
     pixel_art: true # use nearest-neighbor scaling for pixel art
-
   gameplay:
     time_limit_seconds: 300
     max_keys: 150
-
     # Guest rate limiting
     guest:
       max_sessions_per_day: 24
       storage_key: "tresr_guest_sessions"
-
     # Fee gate configuration
     fee_gate:
       transaction_timeout_ms: 300000 # Timeout for blockchain transaction confirmation (5 mins)
-
     # Vault economics
     # Reference: docs/fomo.md
     vault:
@@ -262,12 +255,10 @@ client:
         normal: 1.0
         hard: 1.5
         extreme: 2.0
-
     # Global physics (shared by all entities)
     physics:
       gravity: 0.8
       timestep: 0.01667 # 1/60 for 60 FPS
-
     # Global visuals
     visuals:
       shadow:
@@ -276,7 +267,6 @@ client:
         width: 50
         height: 12
       damage_tint_duration: 100 # Red tint flash duration (ms), applies to all entities
-
     # Scoring (cross-entity, stays flat)
     # Points awarded for each in-game action, used to calculate the player's final score.
     scoring:
@@ -284,7 +274,6 @@ client:
       enemy_kill: 10 # Points per enemy defeated
       boss_hit: 25 # Points per hit landed on the boss
       super_hit: 25 # Points per enemy hit with a super attack
-
     # Health bar (global, shared by all entities)
     health_bar:
       thresholds:
@@ -301,7 +290,6 @@ client:
         medium: 0xffff00
         low: 0xff8800
         critical: 0xff0000
-
     # TODO: Get these right, need to test on many maps.
     # Walkable ground plane — the street area where characters walk
     # Matches wallpaper layout: bottom ~35% of 720px screen
@@ -312,7 +300,6 @@ client:
       bottom_y: 700
       left_x: 0
       right_x: 1280 # screen width
-
     # ─── Entities ───
     entities:
       player:
@@ -369,7 +356,6 @@ client:
           touch:
             joystick_radius: 50
             joystick_deadzone: 0.15
-
       enemy:
         health: 100
         damage: 10
@@ -458,7 +444,6 @@ client:
           bob_distance: 8 # Pixels for bobbing animation
           bob_duration: 600 # Duration of bob cycle (ms)
           despawn_ms: 8000 # Auto-despawn time (ms)
-
       boss:
         health: 1000
         damage: 25
@@ -522,7 +507,6 @@ client:
           flash_b: 100 # Flash color blue channel (0-255)
         animations:
           death_delay: 1000 # Delay before kill() after death animation (ms)
-
       key:
         speed: 50
         gravity: 0.3 # Reduced gravity for parachute effect
@@ -542,7 +526,6 @@ client:
           x_margin: 100
           y_margin_top: 680 # Top of walkable area
           y_margin_bottom: 25 # Bottom margin from screen edge
-
       # Bombs fall from the sky and explode on landing, damaging the player
       bomb:
         damage: 50 # Damage dealt to player caught in explosion
@@ -560,7 +543,6 @@ client:
           x_margin: 100 # Horizontal margin from screen edges for spawn (px)
           y_margin_top: 680 # Top of walkable area
           y_margin_bottom: 25 # Bottom margin from screen edge
-
       # Treasure chest that air-drops after the boss is defeated
       chest:
         combat:
@@ -575,7 +557,6 @@ client:
           landing_dust_duration_ms: 400 # Dust cloud fade time (ms)
           landing_shake_duration: 150 # Camera shake length on landing (ms)
           landing_shake_intensity: 0.01 # Camera shake strength (fraction of screen)
-
       # TRESR Bot — AI companion that air-drops mid-game to fight alongside the player
       tresr_bot:
         health: 500 # Bot HP
@@ -613,14 +594,12 @@ client:
           min_enemies: 3 # Minimum enemies in range to trigger special
         max_concurrent: 1 # Max bots active at the same time
         max_drops_per_game: 5 # Max bot air-drops per game session
-
     # Combat tuning (cross-entity values)
     combat:
       enemy_damage_cooldown_ms: 500 # Minimum ms between damage ticks per enemy
       enemy_spawn_offscreen_px: 80 # Off-screen distance for enemy spawn
       boss_melee_range_bonus: 20 # Extra hitbox range for player attacks on boss
       projectile_hit_radius: 40 # Impact radius for ranged enemy projectiles
-
     # Phase announcement overlay
     announcements:
       font: "80px Orbitron" # Font family and size for phase text
@@ -630,7 +609,6 @@ client:
       enter_duration: 500 # Fade-in time (ms)
       display_duration: 2000 # How long the text stays on screen (ms)
       exit_duration: 500 # Fade-out time (ms)
-
     # Audio configuration
     audio:
       default_music_volume: 0.75 # Initial music volume (0.0 - 1.0)
@@ -643,12 +621,10 @@ client:
       # Files follow naming convention: {type}_{number}.webm (contiguous from 1).
       # Adding/removing files automatically updates variant counts on rebuild.
       sfx_variants: {}
-
     # Loading screen configuration (cinematic intro — spinner only)
     loading_screen:
       spinner:
         y_offset: -60
-
   # Sprite configuration for characters and items
   # Each sprite uses row-based animations in a spritesheet
   sprites:
@@ -656,7 +632,6 @@ client:
     defaults:
       frameWidth: 512
       frameHeight: 512
-
     # All sprites use per-animation sheets (one row per file).
     # Each anim entry has: path, frameWidth, frameHeight, frames, frameRate, repeat.
 
@@ -706,7 +681,6 @@ client:
           path: /assets/images/sprites/hero/super.webp
           frameWidth: 1000
           frameHeight: 1000
-
     # Super Attack Projectile (spinning coin hadouken)
     super:
       scaleFactor: 0.5
@@ -718,7 +692,6 @@ client:
           path: /assets/images/sprites/super/spin.webp
           frameWidth: 512
           frameHeight: 512
-
     # Boss character (Gary Gensler)
     boss:
       scaleFactor: 0.6
@@ -758,7 +731,6 @@ client:
           path: /assets/images/sprites/boss/hurt.webp
           frameWidth: 1000
           frameHeight: 1000
-
     # Businessmen enemies (templated for 5 variants)
     # Each one uses the same animations/mechanics.
     # Per-anim paths use {i} placeholder for variant number.
@@ -801,7 +773,6 @@ client:
           pathTemplate: /assets/images/sprites/enemy_{i}_boss/hurt.webp
           frameWidth: 1000
           frameHeight: 1000
-
     # TRESR-BOT companion (AI ally spawned from powerup pickup)
     tresr_bot:
       scaleFactor: 0.3
@@ -834,7 +805,6 @@ client:
           path: /assets/images/sprites/tresr_bot/special.webp
           frameWidth: 1000
           frameHeight: 1000
-
     # Items (per-animation sheets)
     items:
       key:
@@ -891,7 +861,6 @@ client:
             path: /assets/images/sprites/chest/close.webp
             frameWidth: 512
             frameHeight: 512
-
       health_1:
         scaleFactor: 0.2
         anims:
@@ -992,8 +961,7 @@ client:
             path: /assets/images/sprites/powerup_5/idle.webp
             frameWidth: 512
             frameHeight: 512
-
     # Static images (no animation)
     statics: []
-      # - name: example
-      #   path: /assets/images/sprites/example.webp
+    # - name: example
+    #   path: /assets/images/sprites/example.webp
