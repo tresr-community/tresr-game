@@ -29,6 +29,8 @@ export class Enemy extends BaseEntity {
   private rng!: Phaser.Math.RandomDataGenerator;
   private walkableArea?: WalkableArea;
   private enemyGroup?: Phaser.Physics.Arcade.Group;
+  private swarmNearbyCount: number = 0;
+  private swarmCheckCounter: number = 0;
 
   // Per-enemy damage cooldown (ticket #139: each enemy tracks its own cooldown)
   public lastPlayerDamageTime: number = 0;
@@ -323,28 +325,33 @@ export class Enemy extends BaseEntity {
           return;
         }
         case "swarm": {
-          // Speed boost from nearby allies
+          // Speed boost from nearby allies (re-evaluate every 10 frames)
           const swarmConfig = aiConfig.swarm;
-          let nearbyCount = 0;
-          if (this.enemyGroup) {
-            for (const child of this.enemyGroup.getChildren()) {
-              const ally = child as Enemy;
-              if (ally === this || !ally.active || ally.hp <= 0) continue;
-              if (
-                Phaser.Math.Distance.Between(
-                  this.x,
-                  this.groundY,
-                  ally.x,
-                  ally.groundY
-                ) <= swarmConfig.group_radius
-              ) {
-                nearbyCount++;
+          this.swarmCheckCounter++;
+          if (this.swarmCheckCounter >= 10) {
+            this.swarmCheckCounter = 0;
+            let nearbyCount = 0;
+            if (this.enemyGroup) {
+              for (const child of this.enemyGroup.getChildren()) {
+                const ally = child as Enemy;
+                if (ally === this || !ally.active || ally.hp <= 0) continue;
+                if (
+                  Phaser.Math.Distance.Between(
+                    this.x,
+                    this.groundY,
+                    ally.x,
+                    ally.groundY
+                  ) <= swarmConfig.group_radius
+                ) {
+                  nearbyCount++;
+                }
               }
             }
+            this.swarmNearbyCount = nearbyCount;
           }
           const swarmMult = Math.min(
             swarmConfig.max_speed_mult,
-            1 + nearbyCount * swarmConfig.speed_bonus_per_ally
+            1 + this.swarmNearbyCount * swarmConfig.speed_bonus_per_ally
           );
           this.speed = this.baseSpeed * swarmConfig.speed_mult * swarmMult;
           // Fall through to default chase behavior
@@ -505,6 +512,8 @@ export class Enemy extends BaseEntity {
     this.erraticOffset = {x: 0, y: 0};
     this.burrowerTriggered = false;
     this.burrowerEdgeX = 0;
+    this.swarmNearbyCount = 0;
+    this.swarmCheckCounter = 0;
     this.lastPlayerDamageTime = 0;
     this.walkableArea = this.scene.registry.get(
       "walkable_area"
