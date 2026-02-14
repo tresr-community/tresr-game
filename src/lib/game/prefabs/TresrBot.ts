@@ -20,6 +20,8 @@ export class TresrBot extends BaseEntity {
   private walkableArea?: WalkableArea;
   private enemyGroup?: Phaser.Physics.Arcade.Group;
   private boss?: Boss;
+  private specialRing?: Phaser.GameObjects.Arc;
+  private specialRingTween?: Phaser.Tweens.Tween;
 
   // Pre-computed animation keys
   private animKeys = {
@@ -411,15 +413,25 @@ export class TresrBot extends BaseEntity {
       }
     }
 
-    // Expanding green ring VFX
-    const ring = this.scene.add.circle(this.x, this.groundY, 10, 0x00ff88, 0.6);
-    ring.setDepth(this.depth + 1);
-    this.scene.tweens.add({
-      targets: ring,
+    // Expanding green ring VFX (tracked for cleanup)
+    this.specialRing = this.scene.add.circle(
+      this.x,
+      this.groundY,
+      10,
+      0x00ff88,
+      0.6
+    );
+    this.specialRing.setDepth(this.depth + 1);
+    this.specialRingTween = this.scene.tweens.add({
+      targets: this.specialRing,
       radius: botConfig.special.radius,
       alpha: 0,
       duration: 400,
-      onComplete: () => ring.destroy(),
+      onComplete: () => {
+        this.specialRing?.destroy();
+        this.specialRing = undefined;
+        this.specialRingTween = undefined;
+      },
     });
   }
 
@@ -454,6 +466,14 @@ export class TresrBot extends BaseEntity {
     if (this.fadeTween) {
       this.fadeTween.stop();
       this.fadeTween = undefined;
+    }
+    if (this.specialRingTween) {
+      this.specialRingTween.stop();
+      this.specialRingTween = undefined;
+    }
+    if (this.specialRing) {
+      this.specialRing.destroy();
+      this.specialRing = undefined;
     }
     this.isAlive = false;
     this.target = undefined;
