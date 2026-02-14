@@ -1,0 +1,189 @@
+---
+// No server-side frontmatter.
+---
+
+<div
+  class="toast toast-bottom toast-end pointer-events-none fixed inset-0 z-[99999] m-0 bg-transparent p-4"
+  id="toast-container"
+  popover="manual"
+>
+  <!-- Toasts will be injected here -->
+</div>
+
+<script>
+  import {notificationManager} from "@/lib/notifications";
+  import PWA from "@/lib/pwa";
+
+  interface NotificationDoc {
+    key: string;
+    data: {
+      message: string;
+      urgency: string;
+      type?: string;
+      details?: string;
+    };
+  }
+
+  const container = document.getElementById("toast-container")! as HTMLElement;
+
+  // NO initial showPopover() -- only open when a toast arrives
+
+  function handleNotificationToast(e: Event) {
+    const doc: NotificationDoc = (e as CustomEvent).detail;
+    const {message, urgency, type, details} = doc.data;
+
+    const toast = document.createElement("div");
+    toast.className = `alert ${getUrgencyClass(urgency)} shadow-lg animate-in slide-in-from-right duration-300 pointer-events-auto flex flex-col items-start gap-2 min-w-[300px] max-w-[90vw] max-w-xs`;
+
+    const isUpdate = type === "app_update";
+
+    // Build DOM safely to prevent XSS (ticket #196)
+    const headerRow = document.createElement("div");
+    headerRow.className = "flex w-full justify-between items-center gap-2";
+
+    const headerLeft = document.createElement("div");
+    headerLeft.className = "flex items-center gap-2 flex-1";
+    const iconSpan = document.createElement("span");
+    iconSpan.textContent = urgency === "urgent" ? "\u{1F6A8}" : "\u{1F514}";
+    const msgSpan = document.createElement("span");
+    msgSpan.className = "font-bold truncate";
+    msgSpan.textContent = message;
+    headerLeft.append(iconSpan, msgSpan);
+
+    const dismissBtn = document.createElement("button");
+    dismissBtn.className = "btn btn-ghost btn-xs dismiss-toast shrink-0";
+    dismissBtn.textContent = "\u2715";
+    headerRow.append(headerLeft, dismissBtn);
+    toast.appendChild(headerRow);
+
+    if (details) {
+      const detailsP = document.createElement("p");
+      detailsP.className = "text-xs opacity-90";
+      detailsP.textContent = details;
+      toast.appendChild(detailsP);
+    }
+
+    const actionsRow = document.createElement("div");
+    actionsRow.className = "flex gap-2 mt-1 w-full justify-end";
+    if (isUpdate) {
+      const upgradeBtn = document.createElement("button");
+      upgradeBtn.className = "btn btn-xs btn-primary update-btn";
+      upgradeBtn.textContent = "Upgrade";
+      const laterBtn = document.createElement("button");
+      laterBtn.className = "btn btn-xs btn-ghost snooze-btn";
+      laterBtn.textContent = "Later";
+      actionsRow.append(upgradeBtn, laterBtn);
+    } else {
+      const snoozeBtn = document.createElement("button");
+      snoozeBtn.className = "btn btn-xs btn-ghost snooze-btn";
+      snoozeBtn.textContent = "Snooze";
+      actionsRow.appendChild(snoozeBtn);
+    }
+    toast.appendChild(actionsRow);
+
+    // Make entire toast clickable for updates (except buttons)
+    if (isUpdate) {
+      toast.style.cursor = "pointer";
+      toast.addEventListener("click", (e) => {
+        if ((e.target as HTMLElement).tagName === "BUTTON") return;
+        PWA.getInstance().showUpdatePrompt();
+      });
+    }
+
+    // **CRITICAL: Re-stack to TOP of top layer before appending**
+    container.hidePopover?.();
+    container.appendChild(toast);
+    container.showPopover();
+
+    // Auto-remove after 5s
+    const timeout = setTimeout(() => removeToast(toast), 5000);
+
+    toast.querySelector(".dismiss-toast")!.addEventListener("click", () => {
+      clearTimeout(timeout);
+      notificationManager.dismiss(doc.key);
+      removeToast(toast);
+    });
+
+    toast.querySelector(".snooze-btn")!.addEventListener("click", () => {
+      clearTimeout(timeout);
+      notificationManager.snooze(doc.key);
+      removeToast(toast);
+    });
+
+    if (isUpdate) {
+      toast.querySelector(".update-btn")!.addEventListener("click", () => {
+        PWA.getInstance().applyUpdate();
+      });
+    }
+  }
+  window.addEventListener("notification-toast", handleNotificationToast);
+
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      window.removeEventListener("notification-toast", handleNotificationToast);
+    },
+    {once: true}
+  );
+
+  function removeToast(el: HTMLElement) {
+    el.classList.add("animate-out", "fade-out", "slide-out-to-right");
+    setTimeout(() => {
+      el.remove();
+      // Hide popover if empty (keeps it clean, avoids early stacking claim)
+      if (container.children.length === 0) {
+        container.hidePopover?.();
+      }
+    }, 300);
+  }
+
+  function getUrgencyClass(urgency: string) {
+    switch (urgency) {
+      case "urgent":
+        return "alert-error text-error-content";
+      case "non-urgent":
+        return "alert-warning text-warning-content";
+      default:
+        return "alert-info text-info-content";
+    }
+  }
+
+  // Global toast helpers (unchanged)
+  declare global {
+    interface Window {
+      showInfoToast: (message: string, details?: string) => void;
+      showWarningToast: (message: string, details?: string) => void;
+      showErrorToast: (message: string, details?: string) => void;
+    }
+  }
+
+  window.showInfoToast = (message: string, details?: string) => {
+    // Store in notification manager so it appears in bell icon
+    notificationManager.addNotification({
+      message,
+      urgency: "none",
+      type: "info",
+      details,
+    });
+  };
+
+  window.showWarningToast = (message: string, details?: string) => {
+    // Store in notification manager so it appears in bell icon
+    notificationManager.addNotification({
+      message,
+      urgency: "non-urgent",
+      type: "warning",
+      details,
+    });
+  };
+
+  window.showErrorToast = (message: string, details?: string) => {
+    // Store in notification manager so it appears in bell icon
+    notificationManager.addNotification({
+      message,
+      urgency: "urgent",
+      type: "error",
+      details,
+    });
+  };
+</script>

@@ -1,0 +1,129 @@
+---
+// ClaimReward.astro
+// Client-side component to prompt user to claim rewards via wallet
+// Fetches oracle signature from Juno backend, calls Vault.claim(), sends tx hash for verification
+
+interface Props {
+  gameSessionId: string;
+  amount: number; // in tokens, not wei
+  vaultAddress?: string;
+}
+
+const {gameSessionId, amount, vaultAddress} = Astro.props;
+---
+
+<div
+  class="card card-bordered bg-base-100 border-primary/20 claim-reward shadow-xl"
+  data-game-session-id={gameSessionId}
+  data-amount={amount}
+  data-vault-address={vaultAddress}
+>
+  <div class="card-body">
+    <h3 class="card-title text-primary">Claim Your Reward!</h3>
+    <div class="text-sm opacity-70">
+      <p>Session: <span class="font-mono">{gameSessionId}</span></p>
+      <p>
+        Amount: <span class="text-secondary font-bold">{amount} $TRESR</span>
+      </p>
+    </div>
+    <div class="card-actions mt-4 justify-end">
+      <button id="claimBtn" class="btn btn-primary">Claim Reward</button>
+    </div>
+    <p id="status" class="mt-2 text-xs"></p>
+  </div>
+</div>
+
+<script>
+  import {initSatellite, setDoc} from "@junobuild/core";
+  import {getAuthState} from "@/lib/auth";
+  import {connectWallet, getWalletClient} from "@/lib/wallet/connection";
+  import {getEnvironmentKey} from "@/lib/wallet/avalanche";
+  import {VaultAbi} from "@/lib/wallet/VaultAbi";
+  import {loadConfigAsync} from "@/lib/config";
+  import {trackClaim} from "@/lib/metrics/analytics";
+
+  const claimDiv = document.querySelector(".claim-reward") as HTMLElement;
+  const gameSessionId = claimDiv.dataset.gameSessionId!;
+  const amount = Number(claimDiv.dataset.amount);
+  const defaultVault = claimDiv.dataset.vaultAddress;
+
+  const claimBtn = document.getElementById("claimBtn") as HTMLButtonElement;
+  const statusEl = document.getElementById("status") as HTMLParagraphElement;
+
+  await initSatellite();
+
+  claimBtn.addEventListener("click", async () => {
+    try {
+      // Use unified wallet connection (opens AppKit modal)
+      const connection = await connectWallet();
+      const walletClient = await getWalletClient();
+
+      const {user} = getAuthState();
+      if (!user) throw new Error("User not authenticated.");
+
+      // Get vault address from config if not provided
+      let vaultAddress = defaultVault;
+      if (
+        !vaultAddress ||
+        vaultAddress === "0x0000000000000000000000000000000000000000"
+      ) {
+        const config = await loadConfigAsync();
+        const env = getEnvironmentKey();
+        vaultAddress = config.blockchain.avalanche[env].vault_contract;
+      }
+
+      const principalId = user.key;
+      const sigResponse = await fetch("/api/get-claim-sig", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          sessionId: gameSessionId,
+          amount,
+          principal: principalId,
+        }),
+      });
+      const {signature} = await sigResponse.json();
+
+      const hash = await walletClient.writeContract({
+        address: vaultAddress as `0x${string}`,
+        abi: VaultAbi,
+        functionName: "claim",
+        args: [
+          gameSessionId as `0x${string}`,
+          BigInt(amount * 10 ** 18),
+          BigInt(0), // keys - will be updated when we have full implementation
+          signature as `0x${string}`,
+        ],
+        account: connection.address,
+        chain: null, // Chain is already configured in the wallet client
+      });
+
+      statusEl.textContent = `Transaction sent: ${hash}`;
+      statusEl.classList.add("text-success");
+
+      // Juno: setDoc on "claims" collection →
+      //   Rust assert: assert_claim_request() — validates session link, status, amount > 0
+      //   Rust hook:   on_claim_created() — generates oracle signature or verifies tx
+      await setDoc({
+        collection: "claims",
+        doc: {
+          key: crypto.randomUUID(),
+          data: {
+            amount,
+            status: "pending",
+            tx_hash: hash,
+            game_session_id: gameSessionId,
+          },
+        },
+      });
+
+      trackClaim(amount);
+
+      statusEl.textContent = "Claim submitted for verification!";
+      claimBtn.disabled = true;
+    } catch (error) {
+      statusEl.textContent = `Error: ${error instanceof Error ? error.message : String(error)}`;
+      statusEl.classList.add("text-error");
+    }
+  });
+</script>

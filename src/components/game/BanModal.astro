@@ -1,0 +1,88 @@
+---
+
+---
+
+<dialog id="modal-ban" class="modal modal-middle">
+  <div class="modal-box border-error/30 bg-base-300 border text-center">
+    <h3
+      class="text-error font-display text-3xl font-black tracking-widest uppercase"
+    >
+      Access Denied
+    </h3>
+    <p class="py-4 opacity-70">
+      Your account has been temporarily suspended due to a tamper detection
+      violation.
+    </p>
+
+    <div class="stats stats-vertical bg-base-200/50 my-4 w-full shadow">
+      <div class="stat">
+        <div class="stat-title text-xs uppercase">Reason</div>
+        <div class="stat-value text-error text-lg">
+          Tamper Detection Violation
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-title text-xs uppercase">Ban Expires</div>
+        <div id="ban-expires" class="stat-value text-warning font-mono text-lg">
+          —
+        </div>
+      </div>
+      <div class="stat">
+        <div class="stat-title text-xs uppercase">Offence Count</div>
+        <div
+          id="ban-offence-count"
+          class="stat-value text-warning font-mono text-lg"
+        >
+          0
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-action flex-col gap-2">
+      <button id="btn-ban-back" class="btn btn-ghost btn-block">
+        Return Home
+      </button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+  const modal = document.getElementById("modal-ban") as HTMLDialogElement;
+  const expiresEl = document.getElementById("ban-expires")!;
+  const offenceEl = document.getElementById("ban-offence-count")!;
+  const btnBack = document.getElementById("btn-ban-back") as HTMLButtonElement;
+
+  btnBack.addEventListener("click", () => {
+    modal.close();
+    window.location.href = "/";
+  });
+
+  // Prevent Escape key dismissal (ticket #155)
+  modal.addEventListener("cancel", (e) => {
+    e.preventDefault();
+  });
+
+  // Prevent backdrop click dismissal (ticket #155)
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  });
+
+  document.addEventListener("tresr:ban-modal-open", (e: Event) => {
+    const detail = (
+      e as CustomEvent<{bannedUntil: number; offenceCount: number}>
+    ).detail;
+
+    if (detail.bannedUntil === Number.MAX_SAFE_INTEGER) {
+      expiresEl.textContent = "Permanent";
+    } else {
+      const date = new Date(detail.bannedUntil);
+      expiresEl.textContent = date.toLocaleString();
+    }
+
+    offenceEl.textContent = String(detail.offenceCount);
+    modal.showModal();
+  });
+</script>

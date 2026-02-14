@@ -1,0 +1,42 @@
+[package]
+
+name = "satellite"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+
+crate-type = ["cdylib"]
+
+[dependencies]
+
+# Juno SDK
+junobuild-satellite = { version = "0.4.0", default-features = false }
+junobuild-macros = "0.2.0"
+junobuild-storage = { version = "0.5.0", default-features = false }
+junobuild-utils = "0.2.0"
+
+# Internet Computer SDK
+candid = "0.10.20"
+ic-cdk = "0.19.0"
+
+# Serialization
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+
+# EVM transaction building
+hex = "0.4.3"
+rlp = "0.6.1"
+num-bigint = "0.4.6"
+num-traits = "0.2.19"
+tiny-keccak = { version = "2.0.2", features = ["keccak"] }
+libsecp256k1 = "0.7.1"
+
+# Additional dependencies
+tokio = { version = "1.0", features = ["sync", "macros", "io-util", "rt", "time"] }
+sha2 = "0.10"
+lazy_static = "1.4"
+
+[build-dependencies]
+serde = { version = "1.0.228", features = ["derive"] }
+serde_yaml = "0.9"

@@ -1,0 +1,343 @@
+---
+
+---
+
+<dialog id="modal-victory" class="modal modal-middle">
+  <div class="modal-box border-success/30 bg-base-300 border text-center">
+    <h3
+      class="text-success font-display text-4xl font-black tracking-widest uppercase"
+    >
+      Mission Complete
+    </h3>
+    <p class="py-4 opacity-70">
+      The Banker has been regulated. The vault is yours.
+    </p>
+
+    <div class="stats stats-vertical bg-base-200/50 my-4 w-full shadow">
+      <div class="stat">
+        <div class="stat-title text-xs uppercase">Reward</div>
+        <div
+          id="modal-victory-reward"
+          class="stat-value text-primary font-mono"
+        >
+          $0 TRESR
+        </div>
+      </div>
+    </div>
+
+    <div
+      id="victory-stats"
+      class="my-2 grid grid-cols-2 gap-2 font-mono text-sm"
+    >
+      <div class="bg-base-200/50 rounded p-2">
+        <div class="text-xs uppercase opacity-50">Score</div>
+        <div id="victory-stat-score" class="text-primary font-bold">0</div>
+      </div>
+      <div class="bg-base-200/50 rounded p-2">
+        <div class="text-xs uppercase opacity-50">Keys</div>
+        <div id="victory-stat-keys" class="text-info font-bold">0</div>
+      </div>
+      <div class="bg-base-200/50 rounded p-2">
+        <div class="text-xs uppercase opacity-50">Enemies</div>
+        <div id="victory-stat-enemies" class="text-error font-bold">0</div>
+      </div>
+      <div class="bg-base-200/50 rounded p-2">
+        <div class="text-xs uppercase opacity-50">Time</div>
+        <div id="victory-stat-time" class="text-warning font-bold">0:00</div>
+      </div>
+    </div>
+    <div
+      id="victory-high-score"
+      class="text-accent font-display my-1 hidden text-lg font-bold"
+    >
+      New High Score!
+    </div>
+
+    <div class="modal-action flex-col gap-2">
+      <button id="btn-claim" class="btn btn-primary btn-block"
+        >Claim $TRESR</button
+      >
+      <button onclick="window.location.href='/'" class="btn btn-ghost btn-block"
+        >Return to Base</button
+      >
+    </div>
+  </div>
+</dialog>
+
+<dialog id="modal-lost" class="modal modal-middle">
+  <div class="modal-box border-error/30 bg-base-300 border text-center">
+    <h3
+      class="text-error font-display text-4xl font-black tracking-widest uppercase"
+    >
+      System Critical
+    </h3>
+    <p class="py-4 opacity-70">
+      Biological markers terminated. Sorry degen, the Bankers have won this
+      round.
+    </p>
+
+    <div id="lost-stats" class="my-2 grid grid-cols-2 gap-2 font-mono text-sm">
+      <div class="bg-base-200/50 rounded p-2">
+        <div class="text-xs uppercase opacity-50">Score</div>
+        <div id="lost-stat-score" class="text-primary font-bold">0</div>
+      </div>
+      <div class="bg-base-200/50 rounded p-2">
+        <div class="text-xs uppercase opacity-50">Keys</div>
+        <div id="lost-stat-keys" class="text-info font-bold">0</div>
+      </div>
+      <div class="bg-base-200/50 rounded p-2">
+        <div class="text-xs uppercase opacity-50">Enemies</div>
+        <div id="lost-stat-enemies" class="text-error font-bold">0</div>
+      </div>
+      <div class="bg-base-200/50 rounded p-2">
+        <div class="text-xs uppercase opacity-50">Time</div>
+        <div id="lost-stat-time" class="text-warning font-bold">0:00</div>
+      </div>
+    </div>
+    <div
+      id="lost-high-score"
+      class="text-accent font-display my-1 hidden text-lg font-bold"
+    >
+      New High Score!
+    </div>
+
+    <div class="modal-action flex-col gap-2">
+      <button id="btn-retry-mission" class="btn btn-error btn-block"
+        >Retry Mission</button
+      >
+      <button
+        onclick="window.location.href='/'"
+        class="btn btn-ghost btn-block text-error">Abort</button
+      >
+    </div>
+  </div>
+</dialog>
+
+<dialog id="modal-tampered" class="modal modal-middle">
+  <div class="modal-box border-warning/30 bg-base-300 border text-center">
+    <h3
+      class="text-warning font-display text-4xl font-black tracking-widest uppercase"
+    >
+      Integrity Failure
+    </h3>
+    <p class="py-4 opacity-70">
+      Game configuration has been modified. Gameplay and claims are disabled.
+    </p>
+
+    <div class="modal-action flex-col gap-2">
+      <button
+        onclick="window.location.href='/'"
+        class="btn btn-warning btn-block">Return to Base</button
+      >
+    </div>
+  </div>
+</dialog>
+
+<script>
+  import {gameState, type GameState} from "@/lib/game/state";
+  import {clearFeePaid, getSessionId} from "@/lib/game/fee-gate";
+  import {claimWin, getClaimCooldownStatus} from "@/lib/wallet/avalanche";
+  import {getConnectedAddress} from "@/lib/wallet/connection";
+  import {getAuthState} from "@/lib/auth";
+  import {checkBanStatus} from "@/lib/auth/ban";
+  import {getUserProfile} from "@/lib/user";
+  import {log} from "@/lib/utils/log";
+
+  const modalVictory = document.getElementById(
+    "modal-victory"
+  ) as HTMLDialogElement;
+  const modalLost = document.getElementById("modal-lost") as HTMLDialogElement;
+  const modalTampered = document.getElementById(
+    "modal-tampered"
+  ) as HTMLDialogElement;
+  const btnClaim = document.getElementById("btn-claim");
+  const btnRetry = document.getElementById("btn-retry-mission");
+
+  // Retry Mission: clear fee payment so user must re-pay, then reload
+  btnRetry?.addEventListener("click", () => {
+    clearFeePaid();
+    window.location.reload();
+  });
+
+  /**
+   * Format a BigInt token amount (18 decimals) to a human-readable string.
+   */
+  function formatTokenAmount(amount: bigint): string {
+    const whole = amount / 10n ** 18n;
+    const frac = amount % 10n ** 18n;
+    const fracStr = frac.toString().padStart(18, "0").slice(0, 4);
+    return `${whole}.${fracStr}`;
+  }
+
+  // Claim auth data received via CustomEvent from MainScene.
+  // SECURITY NOTE (ticket #157): CustomEvents can be spoofed from DevTools.
+  // This is an accepted client-side weakness — the Vault smart contract
+  // validates the oracle signature on-chain, rejecting any spoofed data.
+  let lastClaimAuth: [bigint, Uint8Array | number[]] | null = null;
+  let claimInProgress = false;
+
+  document.addEventListener("tresr:claim-auth", ((
+    e: CustomEvent<[bigint, Uint8Array | number[]]>
+  ) => {
+    lastClaimAuth = e.detail;
+    // Update reward display with actual amount from oracle
+    const rewardEl = document.getElementById("modal-victory-reward");
+    if (rewardEl && lastClaimAuth) {
+      rewardEl.innerText = `${formatTokenAmount(lastClaimAuth[0])} TRESR`;
+    }
+  }) as EventListener);
+
+  btnClaim?.addEventListener("click", async () => {
+    if (claimInProgress) return;
+
+    const auth = getAuthState();
+
+    if (auth.isGuest) {
+      window.showWarningToast?.("Sorry, Normies don't get any rewards");
+      return;
+    }
+
+    // Check ban status before processing claim (fresh profile data)
+    if (auth.isAuthenticated && auth.user) {
+      const banInfo = await checkBanStatus(auth.user.key);
+      if (banInfo) {
+        document.dispatchEvent(
+          new CustomEvent("tresr:ban-modal-open", {
+            detail: {
+              bannedUntil: banInfo.bannedUntil,
+              offenceCount: banInfo.offenceCount,
+            },
+          })
+        );
+        return;
+      }
+    }
+
+    // Check 24-hour cooldown before allowing claim (ticket #180)
+    const walletAddr = getConnectedAddress();
+    if (walletAddr) {
+      try {
+        const cooldown = await getClaimCooldownStatus(walletAddr);
+        if (!cooldown.canClaim) {
+          const hours = Math.floor(cooldown.remainingSeconds / 3600);
+          const mins = Math.floor((cooldown.remainingSeconds % 3600) / 60);
+          window.showWarningToast?.(
+            `Cooldown active: ${hours}h ${mins}m remaining. 1 claim per 24 hours.`
+          );
+          return;
+        }
+      } catch {
+        log.warn("GameModals", "Could not check cooldown — proceeding.");
+      }
+    }
+
+    if (!lastClaimAuth) {
+      window.showWarningToast?.(
+        "No claim authorization found. Are you trying to cheat Degen?"
+      );
+      return;
+    }
+
+    claimInProgress = true;
+    btnClaim.classList.add("loading");
+    try {
+      const [amount, sigBytes] = lastClaimAuth;
+      const state = gameState.get();
+      const sessionId = getSessionId();
+      if (!sessionId) {
+        window.showErrorToast?.("Session expired. Please restart the game.");
+        claimInProgress = false;
+        btnClaim.classList.remove("loading");
+        return;
+      }
+
+      // Convert raw signature bytes to hex string for the smart contract call
+      const sigArray =
+        sigBytes instanceof Uint8Array ? sigBytes : new Uint8Array(sigBytes);
+      const sigHex = `0x${Array.from(sigArray)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("")}` as `0x${string}`;
+
+      const hash = await claimWin(sessionId, amount, state.keys, sigHex);
+      window.showInfoToast?.(`Claim successful! Tx: ${hash}`);
+      btnClaim.setAttribute("disabled", "true");
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 3000);
+    } catch (e) {
+      log.error("GameModals", "Claim failed:", e);
+      window.showErrorToast?.("Claim failed. Check console for details.");
+      claimInProgress = false;
+      btnClaim.classList.remove("loading");
+    }
+  });
+
+  function formatTime(seconds: number): string {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  async function populateStats(prefix: string, state: GameState) {
+    const scoreEl = document.getElementById(`${prefix}-stat-score`);
+    const keysEl = document.getElementById(`${prefix}-stat-keys`);
+    const enemiesEl = document.getElementById(`${prefix}-stat-enemies`);
+    const timeEl = document.getElementById(`${prefix}-stat-time`);
+    const highScoreEl = document.getElementById(`${prefix}-high-score`);
+
+    if (scoreEl) scoreEl.innerText = state.score.toString();
+    if (keysEl) keysEl.innerText = state.keys.toString();
+    if (enemiesEl) enemiesEl.innerText = state.enemiesKilled.toString();
+    if (timeEl) timeEl.innerText = formatTime(state.timer);
+
+    // Check for new high score
+    if (highScoreEl) {
+      const auth = getAuthState();
+      if (auth.isAuthenticated && !auth.isGuest && auth.user) {
+        try {
+          const doc = await getUserProfile(auth.user.key);
+          if (doc && BigInt(state.score) > (doc.data.stats.highScore || 0n)) {
+            highScoreEl.classList.remove("hidden");
+          }
+        } catch {
+          // Ignore — high score comparison is best-effort
+        }
+      }
+    }
+  }
+
+  const unsub = gameState.subscribe((state) => {
+    // Config tampering takes priority over all other modals
+    if (state.configTampered) {
+      if (!modalTampered.open) modalTampered.showModal();
+      return;
+    }
+
+    if (state.phase === "victory") {
+      if (!modalVictory.open) {
+        const rewardEl = document.getElementById("modal-victory-reward")!;
+        const auth = getAuthState();
+        if (auth.isGuest) {
+          rewardEl.innerText = "No rewards for normies.";
+        } else if (lastClaimAuth) {
+          rewardEl.innerText = `${formatTokenAmount(lastClaimAuth[0])} TRESR`;
+        } else {
+          rewardEl.innerText = "Calculating...";
+        }
+        populateStats("victory", state);
+        modalVictory.showModal();
+      }
+    } else if (state.phase === "lost") {
+      if (!modalLost.open) {
+        populateStats("lost", state);
+        modalLost.showModal();
+      }
+    } else {
+      if (modalVictory.open) modalVictory.close();
+      if (modalLost.open) modalLost.close();
+    }
+  });
+  document.addEventListener("astro:before-preparation", () => unsub(), {
+    once: true,
+  });
+</script>

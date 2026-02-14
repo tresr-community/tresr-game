@@ -1,0 +1,288 @@
+---
+
+---
+
+<dialog id="modal-fee-gate" class="modal modal-middle">
+  <div class="modal-box border-primary/30 bg-base-300 border text-center">
+    <h3
+      class="text-primary font-display text-3xl font-black tracking-widest uppercase"
+    >
+      Entry Fee Required
+    </h3>
+    <p class="py-4 opacity-70">
+      Pay the entry fee to start your mission. Your deposit enters the vault as
+      potential loot.
+    </p>
+
+    <div class="stats stats-vertical bg-base-200/50 my-4 w-full shadow">
+      <div class="stat">
+        <div class="stat-title text-xs uppercase">Fee Amount</div>
+        <div id="fee-amount-display" class="stat-value text-warning font-mono">
+          10 $tTRESR
+        </div>
+      </div>
+    </div>
+
+    <!-- Transaction progress steps (hidden until payment starts) -->
+    <div id="fee-progress" class="my-4 hidden">
+      <ul class="steps steps-vertical w-full text-left text-sm">
+        <li id="step-wallet" class="step">Connect wallet</li>
+        <li id="step-balance" class="step">Check balance</li>
+        <li id="step-approve" class="step">Approve token spend</li>
+        <li id="step-deposit" class="step">Deposit to vault</li>
+        <li id="step-confirm" class="step">Confirm on-chain</li>
+      </ul>
+    </div>
+
+    <!-- Status messages -->
+    <div id="fee-status" class="my-2 hidden text-sm"></div>
+
+    <div class="modal-action flex-col gap-2">
+      <button id="btn-pay-fee" class="btn btn-primary btn-block gap-2">
+        <span id="pay-spinner" class="loading loading-spinner loading-sm hidden"
+        ></span>
+        <span id="pay-label">Pay & Start Mission</span>
+      </button>
+      <button id="btn-fee-abort" class="btn btn-ghost btn-block">
+        Abort
+      </button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+  import {config} from "@/lib/config/client";
+  import {getEnvironmentKey} from "@/lib/wallet/avalanche";
+  import {connectWallet, isConnected} from "@/lib/wallet/connection";
+  import {depositForGame, getPublicClient} from "@/lib/wallet/avalanche";
+  import {getTresrBalance, formatBalance} from "@/lib/wallet/balance";
+  import {parseBalance} from "@/lib/wallet/balance";
+  import {
+    markFeePaid,
+    resolveFeeGate,
+    rejectFeeGate,
+  } from "@/lib/game/fee-gate";
+  import {log} from "@/lib/utils/log";
+
+  const COMPONENT_NAME = "FeeGate";
+
+  const modal = document.getElementById("modal-fee-gate") as HTMLDialogElement;
+  const feeAmountDisplay = document.getElementById("fee-amount-display")!;
+  const feeStatus = document.getElementById("fee-status")!;
+  const btnPay = document.getElementById("btn-pay-fee") as HTMLButtonElement;
+  const btnAbort = document.getElementById(
+    "btn-fee-abort"
+  ) as HTMLButtonElement;
+  const paySpinner = document.getElementById("pay-spinner")!;
+  const payLabel = document.getElementById("pay-label")!;
+
+  // Read fee config
+  const env = getEnvironmentKey();
+  const chainConfig = config.blockchain.avalanche[env];
+  const feeAmount = chainConfig.fee;
+  const ticker = chainConfig.tresr_token_ticker;
+
+  // Display fee amount
+  feeAmountDisplay.textContent = `${feeAmount} $${ticker}`;
+
+  function showStatus(message: string, isError = false) {
+    feeStatus.textContent = message;
+    feeStatus.classList.remove(
+      "hidden",
+      "text-error",
+      "text-success",
+      "opacity-70"
+    );
+    feeStatus.classList.add(isError ? "text-error" : "opacity-70");
+  }
+
+  function hideStatus() {
+    feeStatus.classList.add("hidden");
+  }
+
+  // Listen for the fee gate open event from the module
+  document.addEventListener("tresr:fee-gate-open", () => {
+    hideStatus();
+    hideProgress();
+    btnPay.disabled = false;
+    paySpinner.classList.add("hidden");
+    payLabel.textContent = "Pay & Start Mission";
+    btnAbort.classList.remove("hidden");
+    modal.showModal();
+  });
+
+  const feeProgress = document.getElementById("fee-progress")!;
+  const steps = {
+    wallet: document.getElementById("step-wallet")!,
+    balance: document.getElementById("step-balance")!,
+    approve: document.getElementById("step-approve")!,
+    deposit: document.getElementById("step-deposit")!,
+    confirm: document.getElementById("step-confirm")!,
+  };
+
+  function showProgress() {
+    feeProgress.classList.remove("hidden");
+    // Reset all steps
+    Object.values(steps).forEach((s) => {
+      s.classList.remove("step-primary", "step-success", "step-error");
+    });
+  }
+
+  function hideProgress() {
+    feeProgress.classList.add("hidden");
+  }
+
+  type StepKey = keyof typeof steps;
+
+  function markStep(step: StepKey, state: "active" | "done" | "error") {
+    const el = steps[step];
+    el.classList.remove("step-primary", "step-success", "step-error");
+    if (state === "active") el.classList.add("step-primary");
+    else if (state === "done") el.classList.add("step-success");
+    else if (state === "error") el.classList.add("step-error");
+  }
+
+  // Mutex to prevent duplicate payments on rapid clicks (ticket #168)
+  let paymentInProgress = false;
+
+  const payHandler = async () => {
+    if (paymentInProgress) return;
+    paymentInProgress = true;
+    btnPay.disabled = true;
+    paySpinner.classList.remove("hidden");
+    payLabel.textContent = "Processing...";
+    btnAbort.classList.add("hidden");
+    hideStatus();
+    showProgress();
+
+    try {
+      // Step 1: Connect wallet (skip if already connected)
+      markStep("wallet", "active");
+
+      let address: `0x${string}`;
+      if (isConnected()) {
+        // Already connected — skip reconnection entirely
+        const {address: connAddr} = await connectWallet();
+        address = connAddr;
+        markStep("wallet", "done");
+      } else {
+        showStatus("Reconnecting wallet...");
+        const connection = await connectWallet();
+        address = connection.address;
+        markStep("wallet", "done");
+      }
+
+      // Reopen the modal if it was closed by a wallet interaction
+      if (!modal.open) modal.showModal();
+
+      // Step 2: Check balance
+      markStep("balance", "active");
+      showStatus("Checking balance...");
+      const balance = await getTresrBalance(address);
+      const feeWei = parseBalance(String(feeAmount));
+
+      if (balance < feeWei) {
+        const formatted = formatBalance(balance);
+        markStep("balance", "error");
+        showStatus(
+          `Insufficient balance: ${formatted} $${ticker} (need ${feeAmount} $${ticker})`,
+          true
+        );
+        paymentInProgress = false;
+        btnPay.disabled = false;
+        paySpinner.classList.add("hidden");
+        payLabel.textContent = "Pay & Start Mission";
+        btnAbort.classList.remove("hidden");
+        return;
+      }
+      markStep("balance", "done");
+
+      // Generate session ID with cryptographic randomness (ticket #198)
+      const ts = Date.now().toString();
+      const randomBytes = crypto.getRandomValues(new Uint8Array(16));
+      const randomHex = Array.from(randomBytes)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      const raw = new TextEncoder().encode(`${address}:${ts}:${randomHex}`);
+      const hashBuf = await crypto.subtle.digest("SHA-256", raw);
+      const hashArr = new Uint8Array(hashBuf);
+      const sessionId = `0x${Array.from(hashArr)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("")}`;
+
+      // Step 3 & 4: Approve + Deposit (depositForGame does both)
+      markStep("approve", "active");
+      showStatus("Approve the token spend in your wallet...");
+
+      // depositForGame calls approve() then deposit() — both prompt the wallet.
+      // We can't hook into the middle, so we mark approve as active,
+      // then update to deposit after a short delay (approve is fast on local).
+      const txHash = await depositForGame(sessionId, feeWei);
+      markStep("approve", "done");
+      markStep("deposit", "done");
+
+      // Step 5: Wait for on-chain confirmation (ticket #198)
+      markStep("confirm", "active");
+      showStatus("Confirming transaction on-chain...");
+      const publicClient = await getPublicClient();
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash: txHash,
+      });
+      if (receipt.status !== "success") {
+        markStep("confirm", "error");
+        showStatus("Transaction reverted on-chain. Try again.", true);
+        paymentInProgress = false;
+        btnPay.disabled = false;
+        paySpinner.classList.add("hidden");
+        payLabel.textContent = "Pay & Start Mission";
+        btnAbort.classList.remove("hidden");
+        return;
+      }
+      markStep("confirm", "done");
+
+      // Store session info in the fee-gate module (async — generates HMAC signature)
+      await markFeePaid(txHash, sessionId);
+
+      log.info(COMPONENT_NAME, `Fee paid: ${txHash}, session: ${sessionId}`);
+      showStatus("Payment confirmed! Starting mission...");
+
+      // Brief pause so user sees the success state
+      await new Promise((r) => setTimeout(r, 800));
+
+      modal.close();
+      resolveFeeGate();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      log.error(COMPONENT_NAME, "Fee payment failed:", error);
+
+      // Ensure modal is visible for error display
+      if (!modal.open) modal.showModal();
+
+      if (
+        message.includes("rejected") ||
+        message.includes("cancelled") ||
+        message.includes("denied")
+      ) {
+        showStatus("Transaction rejected by user.", true);
+      } else if (message.includes("timeout")) {
+        showStatus("Connection timed out. Try again.", true);
+      } else {
+        showStatus(`Payment failed: ${message}`, true);
+      }
+
+      paymentInProgress = false;
+      btnPay.disabled = false;
+      paySpinner.classList.add("hidden");
+      payLabel.textContent = "Pay & Start Mission";
+      btnAbort.classList.remove("hidden");
+    }
+  };
+
+  const abortHandler = () => {
+    modal.close();
+    rejectFeeGate();
+  };
+
+  btnPay.addEventListener("click", payHandler);
+  btnAbort.addEventListener("click", abortHandler);
+</script>
