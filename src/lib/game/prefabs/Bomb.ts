@@ -48,6 +48,7 @@ export class Bomb extends BaseEntity {
     }
 
     this.groundY = groundY;
+    this.setDepth(this.groundY);
     this.z = startZ;
     this.vz = 0;
     this.hasExploded = false;
@@ -113,8 +114,7 @@ export class Bomb extends BaseEntity {
     // Update visual Y from Z height
     this.y = this.groundY - this.z;
 
-    // Update shadow and depth (skip health bar — bombs don't have one)
-    this.setDepth(this.groundY);
+    // Update shadow (skip health bar — bombs don't have one)
     this.updateShadow();
   }
 

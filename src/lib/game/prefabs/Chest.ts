@@ -65,4 +65,9 @@ export class Chest extends BaseEntity {
     }
     return true;
   }
+
+  public kill() {
+    this.removeAllListeners(Phaser.Animations.Events.ANIMATION_COMPLETE);
+    super.kill();
+  }
 }

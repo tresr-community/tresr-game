@@ -26,6 +26,9 @@
 
   const container = document.getElementById("toast-container")! as HTMLElement;
 
+  // Track active auto-dismiss timers for cleanup on navigation (ticket #292)
+  const activeTimers = new Map<HTMLElement, ReturnType<typeof setTimeout>>();
+
   // NO initial showPopover() -- only open when a toast arrives
 
   function handleNotificationToast(e: Event) {
@@ -95,17 +98,20 @@
     container.appendChild(toast);
     container.showPopover();
 
-    // Auto-remove after 5s
+    // Auto-remove after 5s (tracked for cleanup on navigation, ticket #292)
     const timeout = setTimeout(() => removeToast(toast), 5000);
+    activeTimers.set(toast, timeout);
 
     toast.querySelector(".dismiss-toast")!.addEventListener("click", () => {
       clearTimeout(timeout);
+      activeTimers.delete(toast);
       notificationManager.dismiss(doc.key);
       removeToast(toast);
     });
 
     toast.querySelector(".snooze-btn")!.addEventListener("click", () => {
       clearTimeout(timeout);
+      activeTimers.delete(toast);
       notificationManager.snooze(doc.key);
       removeToast(toast);
     });
@@ -122,11 +128,17 @@
     "astro:before-preparation",
     () => {
       window.removeEventListener("notification-toast", handleNotificationToast);
+      // Clear all active toast timers to prevent stale DOM access (ticket #292)
+      for (const timer of activeTimers.values()) {
+        clearTimeout(timer);
+      }
+      activeTimers.clear();
     },
     {once: true}
   );
 
   function removeToast(el: HTMLElement) {
+    activeTimers.delete(el);
     el.classList.add("animate-out", "fade-out", "slide-out-to-right");
     setTimeout(() => {
       el.remove();

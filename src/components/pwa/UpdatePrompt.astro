@@ -63,9 +63,19 @@
   });
 
   // Global handler for custom event
-  window.addEventListener("pwa-update-ready", (event: Event) => {
+  function handlePwaUpdateReady(event: Event) {
     if (!(event instanceof CustomEvent)) return;
     const {detail} = event;
     openUpdatePrompt(detail.version);
-  });
+  }
+  window.addEventListener("pwa-update-ready", handlePwaUpdateReady);
+
+  // Cleanup on navigation
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      window.removeEventListener("pwa-update-ready", handlePwaUpdateReady);
+    },
+    {once: true}
+  );
 </script>

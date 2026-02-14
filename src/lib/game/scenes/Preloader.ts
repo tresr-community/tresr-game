@@ -21,9 +21,10 @@ export class Preloader extends Phaser.Scene {
   private spritesConfig!: SpritesConfig;
   private introAudio: HTMLAudioElement | null = null;
   private introFinished: boolean = false;
-  // Named listener refs for cleanup (ticket #197)
+  // Named listener refs for cleanup (ticket #197, #290)
   private introEndedHandler: (() => void) | null = null;
   private introErrorHandler: (() => void) | null = null;
+  private introPlayingHandler: (() => void) | null = null;
   private spinner!: Phaser.GameObjects.Sprite;
   private wallpaperKey: string = "";
   private subtitleText?: Phaser.GameObjects.Text;
@@ -272,14 +273,14 @@ export class Preloader extends Phaser.Scene {
     };
     this.introAudio.addEventListener("ended", this.introEndedHandler);
     this.introAudio.addEventListener("error", this.introErrorHandler);
-    // Start typewriter only once audio actually begins playing
-    this.introAudio.addEventListener(
-      "playing",
-      () => {
-        this.startTypewriter();
-      },
-      {once: true}
-    );
+    // Start typewriter only once audio actually begins playing (ticket #290)
+    this.introPlayingHandler = () => {
+      this.introPlayingHandler = null; // auto-clear after once fires
+      this.startTypewriter();
+    };
+    this.introAudio.addEventListener("playing", this.introPlayingHandler, {
+      once: true,
+    });
 
     this.introAudio.play().catch((e) => {
       log.warn(COMPONENT_NAME, "Intro voiceover autoplay blocked:", e);
@@ -351,18 +352,24 @@ export class Preloader extends Phaser.Scene {
       this.typewriterTimer.destroy();
       this.typewriterTimer = undefined;
     }
-    // Clean up intro audio (ticket #197: remove listeners, release buffer)
+    // Clean up intro audio (ticket #197, #290: remove listeners, release buffer)
     if (this.introAudio) {
       this.introAudio.pause();
       if (this.introEndedHandler)
         this.introAudio.removeEventListener("ended", this.introEndedHandler);
       if (this.introErrorHandler)
         this.introAudio.removeEventListener("error", this.introErrorHandler);
+      if (this.introPlayingHandler)
+        this.introAudio.removeEventListener(
+          "playing",
+          this.introPlayingHandler
+        );
       this.introAudio.src = "";
       this.introAudio = null;
     }
     this.introEndedHandler = null;
     this.introErrorHandler = null;
+    this.introPlayingHandler = null;
     // Remove filecomplete listener and camera fade listener
     this.load.off(
       `filecomplete-image-${this.wallpaperKey}`,

@@ -78,7 +78,7 @@
       "No rugs"
     ],
     "custom_404": "404, degen not found.\n",
-    "instructions": "## 🎯 Goal\n\n- 🚀 Collect keys to multiply rewards\n- ⚔️ Defeat enemies for points\n- ⏱️Survive the time limit\n- 👑 Defeat the final boss\n- 💎 And finally, open the treasure chest for your **$TRESR** reward!\n\n## Controls\n\n**Keyboard** (both schemes active simultaneously):\n\n| Action       | WASD Scheme | Arrow Scheme |\n|--------------|-------------|--------------|\n| Move         | W/A/S/D     | Arrow Keys   |\n| Jump         | Space       | Space        |\n| Attack       | J           | Z            |\n| Super Attack | K           | X            |\n| Pause        | Escape      | Escape       |\n\n**Gamepad**:\n\n| Action       | Button               |\n|--------------|-----------------------|\n| Move         | Left Stick / D-Pad    |\n| Jump         | A (Xbox) / Cross (PS) |\n| Attack       | X (Xbox) / Square (PS)|\n| Super Attack | RB (Xbox) / R1 (PS)  |\n\n**Touch**:\n\n- Virtual joystick on left half of screen for movement\n- Right side control for attack, jump and super.\n\n## 💰 Economy\n\n- 💵 Pay a fee in **$TRESR** to start your epic adventure\n- 🔑 Keys boost your rewards big time\n- 🏆 Beat the boss to claim the **$TRESR** prize\n- ⚠️ **Warning:** Die and lose your **TRESR** Stay alive! 💀\n"
+    "instructions": "## 🎯 Goal\n\n- 🚀 Collect keys to multiply rewards\n- ⚔️ Defeat enemies for points\n- ⏱️Survive the time limit\n- 👑 Defeat the final boss\n- 💎 And finally, open the treasure chest for your **$TRESR** reward!\n\n## Controls\n\n**Keyboard** (both schemes active simultaneously):\n\n| Action       | WASD Scheme | Arrow Scheme |\n|--------------|-------------|--------------|\n| Move         | W/A/S/D     | Arrow Keys   |\n| Jump         | Space       | Space        |\n| Attack       | J           | Z            |\n| Super Attack | K           | X            |\n| Pause        | Escape      | Escape       |\n\n**Gamepad**:\n\n| Action       | Button               |\n|--------------|---------------------- |\n| Move         | Left Stick / D-Pad    |\n| Jump         | A (Xbox) / Cross (PS) |\n| Attack       | X (Xbox) / Square (PS)|\n| Super Attack | RB (Xbox) / R1 (PS)   |\n\n**Touch**:\n\n- Virtual joystick on left half of screen for movement\n- Right side control for attack, jump and super.\n\n## 💰 Economy\n\n- 💵 Pay a fee in **$TRESR** to start your epic adventure\n- 🔑 Keys boost your rewards big time\n- 🏆 Beat the boss to claim the **$TRESR** prize\n- ⚠️ **Warning:** Die and lose your **TRESR** Stay alive! 💀\n"
   },
   "blockchain": {
     "avalanche": {
@@ -90,7 +90,7 @@
         "tresr_token_contract": "0x6EB523A381e725F115b7454BaA3cb199E4770970",
         "tresr_token_treasury": "0x533d95Fa7D5CEd8f09e38aa359E406A3809Bc0e0",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0xEB0320b1Fe1bB9A6972FbC14F09Fd4D3bCA102a4",
+        "vault_contract": "0x24AF790c2A3095FE2200E4EC466eaF83094cd08A",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       },
       "testnet": {
@@ -529,13 +529,13 @@
             "offscreen_distance": 80
           },
           "weights": {
-            "direct": 100,
-            "flanker": 0,
-            "cautious": 0,
-            "erratic": 0,
-            "ranged": 0,
-            "swarm": 0,
-            "burrower": 0
+            "direct": 20,
+            "flanker": 20,
+            "cautious": 15,
+            "erratic": 15,
+            "ranged": 10,
+            "swarm": 10,
+            "burrower": 10
           }
         },
         "animations": {
@@ -555,6 +555,10 @@
           "powerup": {
             "drop_chance": 0.1,
             "variants": 5
+          },
+          "hitbox": {
+            "width": 400,
+            "height": 400
           },
           "pool_size": 20,
           "bob_distance": 8,
@@ -713,7 +717,9 @@
         "combat": {
           "attack_range": 80,
           "attack_cooldown_ms": 800,
-          "target_switch_ms": 2000
+          "target_switch_ms": 2000,
+          "follow_distance": 80,
+          "follow_speed_mult": 0.7
         },
         "lifetime": {
           "duration_ms": 30000,
@@ -1211,6 +1217,21 @@
     },
     "statics": []
   },
+  "anti_cheat": {
+    "ban_durations_hours": [
+      24,
+      72,
+      168
+    ],
+    "permanent_after_offence": 4,
+    "ban_reasons": [
+      "config_hash_mismatch",
+      "replay_validation_failure",
+      "score_exceeds_maximum",
+      "is_a_sore_loser",
+      "wallet_tampering"
+    ]
+  },
   "credits": {
     "description": "This project stands on the shoulders of giants, without whom, none of it would be possible.\n\nA special thank you to the following individuals;\n",
     "coders": [
@@ -1311,5 +1332,5 @@
       }
     ]
   },
-  "configHash": "93c3e931a065c91045ed42807ffaa5d46f8e75739f29e34ff439f87bda12b00f"
+  "configHash": "e2ef21b109e33c423497c0ccec4d1abe54b32a7a36f6571a9b5bf038778ed497"
 }
