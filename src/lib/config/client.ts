@@ -1215,6 +1215,21 @@ export const config: ConfigTypes = {
     },
     "statics": []
   },
+  "anti_cheat": {
+    "ban_durations_hours": [
+      24,
+      72,
+      168
+    ],
+    "permanent_after_offence": 4,
+    "ban_reasons": [
+      "config_hash_mismatch",
+      "replay_validation_failure",
+      "score_exceeds_maximum",
+      "is_a_sore_loser",
+      "wallet_tampering"
+    ]
+  },
   "credits": {
     "description": "This project stands on the shoulders of giants, without whom, none of it would be possible.\n\nA special thank you to the following individuals;\n",
     "coders": [

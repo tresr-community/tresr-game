@@ -201,6 +201,13 @@ interface PendingWrite {
     const config = yaml.parse(configContent) as Record<string, unknown>;
     const clientConfig = (config.client as Record<string, unknown>) || {};
 
+    // Inject server.anti_cheat into client config so ban.ts can read
+    // ban durations and permanent threshold from config instead of hardcoding.
+    const serverConfig = config.server as Record<string, unknown> | undefined;
+    if (serverConfig?.anti_cheat) {
+      clientConfig.anti_cheat = serverConfig.anti_cheat;
+    }
+
     // Scan for audio files
     const musicDir = path.join(projectRoot, "public/assets/audio/music");
     const sfxDir = path.join(projectRoot, "public/assets/audio/sfx");

@@ -619,6 +619,10 @@ declare module "/config-client.json" {
       };
       statics: unknown[];
     };
+    anti_cheat: {      ban_durations_hours: Array<number>;
+      permanent_after_offence: number;
+      ban_reasons: string[];
+    };
     credits: {      description: string;
       coders: Array<{        name: string;
         role: string;
@@ -1254,6 +1258,10 @@ declare module "../../../public/config-client.json" {
         };
       };
       statics: unknown[];
+    };
+    anti_cheat: {      ban_durations_hours: Array<number>;
+      permanent_after_offence: number;
+      ban_reasons: string[];
     };
     credits: {      description: string;
       coders: Array<{        name: string;
