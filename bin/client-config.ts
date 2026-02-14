@@ -361,10 +361,12 @@ interface PendingWrite {
         entities: gameplay.entities,
         scoring: gameplay.scoring,
         time_limit_seconds: gameplay.time_limit_seconds,
+        max_keys: gameplay.max_keys,
         walkable_area: gameplay.walkable_area,
         physics: gameplay.physics,
         combat: gameplay.combat,
         audio: gameplay.audio,
+        vault: gameplay.vault,
       };
       const criticalJson = canonicalStringify(criticalValues);
       const configHash = crypto
