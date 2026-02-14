@@ -24,6 +24,7 @@ class MusicManager {
   private handleBeforeUnload: (() => void) | null = null;
   private handleGameplayStart: (() => void) | null = null;
   private playPromise: Promise<void> | null = null;
+  private toggleInProgress: boolean = false;
 
   // Bound audio event handlers for cleanup (ticket #227)
   private handleTimeUpdate = () => {
@@ -362,20 +363,25 @@ class MusicManager {
     }
   }
 
-  public toggle() {
-    if (!this.audio) return;
-    if (this.audio.paused) {
-      this.safePlay();
-      gameActions.updateMusic({
-        isPlaying: true,
-      });
-    } else {
-      this.safePause();
-      gameActions.updateMusic({
-        isPlaying: false,
-      });
+  public async toggle() {
+    if (!this.audio || this.toggleInProgress) return;
+    this.toggleInProgress = true;
+    try {
+      if (this.audio.paused) {
+        await this.safePlay();
+        gameActions.updateMusic({
+          isPlaying: true,
+        });
+      } else {
+        await this.safePause();
+        gameActions.updateMusic({
+          isPlaying: false,
+        });
+      }
+      this.persistPreferences();
+    } finally {
+      this.toggleInProgress = false;
     }
-    this.persistPreferences();
   }
 
   public setRandom(enabled: boolean) {
