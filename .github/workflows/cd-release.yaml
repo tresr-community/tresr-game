@@ -1,18 +1,18 @@
 ---
 ##################################################
 # Name: cd-release.yaml
-# Description: Single entrypoint for all deployments
+# Description: Single entrypoint for all releases
 #
 # Triggers:
-#   - Push to trunk → Testnet pre-release (automatic)
-#   - Manual dispatch → Select Testnet or Mainnet
+#   - Push to trunk → Create pre-release (automatic)
+#   - Manual dispatch → Create pre-release (Testnet) or promote to release (Mainnet)
 #
 # Flow:
 #   1. Compute next version via convco (conventional commits)
 #   2. Bump version in package.json, manifest.json, Cargo.toml
-#   3. Testnet: Tag as v{version}-testnet, create pre-release
+#   3. Testnet: Tag as v{version}, create pre-release
 #      → triggers cd-juno-testnet.yaml (on: prereleased)
-#   4. Mainnet: Tag as v{version}, create release
+#   4. Mainnet: Promote existing pre-release tag to release
 #      → triggers cd-juno-mainnet.yaml (on: released)
 ##################################################
 
@@ -35,6 +35,11 @@ on:
           - Testnet
           - Mainnet
         default: Testnet
+      release_tag:
+        description: "Tag to promote (Mainnet only, e.g. v0.2.0)"
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -59,12 +64,12 @@ defaults:
 
 jobs:
   ##################################################
-  # Create a testnet pre-release
+  # Create a pre-release
   # Triggers: push to trunk (auto) OR manual with Testnet
   ##################################################
 
   pre-release:
-    name: Pre-Release (Testnet)
+    name: Pre-Release
 
     if: >-
       github.event_name == 'push' ||
@@ -102,7 +107,7 @@ jobs:
             NEXT_VERSION=$(convco version)
           fi
 
-          TAG="v${NEXT_VERSION}-testnet"
+          TAG="v${NEXT_VERSION}"
 
           # Check if tag already exists
           if git tag --list | grep -q "^${TAG}$"; then
@@ -147,13 +152,13 @@ jobs:
             --target "${{ github.sha }}"
 
   ##################################################
-  # Create a mainnet release
+  # Promote a pre-release to release (mainnet)
   # Triggers: manual dispatch with Mainnet
   # Requires GitHub Environment "Mainnet" approvers
   ##################################################
 
-  release:
-    name: Release (Mainnet)
+  promote:
+    name: Promote to Release (Mainnet)
 
     if: >-
       github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'Mainnet'
@@ -161,63 +166,43 @@ jobs:
     runs-on: ubuntu-latest
     environment: Mainnet
 
-    timeout-minutes: 15
+    timeout-minutes: 5
     continue-on-error: false
 
     steps:
-      - id: checkout_repository
-        name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - id: setup_devenv
-        name: Setup devenv
-        uses: ./.github/actions/setup-devenv
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - id: compute_version
-        name: Compute version
-        shell: devenv shell --quiet bash -- -e {0}
+      - id: validate
+        name: Validate release tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.inputs.release_tag }}
         run: |
-          VERSION=$(convco version)
-          TAG="v${VERSION}"
-
-          # Check if tag already exists
-          if git tag --list | grep -q "^${TAG}$"; then
-            echo "Tag ${TAG} already exists, skipping release"
-            echo "skip=true" >> "${GITHUB_OUTPUT}"
-          else
-            echo "skip=false" >> "${GITHUB_OUTPUT}"
+          if [[ -z "${RELEASE_TAG}" ]]; then
+            echo "::error::release_tag is required for Mainnet promotion"
+            exit 1
           fi
 
-          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
-          echo "Version: ${VERSION}, Tag: ${TAG}"
+          # Verify the release exists and is a pre-release
+          RELEASE_INFO=$(gh release view "${RELEASE_TAG}" --json isPrerelease,tagName 2>&1) || {
+            echo "::error::Release '${RELEASE_TAG}' not found"
+            exit 1
+          }
 
-      - id: bump_version
-        name: Bump version files
-        if: steps.compute_version.outputs.skip != 'true'
-        shell: devenv shell --quiet bash -- -e {0}
-        run: |
-          bun run version-set ${{ steps.compute_version.outputs.version }}
+          IS_PRERELEASE=$(echo "${RELEASE_INFO}" | jq -r '.isPrerelease')
+          if [[ "${IS_PRERELEASE}" != "true" ]]; then
+            echo "::error::Release '${RELEASE_TAG}' is not a pre-release (already promoted?)"
+            exit 1
+          fi
 
-      - id: generate_changelog
-        name: Generate changelog
-        if: steps.compute_version.outputs.skip != 'true'
-        shell: devenv shell --quiet bash -- -e {0}
-        run: |
-          CHANGELOG=$(convco changelog --unreleased 2>/dev/null || echo "No changelog available")
-          echo "${CHANGELOG}" > /tmp/changelog.md
+          echo "tag=${RELEASE_TAG}" >> "${GITHUB_OUTPUT}"
+          echo "Validated: ${RELEASE_TAG} is a pre-release, ready to promote"
 
-      - id: create_release
-        name: Create Release
-        if: steps.compute_version.outputs.skip != 'true'
+      - id: promote
+        name: Promote pre-release to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ steps.compute_version.outputs.tag }}" \
-            --title "Release ${{ steps.compute_version.outputs.tag }}" \
-            --notes-file /tmp/changelog.md \
-            --target "${{ github.sha }}"
+          gh release edit "${{ steps.validate.outputs.tag }}" \
+            --prerelease=false \
+            --title "Release ${{ steps.validate.outputs.tag }}"
+
+          echo "Promoted ${{ steps.validate.outputs.tag }} to release"
