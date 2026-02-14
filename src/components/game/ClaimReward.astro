@@ -54,12 +54,12 @@ const {gameSessionId, amount, vaultAddress} = Astro.props;
 
   claimBtn.addEventListener("click", async () => {
     try {
+      const {user} = getAuthState();
+      if (!user) throw new Error("User not authenticated.");
+
       // Use unified wallet connection (opens AppKit modal)
       const connection = await connectWallet();
       const walletClient = await getWalletClient();
-
-      const {user} = getAuthState();
-      if (!user) throw new Error("User not authenticated.");
 
       // Get vault address from config if not provided
       let vaultAddress = defaultVault;

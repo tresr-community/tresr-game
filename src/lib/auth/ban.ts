@@ -9,25 +9,19 @@
  */
 
 import {getUserProfile, saveUserProfile} from "@/lib/user";
+import {config} from "@/lib/config/client";
 import {log} from "@/lib/utils/log";
 
 const COMPONENT_NAME = "BanSystem";
 
-/**
- * Escalating ban durations in milliseconds.
- * Must match `server.anti_cheat.ban_durations_hours` in tresr.yaml: [24, 72, 168]
- */
-const BAN_DURATIONS_MS = [
-  24 * 60 * 60 * 1000, // 1st offense: 24 hours
-  72 * 60 * 60 * 1000, // 2nd offense: 72 hours
-  168 * 60 * 60 * 1000, // 3rd offense: 168 hours (7 days)
-];
+/** Escalating ban durations in milliseconds, derived from config. */
+const BAN_DURATIONS_MS: number[] = (
+  config.anti_cheat?.ban_durations_hours ?? [24, 72, 168]
+).map((h: number) => h * 60 * 60 * 1000);
 
-/**
- * Offense count at which the ban becomes permanent.
- * Must match `server.anti_cheat.permanent_after_offence` in tresr.yaml: 4
- */
-const PERMANENT_AFTER_OFFENCE = 4;
+/** Offense count at which the ban becomes permanent, derived from config. */
+const PERMANENT_AFTER_OFFENCE: number =
+  config.anti_cheat?.permanent_after_offence ?? 4;
 
 /** Far-future timestamp for permanent bans (serializable, not Infinity). */
 const PERMANENT_BAN_MS = Number.MAX_SAFE_INTEGER;

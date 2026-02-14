@@ -54,9 +54,9 @@ export async function isFeePaid(): Promise<boolean> {
 
   // Cryptographically verify the HMAC signature matches stored tx:sid
   const payload = new TextEncoder().encode(`${tx}:${sid}`);
-  const sigBytes = new Uint8Array(
-    sig.match(/.{1,2}/g)!.map((byte) => parseInt(byte, 16))
-  );
+  const hexPairs = sig.match(/.{1,2}/g);
+  if (!hexPairs) return false;
+  const sigBytes = new Uint8Array(hexPairs.map((byte) => parseInt(byte, 16)));
   return crypto.subtle.verify("HMAC", hmacKey, sigBytes, payload);
 }
 
@@ -92,6 +92,13 @@ export function getSessionId(): string | null {
  * Timeout covers blockchain transaction confirmation, not modal display time.
  */
 export function showFeeGate(timeoutMs: number = 60000): Promise<void> {
+  // Reject any pending fee gate before starting a new one
+  if (feeGateReject) {
+    feeGateReject(new Error("Fee gate superseded by new request"));
+    feeGateResolve = null;
+    feeGateReject = null;
+  }
+
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       feeGateResolve = null;

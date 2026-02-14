@@ -62,8 +62,8 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
     // detection works reliably even during the bob cycle.
     if (this.body) {
       const body = this.body as Phaser.Physics.Arcade.Body;
-      const bw = 400;
-      const bh = 400;
+      const bw = lootConfig.hitbox.width;
+      const bh = lootConfig.hitbox.height;
       body.setSize(bw, bh);
       body.setOffset((this.width - bw) / 2, this.height - bh);
     }
