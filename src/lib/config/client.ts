@@ -533,13 +533,13 @@ export const config: ConfigTypes = {
             "offscreen_distance": 80
           },
           "weights": {
-            "direct": 100,
-            "flanker": 0,
-            "cautious": 0,
-            "erratic": 0,
-            "ranged": 0,
-            "swarm": 0,
-            "burrower": 0
+            "direct": 20,
+            "flanker": 20,
+            "cautious": 15,
+            "erratic": 15,
+            "ranged": 10,
+            "swarm": 10,
+            "burrower": 10
           }
         },
         "animations": {
@@ -1330,5 +1330,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "93c3e931a065c91045ed42807ffaa5d46f8e75739f29e34ff439f87bda12b00f"
+  "configHash": "ab030477f04992621a50b0d059af165df38e2b34156357768ea4ff14fd507717"
 };

@@ -433,13 +433,13 @@ client:
             trigger_radius: 200
             offscreen_distance: 80
           weights:
-            direct: 100 # TODO: Test
-            flanker: 0 # TODO: Test
-            cautious: 0 # TODO: Test
-            erratic: 0 # TODO: Test
-            ranged: 0 # TODO: Test
-            swarm: 0 # TODO: Test
-            burrower: 0 # TODO: Test
+            direct: 20
+            flanker: 20
+            cautious: 15
+            erratic: 15
+            ranged: 10
+            swarm: 10
+            burrower: 10
         animations:
           death_delay: 500 # Delay before kill() after hurt animation (ms)
         spawner:
