@@ -22,6 +22,7 @@ class MusicManager {
   private narrationDone: boolean = false;
   private deferredPlay: (() => void) | null = null;
   private handleBeforeUnload: (() => void) | null = null;
+  private handleGameplayStart: (() => void) | null = null;
   private playPromise: Promise<void> | null = null;
 
   // Bound audio event handlers for cleanup (ticket #227)
@@ -58,16 +59,19 @@ class MusicManager {
 
       // Wait for gameplay to actually start before starting music playback.
       // MainScene dispatches this event after the countdown completes.
+      this.handleGameplayStart = () => {
+        this.narrationDone = true;
+        if (this.deferredPlay) {
+          this.deferredPlay();
+          this.deferredPlay = null;
+        }
+      };
       window.addEventListener(
         "tresr:gameplay-start",
-        () => {
-          this.narrationDone = true;
-          if (this.deferredPlay) {
-            this.deferredPlay();
-            this.deferredPlay = null;
-          }
-        },
-        {once: true}
+        this.handleGameplayStart,
+        {
+          once: true,
+        }
       );
 
       // Load tracks from config (does NOT play — waits for auth callback)
@@ -430,6 +434,14 @@ class MusicManager {
       this.authUnsubscribe();
       this.authUnsubscribe = null;
     }
+    if (this.handleGameplayStart) {
+      window.removeEventListener(
+        "tresr:gameplay-start",
+        this.handleGameplayStart
+      );
+      this.handleGameplayStart = null;
+    }
+    this.deferredPlay = null;
     if (this.handleBeforeUnload) {
       window.removeEventListener("beforeunload", this.handleBeforeUnload);
       this.handleBeforeUnload = null;
