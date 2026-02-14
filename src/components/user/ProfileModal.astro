@@ -204,14 +204,6 @@
   import {log} from "@/lib/utils/log";
   import {profileStore} from "@/lib/user/store";
 
-  declare global {
-    interface Window {
-      showInfoToast: (message: string, details?: string) => void;
-      showWarningToast: (message: string, details?: string) => void;
-      showErrorToast: (message: string, details?: string) => void;
-    }
-  }
-
   const COMPONENT_NAME = "ProfileModal";
 
   const modal = document.getElementById("profile-modal") as HTMLDialogElement;
@@ -552,6 +544,18 @@
     content?.prepend(note);
   }
 
-  // @ts-ignore
-  window.openProfileModal = openProfileModal;
+  // Listen for custom event instead of window global (ticket #263)
+  function handleOpenProfile() {
+    openProfileModal();
+  }
+  document.addEventListener("tresr:open-profile", handleOpenProfile);
+
+  // Cleanup document-level listener on navigation (ticket #241)
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      document.removeEventListener("tresr:open-profile", handleOpenProfile);
+    },
+    {once: true}
+  );
 </script>
