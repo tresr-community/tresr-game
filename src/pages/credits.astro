@@ -1,0 +1,103 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import {config} from "@/lib/config/client.ts";
+
+const {credits} = config;
+const currentDate = new Date().toLocaleDateString();
+---
+
+<BaseLayout title="Credits | Tresr">
+  <div class="min-h-screen pt-20 pb-10">
+    <div class="container mx-auto max-w-2xl px-4 text-center">
+      <h1
+        class="text-primary font-display mb-12 text-5xl font-black tracking-widest drop-shadow-[0_0_10px_rgba(var(--primary),0.8)]"
+      >
+        CREDITS
+      </h1>
+
+      <div class="flex flex-col gap-16">
+        <!-- Description Section -->
+        <section class="text-center">
+          <p class="text-lg whitespace-pre-line opacity-80">
+            {credits?.description}
+          </p>
+        </section>
+
+        <!-- Team Section -->
+        <section>
+          <h2
+            class="text-secondary mb-6 font-mono text-2xl tracking-widest uppercase"
+          >
+            The Crew
+          </h2>
+          <div class="grid gap-4">
+            {
+              credits?.coders?.map((c) => (
+                <div class="card bg-base-200/50 border-primary/20 border p-4">
+                  <div class="text-xl font-bold">{c.name}</div>
+                  <div class="text-sm opacity-70">{c.role}</div>
+                  {c.description && (
+                    <div class="mt-1 text-xs italic">{c.description}</div>
+                  )}
+                </div>
+              ))
+            }
+          </div>
+        </section>
+
+        <!-- Tech Stack -->
+        <section>
+          <h2
+            class="text-secondary mb-6 font-mono text-2xl tracking-widest uppercase"
+          >
+            Powered By
+          </h2>
+          <div class="flex flex-wrap justify-center gap-4">
+            {
+              credits?.components?.map((component) => (
+                <span class="badge badge-lg badge-outline border-primary text-primary">
+                  {component.name}
+                </span>
+              ))
+            }
+          </div>
+        </section>
+
+        <!-- Assets -->
+        <section>
+          <h2
+            class="text-secondary mb-6 font-mono text-2xl tracking-widest uppercase"
+          >
+            Assets
+          </h2>
+          <div class="grid gap-4">
+            {
+              credits?.assets?.map((asset) => (
+                <div class="card bg-base-200/50 border-primary/20 border p-4">
+                  <div class="font-mono text-sm opacity-70">
+                    {asset.subtype
+                      ? `${asset.type} (${asset.subtype}): ${asset.provider}`
+                      : `${asset.type}: ${asset.provider}`}
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </section>
+      </div>
+
+      <div class="mt-16 font-mono text-xs opacity-50">
+        Generated on {currentDate}
+      </div>
+
+      <div class="mt-4">
+        <a
+          href="/"
+          class="btn btn-outline btn-primary font-mono tracking-widest"
+        >
+          RETURN TO BASE
+        </a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

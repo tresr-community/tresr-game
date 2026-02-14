@@ -1,0 +1,1305 @@
+{
+  "daisyui": {
+    "themes": [
+      "abyss",
+      "aqua",
+      "black",
+      "bumblebee",
+      "business",
+      "cmyk",
+      "coffee",
+      "corporate",
+      "cyberpunk",
+      "dark",
+      "dim",
+      "dracula",
+      "fantasy",
+      "forest",
+      "halloween",
+      "lemonade",
+      "light",
+      "luxury",
+      "night",
+      "retro",
+      "sunset",
+      "synthwave",
+      "valentine",
+      "winter"
+    ]
+  },
+  "auth": {
+    "iid": {
+      "enabled": false,
+      "domain": "id.ai"
+    },
+    "webauthn": {
+      "enabled": false,
+      "session_ttl_ms": 14400000
+    },
+    "avalanche": {
+      "enabled": true
+    }
+  },
+  "app": {
+    "name": "Tresr Community Game",
+    "tagline": "Collect Keys. Fight Enemies. Claim the TRESR.",
+    "footer_text": "Economy powered by the Avalanche Blockchain.",
+    "narration_text": {
+      "intro": "Most days, Ron Jay embraces the degenerate life\nfarming airdrops and apeing into meme coins.\n\nBut today?\n\nToday Ron chooses violence against the\ntyrannical bankers shackling crypto's future.\n\nWelcome, to the Crypto Cage...\n"
+    },
+    "loader_messages": [
+      "Apeing In...",
+      "Boarding Yacht...",
+      "Bridging Assets...",
+      "Checking Mempool...",
+      "Deploying Smart Contracts...",
+      "Extracting Yield...",
+      "Farming Airdrops...",
+      "Flipping NFTs...",
+      "HODLing...",
+      "Liquidating Shorts...",
+      "Minting Blocks...",
+      "Preparing to Rug...",
+      "Pumping Bags...",
+      "Stacking Sats...",
+      "Steady on lads, deploying capital...",
+      "Updating Roadmap...",
+      "Yield Farming..."
+    ],
+    "custom_notifications": [
+      "No Lambos",
+      "No farming notices today",
+      "No forks",
+      "No gems",
+      "No mints",
+      "No moonshots",
+      "No new airdrops",
+      "No pumps have happened today",
+      "No rugs"
+    ],
+    "custom_404": "404, degen not found.\n",
+    "instructions": "## 🎯 Goal\n\n- 🚀 Collect keys to multiply rewards\n- ⚔️ Defeat enemies for points\n- ⏱️Survive the time limit\n- 👑 Defeat the final boss\n- 💎 And finally, open the treasure chest for your **$TRESR** reward!\n\n## Controls\n\n**Keyboard** (both schemes active simultaneously):\n\n| Action       | WASD Scheme | Arrow Scheme |\n|--------------|-------------|--------------|\n| Move         | W/A/S/D     | Arrow Keys   |\n| Jump         | Space       | Space        |\n| Attack       | J           | Z            |\n| Super Attack | K           | X            |\n| Pause        | Escape      | Escape       |\n\n**Gamepad**:\n\n| Action       | Button               |\n|--------------|-----------------------|\n| Move         | Left Stick / D-Pad    |\n| Jump         | A (Xbox) / Cross (PS) |\n| Attack       | X (Xbox) / Square (PS)|\n| Super Attack | RB (Xbox) / R1 (PS)  |\n\n**Touch**:\n\n- Virtual joystick on left half of screen for movement\n- Right side control for attack, jump and super.\n\n## 💰 Economy\n\n- 💵 Pay a fee in **$TRESR** to start your epic adventure\n- 🔑 Keys boost your rewards big time\n- 🏆 Beat the boss to claim the **$TRESR** prize\n- ⚠️ **Warning:** Die and lose your **TRESR** Stay alive! 💀\n"
+  },
+  "blockchain": {
+    "avalanche": {
+      "anvil": {
+        "fee": 10,
+        "chain_id": 43113,
+        "rpc_url": "http://localhost:8545",
+        "tresr_token_ticker": "tTRESR",
+        "tresr_token_contract": "0x6EB523A381e725F115b7454BaA3cb199E4770970",
+        "tresr_token_treasury": "0x533d95Fa7D5CEd8f09e38aa359E406A3809Bc0e0",
+        "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "vault_contract": "0xEB0320b1Fe1bB9A6972FbC14F09Fd4D3bCA102a4",
+        "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
+      },
+      "testnet": {
+        "fee": 10,
+        "chain_id": 43113,
+        "rpc_url": "https://api.avax-test.network/ext/bc/C/rpc",
+        "tresr_token_ticker": "tTRESR",
+        "oracle_address": "0x0000000000000000000000000000000000000000",
+        "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
+        "tresr_token_contract": "0x6EB523A381e725F115b7454BaA3cb199E4770970",
+        "vault_contract": "0x0000000000000000000000000000000000000000"
+      },
+      "mainnet": {
+        "fee": 10,
+        "chain_id": 43114,
+        "rpc_url": "https://api.avax.network/ext/bc/C/rpc",
+        "tresr_token_ticker": "TRESR",
+        "oracle_address": "0x0000000000000000000000000000000000000000",
+        "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
+        "tresr_token_contract": "0x9913BA363073Ca3e9eA0cD296E36B75aF9E40bef",
+        "vault_contract": "0x0000000000000000000000000000000000000000"
+      }
+    },
+    "icp": {
+      "evm_rpc_canister_id": "7hfb6-caaaa-aaaar-qadga-cai"
+    }
+  },
+  "wallet": {
+    "balance_refresh_cooldown_ms": 30000
+  },
+  "assets": {
+    "music": [
+      "Analog Ghosts",
+      "Arcade Assasian",
+      "Binary Bleed",
+      "Cyber Victory",
+      "Cybernetic Funk",
+      "Hardwired Heartbeat",
+      "Memory Leak",
+      "Neon Grid",
+      "Neon Overdrive",
+      "Neural Knot",
+      "Riot in Sector 4",
+      "Silicon Soul",
+      "Terminal Velocity",
+      "VHS Violence",
+      "Velvet Static"
+    ],
+    "sfx": [
+      "bot_attack_1",
+      "bot_attack_2",
+      "bot_spawn_1",
+      "bot_spawn_10",
+      "bot_spawn_2",
+      "bot_spawn_3",
+      "bot_spawn_4",
+      "bot_spawn_5",
+      "bot_spawn_6",
+      "bot_spawn_7",
+      "bot_spawn_8",
+      "bot_spawn_9",
+      "bot_special_1",
+      "countdown_1",
+      "countdown_2",
+      "death_1",
+      "death_2",
+      "death_3",
+      "death_4",
+      "explosion_1",
+      "explosion_2",
+      "explosion_3",
+      "game_over_1",
+      "game_over_2",
+      "game_over_3",
+      "hurt_1",
+      "hurt_2",
+      "hurt_3",
+      "hurt_4",
+      "hurt_5",
+      "hurt_6",
+      "key_collect_1",
+      "key_collect_2",
+      "key_collect_3",
+      "open_treasure_chest_1",
+      "open_treasure_chest_2",
+      "open_treasure_chest_3",
+      "powerup_collect_1",
+      "punch_1",
+      "punch_2",
+      "punch_3",
+      "punch_4",
+      "punch_5",
+      "victory_1",
+      "victory_2",
+      "victory_3"
+    ],
+    "wallpapers": [
+      "wallpaper_1",
+      "wallpaper_10",
+      "wallpaper_100",
+      "wallpaper_101",
+      "wallpaper_102",
+      "wallpaper_103",
+      "wallpaper_104",
+      "wallpaper_105",
+      "wallpaper_106",
+      "wallpaper_107",
+      "wallpaper_108",
+      "wallpaper_109",
+      "wallpaper_11",
+      "wallpaper_110",
+      "wallpaper_111",
+      "wallpaper_112",
+      "wallpaper_113",
+      "wallpaper_114",
+      "wallpaper_115",
+      "wallpaper_116",
+      "wallpaper_117",
+      "wallpaper_118",
+      "wallpaper_119",
+      "wallpaper_120",
+      "wallpaper_121",
+      "wallpaper_122",
+      "wallpaper_123",
+      "wallpaper_124",
+      "wallpaper_125",
+      "wallpaper_126",
+      "wallpaper_127",
+      "wallpaper_128",
+      "wallpaper_129",
+      "wallpaper_13",
+      "wallpaper_130",
+      "wallpaper_131",
+      "wallpaper_132",
+      "wallpaper_133",
+      "wallpaper_134",
+      "wallpaper_135",
+      "wallpaper_136",
+      "wallpaper_137",
+      "wallpaper_138",
+      "wallpaper_139",
+      "wallpaper_14",
+      "wallpaper_140",
+      "wallpaper_141",
+      "wallpaper_142",
+      "wallpaper_143",
+      "wallpaper_144",
+      "wallpaper_145",
+      "wallpaper_146",
+      "wallpaper_147",
+      "wallpaper_148",
+      "wallpaper_149",
+      "wallpaper_15",
+      "wallpaper_150",
+      "wallpaper_16",
+      "wallpaper_17",
+      "wallpaper_18",
+      "wallpaper_19",
+      "wallpaper_2",
+      "wallpaper_20",
+      "wallpaper_21",
+      "wallpaper_22",
+      "wallpaper_28",
+      "wallpaper_29",
+      "wallpaper_3",
+      "wallpaper_30",
+      "wallpaper_31",
+      "wallpaper_32",
+      "wallpaper_33",
+      "wallpaper_34",
+      "wallpaper_35",
+      "wallpaper_36",
+      "wallpaper_37",
+      "wallpaper_38",
+      "wallpaper_39",
+      "wallpaper_4",
+      "wallpaper_40",
+      "wallpaper_41",
+      "wallpaper_42",
+      "wallpaper_43",
+      "wallpaper_44",
+      "wallpaper_45",
+      "wallpaper_46",
+      "wallpaper_47",
+      "wallpaper_48",
+      "wallpaper_49",
+      "wallpaper_5",
+      "wallpaper_50",
+      "wallpaper_51",
+      "wallpaper_52",
+      "wallpaper_53",
+      "wallpaper_54",
+      "wallpaper_55",
+      "wallpaper_56",
+      "wallpaper_57",
+      "wallpaper_58",
+      "wallpaper_59",
+      "wallpaper_6",
+      "wallpaper_60",
+      "wallpaper_61",
+      "wallpaper_62",
+      "wallpaper_63",
+      "wallpaper_64",
+      "wallpaper_65",
+      "wallpaper_66",
+      "wallpaper_67",
+      "wallpaper_68",
+      "wallpaper_69",
+      "wallpaper_7",
+      "wallpaper_70",
+      "wallpaper_71",
+      "wallpaper_72",
+      "wallpaper_73",
+      "wallpaper_74",
+      "wallpaper_75",
+      "wallpaper_76",
+      "wallpaper_77",
+      "wallpaper_78",
+      "wallpaper_79",
+      "wallpaper_8",
+      "wallpaper_80",
+      "wallpaper_81",
+      "wallpaper_82",
+      "wallpaper_83",
+      "wallpaper_84",
+      "wallpaper_85",
+      "wallpaper_86",
+      "wallpaper_87",
+      "wallpaper_88",
+      "wallpaper_89",
+      "wallpaper_9",
+      "wallpaper_90",
+      "wallpaper_91",
+      "wallpaper_92",
+      "wallpaper_93",
+      "wallpaper_94",
+      "wallpaper_95",
+      "wallpaper_96",
+      "wallpaper_97",
+      "wallpaper_98",
+      "wallpaper_99"
+    ]
+  },
+  "display": {
+    "width": 1280,
+    "height": 720,
+    "background_color": "#000000",
+    "pixel_art": true
+  },
+  "gameplay": {
+    "time_limit_seconds": 300,
+    "max_keys": 150,
+    "guest": {
+      "max_sessions_per_day": 24,
+      "storage_key": "tresr_guest_sessions"
+    },
+    "fee_gate": {
+      "transaction_timeout_ms": 300000
+    },
+    "vault": {
+      "minimum_cap": 500,
+      "tiers": {
+        "easy": 5000,
+        "normal": 25000,
+        "hard": 100000
+      },
+      "difficulty_multipliers": {
+        "easy": 0.6,
+        "normal": 1,
+        "hard": 1.5,
+        "extreme": 2
+      }
+    },
+    "physics": {
+      "gravity": 0.8,
+      "timestep": 0.01667
+    },
+    "visuals": {
+      "shadow": {
+        "color": 0,
+        "opacity": 0.35,
+        "width": 50,
+        "height": 12
+      },
+      "damage_tint_duration": 100
+    },
+    "scoring": {
+      "key_collection": 100,
+      "enemy_kill": 10,
+      "boss_hit": 25,
+      "super_hit": 25
+    },
+    "health_bar": {
+      "thresholds": {
+        "high": 0.75,
+        "medium": 0.5,
+        "low": 0.25,
+        "critical": 0.1
+      },
+      "width": 40,
+      "height": 4,
+      "offset_y": -10,
+      "background_color": 0,
+      "colors": {
+        "high": 65280,
+        "medium": 16776960,
+        "low": 16746496,
+        "critical": 16711680
+      }
+    },
+    "walkable_area": {
+      "top_y": 600,
+      "bottom_y": 700,
+      "left_x": 0,
+      "right_x": 1280
+    },
+    "entities": {
+      "player": {
+        "health": 1000,
+        "damage": 25,
+        "speed": 250,
+        "jump_force": 12,
+        "knockback": {
+          "force": 200,
+          "stun_ms": 300
+        },
+        "hitbox": {
+          "radius": 40,
+          "offsetX": 460,
+          "offsetY": 920
+        },
+        "combat": {
+          "reach": 80,
+          "attack_range": 80,
+          "hit_stop_ms": 50
+        },
+        "super": {
+          "damage": 500,
+          "splash_damage": 250,
+          "splash_radius": 100,
+          "speed": 500,
+          "max_range": 1000,
+          "charge_per_kill": 10,
+          "max_charge": 100,
+          "max_projectiles": 3,
+          "hitbox": {
+            "width": 30,
+            "height": 50,
+            "hit_radius": 40,
+            "depth_threshold": 60,
+            "fire_offset": 40,
+            "offscreen_margin": 50
+          },
+          "effects": {
+            "shake_duration": 200,
+            "shake_intensity": 0.02,
+            "explosion_initial_radius": 10,
+            "explosion_expand_duration": 300
+          }
+        },
+        "effects": {
+          "attack_shake_duration": 100,
+          "attack_shake_intensity": 0.01,
+          "victory_flash_duration": 500
+        },
+        "spawn": {
+          "x": 50,
+          "y": 650
+        },
+        "lives": 1,
+        "respawn": {
+          "invincibility_ms": 3000,
+          "blink_interval_ms": 100,
+          "delay_ms": 1000
+        },
+        "input": {
+          "gamepad_deadzone": 0.2,
+          "touch": {
+            "joystick_radius": 50,
+            "joystick_deadzone": 0.15
+          }
+        }
+      },
+      "enemy": {
+        "health": 100,
+        "damage": 10,
+        "speed": 100,
+        "knockback": {
+          "force": 300,
+          "stun_ms": 200
+        },
+        "hitbox": {
+          "radius": 35,
+          "offsetX": 465,
+          "offsetY": 930
+        },
+        "combat": {
+          "attack_range": 80,
+          "depth_threshold": 40,
+          "attack_check_ms": 500
+        },
+        "ai": {
+          "cautious": {
+            "speed_mult": 0.7,
+            "range_mult": 1.5
+          },
+          "erratic": {
+            "speed_mult": 1.2,
+            "update_time": 0.5,
+            "jitter_x": 150,
+            "jitter_y": 100
+          },
+          "flanker": {
+            "speed_mult": 1.1,
+            "offset": 100,
+            "switch_time": 3
+          },
+          "direct": {},
+          "ranged": {
+            "speed_mult": 0.6,
+            "preferred_distance": 200,
+            "retreat_speed_mult": 1,
+            "fire_rate": 2,
+            "projectile_speed": 300,
+            "projectile_damage": 5
+          },
+          "swarm": {
+            "speed_mult": 1,
+            "group_radius": 150,
+            "speed_bonus_per_ally": 0.15,
+            "max_speed_mult": 2
+          },
+          "burrower": {
+            "speed_mult": 1.8,
+            "trigger_radius": 200,
+            "offscreen_distance": 80
+          },
+          "weights": {
+            "direct": 100,
+            "flanker": 0,
+            "cautious": 0,
+            "erratic": 0,
+            "ranged": 0,
+            "swarm": 0,
+            "burrower": 0
+          }
+        },
+        "animations": {
+          "death_delay": 500
+        },
+        "spawner": {
+          "pool_size": 50,
+          "delay_ms": 3000,
+          "buffer_distance": 50
+        },
+        "loot": {
+          "health": {
+            "drop_chance": 0.25,
+            "heal_amount": 25,
+            "variants": 5
+          },
+          "powerup": {
+            "drop_chance": 0.1,
+            "variants": 5
+          },
+          "pool_size": 20,
+          "bob_distance": 8,
+          "bob_duration": 600,
+          "despawn_ms": 8000
+        }
+      },
+      "boss": {
+        "health": 1000,
+        "damage": 25,
+        "speed": 150,
+        "knockback": {
+          "force": 50,
+          "stun_ms": 100
+        },
+        "hitbox": {
+          "radius": 40,
+          "offsetX": 460,
+          "offsetY": 920
+        },
+        "combat": {
+          "attack_range": 60,
+          "contact_depth_threshold": 60
+        },
+        "descent": {
+          "speed": 3,
+          "start_y": -100,
+          "threshold": 650
+        },
+        "phases": {
+          "enrage_threshold": 0.5,
+          "phase2_speed_mult": 2,
+          "phase2_damage_mult": 2
+        },
+        "attacks": {
+          "ground_pound": {
+            "damage": 15,
+            "radius": 120,
+            "windup_ms": 800,
+            "cooldown_ms": 5000
+          },
+          "charge": {
+            "speed_mult": 4,
+            "damage": 20,
+            "duration_ms": 1000,
+            "cooldown_ms": 7000
+          },
+          "summon": {
+            "count": 3,
+            "cooldown_ms": 10000
+          }
+        },
+        "attack_cooldown_ms": 3000,
+        "charge_range_mult": 2,
+        "summon_pause_s": 0.5,
+        "defeated_alpha": 0.5,
+        "enrage_flash_ms": 200,
+        "ground_pound_effects": {
+          "shake_duration": 200,
+          "shake_intensity": 0.01,
+          "ring_initial_radius": 10,
+          "ring_expand_duration": 400
+        },
+        "death_effects": {
+          "shake_duration": 300,
+          "shake_intensity": 0.025,
+          "flash_duration": 200,
+          "flash_r": 255,
+          "flash_g": 200,
+          "flash_b": 100
+        },
+        "animations": {
+          "death_delay": 1000
+        }
+      },
+      "key": {
+        "speed": 50,
+        "gravity": 0.3,
+        "bounce_threshold": 2,
+        "oscillation": {
+          "frequency": 2,
+          "amplitude": 30
+        },
+        "bounce_damping": 0.5,
+        "offscreen_kill_distance": 200,
+        "animations": {
+          "fade_duration": 500,
+          "fade_delay": 3000
+        },
+        "spawner": {
+          "pool_size": 20,
+          "delay_ms": 2000,
+          "start_z": 500,
+          "x_margin": 100,
+          "y_margin_top": 680,
+          "y_margin_bottom": 25
+        }
+      },
+      "bomb": {
+        "damage": 50,
+        "explosion_radius": 250,
+        "hitbox": {
+          "width": 50,
+          "height": 50
+        },
+        "effects": {
+          "shake_duration": 150,
+          "shake_intensity": 0.015
+        },
+        "spawner": {
+          "pool_size": 10,
+          "delay_ms": 5000,
+          "start_z": 400,
+          "x_margin": 100,
+          "y_margin_top": 680,
+          "y_margin_bottom": 25
+        }
+      },
+      "chest": {
+        "combat": {
+          "interact_range": 100
+        },
+        "air_drop": {
+          "delay_after_boss_ms": 1000,
+          "landing_flash_color": 65416,
+          "landing_flash_ms": 300,
+          "landing_dust_color": 13412932,
+          "landing_dust_radius": 80,
+          "landing_dust_duration_ms": 400,
+          "landing_shake_duration": 150,
+          "landing_shake_intensity": 0.01
+        }
+      },
+      "tresr_bot": {
+        "health": 500,
+        "damage": 50,
+        "speed": 180,
+        "air_drop": {
+          "landing_flash_color": 65416,
+          "landing_flash_ms": 500,
+          "landing_dust_color": 8947848,
+          "landing_dust_radius": 60,
+          "landing_dust_duration_ms": 300,
+          "landing_shake_duration": 100,
+          "landing_shake_intensity": 0.005
+        },
+        "knockback": {
+          "force": 120,
+          "stun_ms": 200
+        },
+        "hitbox": {
+          "radius": 25,
+          "offsetX": 377,
+          "offsetY": 705
+        },
+        "combat": {
+          "attack_range": 80,
+          "attack_cooldown_ms": 800,
+          "target_switch_ms": 2000
+        },
+        "lifetime": {
+          "duration_ms": 30000,
+          "fade_duration_ms": 1500,
+          "spawn_flash_ms": 500
+        },
+        "special": {
+          "cooldown_ms": 10000,
+          "damage": 100,
+          "radius": 120,
+          "min_enemies": 3
+        },
+        "max_concurrent": 1,
+        "max_drops_per_game": 5
+      }
+    },
+    "combat": {
+      "enemy_damage_cooldown_ms": 500,
+      "enemy_spawn_offscreen_px": 80,
+      "boss_melee_range_bonus": 20,
+      "projectile_hit_radius": 40
+    },
+    "announcements": {
+      "font": "80px Orbitron",
+      "color": "#00ff00",
+      "stroke_color": "#000000",
+      "stroke_thickness": 8,
+      "enter_duration": 500,
+      "display_duration": 2000,
+      "exit_duration": 500
+    },
+    "audio": {
+      "default_music_volume": 0.75,
+      "default_sfx_volume": 0.5,
+      "crossfade_duration_ms": 2000,
+      "crossfade_step_ms": 50,
+      "preference_save_debounce_ms": 2000,
+      "sfx_variants": {
+        "bot_attack": 2,
+        "bot_spawn": 10,
+        "bot_special": 1,
+        "countdown": 2,
+        "death": 4,
+        "explosion": 3,
+        "game_over": 3,
+        "hurt": 6,
+        "key_collect": 3,
+        "open_treasure_chest": 3,
+        "powerup_collect": 1,
+        "punch": 5,
+        "victory": 3
+      }
+    },
+    "loading_screen": {
+      "spinner": {
+        "y_offset": -60
+      }
+    }
+  },
+  "sprites": {
+    "defaults": {
+      "frameWidth": 512,
+      "frameHeight": 512
+    },
+    "hero": {
+      "scaleFactor": 0.3,
+      "anims": [
+        {
+          "name": "idle",
+          "frames": 6,
+          "frameRate": 6,
+          "repeat": -1,
+          "path": "/assets/images/sprites/hero/idle.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "walk",
+          "frames": 6,
+          "frameRate": 8,
+          "repeat": -1,
+          "path": "/assets/images/sprites/hero/walk.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "jump",
+          "frames": 6,
+          "frameRate": 10,
+          "repeat": 0,
+          "path": "/assets/images/sprites/hero/jump.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "attack",
+          "frames": 6,
+          "frameRate": 10,
+          "repeat": 0,
+          "path": "/assets/images/sprites/hero/attack.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "hurt",
+          "frames": 4,
+          "frameRate": 8,
+          "repeat": 0,
+          "path": "/assets/images/sprites/hero/hurt.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "super",
+          "frames": 6,
+          "frameRate": 12,
+          "repeat": 0,
+          "path": "/assets/images/sprites/hero/super.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        }
+      ]
+    },
+    "super": {
+      "scaleFactor": 0.5,
+      "anims": [
+        {
+          "name": "spin",
+          "frames": 5,
+          "frameRate": 15,
+          "repeat": -1,
+          "path": "/assets/images/sprites/super/spin.webp",
+          "frameWidth": 512,
+          "frameHeight": 512
+        }
+      ]
+    },
+    "boss": {
+      "scaleFactor": 0.6,
+      "anims": [
+        {
+          "name": "idle",
+          "frames": 6,
+          "frameRate": 6,
+          "repeat": -1,
+          "path": "/assets/images/sprites/boss/idle.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "walk",
+          "frames": 6,
+          "frameRate": 8,
+          "repeat": -1,
+          "path": "/assets/images/sprites/boss/walk.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "jump",
+          "frames": 6,
+          "frameRate": 10,
+          "repeat": 0,
+          "path": "/assets/images/sprites/boss/jump.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "attack",
+          "frames": 6,
+          "frameRate": 10,
+          "repeat": 0,
+          "path": "/assets/images/sprites/boss/attack.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "hurt",
+          "frames": 4,
+          "frameRate": 8,
+          "repeat": 0,
+          "path": "/assets/images/sprites/boss/hurt.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        }
+      ]
+    },
+    "enemies": {
+      "scaleFactor": 0.3,
+      "count": 5,
+      "anims": [
+        {
+          "name": "idle",
+          "frames": 6,
+          "frameRate": 6,
+          "repeat": -1,
+          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/idle.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "walk",
+          "frames": 6,
+          "frameRate": 8,
+          "repeat": -1,
+          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/walk.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "jump",
+          "frames": 6,
+          "frameRate": 10,
+          "repeat": 0,
+          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/jump.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "attack",
+          "frames": 6,
+          "frameRate": 10,
+          "repeat": 0,
+          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/attack.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "hurt",
+          "frames": 4,
+          "frameRate": 8,
+          "repeat": 0,
+          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/hurt.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        }
+      ]
+    },
+    "tresr_bot": {
+      "scaleFactor": 0.3,
+      "anims": [
+        {
+          "name": "idle",
+          "frames": 6,
+          "frameRate": 6,
+          "repeat": -1,
+          "path": "/assets/images/sprites/tresr_bot/idle.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "walk",
+          "frames": 6,
+          "frameRate": 8,
+          "repeat": -1,
+          "path": "/assets/images/sprites/tresr_bot/walk.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "attack",
+          "frames": 8,
+          "frameRate": 10,
+          "repeat": 0,
+          "path": "/assets/images/sprites/tresr_bot/attack.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        },
+        {
+          "name": "special",
+          "frames": 6,
+          "frameRate": 10,
+          "repeat": 0,
+          "path": "/assets/images/sprites/tresr_bot/special.webp",
+          "frameWidth": 1000,
+          "frameHeight": 1000
+        }
+      ]
+    },
+    "items": {
+      "key": {
+        "scaleFactor": 0.1,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 5,
+            "frameRate": 4,
+            "repeat": -1,
+            "path": "/assets/images/sprites/key/idle.webp",
+            "frameWidth": 512,
+            "frameHeight": 1024
+          }
+        ]
+      },
+      "bomb": {
+        "scaleFactor": 0.1,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 5,
+            "frameRate": 10,
+            "repeat": -1,
+            "path": "/assets/images/sprites/bomb/idle.webp",
+            "frameWidth": 512,
+            "frameHeight": 1024
+          }
+        ]
+      },
+      "loader": {
+        "scaleFactor": 0.5,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 5,
+            "frameRate": 8,
+            "repeat": -1,
+            "path": "/assets/images/sprites/loader/idle.webp",
+            "frameWidth": 1024,
+            "frameHeight": 1024
+          }
+        ]
+      },
+      "chest": {
+        "scaleFactor": 0.5,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 5,
+            "frameRate": 8,
+            "repeat": -1,
+            "path": "/assets/images/sprites/chest/idle.webp",
+            "frameWidth": 512,
+            "frameHeight": 512
+          },
+          {
+            "name": "open",
+            "frames": 5,
+            "frameRate": 8,
+            "repeat": 0,
+            "path": "/assets/images/sprites/chest/open.webp",
+            "frameWidth": 512,
+            "frameHeight": 512
+          },
+          {
+            "name": "close",
+            "frames": 5,
+            "frameRate": 8,
+            "repeat": 0,
+            "path": "/assets/images/sprites/chest/close.webp",
+            "frameWidth": 512,
+            "frameHeight": 512
+          }
+        ]
+      },
+      "health_1": {
+        "scaleFactor": 0.2,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 4,
+            "frameRate": 6,
+            "repeat": -1,
+            "path": "/assets/images/sprites/health_1/idle.webp",
+            "frameWidth": 512,
+            "frameHeight": 512
+          }
+        ]
+      },
+      "health_2": {
+        "scaleFactor": 0.2,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 4,
+            "frameRate": 6,
+            "repeat": -1,
+            "path": "/assets/images/sprites/health_2/idle.webp",
+            "frameWidth": 512,
+            "frameHeight": 512
+          }
+        ]
+      },
+      "health_3": {
+        "scaleFactor": 0.2,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 4,
+            "frameRate": 6,
+            "repeat": -1,
+            "path": "/assets/images/sprites/health_3/idle.webp",
+            "frameWidth": 512,
+            "frameHeight": 512
+          }
+        ]
+      },
+      "health_4": {
+        "scaleFactor": 0.2,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 4,
+            "frameRate": 6,
+            "repeat": -1,
+            "path": "/assets/images/sprites/health_4/idle.webp",
+            "frameWidth": 512,
+            "frameHeight": 512
+          }
+        ]
+      },
+      "health_5": {
+        "scaleFactor": 0.2,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 4,
+            "frameRate": 6,
+            "repeat": -1,
+            "path": "/assets/images/sprites/health_5/idle.webp",
+            "frameWidth": 512,
+            "frameHeight": 512
+          }
+        ]
+      },
+      "powerup_1": {
+        "scaleFactor": 0.2,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 4,
+            "frameRate": 6,
+            "repeat": -1,
+            "path": "/assets/images/sprites/powerup_1/idle.webp",
+            "frameWidth": 512,
+            "frameHeight": 512
+          }
+        ]
+      },
+      "powerup_2": {
+        "scaleFactor": 0.2,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 4,
+            "frameRate": 6,
+            "repeat": -1,
+            "path": "/assets/images/sprites/powerup_2/idle.webp",
+            "frameWidth": 512,
+            "frameHeight": 512
+          }
+        ]
+      },
+      "powerup_3": {
+        "scaleFactor": 0.2,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 4,
+            "frameRate": 6,
+            "repeat": -1,
+            "path": "/assets/images/sprites/powerup_3/idle.webp",
+            "frameWidth": 512,
+            "frameHeight": 512
+          }
+        ]
+      },
+      "powerup_4": {
+        "scaleFactor": 0.2,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 4,
+            "frameRate": 6,
+            "repeat": -1,
+            "path": "/assets/images/sprites/powerup_4/idle.webp",
+            "frameWidth": 512,
+            "frameHeight": 512
+          }
+        ]
+      },
+      "powerup_5": {
+        "scaleFactor": 0.2,
+        "anims": [
+          {
+            "name": "idle",
+            "frames": 4,
+            "frameRate": 6,
+            "repeat": -1,
+            "path": "/assets/images/sprites/powerup_5/idle.webp",
+            "frameWidth": 512,
+            "frameHeight": 512
+          }
+        ]
+      }
+    },
+    "statics": []
+  },
+  "credits": {
+    "description": "This project stands on the shoulders of giants, without whom, none of it would be possible.\n\nA special thank you to the following individuals;\n",
+    "coders": [
+      {
+        "name": "MAHDTech",
+        "role": "Degenerate Programmer",
+        "description": "Platform Engineer moonlighting as a game dev."
+      },
+      {
+        "name": "Phantom",
+        "role": "Opinion Giver",
+        "description": "MAHDTech's eldest son, giver of opinions and selector of AI Art/Music."
+      },
+      {
+        "name": "Remminator",
+        "role": "Consumer of Snacks",
+        "description": "MAHDTech's youngest son and master of eating snacks."
+      }
+    ],
+    "components": [
+      {
+        "name": "Astro"
+      },
+      {
+        "name": "Avalanche Network"
+      },
+      {
+        "name": "DaisyUI"
+      },
+      {
+        "name": "Internet Computer Protocol"
+      },
+      {
+        "name": "Juno"
+      },
+      {
+        "name": "Phaser 3"
+      }
+    ],
+    "assets": [
+      {
+        "type": "audio",
+        "subtype": "sfx",
+        "provider": "Eleven Labs"
+      },
+      {
+        "type": "audio",
+        "subtype": "narration",
+        "provider": "Eleven Labs"
+      },
+      {
+        "type": "audio",
+        "subtype": "music",
+        "provider": "Suno"
+      },
+      {
+        "type": "art",
+        "subtype": "character",
+        "provider": "Google Gemini Nano Banana"
+      },
+      {
+        "type": "art",
+        "subtype": "backgrounds",
+        "provider": "Google Gemini Nano Banana"
+      }
+    ]
+  },
+  "changelog": {
+    "versions": [
+      {
+        "version": "0.1.0",
+        "date": "2026-02-11",
+        "title": "Genesis Drop",
+        "notes": [
+          "Initial MVP release",
+          "Beat-em-up combat with 2.5D physics",
+          "Phaser 3 Arcade Engine",
+          "Single enemy sprite with multiple AI behaviors",
+          "Boss encounters with ground pound and charge attacks",
+          "Key and loot drop system",
+          "Bear Market of endless retardio bankers",
+          "Avalanche blockchain integration for deposits and claims",
+          "Guest and authenticated play modes",
+          "AI generated Art, SFX and Music",
+          "Mobile touch controls and Game Pad support",
+          "An initial half-arsed attempt at cheating prevention"
+        ]
+      }
+    ]
+  },
+  "configHash": "93c3e931a065c91045ed42807ffaa5d46f8e75739f29e34ff439f87bda12b00f"
+}

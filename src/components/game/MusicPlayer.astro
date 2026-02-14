@@ -1,0 +1,423 @@
+---
+
+---
+
+<div
+  id="music-player"
+  class="bg-base-300/80 border-primary/20 pointer-events-auto flex w-64 flex-col gap-2 rounded-lg border p-3 shadow-lg backdrop-blur select-none"
+>
+  <!-- Track Info & Controls -->
+  <div class="flex items-center justify-between gap-2">
+    <div class="flex flex-col overflow-hidden">
+      <span class="text-[10px] font-bold uppercase opacity-50">Now Playing</span
+      >
+      <span
+        id="current-track-name"
+        class="text-primary truncate font-mono text-xs font-bold"
+        >Loading...</span
+      >
+    </div>
+
+    <div class="flex items-center gap-1">
+      <button
+        id="btn-music-prev"
+        class="btn btn-xs btn-circle btn-ghost"
+        aria-label="Previous track"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><polygon points="19 20 9 12 19 4 19 20"></polygon><line
+            x1="5"
+            y1="19"
+            x2="5"
+            y2="5"></line></svg
+        >
+      </button>
+      <button
+        id="btn-music-toggle"
+        class="btn btn-xs btn-circle btn-primary"
+        aria-label="Play or pause"
+      >
+        <svg
+          id="svg-play"
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><polygon points="5 3 19 12 5 21 5 3"></polygon></svg
+        >
+        <svg
+          id="svg-pause"
+          class="hidden"
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><rect x="6" y="4" width="4" height="16"></rect><rect
+            x="14"
+            y="4"
+            width="4"
+            height="16"></rect></svg
+        >
+      </button>
+      <button
+        id="btn-music-next"
+        class="btn btn-xs btn-circle btn-ghost"
+        aria-label="Next track"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><polygon points="5 4 15 12 5 20 5 4"></polygon><line
+            x1="19"
+            y1="5"
+            x2="19"
+            y2="19"></line></svg
+        >
+      </button>
+    </div>
+  </div>
+
+  <!-- Progress Bar -->
+  <div class="flex flex-col gap-1">
+    <input
+      id="music-seek"
+      type="range"
+      min="0"
+      max="100"
+      value="0"
+      class="range range-primary range-xs h-1"
+    />
+    <div class="flex justify-between font-mono text-[10px] opacity-50">
+      <span id="music-time-curr">0:00</span>
+      <span id="music-time-total">0:00</span>
+    </div>
+  </div>
+
+  <!-- Bottom: Track Selector -->
+  <div class="flex items-center gap-3">
+    <div class="dropdown dropdown-top dropdown-start flex-1">
+      <div
+        tabindex="0"
+        role="button"
+        class="btn btn-xs btn-outline btn-primary w-full justify-between truncate px-2 font-mono text-[10px]"
+      >
+        <span id="display-track-list-btn">Tracks</span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="10"
+          height="10"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"><path d="m18 15-6-6-6 6"></path></svg
+        >
+      </div>
+      <ul
+        tabindex="0"
+        id="music-track-list"
+        class="dropdown-content menu bg-base-200 rounded-box border-primary/20 z-[1] mb-2 max-h-64 w-52 flex-col flex-nowrap overflow-x-hidden overflow-y-auto border p-2 shadow"
+      >
+        <li>
+          <a
+            id="item-random-track"
+            class="text-secondary py-1 font-mono text-[10px] font-bold italic"
+            >SHUFFLE MODE</a
+          >
+        </li>
+        <div class="divider my-0 h-0.5 opacity-20"></div>
+        <!-- Tracks injected here -->
+      </ul>
+    </div>
+  </div>
+
+  <!-- Narration Toggle (logged-in users only) -->
+  <div id="narration-toggle-row" class="flex hidden items-center gap-2">
+    <label class="label cursor-pointer gap-2 p-0">
+      <span class="font-mono text-[10px] opacity-50">Narration</span>
+      <input
+        id="narration-toggle"
+        type="checkbox"
+        checked
+        class="checkbox checkbox-primary checkbox-xs"
+      />
+    </label>
+  </div>
+
+  <!-- Volume Controls: Music & SFX -->
+  <div class="flex items-center gap-4">
+    <!-- Music Volume -->
+    <div class="flex flex-1 items-center gap-2">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="opacity-50"
+        aria-label="Music Volume"
+        ><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path
+          d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg
+      >
+      <input
+        id="music-volume"
+        type="range"
+        min="0"
+        max="100"
+        value="75"
+        class="range range-primary range-xs h-1 flex-1"
+        title="Music Volume"
+      />
+    </div>
+
+    <!-- SFX Volume -->
+    <div class="flex flex-1 items-center gap-2">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="opacity-50"
+        aria-label="SFX Volume"
+        ><path d="m9 12 2 2 4-4"></path><path
+          d="M5 7c0-1.1.9-2 2-2h10a2 2 0 0 1 2 2v12H5V7Z"></path><path
+          d="M22 19H2"></path></svg
+      >
+      <input
+        id="sfx-volume"
+        type="range"
+        min="0"
+        max="100"
+        value="50"
+        class="range range-secondary range-xs h-1 flex-1"
+        title="SFX Volume"
+      />
+    </div>
+  </div>
+</div>
+
+<script>
+  import MusicManager from "@/lib/game/MusicManager";
+  import {gameState} from "@/lib/game/state";
+  import {config} from "@/lib/config/client";
+  import {getAuthState, subscribeToAuth} from "@/lib/auth";
+  import {getUserProfile, saveUserProfile} from "@/lib/user";
+
+  const manager = MusicManager.getInstance();
+
+  const elTrackName = document.getElementById("current-track-name");
+  const elBtnToggle = document.getElementById("btn-music-toggle");
+  const elBtnPrev = document.getElementById("btn-music-prev");
+  const elBtnNext = document.getElementById("btn-music-next");
+  const elSeek = document.getElementById("music-seek") as HTMLInputElement;
+  const elVolume = document.getElementById("music-volume") as HTMLInputElement;
+  const elSfxVolume = document.getElementById("sfx-volume") as HTMLInputElement;
+  const elTimeCurr = document.getElementById("music-time-curr");
+  const elTimeTotal = document.getElementById("music-time-total");
+  const elTrackList = document.getElementById("music-track-list");
+  const elRandomTrack = document.getElementById("item-random-track");
+  const svgPlay = document.getElementById("svg-play");
+  const svgPause = document.getElementById("svg-pause");
+
+  let isShuffle = false;
+
+  function formatTime(seconds: number) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  // Load track list from static config
+  function init() {
+    if (!elTrackList) return;
+    config.assets.music.forEach((track: string) => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.innerText = track;
+      a.className = "text-[10px] py-1 font-mono truncate";
+      a.onclick = () => {
+        isShuffle = false;
+        manager.setRandom(false);
+        manager.setTrack(track, true);
+        if (elRandomTrack)
+          elRandomTrack.classList.remove("active", "bg-primary/20");
+        // Close dropdown by blurring
+        (document.activeElement as HTMLElement)?.blur();
+      };
+      li.appendChild(a);
+      elTrackList.appendChild(li);
+    });
+  }
+
+  // Named handlers for cleanup (ticket #220)
+  function handleRandomClick() {
+    isShuffle = !isShuffle;
+    manager.setRandom(isShuffle);
+    if (isShuffle) {
+      elRandomTrack?.classList.add("active", "bg-primary/20");
+      manager.playRandom();
+    } else {
+      elRandomTrack?.classList.remove("active", "bg-primary/20");
+    }
+    (document.activeElement as HTMLElement)?.blur();
+  }
+  function handleToggle() {
+    manager.toggle();
+  }
+  function handlePrev() {
+    manager.prev();
+  }
+  function handleNext() {
+    manager.next();
+  }
+  function handleVolumeInput(e: Event) {
+    const val = parseInt((e.target as HTMLInputElement).value) / 100;
+    manager.setVolume(val);
+  }
+  function handleSfxVolumeInput(e: Event) {
+    const val = parseInt((e.target as HTMLInputElement).value) / 100;
+    manager.setSfxVolume(val);
+  }
+  function handleSeekInput(e: Event) {
+    const val =
+      (parseInt((e.target as HTMLInputElement).value) / 100) *
+      gameState.get().music.duration;
+    manager.seek(val);
+  }
+
+  elRandomTrack?.addEventListener("click", handleRandomClick);
+  elBtnToggle?.addEventListener("click", handleToggle);
+  elBtnPrev?.addEventListener("click", handlePrev);
+  elBtnNext?.addEventListener("click", handleNext);
+  elVolume?.addEventListener("input", handleVolumeInput);
+  elSfxVolume?.addEventListener("input", handleSfxVolumeInput);
+  elSeek?.addEventListener("input", handleSeekInput);
+
+  const unsub = gameState.subscribe((state) => {
+    if (elTrackName)
+      elTrackName.innerText = state.music.currentTrack || "No Track Selected";
+
+    if (state.music.isPlaying) {
+      svgPlay?.classList.add("hidden");
+      svgPause?.classList.remove("hidden");
+    } else {
+      svgPlay?.classList.remove("hidden");
+      svgPause?.classList.add("hidden");
+    }
+
+    if (elTimeCurr) elTimeCurr.innerText = formatTime(state.music.currentTime);
+    if (elTimeTotal) elTimeTotal.innerText = formatTime(state.music.duration);
+
+    if (elSeek && !elSeek.matches(":active")) {
+      const progress =
+        state.music.duration > 0
+          ? (state.music.currentTime / state.music.duration) * 100
+          : 0;
+      elSeek.value = progress.toString();
+    }
+
+    if (elVolume) elVolume.value = (state.music.musicVolume * 100).toString();
+    if (elSfxVolume)
+      elSfxVolume.value = (state.music.sfxVolume * 100).toString();
+  });
+  // Combined cleanup (ticket #220): subscriptions + DOM listeners
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      unsub();
+      unsubNarration();
+      elRandomTrack?.removeEventListener("click", handleRandomClick);
+      elBtnToggle?.removeEventListener("click", handleToggle);
+      elBtnPrev?.removeEventListener("click", handlePrev);
+      elBtnNext?.removeEventListener("click", handleNext);
+      elVolume?.removeEventListener("input", handleVolumeInput);
+      elSfxVolume?.removeEventListener("input", handleSfxVolumeInput);
+      elSeek?.removeEventListener("input", handleSeekInput);
+      elNarrationToggle?.removeEventListener("change", handleNarrationChange);
+    },
+    {once: true}
+  );
+
+  // Narration toggle (logged-in users only)
+  const elNarrationRow = document.getElementById("narration-toggle-row");
+  const elNarrationToggle = document.getElementById(
+    "narration-toggle"
+  ) as HTMLInputElement;
+
+  let narrationGeneration = 0;
+  const unsubNarration = subscribeToAuth(async (state) => {
+    const gen = ++narrationGeneration;
+    if (state.isAuthenticated && !state.isGuest && state.user) {
+      if (elNarrationRow) elNarrationRow.classList.remove("hidden");
+      try {
+        const doc = await getUserProfile(state.user.key);
+        if (gen !== narrationGeneration) return; // Stale — newer update superseded
+        if (doc && elNarrationToggle) {
+          const narration = doc.data.preferences.narration !== false;
+          elNarrationToggle.checked = narration;
+        }
+      } catch {
+        // Preference load failed — leave default (checked)
+      }
+    } else {
+      if (elNarrationRow) elNarrationRow.classList.add("hidden");
+    }
+  });
+
+  let narrationSaveGen = 0;
+  async function handleNarrationChange() {
+    const gen = ++narrationSaveGen;
+    const auth = getAuthState();
+    if (!auth.isAuthenticated || auth.isGuest || !auth.user) return;
+    try {
+      const doc = await getUserProfile(auth.user.key);
+      if (gen !== narrationSaveGen) return; // Superseded by newer toggle
+      if (doc) {
+        const profile = doc.data;
+        profile.preferences.narration = elNarrationToggle.checked;
+        await saveUserProfile(auth.user.key, profile, doc.version);
+      }
+    } catch {
+      // Save failed — checkbox still reflects user's intent, will retry next time
+    }
+  }
+  elNarrationToggle?.addEventListener("change", handleNarrationChange);
+
+  init();
+</script>

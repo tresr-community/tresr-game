@@ -1,0 +1,10 @@
+{
+  "exclude_detectors": [
+    "assembly-usage",
+    "incorrect-versions",
+    "too-many-digits",
+    "incorrect-exponentiation",
+    "divide-before-multiply"
+  ],
+  "filter_paths": "lib/"
+}

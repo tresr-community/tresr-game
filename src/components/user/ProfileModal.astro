@@ -1,0 +1,557 @@
+---
+
+---
+
+<dialog id="profile-modal" class="modal">
+  <div class="modal-box border-primary/30 bg-base-200 w-11/12 max-w-lg border">
+    <div class="mb-6 flex items-center justify-between">
+      <h2 class="text-primary text-2xl font-black tracking-widest uppercase">
+        Player Profile
+      </h2>
+      <button id="btn-close-profile" class="btn btn-sm btn-circle btn-ghost"
+        >✕</button
+      >
+    </div>
+
+    <div id="profile-loading" class="py-10 text-center">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+      <p class="text-primary mt-2 animate-pulse font-mono text-xs">
+        SCANNED BIOMETRICS...
+      </p>
+    </div>
+
+    <div id="profile-content" class="hidden space-y-6">
+      <!-- Nickname (Editable) -->
+      <div class="form-control w-full">
+        <label class="label">
+          <span
+            class="label-text text-primary font-bold tracking-widest uppercase"
+            >Degen Handle</span
+          >
+        </label>
+        <div class="flex gap-2">
+          <input
+            type="text"
+            id="input-nickname"
+            placeholder="Enter handle..."
+            class="input input-bordered input-primary bg-base-300 w-full font-mono"
+          />
+        </div>
+      </div>
+
+      <!-- Email (Optional) -->
+      <div class="form-control w-full">
+        <label class="label">
+          <span
+            class="label-text text-primary font-bold tracking-widest uppercase"
+            >Secure Comms (Email)</span
+          >
+        </label>
+        <input
+          type="email"
+          id="input-email"
+          placeholder="agent@tresr.io"
+          class="input input-bordered input-primary bg-base-300 w-full font-mono"
+        />
+      </div>
+
+      <!-- Principal ID (Read-only) -->
+      <div class="form-control w-full">
+        <label class="label">
+          <span
+            class="label-text text-neutral-content/50 font-bold tracking-widest uppercase"
+            >Identity (Principal)</span
+          >
+        </label>
+        <div
+          id="display-principal"
+          class="bg-base-300 truncate rounded-lg p-3 font-mono text-xs break-all opacity-70 select-all"
+        >
+          -
+        </div>
+      </div>
+
+      <!-- Neural Link (Wallet) -->
+      <div
+        class="collapse-arrow border-base-content/10 bg-base-300 collapse border"
+      >
+        <input type="checkbox" checked="checked" />
+        <div
+          class="collapse-title text-sm font-bold tracking-tighter uppercase"
+        >
+          Neural Link (Wallet)
+        </div>
+        <div class="collapse-content space-y-4 pt-4">
+          <!-- Not Linked State -->
+          <div id="wallet-status-unlinked" class="hidden">
+            <button
+              type="button"
+              id="btn-link-wallet"
+              class="btn btn-accent btn-sm w-full gap-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                class="h-5 w-5"
+              >
+                <path
+                  d="M2.273 5.625A4.483 4.483 0 015.25 4.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 3H5.25a3 3 0 00-2.977 2.625zM2.273 8.625A4.483 4.483 0 015.25 7.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 6H5.25a3 3 0 00-2.977 2.625zM5.25 9a3 3 0 00-3 3v6a3 3 0 003 3h13.5a3 3 0 003-3v-6a3 3 0 00-3-3H15a.75.75 0 00-.75.75 2.25 2.25 0 01-4.5 0A.75.75 0 009 9H5.25z"
+                ></path>
+              </svg>
+              Link Wallet
+            </button>
+          </div>
+
+          <!-- Linked State (Manual Link) -->
+          <div id="wallet-status-linked" class="hidden">
+            <div
+              class="bg-success/10 border-success/20 mb-4 flex items-center justify-between rounded border p-2"
+            >
+              <span class="text-success text-[10px] font-bold"
+                >LINK ESTABLISHED</span
+              >
+              <span
+                id="wallet-address-display"
+                class="font-mono text-xs opacity-70">0x...</span
+              >
+            </div>
+            <button
+              type="button"
+              id="btn-unlink-wallet"
+              class="btn btn-error btn-outline btn-sm w-full">SEVER LINK</button
+            >
+          </div>
+
+          <!-- SIWA Primary Identity State -->
+          <div id="wallet-status-siwa" class="hidden">
+            <div
+              class="bg-primary/10 border-primary/20 mb-4 flex items-center justify-between rounded border p-2"
+            >
+              <span class="text-primary text-[10px] font-bold"
+                >PRIMARY IDENTITY</span
+              >
+              <span
+                id="wallet-address-siwa"
+                class="font-mono text-xs opacity-70">0x...</span
+              >
+            </div>
+            <p class="text-base-content/50 text-xs italic">
+              This wallet was used to sign in and cannot be unlinked.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Global Stats Preview -->
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-base-300 rounded border border-white/5 p-3 text-center">
+          <span class="block text-[10px] uppercase opacity-50">High Score</span>
+          <span
+            id="stat-highscore"
+            class="text-primary font-mono text-xl font-black">0</span
+          >
+        </div>
+        <div class="bg-base-300 rounded border border-white/5 p-3 text-center">
+          <span class="block text-[10px] uppercase opacity-50">Balance</span>
+          <span
+            id="stat-balance"
+            class="text-warning font-mono text-xl font-black">0</span
+          >
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Actions -->
+      <div class="flex justify-end gap-2">
+        <button id="btn-save-profile" class="btn btn-primary px-8"
+          >Update Identity</button
+        >
+      </div>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button id="btn-backdrop-close-profile">close</button>
+  </form>
+</dialog>
+
+<!-- Wallet Linking Loading Modal -->
+<dialog id="wallet-link-loading-modal" class="modal">
+  <div class="modal-box bg-base-100">
+    <div class="flex justify-center">
+      <div class="loading loading-spinner text-primary"></div>
+    </div>
+    <p class="mt-2 text-center">Linking wallet...</p>
+  </div>
+</dialog>
+
+<script>
+  import {getAuthState} from "@/lib/auth";
+  import {
+    getUserProfile,
+    saveUserProfile,
+    createDefaultProfile,
+    genNickName,
+  } from "@/lib/user";
+  import {
+    connectWallet,
+    getWalletClient,
+    disconnectWallet,
+  } from "@/lib/wallet/connection";
+  import {shortenAddress} from "@/lib/wallet/avalanche";
+  import type {UserProfile} from "@/types/backend";
+  import {log} from "@/lib/utils/log";
+  import {profileStore} from "@/lib/user/store";
+
+  declare global {
+    interface Window {
+      showInfoToast: (message: string, details?: string) => void;
+      showWarningToast: (message: string, details?: string) => void;
+      showErrorToast: (message: string, details?: string) => void;
+    }
+  }
+
+  const COMPONENT_NAME = "ProfileModal";
+
+  const modal = document.getElementById("profile-modal") as HTMLDialogElement;
+  const content = document.getElementById("profile-content");
+  const loading = document.getElementById("profile-loading");
+  const nicknameInput = document.getElementById(
+    "input-nickname"
+  ) as HTMLInputElement;
+  const emailInput = document.getElementById("input-email") as HTMLInputElement;
+  const principalDisplay = document.getElementById(
+    "display-principal"
+  ) as HTMLDivElement;
+  const walletAddressDisplay = document.getElementById(
+    "wallet-address-display"
+  ) as HTMLSpanElement;
+  const statHighscore = document.getElementById(
+    "stat-highscore"
+  ) as HTMLSpanElement;
+  const statBalance = document.getElementById(
+    "stat-balance"
+  ) as HTMLSpanElement;
+  const saveBtn = document.getElementById(
+    "btn-save-profile"
+  ) as HTMLButtonElement;
+
+  let currentProfile: UserProfile | null = null;
+  let currentVersion: bigint | undefined;
+
+  async function openProfileModal() {
+    log.info(COMPONENT_NAME, "Opening modal");
+    modal?.showModal();
+    await loadProfile();
+  }
+
+  async function loadProfile() {
+    const auth = getAuthState();
+    if (!auth.isAuthenticated) {
+      log.warn(COMPONENT_NAME, "User not authenticated, cannot load profile.");
+      return;
+    }
+
+    loading?.classList.remove("hidden");
+    content?.classList.add("hidden");
+
+    try {
+      if (auth.isGuest) {
+        // ... guest logic ...
+        currentProfile = {
+          userId: "guest",
+          nickname: "Guest Agent",
+          email: "",
+          evmWallet: undefined,
+          preferences: {
+            theme: "synthwave",
+            has_read_instructions: false,
+          },
+          wallet: {
+            balance: 0n,
+            evmWalletLinked: false,
+          },
+          stats: {
+            highScore: 0n,
+            totalGamesPlayed: 0n,
+            totalGamesWon: 0n,
+            totalGamesLost: 0n,
+          },
+        };
+        currentVersion = undefined;
+        renderGuestProfile();
+      } else if (auth.user) {
+        const doc = await getUserProfile(auth.user.key);
+        if (doc) {
+          currentProfile = doc.data;
+          currentVersion = doc.version;
+          // Fix for missing nickname in existing doc
+          if (!currentProfile.nickname) {
+            log.warn(
+              COMPONENT_NAME,
+              "Profile found but nickname missing. Generating new one."
+            );
+            currentProfile.nickname = genNickName();
+            // Save the updated profile
+            const savedDoc = await saveUserProfile(
+              auth.user.key,
+              currentProfile,
+              currentVersion
+            );
+            currentVersion = savedDoc.version;
+            currentProfile = savedDoc.data;
+          }
+        } else {
+          currentProfile = createDefaultProfile(auth.user.key);
+          // Save the new profile immediately
+          const savedDoc = await saveUserProfile(
+            auth.user.key,
+            currentProfile,
+            undefined
+          );
+          currentVersion = savedDoc.version;
+          currentProfile = savedDoc.data;
+        }
+        renderProfile();
+      }
+    } catch (err) {
+      log.error(COMPONENT_NAME, "Load failed", err);
+    } finally {
+      loading?.classList.add("hidden");
+      content?.classList.remove("hidden");
+    }
+  }
+
+  function renderProfile() {
+    const auth = getAuthState();
+    if (!currentProfile || !auth.user) return;
+
+    log.debug(COMPONENT_NAME, "Rendering profile", currentProfile);
+    nicknameInput.value = currentProfile.nickname || "";
+    emailInput.value = currentProfile.email || "";
+    principalDisplay.innerText = auth.user.key;
+
+    statHighscore.innerText = currentProfile.stats.highScore.toString();
+    statBalance.innerText = currentProfile.wallet.balance.toString();
+
+    updateWalletUI();
+  }
+
+  function updateWalletUI() {
+    const auth = getAuthState();
+    const walletStatusUnlinked = document.getElementById(
+      "wallet-status-unlinked"
+    );
+    const walletStatusLinked = document.getElementById("wallet-status-linked");
+    const walletStatusSiwa = document.getElementById("wallet-status-siwa");
+    const walletAddressSiwa = document.getElementById(
+      "wallet-address-siwa"
+    ) as HTMLSpanElement;
+
+    // Hide all states first
+    walletStatusUnlinked?.classList.add("hidden");
+    walletStatusLinked?.classList.add("hidden");
+    walletStatusSiwa?.classList.add("hidden");
+
+    // Check if user logged in with SIWA (Avalanche wallet)
+    const isSiwaLogin =
+      auth.authMode === "avalanche" || currentProfile?.loginMethod === "siwa";
+
+    if (currentProfile?.evmWallet) {
+      if (isSiwaLogin) {
+        // SIWA users: show primary identity state (cannot unlink)
+        walletStatusSiwa?.classList.remove("hidden");
+        if (walletAddressSiwa) {
+          walletAddressSiwa.innerText = shortenAddress(
+            currentProfile.evmWallet
+          );
+        }
+      } else {
+        // Non-SIWA users: show linked state with unlink option
+        walletStatusLinked?.classList.remove("hidden");
+        walletAddressDisplay.innerText = shortenAddress(
+          currentProfile.evmWallet
+        );
+      }
+    } else {
+      // No wallet linked: show wallet options (only for non-SIWA users)
+      if (!isSiwaLogin) {
+        walletStatusUnlinked?.classList.remove("hidden");
+      }
+    }
+  }
+
+  async function handleSaveProfile() {
+    const auth = getAuthState();
+    if (!auth.user || !currentProfile) return;
+
+    const newNickname = nicknameInput.value.trim();
+    log.info(COMPONENT_NAME, "Saving profile with nickname:", newNickname);
+
+    if (!newNickname) {
+      window.showErrorToast("Nickname cannot be empty");
+      return;
+    }
+
+    saveBtn.classList.add("loading");
+    try {
+      currentProfile.nickname = newNickname;
+      currentProfile.email = emailInput.value.trim();
+
+      const savedDoc = await saveUserProfile(
+        auth.user.key,
+        currentProfile,
+        currentVersion
+      );
+      currentVersion = savedDoc.version;
+
+      window.dispatchEvent(
+        new CustomEvent("tresr:profile-updated", {
+          detail: {nickname: currentProfile.nickname},
+        })
+      );
+      // Update the profile store so LoginButton's subscription picks up the new nickname
+      profileStore.set({...currentProfile});
+      window.showInfoToast("Profile updated successfully");
+      log.info(COMPONENT_NAME, "Profile saved successfully.", currentProfile);
+    } catch (error) {
+      log.error(COMPONENT_NAME, "Failed to save profile:", error);
+      window.showErrorToast("Failed to save profile", (error as Error).message);
+    } finally {
+      saveBtn.classList.remove("loading");
+    }
+  }
+
+  async function handleLinkWallet() {
+    const loadingModal = document.getElementById(
+      "wallet-link-loading-modal"
+    ) as HTMLDialogElement;
+    loadingModal?.showModal();
+    try {
+      // Unified wallet connection - opens AppKit modal with all options
+      const {address} = await connectWallet();
+      const walletClient = await getWalletClient();
+
+      // Verify ownership: sign message
+      const sig = await walletClient.signMessage({
+        account: address,
+        message: `Link wallet ${address} to Tresr principal ${getAuthState().user?.key.slice(0, 10)}...`,
+      });
+
+      if (currentProfile) {
+        currentProfile.evmWallet = address;
+        currentProfile.walletProof = sig;
+        currentProfile.wallet.evmWalletLinked = true;
+        const auth = getAuthState();
+        if (auth.user) {
+          const savedDoc = await saveUserProfile(
+            auth.user.key,
+            currentProfile,
+            currentVersion
+          );
+          currentVersion = savedDoc.version;
+        }
+        updateWalletUI();
+        window.showInfoToast("Neural link established");
+      }
+    } catch (err: unknown) {
+      const error = err as {message?: string; code?: number};
+      log.error(COMPONENT_NAME, "Wallet link failed", err);
+      let msg = "Wallet link failed";
+      if (error.message?.includes("rejected") || error.code === 4001) {
+        msg = "Connection cancelled or rejected";
+      } else if (error.message?.includes("switch") || error.code === 4902) {
+        msg = error.message || "Please switch to the correct network";
+      } else if (error.message?.includes("cancelled")) {
+        msg = "Wallet connection cancelled";
+      }
+      window.showErrorToast(msg, error.message || "Unknown error");
+    } finally {
+      loadingModal?.close();
+    }
+  }
+
+  async function handleUnlinkWallet() {
+    if (!confirm("Sever Neural Link?")) return;
+
+    // Fire async, no await on UI
+    (async () => {
+      try {
+        await disconnectWallet();
+        if (currentProfile) {
+          currentProfile.wallet.evmWalletLinked = false;
+          currentProfile.evmWallet = undefined;
+          currentProfile.walletProof = undefined;
+          const auth = getAuthState();
+          if (auth.user) {
+            const savedDoc = await saveUserProfile(
+              auth.user.key,
+              currentProfile,
+              currentVersion
+            );
+            currentVersion = savedDoc.version;
+          }
+          updateWalletUI();
+          window.showInfoToast("Neural link severed");
+        }
+      } catch (err) {
+        log.error(COMPONENT_NAME, "Wallet unlink failed", err);
+        window.showErrorToast(
+          "Failed to sever neural link",
+          (err as Error).message
+        );
+      }
+    })();
+    closeProfileModal(); // Instant feedback
+  }
+
+  function closeProfileModal() {
+    modal?.close();
+  }
+
+  saveBtn?.addEventListener("click", handleSaveProfile);
+  document
+    .getElementById("btn-link-wallet")
+    ?.addEventListener("click", handleLinkWallet);
+  document
+    .getElementById("btn-unlink-wallet")
+    ?.addEventListener("click", handleUnlinkWallet);
+
+  document
+    .getElementById("btn-close-profile")
+    ?.addEventListener("click", closeProfileModal);
+  document
+    .getElementById("btn-backdrop-close-profile")
+    ?.addEventListener("click", closeProfileModal);
+
+  function renderGuestProfile() {
+    if (!currentProfile) return;
+
+    nicknameInput.value = currentProfile.nickname || "";
+    nicknameInput.disabled = true; // Disable for guests
+    emailInput.value = "";
+    emailInput.disabled = true;
+    principalDisplay.innerText = "Guest Session";
+
+    statHighscore.innerText = currentProfile.stats.highScore.toString();
+    statBalance.innerText = currentProfile.wallet.balance.toString();
+
+    // Disable wallet linking for guests
+    document.getElementById("wallet-status-unlinked")?.classList.add("hidden");
+    document.getElementById("wallet-status-linked")?.classList.add("hidden");
+
+    // Disable save button for guests
+    saveBtn.disabled = true;
+
+    // Add a note (remove existing one first to prevent duplicates on re-open)
+    content?.querySelector(".guest-profile-note")?.remove();
+    const note = document.createElement("p");
+    note.className = "text-warning text-sm guest-profile-note";
+    note.innerText = "Login to access full profile and link wallet.";
+    content?.prepend(note);
+  }
+
+  // @ts-ignore
+  window.openProfileModal = openProfileModal;
+</script>

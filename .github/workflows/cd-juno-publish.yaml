@@ -1,0 +1,128 @@
+---
+##################################################
+# Name: cd-juno-publish.yaml
+# Description: Publish Juno Functions to testnet
+##################################################
+
+name: Juno Publish
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - prereleased
+      - released
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
+  pull-requests: read
+  statuses: write
+
+env:
+  # GitHub
+  PROJECT: ${{ github.repository }}
+  BRANCH_NAME_CURRENT: ${{ github.head_ref || github.ref_name }}
+  BRANCH_NAME_DEFAULT: ${{ github.event.repository.default_branch }}
+
+  # Nix
+  NIXPKGS_ALLOW_UNFREE: 1
+
+  # SecretSpec
+  SECRETSPEC_PROVIDER: env
+
+  # Juno
+  VITE_SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
+  VITE_ASTRO_SITE_URL: ${{ vars.VITE_ASTRO_SITE_URL }}
+  VITE_ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
+  VITE_SIWA_PROVIDER_ID: ${{ vars.VITE_SIWA_PROVIDER_ID }}
+  PUBLIC_WALLETCONNECT_PROJECT_ID: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    name: Publish
+
+    runs-on: ${{ matrix.os }}
+
+    timeout-minutes: 30
+    continue-on-error: false
+
+    environment: Testnet
+
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - ubuntu-latest
+
+    steps:
+      - id: check_vars
+        name: Check Variables
+        env:
+          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
+        run: |
+          REQUIRED_VARS=(
+            JUNO_TOKEN
+            VITE_ASTRO_SITE_URL
+            VITE_SATELLITE_ID
+            VITE_ORBITER_ID
+            VITE_SIWA_PROVIDER_ID
+          )
+          for VAR in "${REQUIRED_VARS[@]}";
+          do
+            if [[ -z "${!VAR}" ]];
+            then
+              echo "$VAR is not set"
+              exit 1
+            fi
+          done
+          echo "All required variables are set"
+
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: parse_tag
+        name: Parse Release Tag
+        if: github.event.release.tag_name != ''
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
+          VERSION="${VERSION%-testnet}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - uses: ./.github/actions/version
+        if: steps.parse_tag.outputs.version != ''
+        with:
+          mode: explicit
+          version: ${{ steps.parse_tag.outputs.version }}
+
+      - uses: ./.github/actions/version
+        if: steps.parse_tag.outputs.version == ''
+        with:
+          mode: bump
+
+      - uses: ./.github/actions/setup-juno
+
+      - name: Build Juno Functions
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          juno functions build
+
+      - name: Publish Juno Functions
+        env:
+          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          juno functions publish --mode production

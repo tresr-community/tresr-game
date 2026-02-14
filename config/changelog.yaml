@@ -1,0 +1,18 @@
+---
+versions:
+  - version: "0.1.0"
+    date: "2026-02-11"
+    title: "Genesis Drop"
+    notes:
+      - "Initial MVP release"
+      - "Beat-em-up combat with 2.5D physics"
+      - "Phaser 3 Arcade Engine"
+      - "Single enemy sprite with multiple AI behaviors"
+      - "Boss encounters with ground pound and charge attacks"
+      - "Key and loot drop system"
+      - "Bear Market of endless retardio bankers"
+      - "Avalanche blockchain integration for deposits and claims"
+      - "Guest and authenticated play modes"
+      - "AI generated Art, SFX and Music"
+      - "Mobile touch controls and Game Pad support"
+      - "An initial half-arsed attempt at cheating prevention"

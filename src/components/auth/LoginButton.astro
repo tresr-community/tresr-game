@@ -1,0 +1,532 @@
+---
+import type {ConfigTypes} from "@/types/config.ts";
+import {config} from "@/lib/config/client.ts";
+import {isVaultDeployed} from "@/lib/wallet/avalanche.ts";
+
+interface Props {
+  hideTrigger?: boolean;
+}
+
+const {hideTrigger = false} = Astro.props;
+
+// Which Auth Providers are enabled?
+const iidEnabled: ConfigTypes["auth"]["iid"]["enabled"] =
+  config.auth?.iid?.enabled ?? true;
+const avalancheEnabled: ConfigTypes["auth"]["avalanche"]["enabled"] =
+  (config.auth?.avalanche?.enabled ?? true) && isVaultDeployed(config);
+const webauthnEnabled: ConfigTypes["auth"]["webauthn"]["enabled"] =
+  config.auth?.webauthn?.enabled ?? true;
+---
+
+<div class="flex flex-col items-center gap-2">
+  <button
+    id="login-button"
+    data-external-trigger={hideTrigger}
+    class:list={[
+      "btn btn-primary btn-lg font-display px-12 text-2xl tracking-widest shadow-[0_0_30px_rgba(var(--primary),0.4)] transition-all duration-500 hover:scale-105",
+      {hidden: hideTrigger},
+    ]}
+  >
+    LOGIN
+  </button>
+  <button
+    id="btn-logout"
+    class="btn btn-link btn-xs text-error hidden font-mono opacity-50 transition-opacity hover:opacity-100"
+  >
+    logout
+  </button>
+</div>
+
+<!-- Unified Auth Modal -->
+<dialog id="login-modal" class="modal">
+  <div class="modal-box border-primary/30 bg-base-200 relative max-w-md border">
+    <button
+      id="btn-close-auth"
+      class="btn btn-sm btn-circle btn-ghost absolute top-2 right-2">✕</button
+    >
+    <h3
+      class="text-primary mb-6 text-center text-2xl font-bold tracking-widest uppercase"
+    >
+      Acknowledge Identity
+    </h3>
+
+    <div class="tabs tabs-lift">
+      <!-- Normie Tab -->
+      <input
+        type="radio"
+        name="auth_tabs"
+        class="tab"
+        aria-label="Normie"
+        checked="checked"
+      />
+      <div class="tab-content border-base-300 bg-base-100 p-6">
+        <p class="mb-6 text-center text-sm italic opacity-70">
+          "Fight some bankers without spending tokens. No risk, no reward."
+        </p>
+        <button
+          id="btn-login-normie"
+          class="btn btn-secondary w-full font-bold tracking-widest uppercase"
+        >
+          Login as a Normie
+        </button>
+      </div>
+
+      <!-- Degen Tab -->
+      <input type="radio" name="auth_tabs" class="tab" aria-label="Degen" />
+      <div class="tab-content border-base-300 bg-base-100 p-6">
+        <p class="mb-6 text-center text-sm italic opacity-70">
+          "Join the decentralized elite. High risk, high reward."
+        </p>
+
+        <div class="flex flex-col gap-3">
+          <!-- Internet Identity -->
+          <button
+            id="btn-login-ii"
+            class:list={[
+              "btn btn-primary w-full font-bold tracking-widest uppercase",
+              {hidden: !iidEnabled},
+            ]}
+          >
+            Login with Internet Identity
+          </button>
+
+          <!-- Unified Wallet Login Button (Opens AppKit modal with all options) -->
+          <button
+            id="btn-login-avalanche"
+            class:list={[
+              "btn btn-accent w-full gap-2 font-bold tracking-widest uppercase",
+              {hidden: !avalancheEnabled},
+            ]}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              class="h-5 w-5"
+            >
+              <path
+                d="M2.273 5.625A4.483 4.483 0 015.25 4.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 3H5.25a3 3 0 00-2.977 2.625zM2.273 8.625A4.483 4.483 0 015.25 7.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 6H5.25a3 3 0 00-2.977 2.625zM5.25 9a3 3 0 00-3 3v6a3 3 0 003 3h13.5a3 3 0 003-3v-6a3 3 0 00-3-3H15a.75.75 0 00-.75.75 2.25 2.25 0 01-4.5 0A.75.75 0 009 9H5.25z"
+              ></path>
+            </svg>
+            Login with Avalanche Wallet
+          </button>
+
+          <div
+            class:list={[
+              "divider text-[10px] tracking-tighter uppercase opacity-50",
+              {hidden: !webauthnEnabled},
+            ]}
+          >
+            Login with a Passkey
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              id="btn-login-webauthn"
+              class:list={[
+                "btn btn-outline flex-1 font-bold tracking-widest uppercase",
+                {hidden: !webauthnEnabled},
+              ]}
+            >
+              Login
+            </button>
+            <button
+              id="btn-register-webauthn"
+              class:list={[
+                "btn btn-outline text-secondary flex-1 font-bold tracking-widest uppercase",
+                {hidden: !webauthnEnabled},
+              ]}
+            >
+              Register
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <form method="dialog" class="modal-backdrop">
+      <button aria-label="Close dialog">close</button>
+    </form>
+  </div>
+</dialog>
+
+<!-- PassKey Registration Modal -->
+<dialog id="passkey-register-modal" class="modal">
+  <div class="modal-box bg-base-100">
+    <h3 class="text-lg font-bold">Register PassKey</h3>
+    <div class="form-control mt-4">
+      <label class="label">
+        <span class="label-text">Optional Nickname</span>
+      </label>
+      <input
+        type="text"
+        placeholder="PassKey"
+        class="input input-bordered"
+        id="register-nickname"
+        maxlength="20"
+      />
+    </div>
+    <div class="modal-action">
+      <button id="btn-cancel-register" class="btn">Cancel</button>
+      <button class="btn btn-primary" id="btn-confirm-register">Register</button
+      >
+    </div>
+  </div>
+</dialog>
+
+<!-- Guest Session Limit Modal -->
+<dialog id="modal-guest-limit" class="modal modal-middle">
+  <div class="modal-box border-warning/30 bg-base-300 border text-center">
+    <h3
+      class="text-warning font-display text-2xl font-black tracking-widest uppercase"
+    >
+      Session Limit Reached
+    </h3>
+    <p class="py-4 opacity-70">
+      You've used all your free guest sessions for today. Come back tomorrow or
+      upgrade to Degen for unlimited play.
+    </p>
+    <div class="modal-action justify-center">
+      <button id="btn-guest-limit-ok" class="btn btn-warning">OK</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Auth Loading Overlay — shown during SIWA handshake after wallet selection -->
+<div
+  id="auth-loading-overlay"
+  class="bg-base-300/80 fixed inset-0 z-[99998] hidden items-center justify-center backdrop-blur-sm"
+>
+  <div class="flex flex-col items-center gap-4 text-center">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+    <p
+      id="auth-loading-text"
+      class="text-lg font-bold tracking-wide opacity-80"
+    >
+      Signing in...
+    </p>
+  </div>
+</div>
+
+<script>
+  declare global {
+    interface Window {
+      openLoginModal?: () => void;
+    }
+  }
+
+  import {
+    getAuthState,
+    subscribeToAuth,
+    signInAsGuest,
+    signInWithInternetIdentity,
+    signInWithPasskey,
+    signUpWithPasskey,
+    signInWithAvalanche,
+    handleSignOut,
+    getDisplayName,
+    checkPasskeyAvailability,
+  } from "@/lib/auth";
+  import {isGuestRateLimited} from "@/lib/auth/guest";
+  import {profileStore} from "@/lib/user/store";
+  import {trackLogin} from "@/lib/metrics/analytics";
+  import {log} from "@/lib/utils/log";
+
+  const COMPONENT_NAME = "Auth";
+
+  /** Set a button to loading state (DaisyUI spinner + disabled). */
+  function setButtonLoading(btn: HTMLButtonElement, text?: string) {
+    btn.disabled = true;
+    btn.classList.add("loading");
+    if (text) btn.dataset.originalText = btn.textContent ?? "";
+    if (text) btn.textContent = text;
+  }
+
+  /** Restore a button from loading state. */
+  function clearButtonLoading(btn: HTMLButtonElement, fallbackText?: string) {
+    btn.disabled = false;
+    btn.classList.remove("loading");
+    btn.textContent =
+      btn.dataset.originalText ?? fallbackText ?? btn.textContent;
+    delete btn.dataset.originalText;
+  }
+
+  const loginButton = document.getElementById(
+    "login-button"
+  ) as HTMLButtonElement;
+  const btnLogout = document.getElementById("btn-logout");
+  const loginModal = document.getElementById(
+    "login-modal"
+  ) as HTMLDialogElement;
+  const btnCloseAuth = document.getElementById("btn-close-auth");
+
+  // Triggers
+  const btnLoginNormie = document.getElementById("btn-login-normie");
+  const btnLoginII = document.getElementById("btn-login-ii");
+  const btnLoginAvalanche = document.getElementById(
+    "btn-login-avalanche"
+  ) as HTMLButtonElement | null;
+  const btnLoginWebAuthN = document.getElementById("btn-login-webauthn");
+  const btnRegisterWebAuthN = document.getElementById("btn-register-webauthn");
+  const registerModal = document.getElementById(
+    "passkey-register-modal"
+  ) as HTMLDialogElement;
+  const registerNickname = document.getElementById(
+    "register-nickname"
+  ) as HTMLInputElement;
+  const btnConfirmRegister = document.getElementById("btn-confirm-register");
+  const btnCancelRegister = document.getElementById("btn-cancel-register");
+  const guestLimitModal = document.getElementById(
+    "modal-guest-limit"
+  ) as HTMLDialogElement;
+  const btnGuestLimitOk = document.getElementById("btn-guest-limit-ok");
+
+  btnCloseAuth?.addEventListener("click", () => {
+    loginModal.close();
+  });
+
+  // Auth loading overlay helpers
+  const authOverlay = document.getElementById("auth-loading-overlay");
+  const authLoadingText = document.getElementById("auth-loading-text");
+
+  function showAuthOverlay(text = "Signing in...") {
+    if (authOverlay && authLoadingText) {
+      authLoadingText.textContent = text;
+      authOverlay.classList.remove("hidden");
+      authOverlay.classList.add("flex");
+    }
+  }
+
+  function hideAuthOverlay() {
+    if (authOverlay) {
+      authOverlay.classList.add("hidden");
+      authOverlay.classList.remove("flex");
+    }
+  }
+
+  // Listen for auth progress events from the SIWA flow
+  function onAuthProgress(e: Event) {
+    const detail = (e as CustomEvent<{step: string}>).detail;
+    if (detail?.step) showAuthOverlay(detail.step);
+  }
+  window.addEventListener("tresr:auth-progress", onAuthProgress);
+
+  // Unified Avalanche Login Handler (uses AppKit modal for wallet selection)
+  async function handleAvalancheLogin() {
+    if (!btnLoginAvalanche) return;
+
+    // Show loading spinner while AppKit initializes
+    setButtonLoading(btnLoginAvalanche, "Connecting...");
+
+    // Close the login modal so only the wallet modal is visible
+    loginModal.close();
+
+    try {
+      // Clear button spinner — AppKit shows its own modal for wallet selection.
+      clearButtonLoading(btnLoginAvalanche, "Login with Wallet");
+
+      // Show the auth loading overlay — it stays visible during the SIWA
+      // handshake that happens after the user selects a wallet and signs.
+      showAuthOverlay("Connecting wallet...");
+
+      // This opens the AppKit modal with all wallet options
+      // (injected wallets + WalletConnect QR code)
+      // The overlay text updates via tresr:auth-progress events
+      // dispatched from signInWithAvalanche().
+      await signInWithAvalanche();
+      hideAuthOverlay();
+      trackLogin("avalanche");
+    } catch (error: unknown) {
+      hideAuthOverlay();
+      clearButtonLoading(btnLoginAvalanche, "Login with Wallet");
+      log.error(COMPONENT_NAME, "Avalanche Auth failed", error);
+      const message = error instanceof Error ? error.message : String(error);
+      let msg = "Wallet login failed";
+
+      if (message.includes("cancelled") || message.includes("rejected")) {
+        msg = "Login cancelled or rejected";
+      } else if (message.includes("SIWA") || message.includes("canister")) {
+        msg =
+          "Unable to connect to the IC-SIWA service. Please check network and try again.";
+      } else if (message.includes("chain") || message.includes("network")) {
+        msg = message;
+      } else if (message.includes("disconnected")) {
+        msg = "Wallet disconnected. Please try again.";
+      }
+
+      window.showErrorToast(msg, message);
+      // Re-open the login modal so the user can try again
+      loginModal.showModal();
+    }
+  }
+
+  // Normie Handler
+  btnLoginNormie?.addEventListener("click", async () => {
+    if (btnLoginNormie instanceof HTMLButtonElement)
+      setButtonLoading(btnLoginNormie, "Connecting...");
+    try {
+      await signInAsGuest();
+      trackLogin("guest");
+      loginModal.close();
+    } catch (error) {
+      log.error(COMPONENT_NAME, "Guest login failed", error);
+      window.showErrorToast("Login failed", (error as Error).message);
+    } finally {
+      if (btnLoginNormie instanceof HTMLButtonElement)
+        clearButtonLoading(btnLoginNormie, "Login as Normie");
+    }
+  });
+
+  // II Handler
+  btnLoginII?.addEventListener("click", async () => {
+    if (btnLoginII instanceof HTMLButtonElement)
+      setButtonLoading(btnLoginII, "Connecting...");
+    try {
+      await signInWithInternetIdentity();
+      trackLogin("internet_identity");
+      loginModal.close();
+    } catch (error) {
+      log.error(COMPONENT_NAME, "II Auth failed", error);
+      window.showErrorToast("Authentication failed", (error as Error).message);
+    } finally {
+      if (btnLoginII instanceof HTMLButtonElement)
+        clearButtonLoading(btnLoginII, "Internet Identity");
+    }
+  });
+
+  // Avalanche Handler (single button - opens AppKit modal)
+  btnLoginAvalanche?.addEventListener("click", handleAvalancheLogin);
+
+  // WebAuthN Handlers
+  btnLoginWebAuthN?.addEventListener("click", async () => {
+    if (!(await checkPasskeyAvailability())) {
+      window.showErrorToast(
+        "Passkey not supported",
+        "Your browser does not support WebAuthn."
+      );
+      return;
+    }
+    try {
+      await signInWithPasskey();
+      trackLogin("passkey_login");
+      loginModal.close();
+    } catch (error) {
+      log.error(COMPONENT_NAME, "Passkey login failed", error);
+      window.showErrorToast("Login failed", (error as Error).message);
+    }
+  });
+
+  btnRegisterWebAuthN?.addEventListener("click", async () => {
+    if (!(await checkPasskeyAvailability())) {
+      window.showErrorToast(
+        "Passkey not supported",
+        "Your browser does not support WebAuthn."
+      );
+      return;
+    }
+    registerModal?.showModal();
+  });
+
+  btnCancelRegister?.addEventListener("click", () => {
+    registerModal?.close();
+  });
+
+  btnConfirmRegister?.addEventListener("click", async () => {
+    try {
+      await signUpWithPasskey(registerNickname?.value || "PassKey");
+      trackLogin("passkey_signup");
+      registerModal?.close();
+      loginModal.close();
+    } catch (error) {
+      log.error(COMPONENT_NAME, "Passkey registration failed", error);
+      window.showErrorToast("Registration failed", (error as Error).message);
+    }
+  });
+
+  // Guest limit modal — prevent ESC and backdrop dismissal
+  guestLimitModal?.addEventListener("cancel", (e) => {
+    e.preventDefault();
+  });
+  guestLimitModal?.addEventListener("click", (e) => {
+    if (e.target === guestLimitModal) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  });
+
+  // Guest limit modal OK → close and stay on home page
+  btnGuestLimitOk?.addEventListener("click", () => {
+    guestLimitModal.close();
+  });
+
+  // Modal Open Trigger / Action Trigger
+  loginButton?.addEventListener("click", () => {
+    const state = getAuthState();
+    if (state.isAuthenticated) {
+      // Block guests who have exhausted daily sessions
+      if (state.isGuest && isGuestRateLimited()) {
+        log.info(COMPONENT_NAME, "Guest rate limit reached, showing modal");
+        guestLimitModal?.showModal();
+        return;
+      }
+      window.location.href = "/game";
+    } else {
+      loginModal?.showModal();
+    }
+  });
+
+  btnLogout?.addEventListener("click", async () => {
+    await handleSignOut();
+  });
+
+  // Named handler for cleanup (ticket #241: window listeners accumulate)
+  function handleAuthModalOpen() {
+    loginModal?.showModal();
+  }
+  window.addEventListener("auth-modal:open", handleAuthModalOpen);
+
+  function updateButtonState() {
+    const state = getAuthState();
+    if (loginButton) {
+      if (state.isAuthenticated) {
+        const name = state.isGuest ? "NORMIE" : getDisplayName();
+        loginButton.innerText = `START (${name})`;
+        loginButton.classList.add("btn-success", "animate-pulse");
+        loginButton.classList.remove("btn-primary");
+        btnLogout?.classList.remove("hidden");
+      } else {
+        loginButton.innerText = "LOGIN";
+        loginButton.classList.remove("btn-success", "animate-pulse");
+        loginButton.classList.add("btn-primary");
+        btnLogout?.classList.add("hidden");
+      }
+    }
+  }
+
+  // Reactive State Subscription (ticket #199: store cleanup on navigation)
+  const unsubAuth = subscribeToAuth(() => {
+    updateButtonState();
+  });
+
+  const unsubProfile = profileStore.subscribe(() => {
+    updateButtonState();
+  });
+
+  // Pre-warm AppKit so the first click opens the modal instantly
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(() => {
+      import("@/lib/wallet/appkit").then((m) => m.getAppKit()).catch(() => {});
+    });
+  }
+
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      unsubAuth();
+      unsubProfile();
+      window.removeEventListener("auth-modal:open", handleAuthModalOpen);
+      window.removeEventListener("tresr:auth-progress", onAuthProgress);
+    },
+    {once: true}
+  );
+</script>
