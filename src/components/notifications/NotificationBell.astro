@@ -1,0 +1,250 @@
+---
+
+---
+
+<div class="dropdown dropdown-end" id="notification-dropdown">
+  <label
+    tabindex="0"
+    class="btn btn-ghost btn-circle"
+    id="bell-container"
+    aria-label="Notifications"
+  >
+    <div class="indicator">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="text-warning h-6 w-6 transition-colors"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        id="bell-icon"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+        ></path>
+      </svg>
+      <span
+        class="badge badge-sm badge-primary indicator-item hidden"
+        id="notification-badge">0</span
+      >
+    </div>
+  </label>
+  <div
+    tabindex="0"
+    class="card card-compact dropdown-content bg-base-100 border-primary/20 z-[1] mt-3 w-80 border shadow-xl"
+  >
+    <div class="card-body p-0">
+      <div
+        class="border-base-300 flex items-center justify-between border-b p-4 pb-2"
+      >
+        <h3 class="text-lg font-bold">Notifications</h3>
+        <button class="btn btn-xs btn-outline btn-error" id="clear-all"
+          >Clear All</button
+        >
+      </div>
+      <div
+        class="max-h-96 space-y-2 overflow-y-auto p-2"
+        id="notification-list"
+      >
+        <div class="text-base-content/50 py-4 text-center italic">
+          No notifications
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style is:global>
+  @keyframes breathe-orange {
+    0%,
+    100% {
+      filter: drop-shadow(0 0 2px rgba(255, 165, 0, 0.4));
+      transform: scale(1);
+    }
+    50% {
+      filter: drop-shadow(0 0 12px rgba(255, 165, 0, 0.8));
+      transform: scale(1.05);
+    }
+  }
+
+  @keyframes breathe-red {
+    0%,
+    100% {
+      filter: drop-shadow(0 0 2px rgba(255, 0, 0, 0.4));
+      transform: scale(1);
+    }
+    50% {
+      filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.9));
+      transform: scale(1.1);
+    }
+  }
+
+  .glow-orange {
+    color: #ffa500 !important;
+    animation: breathe-orange 3s ease-in-out infinite;
+  }
+
+  .glow-red {
+    color: #ff0000 !important;
+    animation: breathe-red 2s ease-in-out infinite;
+  }
+</style>
+
+<script>
+  import {notificationManager, type NotificationDoc} from "@/lib/notifications";
+  import PWA from "@/lib/pwa";
+  import {log} from "@/lib/utils/log";
+
+  import {loadConfigAsync} from "@/lib/config";
+
+  const COMPONENT_NAME = "NotificationBell";
+
+  let customNotifications: string[] = ["No new notifications"];
+
+  loadConfigAsync()
+    .then((config) => {
+      if (config.app?.custom_notifications) {
+        customNotifications = config.app.custom_notifications;
+      }
+    })
+    .catch((e) => log.error(`[${COMPONENT_NAME}] Failed to load config`, e));
+
+  const bellIcon = document.getElementById("bell-icon");
+  const badge = document.getElementById("notification-badge");
+  const listContainer = document.getElementById("notification-list");
+  const clearAllBtn = document.getElementById("clear-all");
+
+  function updateUI(notifications: NotificationDoc[]) {
+    if (!badge || !bellIcon || !listContainer) return;
+
+    const now = Date.now();
+    const activeNotifications = notifications.filter(
+      (n) => !n.data.snoozeUntil || n.data.snoozeUntil < now
+    );
+    const unreadCount = activeNotifications.length;
+
+    if (unreadCount > 0) {
+      badge.textContent = unreadCount.toString();
+      badge.classList.remove("hidden");
+    } else {
+      badge.classList.add("hidden");
+    }
+
+    const urgency = notificationManager.getHighestUrgency();
+    bellIcon.classList.remove("glow-orange", "glow-red");
+    if (urgency === "urgent") {
+      bellIcon.classList.add("glow-red");
+    } else if (urgency === "non-urgent") {
+      bellIcon.classList.add("glow-orange");
+    }
+
+    // Build DOM safely to prevent XSS (ticket #196)
+    listContainer.textContent = "";
+
+    if (notifications.length === 0) {
+      const randomMessage =
+        customNotifications[
+          Math.floor(Math.random() * customNotifications.length)
+        ];
+      const emptyDiv = document.createElement("div");
+      emptyDiv.className =
+        "text-center py-4 text-base-content/50 italic font-mono text-xs";
+      emptyDiv.textContent = randomMessage;
+      listContainer.appendChild(emptyDiv);
+      return;
+    }
+
+    for (const n of notifications) {
+      const isSnoozed = n.data.snoozeUntil && n.data.snoozeUntil > now;
+      const card = document.createElement("div");
+      card.className = `flex flex-col gap-1 p-3 bg-base-200 rounded-lg border-l-4 ${isSnoozed ? "opacity-50 border-base-300" : getUrgencyClass(n.data.urgency)} group relative`;
+
+      // Header row
+      const headerRow = document.createElement("div");
+      headerRow.className = "flex justify-between items-start gap-2";
+
+      const msgSpan = document.createElement("span");
+      msgSpan.className = "font-bold text-xs uppercase tracking-tighter";
+      msgSpan.textContent = n.data.message + (isSnoozed ? " \u{1F4A4}" : "");
+      headerRow.appendChild(msgSpan);
+
+      const btnGroup = document.createElement("div");
+      btnGroup.className = "flex gap-1";
+      if (!isSnoozed) {
+        const snoozeBtn = document.createElement("button");
+        snoozeBtn.className = "btn btn-xs btn-ghost snooze-btn p-0 px-1";
+        snoozeBtn.title = "Snooze 24h";
+        snoozeBtn.textContent = "\u{1F4A4}";
+        snoozeBtn.addEventListener("click", () =>
+          notificationManager.snooze(n.key)
+        );
+        btnGroup.appendChild(snoozeBtn);
+      }
+      const dismissBtn = document.createElement("button");
+      dismissBtn.className = "btn btn-xs btn-ghost dismiss-btn p-0 px-1";
+      dismissBtn.textContent = "\u2715";
+      dismissBtn.addEventListener("click", () =>
+        notificationManager.dismiss(n.key)
+      );
+      btnGroup.appendChild(dismissBtn);
+      headerRow.appendChild(btnGroup);
+      card.appendChild(headerRow);
+
+      // Details
+      if (n.data.details) {
+        const detailsP = document.createElement("p");
+        detailsP.className = "text-[10px] opacity-70 leading-tight";
+        detailsP.textContent = n.data.details;
+        card.appendChild(detailsP);
+      }
+
+      // Upgrade button for app updates
+      if (n.data.type === "app_update") {
+        const upgradeBtn = document.createElement("button");
+        upgradeBtn.className = "btn btn-xs btn-primary mt-2 w-full";
+        upgradeBtn.textContent = "Upgrade Now";
+        upgradeBtn.addEventListener("click", () =>
+          PWA.getInstance().applyUpdate()
+        );
+        card.appendChild(upgradeBtn);
+      }
+
+      // Timestamp
+      const timeSpan = document.createElement("span");
+      timeSpan.className = "text-[9px] opacity-30 font-mono mt-1";
+      timeSpan.textContent = new Date(n.data.timestamp).toLocaleTimeString();
+      card.appendChild(timeSpan);
+
+      listContainer.appendChild(card);
+    }
+  }
+
+  function getUrgencyClass(urgency: string) {
+    switch (urgency) {
+      case "urgent":
+        return "border-error";
+      case "non-urgent":
+        return "border-warning";
+      default:
+        return "border-info";
+    }
+  }
+
+  const unsubNotifications = notificationManager.subscribe(updateUI);
+
+  function handleClearAll() {
+    notificationManager.clearAll();
+  }
+  clearAllBtn?.addEventListener("click", handleClearAll);
+
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      unsubNotifications();
+      clearAllBtn?.removeEventListener("click", handleClearAll);
+    },
+    {once: true}
+  );
+</script>

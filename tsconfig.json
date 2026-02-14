@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowJs": true,
+    "jsx": "preserve",
+    "strict": true,
+    "lib": ["ESNext", "DOM", "WebWorker"],
+    "baseUrl": ".",
+    "types": ["vite/client", "@junobuild/core"],
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "exclude": [
+    "dist",
+    "node_modules",
+    "src/**/*.test.ts",
+    "src/declarations",
+    "src/integrations"
+  ],
+  "include": [".astro/types.d.ts", "src/**/*", "bin/**/*"]
+}

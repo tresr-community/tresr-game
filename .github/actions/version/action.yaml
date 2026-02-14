@@ -1,0 +1,55 @@
+---
+name: Version
+description: Compute or set the application version using convco conventional commits.
+
+inputs:
+  mode:
+    description: "How to determine the version: 'bump' (convco --bump), 'current' (convco version from tags), or 'explicit' (use the version input)."
+    required: true
+  version:
+    description: "Explicit version string (required when mode is 'explicit')."
+    required: false
+    default: ""
+
+outputs:
+  version:
+    description: "The resolved version string."
+    value: ${{ steps.resolve.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - id: resolve
+      name: Resolve Version
+      shell: devenv shell --quiet bash -- -e {0}
+      run: |
+        case "${{ inputs.mode }}" in
+          bump)
+            VERSION=$(convco version --bump)
+            echo "Computed next version from conventional commits: ${VERSION}"
+            ;;
+          current)
+            VERSION=$(convco version)
+            echo "Current version from tags: ${VERSION}"
+            ;;
+          explicit)
+            VERSION="${{ inputs.version }}"
+            if [[ -z "${VERSION}" ]]; then
+              echo "mode=explicit requires the version input"
+              exit 1
+            fi
+            echo "Using explicit version: ${VERSION}"
+            ;;
+          *)
+            echo "Unknown mode: ${{ inputs.mode }}. Use 'bump', 'current', or 'explicit'."
+            exit 1
+            ;;
+        esac
+
+        echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+    - id: set_version
+      name: Set Version
+      shell: devenv shell --quiet bash -- -e {0}
+      run: |
+        bun run version-set ${{ steps.resolve.outputs.version }}

@@ -1,0 +1,296 @@
+---
+import MusicPlayer from "./MusicPlayer.astro";
+import {config} from "@/lib/config/client";
+
+const gp = config.gameplay;
+const playerHealth = gp.entities.player.health;
+const bossHealth = gp.entities.boss.health;
+const timerSeconds = gp.time_limit_seconds;
+const timerMin = Math.floor(timerSeconds / 60)
+  .toString()
+  .padStart(2, "0");
+const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
+---
+
+<div
+  class="pointer-events-none absolute inset-0 flex flex-col justify-between p-4"
+>
+  <!-- Top Bar -->
+  <div class="grid w-full grid-cols-3 items-start gap-4">
+    <!-- Left: Stats -->
+    <div class="flex justify-start">
+      <div
+        class="stats bg-base-300/80 border-primary/20 pointer-events-auto border shadow-lg backdrop-blur"
+      >
+        <div class="stat p-2 px-4">
+          <div class="stat-title text-[10px] uppercase opacity-50">HP</div>
+          <div id="hud-hp" class="stat-value text-error font-mono text-xl">
+            {playerHealth}
+          </div>
+        </div>
+        <div class="stat border-primary/10 border-l p-2 px-4">
+          <div class="stat-title text-[10px] uppercase opacity-50">Score</div>
+          <div id="hud-score" class="stat-value text-primary font-mono text-xl">
+            0
+          </div>
+        </div>
+        <div class="stat border-primary/10 border-l p-2 px-4">
+          <div class="stat-title text-[10px] uppercase opacity-50">Keys</div>
+          <div
+            id="hud-keys"
+            class="stat-value text-secondary font-mono text-xl"
+          >
+            0
+          </div>
+        </div>
+        <div
+          id="hud-lives-stat"
+          class="stat border-primary/10 hidden border-l p-2 px-4"
+        >
+          <div class="stat-title text-[10px] uppercase opacity-50">Lives</div>
+          <div id="hud-lives" class="stat-value text-warning font-mono text-xl">
+            1
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Timer -->
+    <div class="flex justify-center">
+      <div
+        class="stats bg-base-300/80 border-error/20 pointer-events-auto border shadow-lg backdrop-blur"
+      >
+        <div class="stat p-2 px-6">
+          <div class="stat-title text-center text-[10px] uppercase opacity-50">
+            System Clock
+          </div>
+          <div id="hud-timer" class="stat-value text-error font-mono text-3xl">
+            {timerMin}:{timerSec}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Theme/Profile Icons Placeholder -->
+    <div class="pointer-events-none flex justify-end opacity-0">
+      <div class="h-10 w-32 rounded-full bg-black/20"></div>
+    </div>
+  </div>
+
+  <!-- Bottom HUD Area: 3-column grid with min-w-0 on sides to guarantee true centering -->
+  <div class="grid w-full grid-cols-3 items-end">
+    <!-- Music Player (Bottom Left) — overflow-visible lets the player render
+         beyond its grid column without pushing the center column off-center -->
+    <div class="min-w-0 overflow-visible">
+      <MusicPlayer />
+    </div>
+
+    <!-- Center: Phase Alerts, Super Bar & Pause Button -->
+    <div class="flex flex-col items-center gap-2 pb-4">
+      <div
+        id="hud-phase-alert"
+        class="badge badge-primary badge-lg hidden font-bold tracking-widest uppercase"
+      >
+        BOSS INCOMING
+      </div>
+
+      <!-- Super Power Bar -->
+      <div
+        id="hud-super-bar"
+        class="bg-base-300/80 border-warning/30 pointer-events-auto w-48 rounded-lg border p-2 shadow-lg backdrop-blur"
+      >
+        <div class="flex items-center justify-between">
+          <span class="text-warning text-[10px] font-bold uppercase opacity-80"
+            >SUPER</span
+          >
+          <span id="hud-super-text" class="text-warning font-mono text-xs"
+            >0%</span
+          >
+        </div>
+        <progress
+          id="hud-super-progress"
+          class="progress progress-warning mt-1 h-2 w-full"
+          value="0"
+          max="100"></progress>
+      </div>
+
+      <!-- Centred Pause Button -->
+      <button
+        id="btn-hud-pause"
+        class="btn btn-circle btn-primary pointer-events-auto border-2 border-white/10 shadow-xl"
+        title="Pause Mission (ESC)"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+        >
+          <rect x="6" y="4" width="4" height="16"></rect>
+          <rect x="14" y="4" width="4" height="16"></rect>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Right: Boss HP Bar (only visible during boss phase) -->
+    <div class="flex min-w-0 flex-col items-end justify-end gap-2">
+      <div
+        id="hud-boss-bar"
+        class="bg-base-300/80 border-error/30 pointer-events-auto hidden w-40 rounded-lg border p-1.5 shadow-lg backdrop-blur"
+      >
+        <div class="flex items-center justify-between">
+          <span class="text-error text-[9px] font-bold uppercase opacity-80"
+            >BOSS</span
+          >
+          <span id="hud-boss-hp-text" class="text-error font-mono text-[10px]"
+            >{bossHealth}/{bossHealth}</span
+          >
+        </div>
+        <progress
+          id="hud-boss-hp"
+          class="progress progress-success mt-0.5 h-2 w-full"
+          value="100"
+          max="100"></progress>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  import {gameActions, gameState} from "@/lib/game/state";
+  import {config} from "@/lib/config/client";
+
+  const gp = config.gameplay;
+  const thresholds = gp.health_bar.thresholds;
+  const maxCharge = gp.entities.player.super.max_charge;
+
+  const playerLives = gp.entities.player.lives;
+
+  const elHp = document.getElementById("hud-hp");
+  const elScore = document.getElementById("hud-score");
+  const elKeys = document.getElementById("hud-keys");
+  const elTimer = document.getElementById("hud-timer");
+  const elPhase = document.getElementById("hud-phase-alert");
+  const elLivesStat = document.getElementById("hud-lives-stat");
+  const elLives = document.getElementById("hud-lives");
+  const btnPause = document.getElementById("btn-hud-pause");
+
+  // Only show lives counter when player has multiple lives
+  if (playerLives > 1 && elLivesStat) {
+    elLivesStat.classList.remove("hidden");
+  }
+
+  // Super attack elements
+  const elSuperProgress = document.getElementById(
+    "hud-super-progress"
+  ) as HTMLProgressElement;
+  const elSuperText = document.getElementById("hud-super-text");
+
+  // Boss HP elements
+  const elBossBar = document.getElementById("hud-boss-bar");
+  const elBossHp = document.getElementById(
+    "hud-boss-hp"
+  ) as HTMLProgressElement;
+  const elBossHpText = document.getElementById("hud-boss-hp-text");
+
+  function handlePauseClick() {
+    gameActions.togglePause();
+  }
+  btnPause?.addEventListener("click", handlePauseClick);
+
+  const unsub = gameState.subscribe((state) => {
+    if (elHp) elHp.innerText = state.hp.toString();
+    if (elScore) elScore.innerText = state.score.toString();
+    if (elKeys) elKeys.innerText = state.keys.toString();
+    if (elLives) elLives.innerText = state.lives.toString();
+
+    if (elTimer) {
+      const min = Math.floor(state.timer / 60)
+        .toString()
+        .padStart(2, "0");
+      const sec = (state.timer % 60).toString().padStart(2, "0");
+      elTimer.innerText = `${min}:${sec}`;
+
+      // Flash timer during final 3 seconds
+      if (state.timer <= 3 && state.timer > 0) {
+        elTimer.classList.add("animate-pulse", "text-warning", "scale-110");
+      } else {
+        elTimer.classList.remove("animate-pulse", "text-warning", "scale-110");
+      }
+    }
+
+    // Super power bar update
+    if (elSuperProgress) {
+      elSuperProgress.value = state.superCharge;
+    }
+    if (elSuperText) {
+      elSuperText.innerText = `${state.superCharge}%`;
+      // Change color when fully charged
+      if (state.superCharge >= maxCharge) {
+        elSuperText.classList.add("text-success", "animate-pulse");
+        elSuperText.classList.remove("text-warning");
+      } else {
+        elSuperText.classList.remove("text-success", "animate-pulse");
+        elSuperText.classList.add("text-warning");
+      }
+    }
+
+    // Boss HP bar update (visible during boss phase while HP > 0)
+    if (elBossBar) {
+      if (state.phase === "boss" && state.bossHp > 0 && state.bossMaxHp > 0) {
+        elBossBar.classList.remove("hidden");
+        const hp = Math.max(0, state.bossHp);
+        if (elBossHp) {
+          const percent = (hp / state.bossMaxHp) * 100;
+          elBossHp.value = percent;
+
+          // Color-code boss HP bar based on config thresholds
+          const colorClasses = [
+            "progress-success",
+            "progress-warning",
+            "progress-accent",
+            "progress-error",
+          ];
+          elBossHp.classList.remove(...colorClasses);
+          if (percent > thresholds.high * 100) {
+            elBossHp.classList.add("progress-success");
+          } else if (percent > thresholds.medium * 100) {
+            elBossHp.classList.add("progress-warning");
+          } else if (percent > thresholds.low * 100) {
+            elBossHp.classList.add("progress-accent");
+          } else {
+            elBossHp.classList.add("progress-error");
+          }
+        }
+        if (elBossHpText) {
+          elBossHpText.innerText = `${hp}/${state.bossMaxHp}`;
+        }
+      } else {
+        elBossBar.classList.add("hidden");
+      }
+    }
+
+    // Phase alerts
+    if (elPhase) {
+      if (state.phase === "boss") {
+        elPhase.innerText = "BULL MARKET";
+        elPhase.classList.remove("hidden");
+      } else if (state.phase === "victory") {
+        elPhase.innerText = "VICTORY";
+        elPhase.classList.remove("hidden", "badge-primary");
+        elPhase.classList.add("badge-success");
+      } else {
+        elPhase.classList.add("hidden");
+      }
+    }
+  });
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      unsub();
+      btnPause?.removeEventListener("click", handlePauseClick);
+    },
+    {once: true}
+  );
+</script>

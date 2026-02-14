@@ -1,0 +1,54 @@
+---
+import HUD from "./HUD.astro";
+import GameModals from "./GameModals.astro";
+import PauseMenu from "./PauseMenu.astro";
+import TouchControls from "./TouchControls.astro";
+---
+
+<div
+  id="phaser-game-container"
+  class="relative h-full w-full overflow-hidden bg-black"
+>
+  <!-- HUD Overlay -->
+  <HUD />
+  <GameModals />
+  <PauseMenu />
+  <TouchControls />
+
+  <!-- Phaser will inject the canvas here -->
+</div>
+
+<script>
+  import {initGame} from "@/lib/game/game";
+  import {log} from "@/lib/utils/log";
+
+  // Wait for fee gate resolution before initializing Phaser.
+  // game.astro dispatches this event from startGame() only after:
+  // guest check, already-paid check, or successful fee payment.
+  document.addEventListener(
+    "tresr:start-game-engine",
+    () => {
+      const container = document.getElementById("phaser-game-container");
+      if (!container) return;
+
+      log.info("PhaserGame", "Initializing engine...");
+      const game = initGame("phaser-game-container");
+
+      document.addEventListener(
+        "astro:before-preparation",
+        () => {
+          game.destroy(true);
+        },
+        {once: true}
+      );
+    },
+    {once: true}
+  );
+</script>
+
+<style>
+  #phaser-game-container canvas {
+    display: block;
+    margin: 0 auto;
+  }
+</style>

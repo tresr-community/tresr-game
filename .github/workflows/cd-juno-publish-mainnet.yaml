@@ -1,0 +1,188 @@
+---
+##################################################
+# Name: cd-juno-publish-mainnet.yaml
+# Description: Publish Juno Functions to mainnet
+##################################################
+
+name: Juno Publish (Mainnet)
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - released
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: read
+  pull-requests: read
+  statuses: write
+
+env:
+  # GitHub
+  PROJECT: ${{ github.repository }}
+  BRANCH_NAME_CURRENT: ${{ github.head_ref || github.ref_name }}
+  BRANCH_NAME_DEFAULT: ${{ github.event.repository.default_branch }}
+
+  # Nix
+  NIXPKGS_ALLOW_UNFREE: 1
+
+  # SecretSpec
+  SECRETSPEC_PROVIDER: env
+
+  # Juno
+  VITE_SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
+  VITE_ASTRO_SITE_URL: ${{ vars.VITE_ASTRO_SITE_URL }}
+  VITE_ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
+  VITE_SIWA_PROVIDER_ID: ${{ vars.VITE_SIWA_PROVIDER_ID }}
+  PUBLIC_WALLETCONNECT_PROJECT_ID: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    name: Publish (Mainnet)
+
+    runs-on: ${{ matrix.os }}
+
+    timeout-minutes: 30
+    continue-on-error: false
+
+    environment: Mainnet
+
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - ubuntu-latest
+
+    steps:
+      - id: check_vars
+        name: Check Variables
+        env:
+          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
+        run: |
+          REQUIRED_VARS=(
+            JUNO_TOKEN
+            VITE_ASTRO_SITE_URL
+            VITE_SATELLITE_ID
+            VITE_ORBITER_ID
+            VITE_SIWA_PROVIDER_ID
+          )
+          for VAR in "${REQUIRED_VARS[@]}";
+          do
+            if [[ -z "${!VAR}" ]];
+            then
+              echo "$VAR is not set"
+              exit 1
+            fi
+          done
+          echo "All required variables are set"
+
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: parse_tag
+        name: Parse Release Tag
+        if: github.event.release.tag_name != ''
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - uses: ./.github/actions/version
+        if: steps.parse_tag.outputs.version != ''
+        with:
+          mode: explicit
+          version: ${{ steps.parse_tag.outputs.version }}
+
+      - uses: ./.github/actions/version
+        if: steps.parse_tag.outputs.version == ''
+        with:
+          mode: current
+
+      - uses: ./.github/actions/setup-juno
+
+      - name: Build Juno Functions
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          juno functions build
+
+      - name: Publish Juno Functions (Mainnet)
+        env:
+          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          juno functions publish --mode production
+
+  ##################################################
+  # Create a full release after mainnet publish
+  ##################################################
+
+  create-release:
+    name: Create Release
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    environment: Mainnet
+    timeout-minutes: 15
+
+    steps:
+      - id: checkout_repository
+        name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: setup_devenv
+        name: Setup devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: compute_version
+        name: Compute version
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          VERSION=$(convco version)
+          TAG="v${VERSION}"
+
+          # Check if tag already exists
+          if git tag --list | grep -q "^${TAG}$"; then
+            echo "Tag ${TAG} already exists, skipping release"
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "Version: ${VERSION}, Tag: ${TAG}"
+
+      - id: generate_changelog
+        name: Generate changelog
+        if: steps.compute_version.outputs.skip != 'true'
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          CHANGELOG=$(convco changelog --unreleased 2>/dev/null || echo "No changelog available")
+          echo "${CHANGELOG}" > /tmp/changelog.md
+
+      - id: create_release
+        name: Create Release
+        if: steps.compute_version.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.compute_version.outputs.tag }}" \
+            --title "Release ${{ steps.compute_version.outputs.tag }}" \
+            --notes-file /tmp/changelog.md \
+            --target "${{ github.sha }}"

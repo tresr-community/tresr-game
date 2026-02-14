@@ -1,0 +1,79 @@
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes:
+    abyss,
+    aqua,
+    black,
+    bumblebee,
+    business,
+    cmyk,
+    coffee,
+    corporate,
+    cyberpunk,
+    dark,
+    dim,
+    dracula,
+    fantasy,
+    forest,
+    halloween,
+    lemonade,
+    light,
+    luxury,
+    night,
+    retro,
+    sunset,
+    synthwave,
+    valentine,
+    winter;
+}
+
+/* Tailwind v4 theme configuration */
+@theme {
+  --p: 258deg;
+
+  /* Game-specific colors */
+  --color-game-gold: hsl(45 100% 50%);
+  --color-game-health: hsl(0 85% 55%);
+  --color-game-energy: hsl(180 100% 50%);
+  --color-game-xp: hsl(270 100% 60%);
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family:
+      "Inter",
+      system-ui,
+      -apple-system,
+      sans-serif;
+  }
+}
+
+/* Scanline effect remains as it is game-specific and not in DaisyUI */
+.scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+}
