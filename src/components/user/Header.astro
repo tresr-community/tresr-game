@@ -1,0 +1,229 @@
+---
+import NotificationBell from "@/components/notifications/NotificationBell.astro";
+import WalletLink from "@/components/wallet/WalletLink.astro";
+import NotificationToast from "@/components/notifications/NotificationToast.astro";
+---
+
+<header
+  class="pointer-events-none fixed top-0 right-0 left-0 z-[50] flex justify-end p-4"
+>
+  <div
+    class="bg-base-100/50 border-primary/20 pointer-events-auto flex items-center gap-2 rounded-full border p-1 shadow-lg backdrop-blur-md"
+  >
+    <NotificationBell />
+
+    <!-- Theme Selector -->
+    <div class="dropdown dropdown-end">
+      <label
+        tabindex="0"
+        class="btn btn-ghost btn-circle text-xl"
+        title="Theme"
+        aria-label="Theme selector"
+      >
+        🎨
+      </label>
+      <ul
+        id="theme-list"
+        tabindex="0"
+        class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow"
+      >
+      </ul>
+    </div>
+
+    <WalletLink />
+
+    <!-- Profile: Guest (Dropdown) -->
+    <div class="dropdown dropdown-end" id="profile-guest-container">
+      <label
+        tabindex="0"
+        class="btn btn-ghost btn-circle text-xl"
+        title="Profile (Guest)"
+        aria-label="Guest profile"
+      >
+        👤
+      </label>
+      <div
+        tabindex="0"
+        class="card card-compact dropdown-content bg-base-100 border-primary/20 z-[1] mt-3 w-72 border shadow-xl"
+      >
+        <div class="card-body">
+          <h3 class="text-lg font-bold">Profile</h3>
+          <div class="mb-2 text-xs opacity-70">Unavailable</div>
+          <p>Please log in as a degen to access your profile.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Profile: Authenticated (Button) -->
+    <button
+      id="profile-auth-btn"
+      class="btn btn-ghost btn-circle hidden text-xl"
+      title="My Profile"
+      aria-label="My profile"
+    >
+      👤
+    </button>
+  </div>
+</header>
+
+<NotificationToast />
+
+<script>
+  import {initAuth, getAuthState, subscribeToAuth} from "@/lib/auth";
+  import {notificationManager} from "@/lib/notifications";
+  import {
+    getUserProfile,
+    saveUserProfile,
+    createDefaultProfile,
+  } from "@/lib/user";
+  import {log} from "@/lib/utils/log";
+  import {config} from "@/lib/config/client";
+
+  const COMPONENT_NAME = "Header";
+
+  declare global {
+    interface Window {
+      handleProfileClick: () => boolean;
+      openProfileModal?: () => void;
+    }
+  }
+
+  // Dynamic themes from config
+  const availableThemes = config.daisyui?.themes || [];
+
+  function populateThemes(): void {
+    const ul = document.getElementById("theme-list") as HTMLOListElement | null;
+    if (!ul) {
+      log.warn(COMPONENT_NAME, "Theme list UL not found");
+      return;
+    }
+
+    ul.replaceChildren(); // Clear any existing
+
+    const themes = availableThemes;
+    if (themes.length === 0) {
+      log.warn(COMPONENT_NAME, "No themes detected");
+      return;
+    }
+
+    const currentTheme =
+      document.documentElement.getAttribute("data-theme") ||
+      localStorage.getItem("theme") ||
+      "synthwave";
+
+    themes.forEach((theme: string) => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.textContent = theme.charAt(0).toUpperCase() + theme.slice(1);
+      a.href = "#"; // Prevent jump
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setTheme(theme);
+        // Close dropdown
+        const label = ul
+          .closest(".dropdown")
+          ?.querySelector('label[tabindex="0"]') as HTMLElement | null;
+        label?.blur();
+      });
+      if (theme === currentTheme) {
+        a.classList.add("active");
+        // Prepend checkmark to active theme
+        a.textContent = `✓ ${a.textContent}`;
+      }
+      li.appendChild(a);
+      ul.appendChild(li);
+    });
+
+    log.debug(
+      COMPONENT_NAME,
+      `Populated ${themes.length} themes, current: ${currentTheme}`
+    );
+  }
+
+  function updateProfileButtonState() {
+    const auth = getAuthState();
+    const guestContainer = document.getElementById("profile-guest-container");
+    const authBtn = document.getElementById("profile-auth-btn");
+
+    if (!guestContainer || !authBtn) return;
+
+    if (auth.isAuthenticated && !auth.isGuest) {
+      // Authenticated: Hide guest dropdown, show auth button
+      guestContainer.classList.add("hidden");
+      authBtn.classList.remove("hidden");
+    } else {
+      // Guest or Logout: Show guest dropdown, hide auth button
+      guestContainer.classList.remove("hidden");
+      authBtn.classList.add("hidden");
+    }
+  }
+
+  // Initialize auth and notifications
+  async function startup() {
+    log.info(COMPONENT_NAME, "startup running");
+    await initAuth();
+    await notificationManager.init();
+
+    // Initial check
+    updateProfileButtonState();
+
+    // Update profile button state when auth changes (ticket #199: store cleanup on navigation)
+    const unsubAuth = subscribeToAuth(() => {
+      updateProfileButtonState();
+    });
+
+    document.addEventListener(
+      "astro:before-preparation",
+      () => {
+        unsubAuth();
+      },
+      {once: true}
+    );
+
+    const authBtn = document.getElementById("profile-auth-btn");
+    if (authBtn) {
+      authBtn.addEventListener("click", () => {
+        log.info(COMPONENT_NAME, "Auth Profile button clicked");
+        if (window.openProfileModal) {
+          window.openProfileModal();
+        } else {
+          log.warn(COMPONENT_NAME, "Profile modal not found on window");
+        }
+      });
+    }
+  }
+
+  async function setTheme(theme: string) {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+    log.debug(COMPONENT_NAME, `Updating user theme to ${theme}`);
+
+    const auth = getAuthState();
+    if (auth.isAuthenticated && auth.user && !auth.isGuest) {
+      try {
+        const doc = await getUserProfile(auth.user.key);
+        if (doc) {
+          const profile = doc.data;
+          profile.preferences.theme = theme;
+          await saveUserProfile(auth.user.key, profile, doc.version);
+        } else {
+          const newProfile = createDefaultProfile(auth.user.key);
+          newProfile.preferences.theme = theme;
+          await saveUserProfile(auth.user.key, newProfile);
+        }
+      } catch (e) {
+        log.error(COMPONENT_NAME, "Failed to persist theme", e);
+      }
+    }
+
+    // Refresh dropdown active state
+    populateThemes();
+  }
+
+  // Load saved theme (populate will handle active)
+  const savedTheme = localStorage.getItem("theme") || "synthwave"; // default
+  setTheme(savedTheme);
+
+  startup();
+</script>

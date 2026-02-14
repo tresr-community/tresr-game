@@ -1,0 +1,127 @@
+---
+##################################################
+# Name: cd-release.yaml
+# Description: Automated testnet release pipeline
+#
+# Trigger: Push to trunk
+#
+# Flow:
+#   1. Compute next version via convco (conventional commits)
+#   2. Bump version in package.json, manifest.json, Cargo.toml
+#   3. Tag as v{version}-testnet
+#   4. Create GitHub pre-release with convco changelog
+##################################################
+
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - trunk
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  # GitHub
+  PROJECT: ${{ github.repository }}
+  BRANCH_NAME_CURRENT: ${{ github.head_ref || github.ref_name }}
+  BRANCH_NAME_DEFAULT: ${{ github.event.repository.default_branch }}
+  # Nix
+  NIXPKGS_ALLOW_UNFREE: 1
+  # Secretspec
+  SECRETSPEC_PROVIDER: env
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  ##################################################
+  # Create a testnet pre-release on trunk merge
+  ##################################################
+
+  pre-release:
+    name: Pre-Release
+
+    runs-on: ubuntu-latest
+    environment: Testnet
+
+    timeout-minutes: 15
+    continue-on-error: false
+
+    steps:
+      - id: checkout_repository
+        name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: setup_devenv
+        name: Setup devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: compute_version
+        name: Compute version
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          # Get next version from conventional commits
+          NEXT_VERSION=$(convco version --bump 2>/dev/null || echo "")
+
+          if [[ -z "${NEXT_VERSION}" ]]; then
+            echo "No conventional commits found to bump version"
+            # Fall back to current version
+            NEXT_VERSION=$(convco version)
+          fi
+
+          TAG="v${NEXT_VERSION}-testnet"
+
+          # Check if tag already exists
+          if git tag --list | grep -q "^${TAG}$"; then
+            echo "Tag ${TAG} already exists, skipping release"
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+          echo "version=${NEXT_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "Version: ${NEXT_VERSION}, Tag: ${TAG}"
+
+      - id: bump_version
+        name: Bump version files
+        if: steps.compute_version.outputs.skip != 'true'
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          bun run version-set ${{ steps.compute_version.outputs.version }}
+
+      - id: generate_changelog
+        name: Generate changelog
+        if: steps.compute_version.outputs.skip != 'true'
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          # Generate changelog for unreleased commits
+          CHANGELOG=$(convco changelog --unreleased 2>/dev/null || echo "No changelog available")
+          # Write to file for the release step (multiline output)
+          echo "${CHANGELOG}" > /tmp/changelog.md
+          echo "Generated changelog for release"
+
+      - id: create_release
+        name: Create Pre-Release
+        if: steps.compute_version.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.compute_version.outputs.tag }}" \
+            --title "Pre-Release ${{ steps.compute_version.outputs.tag }}" \
+            --notes-file /tmp/changelog.md \
+            --prerelease \
+            --target "${{ github.sha }}"

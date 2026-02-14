@@ -1,0 +1,18 @@
+---
+name: Setup Juno
+description: Install dependencies and verify generated config files are up to date.
+
+runs:
+  using: composite
+  steps:
+    - id: install_deps
+      name: Install Dependencies
+      shell: devenv shell --quiet bash -- -e {0}
+      run: |
+        bun install
+
+    - id: config_check
+      name: Verify Config
+      shell: devenv shell --quiet bash -- -e {0}
+      run: |
+        bun run client-config -- --check

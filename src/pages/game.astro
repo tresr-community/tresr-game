@@ -1,0 +1,230 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import PhaserGame from "@/components/game/PhaserGame.astro";
+import FeeGate from "@/components/game/FeeGate.astro";
+import BanModal from "@/components/game/BanModal.astro";
+import Loader from "@/components/game/Loader.astro";
+---
+
+<BaseLayout title="Tresr Game | Active Session">
+  <Loader minTime={1500} id="game-loader" />
+  <FeeGate />
+  <BanModal />
+
+  <div id="game-container" class="hidden h-screen w-full">
+    <PhaserGame />
+  </div>
+
+  <!-- Portrait orientation warning (ticket #190) -->
+  <div
+    id="portrait-warning"
+    class="bg-base-300/95 fixed inset-0 z-[9999] hidden flex-col items-center justify-center gap-4 text-center"
+  >
+    <span class="text-6xl">&#x1F4F1;</span>
+    <p class="text-primary font-display text-2xl font-bold">
+      ROTATE YOUR DEVICE
+    </p>
+    <p class="max-w-xs opacity-70">
+      This game is best played in landscape mode.
+    </p>
+  </div>
+
+  <script>
+    import {getAuthState, initAuth} from "@/lib/auth";
+    import {checkDeviceBan} from "@/lib/auth/ban";
+    import {isGuestRateLimited} from "@/lib/auth/guest";
+    import {isFeePaid, showFeeGate} from "@/lib/game/fee-gate";
+    import {profileStore} from "@/lib/user/store";
+    import {trackGameStart} from "@/lib/metrics/analytics";
+    import {config} from "@/lib/config/client";
+    import {log} from "@/lib/utils/log";
+
+    const COMPONENT_NAME = "GamePage";
+
+    function checkBan(): boolean {
+      const profile = profileStore.get();
+      if (!profile) return false;
+
+      const bannedUntil = profile.banned_until;
+      if (bannedUntil == null) return false;
+
+      const now = Date.now();
+      if (bannedUntil > now) {
+        log.info(COMPONENT_NAME, `User is banned until ${bannedUntil}`);
+        document.dispatchEvent(
+          new CustomEvent("tresr:ban-modal-open", {
+            detail: {
+              bannedUntil,
+              offenceCount: profile.offence_count ?? 0,
+            },
+          })
+        );
+        return true;
+      }
+
+      return false;
+    }
+
+    async function checkAuthAndFee() {
+      await initAuth();
+      const auth = getAuthState();
+
+      if (!auth.isAuthenticated) {
+        window.location.href = "/";
+        return;
+      }
+
+      // Check device-level ban first — applies to ALL modes (ticket #203)
+      const deviceBan = checkDeviceBan();
+      if (deviceBan) {
+        log.info(COMPONENT_NAME, "Device is banned, showing ban modal");
+        document.dispatchEvent(
+          new CustomEvent("tresr:ban-modal-open", {
+            detail: {
+              bannedUntil: deviceBan.bannedUntil,
+              offenceCount: deviceBan.offenceCount,
+            },
+          })
+        );
+        return;
+      }
+
+      // Check profile-level ban (authenticated users with Juno profile)
+      if (checkBan()) {
+        return;
+      }
+
+      // Guests skip fee gate (rate limit enforced at START button,
+      // but also checked here as fallback for direct URL navigation)
+      if (auth.isGuest) {
+        if (isGuestRateLimited()) {
+          log.info(COMPONENT_NAME, "Guest rate limit reached, redirecting");
+          window.location.href = "/";
+          return;
+        }
+        log.info(COMPONENT_NAME, "Guest mode - skipping fee gate");
+        startGame();
+        return;
+      }
+
+      // IID users without a linked wallet cannot pay the fee
+      const profile = profileStore.get();
+      if (profile && !profile.wallet.evmWalletLinked) {
+        log.info(COMPONENT_NAME, "No wallet linked, cannot enter fee gate");
+        window.showWarningToast("You need to link a wallet first");
+        window.location.href = "/";
+        return;
+      }
+
+      // Skip fee gate if vault contract hasn't been deployed yet (zero address)
+      const {isVaultDeployed} = await import("@/lib/wallet/avalanche");
+      if (!isVaultDeployed(config)) {
+        log.info(COMPONENT_NAME, "Vault not deployed, skipping fee gate");
+        startGame();
+        return;
+      }
+
+      // Degens must pay the fee
+      if (await isFeePaid()) {
+        log.info(COMPONENT_NAME, "Fee already paid this session");
+        startGame();
+        return;
+      }
+
+      // Show fee gate modal — blocks until paid or aborted.
+      // Timeout applies to blockchain transaction confirmation, not modal display.
+      const feeTimeout = config.gameplay.fee_gate.transaction_timeout_ms;
+      try {
+        await showFeeGate(feeTimeout);
+        log.info(COMPONENT_NAME, "Fee paid successfully");
+        startGame();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("timed out")) {
+          log.error(COMPONENT_NAME, "Fee gate transaction timed out");
+          window.location.href = "/";
+        } else {
+          log.info(COMPONENT_NAME, "Fee payment aborted, returning to home");
+          window.location.href = "/";
+        }
+      }
+    }
+
+    // Orientation lock — landscape during gameplay (ticket #190)
+    // Screen Orientation API lock/unlock not in all TS lib definitions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const orientation = screen.orientation as any;
+
+    async function requestLandscapeLock() {
+      try {
+        if (orientation?.lock) {
+          await orientation.lock("landscape");
+          log.info(COMPONENT_NAME, "Screen orientation locked to landscape");
+        }
+      } catch {
+        // API not supported or requires fullscreen — graceful fallback
+        log.debug(COMPONENT_NAME, "Orientation lock not available");
+      }
+    }
+
+    function releaseLandscapeLock() {
+      try {
+        if (orientation?.unlock) {
+          orientation.unlock();
+        }
+      } catch {
+        // Ignore
+      }
+    }
+
+    function startGame() {
+      const container = document.getElementById("game-container");
+      if (container) {
+        container.classList.remove("hidden");
+      }
+      requestLandscapeLock();
+      trackGameStart();
+
+      // Signal PhaserGame component to initialize the engine.
+      // This ensures narration/music/game don't start until fee is resolved.
+      log.info(COMPONENT_NAME, "Dispatching game engine start event");
+      document.dispatchEvent(new CustomEvent("tresr:start-game-engine"));
+    }
+
+    // Portrait detection — show warning overlay on mobile portrait (ticket #190)
+    function checkOrientation() {
+      const warning = document.getElementById("portrait-warning");
+      if (!warning) return;
+      const isPortrait =
+        window.matchMedia("(orientation: portrait)").matches &&
+        "ontouchstart" in window;
+      if (isPortrait) {
+        warning.classList.remove("hidden");
+        warning.classList.add("flex");
+      } else {
+        warning.classList.add("hidden");
+        warning.classList.remove("flex");
+      }
+    }
+
+    const portraitMql = window.matchMedia("(orientation: portrait)");
+    window.addEventListener("orientationchange", checkOrientation);
+    portraitMql.addEventListener("change", checkOrientation);
+
+    // Release lock when leaving game page
+    window.addEventListener("beforeunload", releaseLandscapeLock);
+
+    document.addEventListener(
+      "astro:before-preparation",
+      () => {
+        window.removeEventListener("orientationchange", checkOrientation);
+        portraitMql.removeEventListener("change", checkOrientation);
+        window.removeEventListener("beforeunload", releaseLandscapeLock);
+        releaseLandscapeLock();
+      },
+      {once: true}
+    );
+
+    checkAuthAndFee();
+  </script>
+</BaseLayout>

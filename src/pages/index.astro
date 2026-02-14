@@ -1,0 +1,201 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import HowToPlayModal from "@/components/game/HowToPlayModal.astro";
+import LeaderboardModal from "@/components/game/LeaderboardModal.astro";
+import Loader from "@/components/game/Loader.astro";
+import LoginButton from "@/components/auth/LoginButton.astro";
+import VaultBalance from "@/components/wallet/VaultBalance.astro";
+import Footer from "@/components/user/Footer.astro";
+import type {ConfigTypes} from "@/types/config.ts";
+import {config} from "@/lib/config/client.ts";
+
+const appName: ConfigTypes["app"]["name"] = config.app.name;
+---
+
+<BaseLayout title={appName}>
+  <Loader />
+
+  <!-- Wallpaper Background (ticket #189) -->
+  <div
+    id="wallpaper-bg"
+    class="pointer-events-none fixed inset-0 z-[-2] bg-cover bg-center bg-no-repeat opacity-0 transition-opacity duration-1000"
+  >
+  </div>
+
+  <!-- Terminal Grid Background -->
+  <div
+    class="pointer-events-none fixed inset-0 z-[-1] bg-[linear-gradient(rgba(18,16,11,0.8)_2px,transparent_2px),linear-gradient(90deg,rgba(18,16,11,0.8)_2px,transparent_2px)] bg-[size:40px_40px] opacity-20"
+  >
+  </div>
+
+  <div id="main-content" class="opacity-0 transition-opacity duration-1000">
+    <div class="hero relative flex min-h-screen flex-col justify-center">
+      <div class="hero-content z-10 text-center">
+        <div class="max-w-3xl">
+          <h1
+            class="font-display text-primary mb-2 text-6xl font-black tracking-tighter drop-shadow-[0_0_10px_rgba(var(--primary),0.8)] md:text-8xl"
+          >
+            {appName}
+          </h1>
+          <p
+            class="border-secondary/20 bg-base-100/50 my-8 border-y py-4 py-6 font-mono text-xl tracking-widest uppercase backdrop-blur md:text-2xl"
+          >
+            <span class="text-info">COLLECT KEYS.</span>{" "}
+            <span class="text-error">FIGHT ENEMIES.</span>{" "}
+            <span class="text-warning italic">CLAIM THE TRESR.</span>
+          </p>
+
+          <div class="mt-8 flex flex-col items-center gap-6">
+            <div class="flex flex-col gap-4 md:flex-row">
+              <LoginButton />
+            </div>
+
+            <div
+              class="grid w-full max-w-4xl grid-cols-1 gap-6 opacity-80 md:grid-cols-3"
+            >
+              <div class="stats bg-base-200/50 border-primary/20 border shadow">
+                <div class="stat place-items-center">
+                  <div class="stat-title font-mono text-xs">OBJECTIVE</div>
+                  <div class="stat-value text-primary text-3xl">COLLECT</div>
+                  <div class="stat-desc">Gather Keys</div>
+                </div>
+              </div>
+              <div id="vault-display">
+                <VaultBalance />
+              </div>
+              <div class="stats bg-base-200/50 border-primary/20 border shadow">
+                <div class="stat place-items-center">
+                  <div class="stat-title font-mono text-xs">THREAT</div>
+                  <div class="stat-value text-secondary text-3xl">SURVIVE</div>
+                  <div class="stat-desc">5 Minutes</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Corner Buttons -->
+    <div class="fixed bottom-8 left-8 z-30">
+      <button
+        id="btn-leaderboard"
+        class="btn btn-ghost text-primary hover:bg-primary/10 hover:border-primary/50 gap-2 border border-transparent font-mono"
+      >
+        <span class="text-xl">🏆</span>
+        <span class="hidden md:inline">LEADERBOARD</span>
+      </button>
+    </div>
+
+    <div class="fixed right-8 bottom-8 z-30">
+      <button
+        id="btn-manual"
+        class="btn btn-ghost text-primary hover:bg-primary/10 hover:border-primary/50 gap-2 border border-transparent font-mono"
+      >
+        <span class="hidden md:inline">MANUAL</span>
+        <span class="text-xl">❓</span>
+      </button>
+    </div>
+
+    <Footer />
+  </div>
+
+  <HowToPlayModal />
+  <LeaderboardModal />
+</BaseLayout>
+
+<script>
+  import {config} from "@/lib/config/client";
+
+  // Wallpaper rotation (ticket #189)
+  const LAST_WALLPAPER_KEY = "tresr_last_wallpaper";
+
+  function selectWallpaper(): string {
+    const wallpapers = config.assets.wallpapers;
+    if (wallpapers.length === 0) return "";
+
+    const last = localStorage.getItem(LAST_WALLPAPER_KEY);
+    let candidates = wallpapers;
+    if (last && wallpapers.length > 1) {
+      candidates = wallpapers.filter((w) => w !== last);
+    }
+
+    const selected = candidates[Math.floor(Math.random() * candidates.length)];
+    localStorage.setItem(LAST_WALLPAPER_KEY, selected);
+    return selected;
+  }
+
+  const wallpaper = selectWallpaper();
+  if (wallpaper) {
+    const bg = document.getElementById("wallpaper-bg");
+    if (bg) {
+      const img = new Image();
+      img.onload = () => {
+        bg.style.backgroundImage = `url('${img.src}')`;
+        bg.classList.remove("opacity-0");
+        bg.classList.add("opacity-30");
+      };
+      img.onerror = () => {
+        // Fallback: leave without wallpaper
+      };
+      img.src = `/assets/images/wallpapers/${wallpaper}.webp`;
+    }
+  }
+
+  // Handle fade-in after loader
+  function handleLoaderReady() {
+    document.getElementById("main-content")?.classList.remove("opacity-0");
+  }
+  window.addEventListener("loader-ready", handleLoaderReady);
+
+  // Modal triggers
+  document.getElementById("btn-leaderboard")?.addEventListener("click", () => {
+    document.dispatchEvent(new CustomEvent("tresr:open-leaderboard"));
+  });
+
+  document.getElementById("btn-manual")?.addEventListener("click", () => {
+    // @ts-ignore
+    window.openHowToPlayModal?.();
+  });
+
+  // Vault status — lock START button when vault is below minimum cap
+  const loginBtn = document.getElementById("login-button");
+  let originalLoginText = loginBtn?.textContent?.trim() ?? "LOGIN";
+  let vaultLocked = false;
+
+  document.addEventListener("tresr:vault-status", ((e: CustomEvent) => {
+    const {locked} = e.detail;
+    if (!loginBtn) return;
+
+    if (locked && !vaultLocked) {
+      vaultLocked = true;
+      loginBtn.setAttribute("disabled", "true");
+      loginBtn.classList.add("btn-disabled", "opacity-50");
+      loginBtn.textContent = "VAULT RECHARGING";
+    } else if (!locked && vaultLocked) {
+      vaultLocked = false;
+      loginBtn.removeAttribute("disabled");
+      loginBtn.classList.remove("btn-disabled", "opacity-50");
+      loginBtn.textContent = originalLoginText;
+    }
+  }) as EventListener);
+
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      window.removeEventListener("loader-ready", handleLoaderReady);
+    },
+    {once: true}
+  );
+</script>
+
+<style>
+  .btn-xl {
+    height: 4rem;
+    min-height: 4rem;
+  }
+
+  .clip-path-polygon {
+    clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+  }
+</style>

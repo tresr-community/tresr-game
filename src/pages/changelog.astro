@@ -1,0 +1,129 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import {config} from "@/lib/config/client.ts";
+
+const versions = config.changelog?.versions ?? [];
+---
+
+<BaseLayout title="Changelog | Tresr">
+  <div class="min-h-screen pt-20 pb-10">
+    <div class="container mx-auto max-w-3xl px-4">
+      <h1
+        class="text-primary font-display mb-12 text-center text-5xl font-black tracking-widest drop-shadow-[0_0_10px_rgba(var(--primary),0.8)]"
+      >
+        CHANGELOG
+      </h1>
+
+      <!-- Ron Jay Briefing -->
+      <div
+        class="mb-12 flex flex-col items-center gap-4 sm:flex-row sm:items-start"
+      >
+        <img
+          src="/assets/images/ron_jay_changelog.webp"
+          class="mask mask-squircle w-24 shrink-0 shadow-lg"
+          alt="Ron Jay"
+        />
+        <div class="chat chat-start w-full">
+          <div class="chat-header">
+            Ron Jay
+            <time class="text-xs opacity-50">Patch Notes</time>
+          </div>
+          <div class="chat-bubble chat-bubble-primary text-sm sm:text-base">
+            Listen up, Degen. Here's what we shipped.
+            <br />
+            <br />
+            Every update, every fix, every buff and nerf — it's all here.
+          </div>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <ul class="timeline timeline-vertical timeline-compact">
+        {
+          versions.map((release, i) => (
+            <li>
+              {i > 0 && <hr class={i === 1 ? "bg-primary" : ""} />}
+              <div class="timeline-middle">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  class={`h-5 w-5 ${i === 0 ? "text-primary" : "opacity-50"}`}
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div class="timeline-end mb-8 w-full">
+                <div
+                  class={`card ${i === 0 ? "border-primary/30 bg-base-200/70" : "border-base-content/10 bg-base-200/40"} border`}
+                >
+                  <div class="card-body gap-3 p-4 sm:p-6">
+                    {/* Version header */}
+                    <div class="flex flex-wrap items-center gap-3">
+                      <span
+                        class={`badge ${i === 0 ? "badge-primary" : "badge-ghost"} badge-lg font-mono font-bold`}
+                      >
+                        v{release.version}
+                      </span>
+                      {i === 0 && (
+                        <span class="badge badge-secondary badge-soft badge-sm animate-pulse">
+                          LATEST
+                        </span>
+                      )}
+                      <span class="font-mono text-xs opacity-50">
+                        {release.date}
+                      </span>
+                    </div>
+
+                    {/* Title */}
+                    <h2
+                      class={`text-lg font-bold tracking-wide ${i === 0 ? "text-primary" : "opacity-70"}`}
+                    >
+                      {release.title}
+                    </h2>
+
+                    {/* Notes */}
+                    <ul class="space-y-1.5">
+                      {release.notes.map((note) => (
+                        <li class="flex items-start gap-2 text-sm">
+                          <span class="text-primary mt-0.5 shrink-0 font-mono text-xs">
+                            &#9656;
+                          </span>
+                          <span class="opacity-80">{note}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              {i < versions.length - 1 && (
+                <hr class={i === 0 ? "bg-primary" : ""} />
+              )}
+            </li>
+          ))
+        }
+      </ul>
+
+      {
+        versions.length === 0 && (
+          <div class="text-center font-mono opacity-50">
+            No changelog entries yet.
+          </div>
+        )
+      }
+
+      <div class="mt-12 text-center">
+        <a
+          href="/"
+          class="btn btn-outline btn-primary font-mono tracking-widest"
+        >
+          RETURN TO BASE
+        </a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

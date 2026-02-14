@@ -1,0 +1,118 @@
+import Phaser from "phaser";
+import type {ConfigTypes} from "@/types/config";
+import {SpriteManager, type SpritesConfig} from "@/lib/game/SpriteManager";
+
+// Loot can be either health or a powerup.
+// Health is pretty obvious — it heals the player when collected.
+// Powerups are special, they currently spawn the 'Tresr Bot'.
+export type LootType = "health" | "powerup";
+
+/**
+ * Collectible pickup spawned when enemies are defeated.
+ *
+ * Extends Phaser.Physics.Arcade.Sprite directly rather than BaseEntity.
+ * BaseEntity provides health, knockback, health bars, and SpriteManager
+ * animation states — none of which apply to a collectible item.
+ *
+ * Timer and tween cleanup is handled manually in spawn() and kill()
+ * to ensure rapid pool recycling doesn't leak resources.
+ */
+export class LootDrop extends Phaser.Physics.Arcade.Sprite {
+  public lootType: LootType = "health";
+  public healAmount: number = 0;
+  private config: ConfigTypes;
+  private bobTween?: Phaser.Tweens.Tween;
+  private despawnTimer?: Phaser.Time.TimerEvent;
+
+  constructor(scene: Phaser.Scene, x: number, y: number) {
+    super(scene, x, y, "health_1");
+    this.config = scene.registry.get("full_config") as ConfigTypes;
+    // Feet-anchored origin to match BaseEntity/Player convention
+    this.setOrigin(0.5, 1.0);
+    scene.add.existing(this);
+    scene.physics.add.existing(this);
+    this.setActive(false);
+    this.setVisible(false);
+  }
+
+  /**
+   * Spawn a loot drop at the given position.
+   */
+  public spawn(x: number, y: number, type: LootType, textureKey: string) {
+    this.lootType = type;
+    this.setTexture(textureKey);
+    this.setPosition(x, y);
+    this.setActive(true);
+    this.setVisible(true);
+    if (this.body) {
+      (this.body as Phaser.Physics.Arcade.Body).enable = true;
+    }
+
+    const lootConfig = this.config.gameplay.entities.enemy.loot;
+    const spritesConfig = this.scene.registry.get(
+      "sprites_config"
+    ) as SpritesConfig;
+    const scale = SpriteManager.getScaleFactor(spritesConfig, textureKey);
+    this.setScale(scale);
+    this.healAmount = type === "health" ? lootConfig.health.heal_amount : 0;
+
+    // Position physics body at feet level to match player body anchor.
+    // Values are in unscaled frame-local coords — Phaser applies _sx/_sy
+    // internally to both size and offset. Use a generous body so overlap
+    // detection works reliably even during the bob cycle.
+    if (this.body) {
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      const bw = 400;
+      const bh = 400;
+      body.setSize(bw, bh);
+      body.setOffset((this.width - bw) / 2, this.height - bh);
+    }
+
+    const animKey = `${textureKey}_idle`;
+    if (this.scene.anims.exists(animKey)) {
+      this.play(animKey, true);
+    }
+
+    // Stop previous bob tween if respawned before kill (ticket #253)
+    if (this.bobTween) {
+      this.bobTween.stop();
+    }
+
+    // Bobbing tween for visual feedback
+    this.bobTween = this.scene.tweens.add({
+      targets: this,
+      y: y - lootConfig.bob_distance,
+      duration: lootConfig.bob_duration,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.easeInOut",
+    });
+
+    // Auto-despawn — destroy previous timer if respawned before it fires (ticket #195)
+    if (this.despawnTimer) {
+      this.despawnTimer.destroy();
+    }
+    this.despawnTimer = this.scene.time.delayedCall(
+      lootConfig.despawn_ms,
+      () => {
+        this.kill();
+      }
+    );
+  }
+
+  public kill() {
+    if (this.despawnTimer) {
+      this.despawnTimer.destroy();
+      this.despawnTimer = undefined;
+    }
+    if (this.bobTween) {
+      this.bobTween.stop();
+      this.bobTween = undefined;
+    }
+    this.setActive(false);
+    this.setVisible(false);
+    if (this.body) {
+      (this.body as Phaser.Physics.Arcade.Body).enable = false;
+    }
+  }
+}

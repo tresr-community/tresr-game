@@ -1,0 +1,18 @@
+# Auto-generated files
+public/config-client.json
+public/precache-manifest.json
+public/workers/
+src/declarations/
+src/env.d.ts
+src/lib/config/client.ts
+src/lib/config/server-constants.ts
+src/lib/config/validate.ts
+src/styles/global.css
+src/types/config.ts
+
+# Build outputs
+dist/
+.astro/
+
+# Dependencies
+node_modules/

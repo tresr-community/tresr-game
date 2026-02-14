@@ -1,0 +1,215 @@
+<dialog id="leaderboard-modal" class="modal">
+  <div class="modal-box bg-base-100 border-primary/30 w-11/12 max-w-2xl border">
+    <div class="mb-4 flex items-center justify-between">
+      <h2 class="text-primary flex items-center gap-2 text-2xl font-bold">
+        <span>🏆</span> DEGENERATE HALL OF FAME
+      </h2>
+      <button id="btn-close-leaderboard" class="btn btn-sm btn-circle btn-ghost"
+        >✕</button
+      >
+    </div>
+
+    <div id="leaderboard-loading" class="py-10 text-center">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+      <p class="text-primary mt-2 animate-pulse">Accessing Mainframe...</p>
+    </div>
+
+    <div id="leaderboard-table-container" class="hidden overflow-x-auto">
+      <table class="table-zebra table w-full">
+        <thead>
+          <tr class="text-secondary text-xs uppercase">
+            <th>#</th>
+            <th>Agent</th>
+            <th class="text-right">Score</th>
+            <th class="hidden text-right sm:table-cell">Date</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboard-list">
+          <!-- Rows injected here -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button id="btn-backdrop-close">close</button>
+  </form>
+</dialog>
+
+<script>
+  import {listDocs} from "@junobuild/core";
+  import PWA from "@/lib/pwa";
+  import {log} from "@/lib/utils/log";
+
+  const COMPONENT_NAME = "LeaderboardModal";
+
+  const loading = document.getElementById("leaderboard-loading");
+  const container = document.getElementById("leaderboard-table-container");
+  const list = document.getElementById("leaderboard-list");
+  const modal = document.getElementById(
+    "leaderboard-modal"
+  ) as HTMLDialogElement;
+
+  function openLeaderboardModal() {
+    modal?.showModal();
+    loadLeaderboard();
+    PWA.getInstance().checkForUpdates();
+  }
+
+  // Close logic (ticket #241: named handler for cleanup)
+  const btnCloseLeaderboard = document.getElementById("btn-close-leaderboard");
+  function handleCloseLeaderboard() {
+    modal?.close();
+  }
+  btnCloseLeaderboard?.addEventListener("click", handleCloseLeaderboard);
+
+  // Safe DOM builder for message rows (ticket #239)
+  function createMessageRow(
+    message: string,
+    colorClass: string
+  ): HTMLTableRowElement {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 4;
+    td.className = `p-4 text-center ${colorClass}`;
+    td.textContent = message;
+    tr.appendChild(td);
+    return tr;
+  }
+
+  async function loadLeaderboard() {
+    if (!loading || !container || !list) return;
+
+    loading.classList.remove("hidden");
+    container.classList.add("hidden");
+    list.replaceChildren();
+
+    // Timeout after 10 seconds (ticket #165)
+    const timeoutId = setTimeout(() => {
+      if (loading) loading.classList.add("hidden");
+      if (container) container.classList.remove("hidden");
+      if (list)
+        list.replaceChildren(
+          createMessageRow("Connection timed out. Try again.", "text-warning")
+        );
+    }, 10000);
+
+    try {
+      // Juno: listDocs on "users" collection — no Rust hooks triggered (read-only).
+      const {items} = await listDocs({
+        collection: "users",
+        filter: {
+          order: {
+            desc: true,
+            // @ts-ignore
+            field: "stats.highScore",
+          },
+        },
+        paginate: {
+          limit: 10,
+        },
+      });
+
+      items.forEach((item, index) => {
+        const profile = item.data as Record<string, unknown> | undefined;
+        const row = document.createElement("tr");
+        row.className = "hover:bg-primary/5 transition-colors";
+
+        const date = item.updated_at
+          ? new Date(Number(item.updated_at / 1000000n)).toLocaleDateString()
+          : "N/A";
+
+        const nickname =
+          typeof profile?.nickname === "string"
+            ? profile.nickname
+            : "Unknown Agent";
+        const avatarLetter = nickname[0]?.toUpperCase() || "A";
+        const userId =
+          typeof profile?.userId === "string"
+            ? profile.userId.substring(0, 8)
+            : "????????";
+        const stats = profile?.stats as Record<string, unknown> | undefined;
+        const score = stats?.highScore?.toString() || "0";
+
+        // Rank cell
+        const tdRank = document.createElement("td");
+        tdRank.className = "font-mono text-xs opacity-50";
+        tdRank.textContent = String(index + 1);
+
+        // Agent cell
+        const tdAgent = document.createElement("td");
+        const agentWrapper = document.createElement("div");
+        agentWrapper.className = "flex items-center gap-2";
+
+        const avatarDiv = document.createElement("div");
+        avatarDiv.className = "avatar placeholder";
+        const avatarInner = document.createElement("div");
+        avatarInner.className =
+          "bg-primary/20 text-primary w-8 rounded-full border border-primary/30";
+        const avatarSpan = document.createElement("span");
+        avatarSpan.className = "text-xs";
+        avatarSpan.textContent = avatarLetter;
+        avatarInner.appendChild(avatarSpan);
+        avatarDiv.appendChild(avatarInner);
+
+        const infoDiv = document.createElement("div");
+        const nameDiv = document.createElement("div");
+        nameDiv.className = "font-bold text-sm";
+        nameDiv.textContent = nickname;
+        const idDiv = document.createElement("div");
+        idDiv.className = "text-[10px] opacity-40 font-mono";
+        idDiv.textContent = `${userId}...`;
+        infoDiv.appendChild(nameDiv);
+        infoDiv.appendChild(idDiv);
+
+        agentWrapper.appendChild(avatarDiv);
+        agentWrapper.appendChild(infoDiv);
+        tdAgent.appendChild(agentWrapper);
+
+        // Score cell
+        const tdScore = document.createElement("td");
+        tdScore.className = "text-right font-mono font-bold text-primary";
+        tdScore.textContent = score;
+
+        // Date cell
+        const tdDate = document.createElement("td");
+        tdDate.className =
+          "hidden text-right font-mono text-[10px] opacity-40 sm:table-cell uppercase";
+        tdDate.textContent = date;
+
+        row.appendChild(tdRank);
+        row.appendChild(tdAgent);
+        row.appendChild(tdScore);
+        row.appendChild(tdDate);
+        list.appendChild(row);
+      });
+    } catch (err) {
+      log.error(COMPONENT_NAME, "Failed to load leaderboard", err);
+      list.replaceChildren(
+        createMessageRow("Failed to load mainframe data.", "text-error")
+      );
+    } finally {
+      clearTimeout(timeoutId);
+      loading.classList.add("hidden");
+      container.classList.remove("hidden");
+    }
+  }
+
+  // Listen for custom event instead of window global (ticket #165)
+  function handleOpenLeaderboard() {
+    openLeaderboardModal();
+  }
+  document.addEventListener("tresr:open-leaderboard", handleOpenLeaderboard);
+
+  // Cleanup document-level listener on navigation (ticket #241)
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      document.removeEventListener(
+        "tresr:open-leaderboard",
+        handleOpenLeaderboard
+      );
+      btnCloseLeaderboard?.removeEventListener("click", handleCloseLeaderboard);
+    },
+    {once: true}
+  );
+</script>

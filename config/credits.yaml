@@ -1,0 +1,38 @@
+---
+description: |
+  This project stands on the shoulders of giants, without whom, none of it would be possible.
+
+  A special thank you to the following individuals;
+coders:
+  - name: MAHDTech
+    role: Degenerate Programmer
+    description: Platform Engineer moonlighting as a game dev.
+  - name: Phantom
+    role: Opinion Giver
+    description: MAHDTech's eldest son, giver of opinions and selector of AI Art/Music.
+  - name: Remminator
+    role: Consumer of Snacks
+    description: MAHDTech's youngest son and master of eating snacks.
+components:
+  - name: Astro
+  - name: Avalanche Network
+  - name: DaisyUI
+  - name: Internet Computer Protocol
+  - name: Juno
+  - name: Phaser 3
+assets:
+  - type: audio
+    subtype: sfx
+    provider: Eleven Labs
+  - type: audio
+    subtype: narration
+    provider: Eleven Labs
+  - type: audio
+    subtype: music
+    provider: Suno
+  - type: art
+    subtype: character
+    provider: Google Gemini Nano Banana
+  - type: art
+    subtype: backgrounds
+    provider: Google Gemini Nano Banana
