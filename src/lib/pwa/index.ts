@@ -17,6 +17,7 @@ class PWA {
   private registration: ServiceWorkerRegistration | null = null;
   private updatePending: boolean = false; // true while waiting to notify
   private updateCheckInterval: ReturnType<typeof setInterval> | null = null;
+  private updateNotifyTimeout: ReturnType<typeof setTimeout> | null = null;
 
   private constructor() {}
 
@@ -102,7 +103,8 @@ class PWA {
       COMPONENT_NAME,
       `Update detected — waiting ${UPDATE_NOTIFY_DELAY_MS / 1000}s for assets to upload before notifying user`
     );
-    setTimeout(() => {
+    this.updateNotifyTimeout = setTimeout(() => {
+      this.updateNotifyTimeout = null;
       this.notifyUpdateAvailable();
       // Keep updatePending true — cleared only after user acts or dismisses
     }, UPDATE_NOTIFY_DELAY_MS);
@@ -237,6 +239,10 @@ class PWA {
   }
 
   destroy() {
+    if (this.updateNotifyTimeout) {
+      clearTimeout(this.updateNotifyTimeout);
+      this.updateNotifyTimeout = null;
+    }
     if (this.updateCheckInterval) {
       clearInterval(this.updateCheckInterval);
       this.updateCheckInterval = null;
