@@ -11,9 +11,9 @@
 #   1. Compute next version via convco (conventional commits)
 #   2. Bump version in package.json, manifest.json, Cargo.toml
 #   3. Testnet: Tag as v{version}, create pre-release
-#      → triggers cd-juno-testnet.yaml (on: prereleased)
+#      → calls cd-juno-testnet.yaml (workflow_call)
 #   4. Mainnet: Promote existing pre-release tag to release
-#      → triggers cd-juno-mainnet.yaml (on: released)
+#      → calls cd-juno-mainnet.yaml (workflow_call)
 ##################################################
 
 name: Release
@@ -80,6 +80,11 @@ jobs:
 
     timeout-minutes: 15
     continue-on-error: false
+
+    outputs:
+      version: ${{ steps.compute_version.outputs.version }}
+      tag: ${{ steps.compute_version.outputs.tag }}
+      skip: ${{ steps.compute_version.outputs.skip }}
 
     steps:
       - id: checkout_repository
@@ -152,6 +157,20 @@ jobs:
             --target "${{ github.sha }}"
 
   ##################################################
+  # Deploy to Testnet (Juno)
+  # Calls cd-juno-testnet.yaml via workflow_call
+  ##################################################
+
+  deploy-juno-testnet:
+    name: Deploy Juno (Testnet)
+    needs: pre-release
+    if: needs.pre-release.outputs.skip != 'true'
+    uses: ./.github/workflows/cd-juno-testnet.yaml
+    with:
+      version: ${{ needs.pre-release.outputs.tag }}
+    secrets: inherit
+
+  ##################################################
   # Promote a pre-release to release (mainnet)
   # Triggers: manual dispatch with Mainnet
   # Requires GitHub Environment "Mainnet" approvers
@@ -168,6 +187,9 @@ jobs:
 
     timeout-minutes: 5
     continue-on-error: false
+
+    outputs:
+      tag: ${{ steps.validate.outputs.tag }}
 
     steps:
       - id: validate
@@ -206,3 +228,16 @@ jobs:
             --title "Release ${{ steps.validate.outputs.tag }}"
 
           echo "Promoted ${{ steps.validate.outputs.tag }} to release"
+
+  ##################################################
+  # Deploy to Mainnet (Juno)
+  # Calls cd-juno-mainnet.yaml via workflow_call
+  ##################################################
+
+  deploy-juno-mainnet:
+    name: Deploy Juno (Mainnet)
+    needs: promote
+    uses: ./.github/workflows/cd-juno-mainnet.yaml
+    with:
+      version: ${{ needs.promote.outputs.tag }}
+    secrets: inherit

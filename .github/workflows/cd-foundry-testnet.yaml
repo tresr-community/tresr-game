@@ -80,6 +80,14 @@ jobs:
             echo "ADMIN_ADDRESS=$(yq '.client.blockchain.avalanche.testnet.safe_address' config/tresr.yaml)"
           } >> "$GITHUB_OUTPUT"
 
+      - id: forge_build
+        name: Build Contracts
+        shell: devenv shell --quiet bash -- -e {0}
+        env:
+          FOUNDRY_PROFILE: ci
+        run: |
+          forge build --root contracts
+
       - id: deploy_fuji
         name: Deploy to Fuji
         shell: devenv shell --quiet bash -- -e {0}

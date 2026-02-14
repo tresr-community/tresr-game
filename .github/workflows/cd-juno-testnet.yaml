@@ -3,7 +3,8 @@
 # Name: cd-juno-testnet.yaml
 # Description: Deploy Juno to testnet (hosting + functions + config)
 #
-# Trigger: prereleased event (from cd-release.yaml)
+# Called by: cd-release.yaml (pre-release job)
+# Manual: workflow_dispatch
 #
 # Steps:
 #   1. Build serverless functions
@@ -15,9 +16,20 @@
 name: Juno Deploy (Testnet)
 
 on:
-  release:
-    types:
-      - prereleased
+  workflow_call:
+    inputs:
+      version:
+        description: "Release version (e.g. 0.1.0)"
+        type: string
+        required: false
+        default: ""
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (leave empty for current)"
+        type: string
+        required: false
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -95,10 +107,10 @@ jobs:
 
       - id: parse_tag
         name: Parse Release Tag
-        if: github.event.release.tag_name != ''
+        if: inputs.version != ''
         run: |
-          TAG="${{ github.event.release.tag_name }}"
-          VERSION="${TAG#v}"
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
           VERSION="${VERSION%-testnet}"
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
