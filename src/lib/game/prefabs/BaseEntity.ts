@@ -283,6 +283,28 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
+  /**
+   * Sync the Arcade body position to match the sprite's current (x, y),
+   * using the same formula as Phaser's Body.updateFromGameObject().
+   * Call this after manually setting this.x / this.y to prevent
+   * Body.postUpdate() from snapping the sprite to a stale position.
+   */
+  protected syncBodyPosition() {
+    const body = this.body as Phaser.Physics.Arcade.Body;
+    if (body && body.enable) {
+      const bodyX =
+        this.x + this.scaleX * (body.offset.x - this.displayOriginX);
+      const bodyY =
+        this.y + this.scaleY * (body.offset.y - this.displayOriginY);
+      body.position.x = bodyX;
+      body.position.y = bodyY;
+      body.prev.x = bodyX;
+      body.prev.y = bodyY;
+      body.prevFrame.x = bodyX;
+      body.prevFrame.y = bodyY;
+    }
+  }
+
   protected onGroundHit() {
     this._isAirDropping = false;
     if (!this._airDropLanding) return;

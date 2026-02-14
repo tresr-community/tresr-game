@@ -170,10 +170,11 @@ export const gameActions = {
 
   /** Reset to initial state */
   reset() {
-    const keys = Object.keys(INITIAL_STATE) as (keyof GameState)[];
+    const fresh = structuredClone(INITIAL_STATE);
+    const keys = Object.keys(fresh) as (keyof GameState)[];
     for (const key of keys) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      store.setKey(key, (INITIAL_STATE as any)[key]);
+      store.setKey(key, (fresh as any)[key]);
     }
   },
 };

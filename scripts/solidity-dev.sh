@@ -474,12 +474,15 @@ function run_fund() {
 # Deploy — Deploy Vault contract to Anvil
 # =============================================================================
 
-# Oracle address for local dev (same as admin — Anvil account #0)
-ANVIL_ORACLE_ADDRESS="$ANVIL_ADMIN_ADDRESS"
 # Burn address for testing
 ANVIL_BURN_ADDRESS="0x000000000000000000000000000000000000dEaD"
 
 function run_deploy() {
+	# Oracle address for local dev (same as admin — Anvil account #0)
+	# Must be set here (not at top-level) because ANVIL_ADMIN_ADDRESS
+	# is populated by load_config() which runs after script parse.
+	local ANVIL_ORACLE_ADDRESS="$ANVIL_ADMIN_ADDRESS"
+
 	assert_anvil_running
 
 	log_info "Building and deploying TresrVault (UUPS proxy) to Anvil..."
@@ -494,7 +497,10 @@ function run_deploy() {
 	}
 
 	# Deploy via script (implementation + proxy)
+	# Temporarily disable set -e so we can capture output AND exit code
 	local deploy_output
+	local deploy_exit
+	set +e
 	deploy_output=$(
 		DEPLOYER_PRIVATE_KEY="$DEPLOYER_PRIVATE_KEY" \
 			TOKEN_ADDRESS="$ANVIL_TOKEN_ADDRESS" \
@@ -506,6 +512,14 @@ function run_deploy() {
 			--broadcast \
 			2>&1
 	)
+	deploy_exit=$?
+	set -e
+
+	if [[ $deploy_exit -ne 0 ]]; then
+		log_error "Forge script failed (exit code ${deploy_exit}):"
+		echo "$deploy_output"
+		exit 1
+	fi
 
 	# Extract proxy address (second "Contract Address:" line, or look for "Proxy deployed at:")
 	local proxy_address
@@ -522,6 +536,11 @@ function run_deploy() {
 		exit 1
 	fi
 
+	# Auto-update tresr.yaml with the new proxy address (anvil section only)
+	cd ..
+	sed -i "/anvil:/,/testnet:/ s|vault_contract: \"0x[0-9a-fA-F]*\"|vault_contract: \"${proxy_address}\"|" "$CONFIG_FILE"
+	log_info "Updated ${CYAN}${CONFIG_FILE}${NC} → anvil.vault_contract: ${GREEN}${proxy_address}${NC}"
+
 	# Banner
 	cat <<-EOF
 
@@ -529,14 +548,11 @@ function run_deploy() {
 		${GREEN}   TresrVault (UUPS Proxy) deployed successfully!${NC}
 		${CYAN}==============================================================================${NC}
 
-		  Proxy:      ${GREEN}${proxy_address}${NC}  ← use this address
+		  Proxy:      ${GREEN}${proxy_address}${NC}  ← auto-updated in tresr.yaml
 		  Token:      ${ANVIL_TOKEN_ADDRESS}
 		  Admin:      ${ANVIL_ADMIN_ADDRESS}
 		  Oracle:     ${ANVIL_ORACLE_ADDRESS}
 		  Burn:       ${ANVIL_BURN_ADDRESS}
-
-		  ${YELLOW}Update config/tresr.yaml:${NC}
-		    anvil.vault_contract: "${proxy_address}"
 
 		${CYAN}==============================================================================${NC}
 

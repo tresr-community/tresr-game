@@ -242,6 +242,9 @@ declare module "/config-client.json" {
             powerup: {              drop_chance: number;
               variants: number;
             };
+            hitbox: {              width: number;
+              height: number;
+            };
             pool_size: number;
             bob_distance: number;
             bob_duration: number;
@@ -371,6 +374,8 @@ declare module "/config-client.json" {
           combat: {            attack_range: number;
             attack_cooldown_ms: number;
             target_switch_ms: number;
+            follow_distance: number;
+            follow_speed_mult: number;
           };
           lifetime: {            duration_ms: number;
             fade_duration_ms: number;
@@ -618,6 +623,10 @@ declare module "/config-client.json" {
         };
       };
       statics: unknown[];
+    };
+    anti_cheat: {      ban_durations_hours: Array<number>;
+      permanent_after_offence: number;
+      ban_reasons: string[];
     };
     credits: {      description: string;
       coders: Array<{        name: string;
@@ -878,6 +887,9 @@ declare module "../../../public/config-client.json" {
             powerup: {              drop_chance: number;
               variants: number;
             };
+            hitbox: {              width: number;
+              height: number;
+            };
             pool_size: number;
             bob_distance: number;
             bob_duration: number;
@@ -1007,6 +1019,8 @@ declare module "../../../public/config-client.json" {
           combat: {            attack_range: number;
             attack_cooldown_ms: number;
             target_switch_ms: number;
+            follow_distance: number;
+            follow_speed_mult: number;
           };
           lifetime: {            duration_ms: number;
             fade_duration_ms: number;
@@ -1254,6 +1268,10 @@ declare module "../../../public/config-client.json" {
         };
       };
       statics: unknown[];
+    };
+    anti_cheat: {      ban_durations_hours: Array<number>;
+      permanent_after_offence: number;
+      ban_reasons: string[];
     };
     credits: {      description: string;
       coders: Array<{        name: string;
