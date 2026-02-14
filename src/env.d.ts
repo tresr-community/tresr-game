@@ -371,6 +371,8 @@ declare module "/config-client.json" {
           combat: {            attack_range: number;
             attack_cooldown_ms: number;
             target_switch_ms: number;
+            follow_distance: number;
+            follow_speed_mult: number;
           };
           lifetime: {            duration_ms: number;
             fade_duration_ms: number;
@@ -1011,6 +1013,8 @@ declare module "../../../public/config-client.json" {
           combat: {            attack_range: number;
             attack_cooldown_ms: number;
             target_switch_ms: number;
+            follow_distance: number;
+            follow_speed_mult: number;
           };
           lifetime: {            duration_ms: number;
             fade_duration_ms: number;

@@ -236,11 +236,11 @@ export class TresrBot extends BaseEntity {
         this.owner.x,
         this.owner.groundY
       );
-      if (distToOwner > 80) {
+      if (distToOwner > botConfig.combat.follow_distance) {
         this.moveToward(
           this.owner.x,
           this.owner.groundY,
-          botConfig.speed * 0.7,
+          botConfig.speed * botConfig.combat.follow_speed_mult,
           dt
         );
       } else {

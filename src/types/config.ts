@@ -364,6 +364,8 @@ export interface ConfigTypes {  daisyui: {    themes: string[];
         combat: {          attack_range: number;
           attack_cooldown_ms: number;
           target_switch_ms: number;
+          follow_distance: number;
+          follow_speed_mult: number;
         };
         lifetime: {          duration_ms: number;
           fade_duration_ms: number;

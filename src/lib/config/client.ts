@@ -717,7 +717,9 @@ export const config: ConfigTypes = {
         "combat": {
           "attack_range": 80,
           "attack_cooldown_ms": 800,
-          "target_switch_ms": 2000
+          "target_switch_ms": 2000,
+          "follow_distance": 80,
+          "follow_speed_mult": 0.7
         },
         "lifetime": {
           "duration_ms": 30000,
@@ -1330,5 +1332,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "ab030477f04992621a50b0d059af165df38e2b34156357768ea4ff14fd507717"
+  "configHash": "a94b7acd5577ab7f8347fdc77839cc69d11672314318baadbbd560df6cc75d6f"
 };

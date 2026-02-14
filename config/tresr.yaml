@@ -582,6 +582,8 @@ client:
           attack_range: 80 # Distance to engage enemies (px)
           attack_cooldown_ms: 800 # Minimum time between attacks (ms)
           target_switch_ms: 2000 # How often the bot picks a new target (ms)
+          follow_distance: 80 # Distance from owner before bot follows (px)
+          follow_speed_mult: 0.7 # Speed multiplier when following owner (fraction of base speed)
         lifetime:
           duration_ms: 30000 # Total time the bot stays alive (ms)
           fade_duration_ms: 1500 # Fade-out duration before despawn (ms)
