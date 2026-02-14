@@ -134,6 +134,21 @@ fn default_theme() -> String {
 }
 
 // =============================================================================
+// Leaderboard Entry (stored in "leaderboard" collection)
+// =============================================================================
+
+/// Sanitized public leaderboard entry.
+/// Contains only non-sensitive data: nickname and game stats.
+/// Written by the `on_set_doc("users")` hook whenever a user profile is saved.
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct LeaderboardEntry {
+    pub nickname: String,
+    pub high_score: u64,
+    pub games_won: u64,
+}
+
+// =============================================================================
 // Deposit Request (stored in "deposits" collection)
 // =============================================================================
 
