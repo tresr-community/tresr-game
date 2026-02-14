@@ -17,7 +17,7 @@ junobuild-storage = { version = "0.5.0", default-features = false }
 junobuild-utils = "0.2.0"
 
 # Internet Computer SDK
-candid = "0.10.20"
+candid = "0.10.22"
 ic-cdk = "0.19.0"
 
 # Serialization
