@@ -80,24 +80,9 @@ export class Key extends BaseEntity {
     // Update visual Y from Z height
     this.y = this.groundY - this.z;
 
-    // Sync Arcade body to match our manual sprite position using the SAME
-    // formula as Phaser's Body.updateFromGameObject(). Without this, Arcade's
-    // postUpdate() computes a different body position, applies a non-zero delta,
-    // and snaps the sprite to the wrong location for one frame — creating a
-    // ghost/double-image flicker (same fix pattern as BaseEntity.updateZ).
-    if (this.body) {
-      const body = this.body as Phaser.Physics.Arcade.Body;
-      const bodyX =
-        this.x + this.scaleX * (body.offset.x - this.displayOriginX);
-      const bodyY =
-        this.y + this.scaleY * (body.offset.y - this.displayOriginY);
-      body.position.x = bodyX;
-      body.position.y = bodyY;
-      body.prev.x = bodyX;
-      body.prev.y = bodyY;
-      body.prevFrame.x = bodyX;
-      body.prevFrame.y = bodyY;
-    }
+    // Sync Arcade body to match our manual sprite position.
+    // Uses shared BaseEntity method (same formula as Phaser's updateFromGameObject).
+    this.syncBodyPosition();
 
     this.updateShadow();
 

@@ -242,6 +242,9 @@ declare module "/config-client.json" {
             powerup: {              drop_chance: number;
               variants: number;
             };
+            hitbox: {              width: number;
+              height: number;
+            };
             pool_size: number;
             bob_distance: number;
             bob_duration: number;
@@ -883,6 +886,9 @@ declare module "../../../public/config-client.json" {
             };
             powerup: {              drop_chance: number;
               variants: number;
+            };
+            hitbox: {              width: number;
+              height: number;
             };
             pool_size: number;
             bob_distance: number;

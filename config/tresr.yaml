@@ -440,6 +440,9 @@ client:
           powerup:
             drop_chance: 0.10 # 10% chance to drop power-up
             variants: 5 # Number of powerup_X entity variants available
+          hitbox:
+            width: 400 # Collision body width (px, unscaled frame-local)
+            height: 400 # Collision body height (px, unscaled frame-local)
           pool_size: 20 # Max loot items in the object pool
           bob_distance: 8 # Pixels for bobbing animation
           bob_duration: 600 # Duration of bob cycle (ms)

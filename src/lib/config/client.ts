@@ -560,6 +560,10 @@ export const config: ConfigTypes = {
             "drop_chance": 0.1,
             "variants": 5
           },
+          "hitbox": {
+            "width": 400,
+            "height": 400
+          },
           "pool_size": 20,
           "bob_distance": 8,
           "bob_duration": 600,
@@ -1332,5 +1336,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "a94b7acd5577ab7f8347fdc77839cc69d11672314318baadbbd560df6cc75d6f"
+  "configHash": "e2ef21b109e33c423497c0ccec4d1abe54b32a7a36f6571a9b5bf038778ed497"
 };
