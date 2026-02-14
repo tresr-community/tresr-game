@@ -550,6 +550,30 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
         claim.signature = Some(signature);
         claim.status = ClaimStatus::ReadyForChain;
 
+        // 5. Mark session as claimed IMMEDIATELY after signature generation (ticket #286).
+        // This prevents a race where a second claim could generate another valid
+        // signature before the first claim's on-chain tx is verified.
+        {
+            let mut claimed_session = session.clone();
+            claimed_session.reward_claimed = true;
+            let sd = session_doc.as_ref().unwrap(); // Safe: matched Some above
+            let description = sd
+                .description
+                .clone()
+                .ok_or_else(|| "session description missing".to_string())?;
+            let version = sd
+                .version
+                .ok_or_else(|| "session version missing".to_string())?;
+            update_session_doc(
+                &context,
+                &claimed_session,
+                claim.game_session_id.clone(),
+                description,
+                version,
+            )
+            .await?;
+        }
+
         update_claim_doc(&context, &claim).await?;
 
         ic_cdk::print(format!(
@@ -565,34 +589,6 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
         claim.status = ClaimStatus::Completed;
 
         update_claim_doc(&context, &claim).await?;
-
-        // Mark session as claimed
-        let session_doc = get_doc_store(
-            context.caller,
-            "game_sessions".to_string(),
-            claim.game_session_id.clone(),
-        )?;
-
-        if let Some(session_doc) = session_doc {
-            let mut session: GameSession = decode_doc_data(&session_doc.data)?;
-            session.reward_claimed = true;
-
-            let description = session_doc
-                .description
-                .ok_or_else(|| "session description missing".to_string())?;
-            let version = session_doc
-                .version
-                .ok_or_else(|| "session version missing".to_string())?;
-
-            update_session_doc(
-                &context,
-                &session,
-                claim.game_session_id.clone(),
-                description,
-                version,
-            )
-            .await?;
-        }
 
         ic_cdk::print(format!(
             "Claim completed for user {} session {}",
