@@ -58,13 +58,17 @@ const instructions: ConfigTypes["app"]["instructions"] = processor
     PWA.getInstance().checkForUpdates();
 
     // Mark instructions as read
-    const auth = getAuthState();
-    if (auth.isAuthenticated && !auth.isGuest && auth.user) {
-      const doc = await getUserProfile(auth.user.key);
-      if (doc && !doc.data.preferences.has_read_instructions) {
-        doc.data.preferences.has_read_instructions = true;
-        await saveUserProfile(auth.user.key, doc.data, doc.version);
+    try {
+      const auth = getAuthState();
+      if (auth.isAuthenticated && !auth.isGuest && auth.user) {
+        const doc = await getUserProfile(auth.user.key);
+        if (doc && !doc.data.preferences.has_read_instructions) {
+          doc.data.preferences.has_read_instructions = true;
+          await saveUserProfile(auth.user.key, doc.data, doc.version);
+        }
       }
+    } catch {
+      // Non-critical — modal still works if profile update fails
     }
   }
 

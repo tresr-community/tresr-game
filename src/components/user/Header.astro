@@ -175,12 +175,21 @@ import NotificationToast from "@/components/notifications/NotificationToast.astr
     );
 
     const authBtn = document.getElementById("profile-auth-btn");
-    if (authBtn) {
-      authBtn.addEventListener("click", () => {
-        log.info(COMPONENT_NAME, "Auth Profile button clicked");
-        document.dispatchEvent(new CustomEvent("tresr:open-profile"));
-      });
+    function handleAuthBtnClick() {
+      log.info(COMPONENT_NAME, "Auth Profile button clicked");
+      document.dispatchEvent(new CustomEvent("tresr:open-profile"));
     }
+    if (authBtn) {
+      authBtn.addEventListener("click", handleAuthBtnClick);
+    }
+
+    document.addEventListener(
+      "astro:before-preparation",
+      () => {
+        authBtn?.removeEventListener("click", handleAuthBtnClick);
+      },
+      {once: true}
+    );
   }
 
   async function setTheme(theme: string) {
