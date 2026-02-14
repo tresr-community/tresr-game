@@ -44,7 +44,8 @@ pub async fn verify_avalanche_deposit(tx_hash: &str) -> Result<ParsedDeposit, St
     let request = RpcRequest {
         jsonrpc: "2.0".to_string(),
         method: "eth_getTransactionByHash".to_string(),
-        params: serde_json::to_string(&vec![serde_json::json!(tx_hash)]).unwrap(),
+        params: serde_json::to_string(&vec![serde_json::json!(tx_hash)])
+            .map_err(|e| format!("JSON serialization error: {}", e))?,
         id: 1,
     };
 
@@ -84,7 +85,8 @@ pub async fn verify_avalanche_claim_tx(tx_hash: &str) -> Result<(), String> {
     let request = RpcRequest {
         jsonrpc: "2.0".to_string(),
         method: "eth_getTransactionByHash".to_string(),
-        params: serde_json::to_string(&vec![serde_json::json!(tx_hash)]).unwrap(),
+        params: serde_json::to_string(&vec![serde_json::json!(tx_hash)])
+            .map_err(|e| format!("JSON serialization error: {}", e))?,
         id: 1,
     };
 
@@ -213,7 +215,8 @@ async fn verify_transaction_receipt(tx_hash: &str) -> Result<(), String> {
     let request = RpcRequest {
         jsonrpc: "2.0".to_string(),
         method: "eth_getTransactionReceipt".to_string(),
-        params: serde_json::to_string(&vec![serde_json::json!(tx_hash)]).unwrap(),
+        params: serde_json::to_string(&vec![serde_json::json!(tx_hash)])
+            .map_err(|e| format!("JSON serialization error: {}", e))?,
         id: 1,
     };
 
@@ -382,7 +385,7 @@ async fn get_transaction_count(address: &str) -> Result<u64, String> {
             serde_json::json!(address),
             serde_json::json!("latest"),
         ])
-        .unwrap(),
+        .map_err(|e| format!("JSON serialization error: {}", e))?,
         id: 3,
     };
 
@@ -529,7 +532,8 @@ pub async fn get_token_balance(wallet_address: &str) -> Result<u64, String> {
     let request = RpcRequest {
         jsonrpc: "2.0".to_string(),
         method: "eth_call".to_string(),
-        params: serde_json::to_string(&call_params).unwrap(),
+        params: serde_json::to_string(&call_params)
+            .map_err(|e| format!("JSON serialization error: {}", e))?,
         id: 1,
     };
 
@@ -605,7 +609,8 @@ pub async fn estimate_gas(from: &str, to: &str, data: &str, value: Option<&str>)
     let request = RpcRequest {
         jsonrpc: "2.0".to_string(),
         method: "eth_estimateGas".to_string(),
-        params: serde_json::to_string(&vec![tx]).unwrap(),
+        params: serde_json::to_string(&vec![tx])
+            .map_err(|e| format!("JSON serialization error: {}", e))?,
         id: 1,
     };
 
