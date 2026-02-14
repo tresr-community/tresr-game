@@ -26,12 +26,16 @@ const DEPOSIT_SELECTOR: &str = "47e7ef24";
 // ERC-20 transfer(address,uint256) function selector
 const TRANSFER_SELECTOR: [u8; 4] = [0xa9, 0x05, 0x9c, 0xbb];
 
-/// Verify a deposit transaction on Avalanche
-pub async fn verify_avalanche_deposit(tx_hash: &str) -> Result<u64, String> {
+/// Verify a deposit transaction on Avalanche.
+/// Returns the parsed deposit data including amount and sender address.
+pub async fn verify_avalanche_deposit(tx_hash: &str) -> Result<ParsedDeposit, String> {
     // Anvil mock: skip real RPC verification in local dev
     if crate::config::NETWORK_NAME == "anvil" {
         ic_cdk::print(format!("ANVIL_MOCK: verify_avalanche_deposit for {}", tx_hash));
-        return Ok(10);
+        return Ok(ParsedDeposit {
+            amount: 10,
+            from: "0x0000000000000000000000000000000000000000".to_string(),
+        });
     }
 
     let evm_rpc_id = Principal::from_text(crate::config::EVM_RPC_CANISTER_ID)
@@ -55,12 +59,12 @@ pub async fn verify_avalanche_deposit(tx_hash: &str) -> Result<u64, String> {
     if let Some(result_str) = response.result {
         let result_json: serde_json::Value = serde_json::from_str(&result_str)
             .map_err(|e| format!("Failed to parse JSON result: {}", e))?;
-        let amount = parse_deposit_input(&result_json)?;
+        let parsed = parse_deposit_input(&result_json)?;
 
         // Verify the transaction actually succeeded on-chain
         verify_transaction_receipt(tx_hash).await?;
 
-        Ok(amount)
+        Ok(parsed)
     } else {
         Err("No transaction found".to_string())
     }
@@ -127,10 +131,23 @@ fn verify_claim_transaction(tx_data: &serde_json::Value) -> Result<(), String> {
     Ok(())
 }
 
+/// Parsed deposit transaction data returned by `parse_deposit_input`.
+pub struct ParsedDeposit {
+    pub amount: u64,
+    pub from: String,
+}
+
 /// Parse a Vault.deposit(uint256,bytes32) transaction's input data.
 /// Verifies the tx targets the Vault contract, checks the function selector,
-/// and decodes the ABI-encoded amount parameter.
-fn parse_deposit_input(tx_data: &serde_json::Value) -> Result<u64, String> {
+/// decodes the ABI-encoded amount parameter, and extracts the sender address.
+fn parse_deposit_input(tx_data: &serde_json::Value) -> Result<ParsedDeposit, String> {
+    // 0. Extract tx.from (sender address) for caller validation
+    let from_address = tx_data
+        .get("from")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Transaction missing 'from' field".to_string())?
+        .to_string();
+
     // 1. Verify tx.to matches the Vault contract address
     let to_address = tx_data
         .get("to")
@@ -178,9 +195,14 @@ fn parse_deposit_input(tx_data: &serde_json::Value) -> Result<u64, String> {
     let one_token = BigUint::from(10u64).pow(18);
     let tokens = &wei_amount / &one_token;
 
-    tokens
+    let amount = tokens
         .to_u64()
-        .ok_or_else(|| format!("Deposit amount too large for u64: {} wei", wei_amount))
+        .ok_or_else(|| format!("Deposit amount too large for u64: {} wei", wei_amount))?;
+
+    Ok(ParsedDeposit {
+        amount,
+        from: from_address,
+    })
 }
 
 /// Verify a transaction receipt shows success (status 0x1)

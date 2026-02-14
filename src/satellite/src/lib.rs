@@ -277,7 +277,48 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
 
     // Verify the transaction on Avalanche
     match evm_rpc::verify_avalanche_deposit(&deposit.tx_hash).await {
-        Ok(verified_amount) => {
+        Ok(parsed) => {
+            // Validate tx.from matches the caller's linked EVM wallet (ticket #285)
+            let user_key = context.caller.to_text();
+            let user_doc = get_doc_store(context.caller, "users".to_string(), user_key.clone())?;
+            if let Some(ref user_doc_inner) = user_doc {
+                let user_profile_check: UserProfile = decode_doc_data(&user_doc_inner.data)?;
+                let caller_wallet = match &user_profile_check.evm_wallet {
+                    Some(w) if !w.is_empty() => w.clone(),
+                    _ => {
+                        deposit.status = DepositStatus::Failed;
+                        deposit.error = Some("No linked EVM wallet to verify deposit sender".to_string());
+                        let updated_doc = SetDoc {
+                            data: encode_doc_data(&deposit)?,
+                            description: context.data.data.after.description.clone(),
+                            version: context.data.data.after.version,
+                        };
+                        set_doc_store(context.caller, context.data.collection.clone(), context.data.key.clone(), updated_doc)?;
+                        return Ok(());
+                    }
+                };
+                if !parsed.from.eq_ignore_ascii_case(&caller_wallet) {
+                    deposit.status = DepositStatus::Failed;
+                    deposit.error = Some(format!(
+                        "Deposit tx sender {} does not match caller wallet {}",
+                        parsed.from, caller_wallet
+                    ));
+                    let updated_doc = SetDoc {
+                        data: encode_doc_data(&deposit)?,
+                        description: context.data.data.after.description.clone(),
+                        version: context.data.data.after.version,
+                    };
+                    set_doc_store(context.caller, context.data.collection.clone(), context.data.key.clone(), updated_doc)?;
+                    ic_cdk::print(format!(
+                        "Deposit rejected: tx.from {} != caller wallet {}",
+                        parsed.from, caller_wallet
+                    ));
+                    return Ok(());
+                }
+            }
+
+            let verified_amount = parsed.amount;
+
             // Update deposit status
             deposit.status = DepositStatus::Verified;
             deposit.amount = verified_amount;
@@ -298,15 +339,13 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
             )?;
 
             // Credit verified deposit to user's wallet balance
-            let user_key = context.caller.to_text();
-            let user_doc = get_doc_store(context.caller, "users".to_string(), user_key.clone())?;
-            if let Some(user_doc) = user_doc {
-                let mut user_profile: UserProfile = decode_doc_data(&user_doc.data)?;
+            if let Some(user_doc_inner) = user_doc {
+                let mut user_profile: UserProfile = decode_doc_data(&user_doc_inner.data)?;
                 user_profile.wallet.balance += verified_amount;
                 let updated_user = SetDoc {
                     data: encode_doc_data(&user_profile)?,
-                    description: user_doc.description.clone(),
-                    version: user_doc.version,
+                    description: user_doc_inner.description.clone(),
+                    version: user_doc_inner.version,
                 };
                 set_doc_store(context.caller, "users".to_string(), user_key.clone(), updated_user)?;
                 ic_cdk::print(format!(
