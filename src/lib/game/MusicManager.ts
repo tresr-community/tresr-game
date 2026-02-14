@@ -22,6 +22,7 @@ class MusicManager {
   private narrationDone: boolean = false;
   private deferredPlay: (() => void) | null = null;
   private handleBeforeUnload: (() => void) | null = null;
+  private playPromise: Promise<void> | null = null;
 
   // Bound audio event handlers for cleanup (ticket #227)
   private handleTimeUpdate = () => {
@@ -213,10 +214,7 @@ class MusicManager {
     });
     if (isPlaying) {
       this.audio.volume = 0;
-      this.audio
-        .play()
-        .then(() => this.fadeIn(targetVolume))
-        .catch((e) => log.warn(COMPONENT_NAME, "Play failed:", e));
+      this.safePlay().then(() => this.fadeIn(targetVolume));
       gameActions.updateMusic({
         isPlaying: true,
       });
@@ -231,7 +229,7 @@ class MusicManager {
     // Clean up any existing fade (ticket #197: release media buffer)
     if (this.fadeInterval) clearInterval(this.fadeInterval);
     if (this.fadingOut) {
-      this.fadingOut.pause();
+      this.safePauseElement(this.fadingOut);
       this.fadingOut.src = "";
       this.fadingOut = null;
     }
@@ -317,17 +315,57 @@ class MusicManager {
     }, crossfadeStep);
   }
 
+  /**
+   * Safely start playback, tracking the promise to prevent race conditions.
+   * All pause operations await this promise before pausing.
+   */
+  private safePlay(): Promise<void> {
+    if (!this.audio) return Promise.resolve();
+    this.playPromise = this.audio
+      .play()
+      .catch((e) => {
+        if (e.name !== "AbortError") {
+          log.warn(COMPONENT_NAME, "Play failed:", e);
+        }
+      })
+      .finally(() => {
+        this.playPromise = null;
+      });
+    return this.playPromise;
+  }
+
+  /**
+   * Safely pause the main audio element, awaiting any pending play() first.
+   */
+  private async safePause() {
+    if (this.playPromise) {
+      await this.playPromise;
+    }
+    this.audio?.pause();
+  }
+
+  /**
+   * Safely pause an arbitrary audio element (used for crossfade cleanup).
+   */
+  private safePauseElement(el: HTMLAudioElement) {
+    // The element being faded out is never the one with the active playPromise,
+    // but guard defensively anyway.
+    try {
+      el.pause();
+    } catch {
+      // Ignore — element may already be disposed
+    }
+  }
+
   public toggle() {
     if (!this.audio) return;
     if (this.audio.paused) {
-      this.audio
-        .play()
-        .catch((e) => log.warn(COMPONENT_NAME, "Play failed:", e));
+      this.safePlay();
       gameActions.updateMusic({
         isPlaying: true,
       });
     } else {
-      this.audio.pause();
+      this.safePause();
       gameActions.updateMusic({
         isPlaying: false,
       });
@@ -359,7 +397,7 @@ class MusicManager {
       this.fadingOut = null;
     }
     if (!this.audio) return;
-    this.audio.pause();
+    this.safePause();
     this.audio.currentTime = 0;
     gameActions.updateMusic({
       isPlaying: false,
