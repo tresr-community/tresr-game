@@ -99,7 +99,6 @@ export class Key extends BaseEntity {
       body.prevFrame.y = bodyY;
     }
 
-    this.setDepth(this.groundY);
     this.updateShadow();
 
     // Kill if off screen (safety)
@@ -115,6 +114,7 @@ export class Key extends BaseEntity {
       this.shadow.setVisible(true);
     }
     this.groundY = groundY;
+    this.setDepth(this.groundY);
 
     const keyConfig = this.config.gameplay.entities.key;
     const startZ = keyConfig.spawner.start_z;
