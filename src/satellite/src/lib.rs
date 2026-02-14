@@ -159,6 +159,16 @@ fn assert_deposit_request(context: &AssertSetDocContext) -> Result<(), String> {
         return Err("Deposits must be created with 'pending' status.".to_string());
     }
 
+    // Enforce document key == tx_hash to prevent deposit replay (ticket #288).
+    // Juno enforces key uniqueness per user, so the same tx_hash cannot be
+    // submitted twice under different keys. Combined with tx.from validation
+    // (ticket #285), this prevents any user from replaying another's deposit.
+    if context.data.key != data.tx_hash {
+        return Err(
+            "Deposit document key must equal the transaction hash.".to_string(),
+        );
+    }
+
     Ok(())
 }
 
@@ -277,7 +287,48 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
 
     // Verify the transaction on Avalanche
     match evm_rpc::verify_avalanche_deposit(&deposit.tx_hash).await {
-        Ok(verified_amount) => {
+        Ok(parsed) => {
+            // Validate tx.from matches the caller's linked EVM wallet (ticket #285)
+            let user_key = context.caller.to_text();
+            let user_doc = get_doc_store(context.caller, "users".to_string(), user_key.clone())?;
+            if let Some(ref user_doc_inner) = user_doc {
+                let user_profile_check: UserProfile = decode_doc_data(&user_doc_inner.data)?;
+                let caller_wallet = match &user_profile_check.evm_wallet {
+                    Some(w) if !w.is_empty() => w.clone(),
+                    _ => {
+                        deposit.status = DepositStatus::Failed;
+                        deposit.error = Some("No linked EVM wallet to verify deposit sender".to_string());
+                        let updated_doc = SetDoc {
+                            data: encode_doc_data(&deposit)?,
+                            description: context.data.data.after.description.clone(),
+                            version: context.data.data.after.version,
+                        };
+                        set_doc_store(context.caller, context.data.collection.clone(), context.data.key.clone(), updated_doc)?;
+                        return Ok(());
+                    }
+                };
+                if !parsed.from.eq_ignore_ascii_case(&caller_wallet) {
+                    deposit.status = DepositStatus::Failed;
+                    deposit.error = Some(format!(
+                        "Deposit tx sender {} does not match caller wallet {}",
+                        parsed.from, caller_wallet
+                    ));
+                    let updated_doc = SetDoc {
+                        data: encode_doc_data(&deposit)?,
+                        description: context.data.data.after.description.clone(),
+                        version: context.data.data.after.version,
+                    };
+                    set_doc_store(context.caller, context.data.collection.clone(), context.data.key.clone(), updated_doc)?;
+                    ic_cdk::print(format!(
+                        "Deposit rejected: tx.from {} != caller wallet {}",
+                        parsed.from, caller_wallet
+                    ));
+                    return Ok(());
+                }
+            }
+
+            let verified_amount = parsed.amount;
+
             // Update deposit status
             deposit.status = DepositStatus::Verified;
             deposit.amount = verified_amount;
@@ -298,15 +349,13 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
             )?;
 
             // Credit verified deposit to user's wallet balance
-            let user_key = context.caller.to_text();
-            let user_doc = get_doc_store(context.caller, "users".to_string(), user_key.clone())?;
-            if let Some(user_doc) = user_doc {
-                let mut user_profile: UserProfile = decode_doc_data(&user_doc.data)?;
+            if let Some(user_doc_inner) = user_doc {
+                let mut user_profile: UserProfile = decode_doc_data(&user_doc_inner.data)?;
                 user_profile.wallet.balance += verified_amount;
                 let updated_user = SetDoc {
                     data: encode_doc_data(&user_profile)?,
-                    description: user_doc.description.clone(),
-                    version: user_doc.version,
+                    description: user_doc_inner.description.clone(),
+                    version: user_doc_inner.version,
                 };
                 set_doc_store(context.caller, "users".to_string(), user_key.clone(), updated_user)?;
                 ic_cdk::print(format!(
@@ -437,35 +486,9 @@ async fn generate_claim_signature(
     let r = &sig_bytes[0..32];
     let s = &sig_bytes[32..64];
 
-    // --- Determine recovery ID (v) ---
-    // IC t-ECDSA returns r||s without v. Try both recovery IDs (0 and 1)
-    // and check which one recovers to the canister's Ethereum address.
-    let canister_address = evm_rpc::get_eth_address().await?;
-    let canister_addr_lower = canister_address.trim_start_matches("0x").to_lowercase();
-
-    let mut v: u8 = 27; // default
-    for recovery_id in 0u8..2u8 {
-        let recid = RecoveryId::parse(recovery_id)
-            .map_err(|e| format!("Invalid recovery ID: {:?}", e))?;
-        let signature = Signature::parse_standard_slice(&sig_bytes)
-            .map_err(|e| format!("Invalid signature: {:?}", e))?;
-        let message = Message::parse(&eth_signed_hash);
-
-        if let Ok(pubkey) = recover(&message, &signature, &recid) {
-            // Derive Ethereum address from recovered public key
-            let pubkey_serialized = pubkey.serialize();
-            let mut pubkey_hash = [0u8; 32];
-            let mut keccak = Keccak::v256();
-            keccak.update(&pubkey_serialized[1..65]);
-            keccak.finalize(&mut pubkey_hash);
-            let recovered_addr = hex::encode(&pubkey_hash[12..32]);
-
-            if recovered_addr == canister_addr_lower {
-                v = 27 + recovery_id;
-                break;
-            }
-        }
-    }
+    // --- Determine recovery ID (v) using shared helper (ticket #268) ---
+    let recovery_id = evm_rpc::determine_recovery_id(&sig_bytes, &eth_signed_hash).await?;
+    let v = 27 + recovery_id;
 
     // Build 65-byte Ethereum signature: r (32) + s (32) + v (1)
     let mut full_sig = [0u8; 65];
@@ -537,6 +560,30 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
         claim.signature = Some(signature);
         claim.status = ClaimStatus::ReadyForChain;
 
+        // 5. Mark session as claimed IMMEDIATELY after signature generation (ticket #286).
+        // This prevents a race where a second claim could generate another valid
+        // signature before the first claim's on-chain tx is verified.
+        {
+            let mut claimed_session = session.clone();
+            claimed_session.reward_claimed = true;
+            let sd = session_doc.as_ref().unwrap(); // Safe: matched Some above
+            let description = sd
+                .description
+                .clone()
+                .ok_or_else(|| "session description missing".to_string())?;
+            let version = sd
+                .version
+                .ok_or_else(|| "session version missing".to_string())?;
+            update_session_doc(
+                &context,
+                &claimed_session,
+                claim.game_session_id.clone(),
+                description,
+                version,
+            )
+            .await?;
+        }
+
         update_claim_doc(&context, &claim).await?;
 
         ic_cdk::print(format!(
@@ -548,33 +595,15 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
     // Handle claim completion: verify transaction
     } else if claim.status == ClaimStatus::ReadyForChain && claim.tx_hash.is_some() {
         // Verify the claim transaction
-        evm_rpc::verify_avalanche_claim_tx(claim.tx_hash.as_ref().unwrap()).await?;
+        evm_rpc::verify_avalanche_claim_tx(
+            claim.tx_hash.as_ref().unwrap(),
+            &claim.game_session_id,
+            claim.amount,
+            claim.keys_collected,
+        ).await?;
         claim.status = ClaimStatus::Completed;
 
         update_claim_doc(&context, &claim).await?;
-
-        // Mark session as claimed
-        let session_doc = get_doc_store(
-            context.caller,
-            "game_sessions".to_string(),
-            claim.game_session_id.clone(),
-        )?;
-
-        if let Some(session_doc) = session_doc {
-            let mut session: GameSession = decode_doc_data(&session_doc.data)?;
-            session.reward_claimed = true;
-
-            update_session_doc(
-                &context,
-                &session,
-                claim.game_session_id.clone(),
-                session_doc
-                    .description
-                    .expect("session description missing"),
-                session_doc.version.expect("session version missing"),
-            )
-            .await?;
-        }
 
         ic_cdk::print(format!(
             "Claim completed for user {} session {}",
@@ -821,30 +850,57 @@ async fn claim_authorize(
     // Reject if currently banned
     check_ban(&user_profile)?;
 
-    // 1. Fetch session from Datastore (assume Juno Collection integration)
-    // Stub: simulate session data
-    let _session = GameSession {
-        started_at: 0,
-        ended_at: Some(0),
-        keys_collected: reported_keys,
-        boss_defeated: true,
-        score: 0,
-        reward_claimed: false,
+    // Get user's linked EVM wallet for deposit sender validation
+    let wallet_addr = match &user_profile.evm_wallet {
+        Some(w) if !w.is_empty() => w.clone(),
+        _ => return Err("No linked EVM wallet".to_string()),
     };
 
-    // Verify deposit_tx_hash matches (stub)
-    if deposit_tx_hash != "0x123..." {
-        return Err("Invalid deposit tx".to_string());
+    // 1. Fetch session from Datastore
+    let session_doc = get_doc_store(
+        caller,
+        "game_sessions".to_string(),
+        session_id.clone(),
+    )?;
+    let session: GameSession = match session_doc {
+        Some(ref doc) => decode_doc_data(&doc.data)?,
+        None => return Err("Game session not found".to_string()),
+    };
+
+    if !session.boss_defeated {
+        return Err("Boss not defeated".to_string());
+    }
+    if session.reward_claimed {
+        return Err("Reward already claimed".to_string());
     }
 
-    // 2. Query vault balance (stub: simulate RPC call)
-    let vault_balance: u128 = fetch_vault_balance_stub().await?;
+    // 2. Verify deposit transaction on-chain and get actual deposit amount
+    let parsed_deposit = evm_rpc::verify_avalanche_deposit(&deposit_tx_hash).await?;
+
+    // Validate that the deposit sender matches the caller's linked wallet
+    if !parsed_deposit.from.eq_ignore_ascii_case(&wallet_addr) {
+        return Err(format!(
+            "Deposit sender {} does not match linked wallet {}",
+            parsed_deposit.from, wallet_addr
+        ));
+    }
+
+    // Convert deposit amount from tokens (u64) to wei (u128) for reward calculation
+    let deposit_amount: u128 = (parsed_deposit.amount as u128) * 1_000_000_000_000_000_000u128;
+
+    // 3. Query vault balance via EVM RPC
+    let vault_balance_tokens = evm_rpc::get_token_balance(
+        crate::config::VAULT_CONTRACT_ADDRESS,
+    ).await?;
+    let vault_balance: u128 = (vault_balance_tokens as u128) * 1_000_000_000_000_000_000u128;
+
     if vault_balance < 1_000_000_000_000_000_000u128 {
-        // 1e15 wei
         return Err("Low pot".to_string());
     }
 
-    // 3. Verify replay (stub: simple check)
+    // 4. Verify replay
+    // TODO: Replace with real deterministic replay verification engine
+    // Tracked in separate issue — for now, use stub that trusts reported values
     let (verified_keys, boss_killed) = replay_verify_stub(&replay_inputs, vault_balance).await?;
     if verified_keys != reported_keys || !boss_killed {
         // Cheat detected — apply ban
@@ -890,38 +946,34 @@ async fn claim_authorize(
         ));
     }
 
-    // 4. Calc amount
-    let deposit_amount = 10_000_000_000_000_000_000u128; // 10 TRESR stub
+    // 5. Calc amount
     let perf_mult = (reported_keys as f64 / config::MAX_KEYS_COLLECTED as f64) * 0.5;
     let max_perf = ((vault_balance as f64 * perf_mult) as u128).min(vault_balance / 2);
     let guaranteed = deposit_amount * 11 / 10;
     let amount = max_perf.max(guaranteed).min(vault_balance);
 
-    // 5. Sign (stub: use test key)
-    let signature =
-        generate_claim_signature_stub(&session_id, &caller_text, amount as u64)?;
+    // 6. Sign with IC threshold ECDSA
+    let signature_hex = generate_claim_signature(
+        &session_id,
+        &wallet_addr,
+        amount as u64,
+        session.keys_collected,
+    ).await?;
 
-    Ok((amount, signature))
+    // Convert hex signature to bytes for return
+    let sig_clean = signature_hex.strip_prefix("0x").unwrap_or(&signature_hex);
+    let signature_bytes = hex::decode(sig_clean)
+        .map_err(|e| format!("Failed to decode signature hex: {}", e))?;
+
+    Ok((amount, signature_bytes))
 }
 
-async fn fetch_vault_balance_stub() -> Result<u128, String> {
-    // Stub: return fixed balance
-    Ok(100_000_000_000_000_000_000u128) // 100 TRESR
-}
-
+/// Replay verification stub — always trusts reported values.
+/// TODO: Replace with deterministic game replay engine (separate issue).
 async fn replay_verify_stub(_inputs: &[u8], _pot: u128) -> Result<(u64, bool), String> {
-    // Stub: always verify with reported keys
-    Ok((150, true)) // Assume full keys, boss killed
+    Ok((150, true))
 }
 
-fn generate_claim_signature_stub(
-    _session_id: &str,
-    _user_address: &str,
-    _amount: u64,
-) -> Result<Vec<u8>, String> {
-    // Stub: return fixed sig
-    Ok(vec![0x12, 0x34]) // Placeholder
-}
 
 // =============================================================================
 // Include Juno Satellite - MUST be at the end

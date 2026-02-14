@@ -873,8 +873,8 @@ print("\\nTotal cost: $%.4f" % cost_usd)
 
 ## Related
 
-* [API Reference: Batch endpoints](/developers/api-reference#create-a-new-batch)
-* [gRPC Reference: Batch management](/developers/grpc-reference#batch-management)
+* [API Reference: Batch endpoints](/developers/rest-api-reference/inference/batches#create-a-new-batch)
+* [gRPC Reference: Batch management](/developers/grpc-api-reference#batch-management)
 * [Models and pricing — Batch API Pricing](/developers/models#batch-api-pricing)
 * [xAI Python SDK](https://github.com/xai-org/xai-sdk-python)
 
@@ -1077,7 +1077,7 @@ The response body will be the same as what you would expect with non-deferred ch
 }
 ```
 
-For more details, refer to [Chat completions](/developers/api-reference#chat-completions) and [Get deferred chat completions](/developers/api-reference#get-deferred-chat-completions) in our REST API Reference.
+For more details, refer to [Chat completions](/developers/rest-api-reference/inference/chat#chat-completions) and [Get deferred chat completions](/developers/rest-api-reference/inference/chat#get-deferred-chat-completions) in our REST API Reference.
 
 
 ===/developers/advanced-api-usage/fingerprint===
@@ -1244,419 +1244,6 @@ In the "Add or search model" input box, enter a coding model such as `grok-code-
 Besides Cline and Cursor, you can also use our code model with [GitHub Copilot](https://github.com/features/copilot), [opencode](https://opencode.ai/), [Kilo Code](https://kilocode.ai/), [Roo Code](https://roocode.com/) and [Windsurf](https://windsurf.com/).
 
 
-===/developers/api-reference===
-# REST API Reference
-
-The xAI Enterprise API is a robust, high-performance RESTful interface designed for seamless integration into existing systems.
-It offers advanced AI capabilities with full compatibility with the OpenAI REST API.
-
-The base for all routes is at `https://api.x.ai`. For all routes, you have to authenticate with the header `Authorization: Bearer <your xAI API key>`.
-
-***
-
-## POST /v1/chat/completions
-
-API endpoint for POST requests to /v1/chat/completions.
-
-```
-Method: POST
-Path: /v1/chat/completions
-```
-
-***
-
-## POST /v1/responses
-
-API endpoint for POST requests to /v1/responses.
-
-```
-Method: POST
-Path: /v1/responses
-```
-
-***
-
-## GET /v1/responses/\{response\_id}
-
-API endpoint for GET requests to /v1/responses/\{response\_id}.
-
-```
-Method: GET
-Path: /v1/responses/{response_id}
-```
-
-***
-
-## DELETE /v1/responses/\{response\_id}
-
-API endpoint for DELETE requests to /v1/responses/\{response\_id}.
-
-```
-Method: DELETE
-Path: /v1/responses/{response_id}
-```
-
-***
-
-**Deprecated**: The Anthropic SDK compatibility is fully deprecated. Please migrate to the [Responses API](#create-new-response) or [gRPC](/developers/grpc-reference).
-
-## POST /v1/messages
-
-API endpoint for POST requests to /v1/messages.
-
-```
-Method: POST
-Path: /v1/messages
-```
-
-***
-
-## POST /v1/images/generations
-
-API endpoint for POST requests to /v1/images/generations.
-
-```
-Method: POST
-Path: /v1/images/generations
-```
-
-***
-
-## POST /v1/images/edits
-
-API endpoint for POST requests to /v1/images/edits.
-
-```
-Method: POST
-Path: /v1/images/edits
-```
-
-***
-
-## POST /v1/videos/generations
-
-API endpoint for POST requests to /v1/videos/generations.
-
-```
-Method: POST
-Path: /v1/videos/generations
-```
-
-***
-
-## POST /v1/videos/edits
-
-API endpoint for POST requests to /v1/videos/edits.
-
-```
-Method: POST
-Path: /v1/videos/edits
-```
-
-***
-
-## GET /v1/videos/\{request\_id}
-
-API endpoint for GET requests to /v1/videos/\{request\_id}.
-
-```
-Method: GET
-Path: /v1/videos/{request_id}
-```
-
-***
-
-## GET /v1/api-key
-
-API endpoint for GET requests to /v1/api-key.
-
-```
-Method: GET
-Path: /v1/api-key
-```
-
-***
-
-## GET /v1/models
-
-API endpoint for GET requests to /v1/models.
-
-```
-Method: GET
-Path: /v1/models
-```
-
-***
-
-## GET /v1/models/\{model\_id}
-
-API endpoint for GET requests to /v1/models/\{model\_id}.
-
-```
-Method: GET
-Path: /v1/models/{model_id}
-```
-
-***
-
-## GET /v1/language-models
-
-API endpoint for GET requests to /v1/language-models.
-
-```
-Method: GET
-Path: /v1/language-models
-```
-
-***
-
-## GET /v1/language-models/\{model\_id}
-
-API endpoint for GET requests to /v1/language-models/\{model\_id}.
-
-```
-Method: GET
-Path: /v1/language-models/{model_id}
-```
-
-***
-
-## GET /v1/image-generation-models
-
-API endpoint for GET requests to /v1/image-generation-models.
-
-```
-Method: GET
-Path: /v1/image-generation-models
-```
-
-***
-
-## GET /v1/image-generation-models/\{model\_id}
-
-API endpoint for GET requests to /v1/image-generation-models/\{model\_id}.
-
-```
-Method: GET
-Path: /v1/image-generation-models/{model_id}
-```
-
-***
-
-## POST /v1/tokenize-text
-
-API endpoint for POST requests to /v1/tokenize-text.
-
-```
-Method: POST
-Path: /v1/tokenize-text
-```
-
-***
-
-## GET /v1/chat/deferred-completion/\{request\_id}
-
-API endpoint for GET requests to /v1/chat/deferred-completion/\{request\_id}.
-
-```
-Method: GET
-Path: /v1/chat/deferred-completion/{request_id}
-```
-
-***
-
-***
-
-## POST /v1/completions
-
-API endpoint for POST requests to /v1/completions.
-
-```
-Method: POST
-Path: /v1/completions
-```
-
-***
-
-**Deprecated**: The Anthropic SDK compatibility is fully deprecated. Please migrate to the [Responses API](#create-new-response) or [gRPC](/developers/grpc-reference).
-
-## POST /v1/complete
-
-API endpoint for POST requests to /v1/complete.
-
-```
-Method: POST
-Path: /v1/complete
-```
-
-***
-
-
-===/developers/collections-api/collection===
-#### Collections API Reference
-
-# Collection Management
-
-The base URL for `collection` management is shared with [Management API](/developers/management-api) at `https://management-api.x.ai/`.
-You have to authenticate using **xAI Management API Key** with the header `Authorization: Bearer <your xAI Management API key>`.
-
-For more details on provisioning xAI Management API key and using Management API, you can visit
-
-***
-
-## POST /v1/collections
-
-API endpoint for POST requests to /v1/collections.
-
-```
-Method: POST
-Path: /v1/collections
-```
-
-***
-
-## GET /v1/collections
-
-API endpoint for GET requests to /v1/collections.
-
-```
-Method: GET
-Path: /v1/collections
-```
-
-***
-
-## GET /v1/collections/\{collection\_id}
-
-API endpoint for GET requests to /v1/collections/\{collection\_id}.
-
-```
-Method: GET
-Path: /v1/collections/{collection_id}
-```
-
-***
-
-## DELETE /v1/collections/\{collection\_id}
-
-API endpoint for DELETE requests to /v1/collections/\{collection\_id}.
-
-```
-Method: DELETE
-Path: /v1/collections/{collection_id}
-```
-
-***
-
-## PUT /v1/collections/\{collection\_id}
-
-API endpoint for PUT requests to /v1/collections/\{collection\_id}.
-
-```
-Method: PUT
-Path: /v1/collections/{collection_id}
-```
-
-***
-
-## POST /v1/collections/\{collection\_id}/documents/\{file\_id}
-
-API endpoint for POST requests to /v1/collections/\{collection\_id}/documents/\{file\_id}.
-
-```
-Method: POST
-Path: /v1/collections/{collection_id}/documents/{file_id}
-```
-
-***
-
-## GET /v1/collections/\{collection\_id}/documents
-
-API endpoint for GET requests to /v1/collections/\{collection\_id}/documents.
-
-```
-Method: GET
-Path: /v1/collections/{collection_id}/documents
-```
-
-***
-
-## GET /v1/collections/\{collection\_id}/documents/\{file\_id}
-
-API endpoint for GET requests to /v1/collections/\{collection\_id}/documents/\{file\_id}.
-
-```
-Method: GET
-Path: /v1/collections/{collection_id}/documents/{file_id}
-```
-
-***
-
-## PATCH /v1/collections/\{collection\_id}/documents/\{file\_id}
-
-API endpoint for PATCH requests to /v1/collections/\{collection\_id}/documents/\{file\_id}.
-
-```
-Method: PATCH
-Path: /v1/collections/{collection_id}/documents/{file_id}
-```
-
-***
-
-## DELETE /v1/collections/\{collection\_id}/documents/\{file\_id}
-
-API endpoint for DELETE requests to /v1/collections/\{collection\_id}/documents/\{file\_id}.
-
-```
-Method: DELETE
-Path: /v1/collections/{collection_id}/documents/{file_id}
-```
-
-***
-
-## GET /v1/collections/\{collection\_id}/documents:batchGet
-
-API endpoint for GET requests to /v1/collections/\{collection\_id}/documents:batchGet.
-
-```
-Method: GET
-Path: /v1/collections/{collection_id}/documents:batchGet
-```
-
-
-===/developers/collections-api===
-# Collections API Reference
-
-The Collections API allows you to manage your Collections `documents` and `collections` programmatically.
-
-The base url for `collection` management is shared with [Management API](/developers/management-api) at `https://management-api.x.ai/v1/`. You have to authenticate using **xAI Management API Key** with the header `Authorization: Bearer <your xAI Management API key>`.
-
-For more details on provisioning xAI Management API key and using Management API, you can visit
-
-.
-
-The base url for searching within `collections` is shared with [REST API](/developers/api-reference) at `https://api.x.ai`. You have to authenticate using **xAI API Key** with the header `Authorization: Bearer <your xAI API key>`.
-
-
-===/developers/collections-api/search===
-#### Collections API Reference
-
-# Search in Collections
-
-The base url for searching `collections` is shared with [REST API](/developers/api-reference) at `https://api.x.ai`. You have to authenticate using **xAI API Key** with the header `Authorization: Bearer <your xAI API key>`.
-
-***
-
-## POST /v1/documents/search
-
-API endpoint for POST requests to /v1/documents/search.
-
-```
-Method: POST
-Path: /v1/documents/search
-```
-
-
 ===/developers/community===
 #### Resources
 
@@ -1776,7 +1363,7 @@ via RSS at [https://status.x.ai/feed.xml](https://status.x.ai/feed.xml).
 
 The service status is also indicated in the navigation bar of this site.
 
-Most of the errors will be accompanied by an error message that is self-explanatory. For typical status codes of each endpoint, visit [API Reference](/developers/api-reference) or view our [OpenAPI Document](/openapi.json).
+Most of the errors will be accompanied by an error message that is self-explanatory. For typical status codes of each endpoint, visit [API Reference](/developers/rest-api-reference) or view our [OpenAPI Document](/openapi.json).
 
 ## Status Codes
 
@@ -1789,10 +1376,10 @@ Here is a list of potential errors and statuses arranged by status codes.
 | 400Bad Request            | All Endpoints                          | - A `POST` method request body specified an invalid argument, or a `GET` method with dynamic route has an invalid param in the URL.- An incorrect API key is supplied. | - Please check your request body or request URL.                                                                                                 |
 | 401Unauthorized           | All Endpoints                          | - No authorization header or an invalid authorization token is provided.                                                                                                    | - Supply an `Authorization: Bearer Token <XAI_API_KEY>` in the request header. You can get a new API key on [xAI Console](https://console.x.ai). |
 | 403Forbidden              | All Endpoints                          | - Your API key/team doesn't have permission to perform the action.- Your API key/team is blocked.                                                                     | - Ask your team admin for permission.                                                                                                            |
-| 404Not Found              | All Endpoints                          | - A model specified in a `POST` method request body is not found.- Trying to reach an invalid endpoint URL. (Misspelled URL)                                           | - Check your request body and endpoint URL with our [API Reference](/developers/api-reference).                                                              |
-| 405Method Not Allowed     | All Endpoints                          | - The request method is not allowed. For example, sending a `POST` request to an endpoint supporting only `GET`.                                                            | - Check your request method with our [API Reference](/developers/api-reference).                                                                             |
+| 404Not Found              | All Endpoints                          | - A model specified in a `POST` method request body is not found.- Trying to reach an invalid endpoint URL. (Misspelled URL)                                           | - Check your request body and endpoint URL with our [API Reference](/developers/rest-api-reference).                                                              |
+| 405Method Not Allowed     | All Endpoints                          | - The request method is not allowed. For example, sending a `POST` request to an endpoint supporting only `GET`.                                                            | - Check your request method with our [API Reference](/developers/rest-api-reference).                                                                             |
 | 415Unsupported Media Type | All Endpoints Supporting `POST` Method | - An empty request body in `POST` requests.- Not specifying `Content-Type: application/json` header.                                                                  | - Add a valid request body. - Ensure `Content-Type: application/json` header is present in the request header.                             |
-| 422Unprocessable Entity   | All Endpoints Supporting `POST` Method | - An invalid format for a field in the `POST` request body.                                                                                                                 | - Check your request body is valid. You can find more information from [API Reference](/developers/api-reference).                                           |
+| 422Unprocessable Entity   | All Endpoints Supporting `POST` Method | - An invalid format for a field in the `POST` request body.                                                                                                                 | - Check your request body is valid. You can find more information from [API Reference](/developers/rest-api-reference).                                           |
 | 429Too Many Requests      | All Inference Endpoints                | - You are sending requests too frequently and reaching rate limit                                                                                                           | - Reduce your request rate or increase your rate limit. You can find your current rate limit on [xAI Console](https://console.x.ai).             |
 
 ### 2XX Error Codes
@@ -2037,122 +1624,6 @@ Admins can enable automatic team joining for users with a shared email domain:
 Users signing up with a verified domain email will automatically join the team.
 
 
-===/developers/files-api===
-#### Files API Reference
-
-# Files API Reference
-
-***
-
-## GET /v1/files
-
-API endpoint for GET requests to /v1/files.
-
-```
-Method: GET
-Path: /v1/files
-```
-
-***
-
-## POST /v1/files
-
-API endpoint for POST requests to /v1/files.
-
-```
-Method: POST
-Path: /v1/files
-```
-
-***
-
-## POST /v1/files/batch\_upload
-
-API endpoint for POST requests to /v1/files/batch\_upload.
-
-```
-Method: POST
-Path: /v1/files/batch_upload
-```
-
-***
-
-## POST /v1/files/batch\_upload/\{batch\_job\_id}:complete
-
-API endpoint for POST requests to /v1/files/batch\_upload/\{batch\_job\_id}:complete.
-
-```
-Method: POST
-Path: /v1/files/batch_upload/{batch_job_id}:complete
-```
-
-***
-
-## GET /v1/files/\{file\_id}
-
-API endpoint for GET requests to /v1/files/\{file\_id}.
-
-```
-Method: GET
-Path: /v1/files/{file_id}
-```
-
-***
-
-## DELETE /v1/files/\{file\_id}
-
-API endpoint for DELETE requests to /v1/files/\{file\_id}.
-
-```
-Method: DELETE
-Path: /v1/files/{file_id}
-```
-
-***
-
-## PUT /v1/files/\{file\_id}
-
-API endpoint for PUT requests to /v1/files/\{file\_id}.
-
-```
-Method: PUT
-Path: /v1/files/{file_id}
-```
-
-***
-
-## POST /v1/files:download
-
-API endpoint for POST requests to /v1/files:download.
-
-```
-Method: POST
-Path: /v1/files:download
-```
-
-***
-
-## POST /v1/files:initialize
-
-API endpoint for POST requests to /v1/files:initialize.
-
-```
-Method: POST
-Path: /v1/files:initialize
-```
-
-***
-
-## POST /v1/files:uploadChunks
-
-API endpoint for POST requests to /v1/files:uploadChunks.
-
-```
-Method: POST
-Path: /v1/files:uploadChunks
-```
-
-
 ===/developers/files/collections/api===
 #### Files & Collections
 
@@ -2347,7 +1818,7 @@ curl -X POST https://management-api.x.ai/v1/collections/$COLLECTION_ID/documents
 
 ### Uploading with metadata fields
 
-If your collection has [metadata fields](/developers/files/collections/metadata) defined, include them using the `fields` parameter:
+If your collection has [metadata fields](/developers/files/collections/metadata) defined (the collection must have these fields set in `field_definitions` when created or updated - see the linked metadata page for details), include them using the `fields` parameter:
 
 ```python customLanguage="pythonXAI"
 # ... Create client
@@ -3266,7 +2737,7 @@ Now that you know how to manage files, learn how to use them in chat conversatio
 
 The Files API enables you to upload documents and use them in chat conversations with Grok. When you attach files to a chat message, the system automatically activates the `attachment_search` tool, transforming your request into an agentic workflow where Grok can intelligently search through and reason over your documents to answer questions.
 
-You can view more information at [Files API Reference](/developers/files-api).
+You can view more information at [Files API Reference](/developers/rest-api-reference/files).
 
 **Looking for Collections?** If you need persistent document storage with semantic search across many documents, see [Collections](/developers/files/collections). Files are different—they're for attaching documents to chat conversations for immediate context.
 
@@ -3381,10 +2852,10 @@ Combine files with the [code execution tool](/developers/model-capabilities/file
 ## Next Steps
 
 
-===/developers/grpc-reference===
-# gRPC Reference
+===/developers/grpc-api-reference===
+# gRPC API Reference
 
-The xAI Enterprise gRPC API is a robust, high-performance gRPC interface designed for seamless integration into existing systems.
+The xAI gRPC API is a robust, high-performance gRPC interface designed for seamless integration into existing systems.
 
 The base url for all services is at `api.x.ai`. For all services, you have to authenticate with the header `Authorization: Bearer <your xAI API key>`.
 
@@ -3437,7 +2908,7 @@ This documentation is intended for users using xAI API.
 
 Some enterprise users may prefer to manage their account details programmatically rather than manually through the xAI Console. For this reason, we have developed a Management API to enable enterprise users to efficiently manage their team details.
 
-You can read the endpoint specifications and descriptions at [Management API Reference](/developers/management-api).
+You can read the endpoint specifications and descriptions at [Management API Reference](/developers/rest-api-reference/management).
 
 You need to get a management key, which is separate from your API key, to use the management API. The management key can be obtained at [xAI Console](https://console.x.ai) -> Settings -> Management Keys.
 
@@ -3505,10 +2976,13 @@ You can customize the query parameters such as `pageSize` and `paginationToken`.
 You can update an API key after it has been created. For example, to update the `qpm` of an API key:
 
 ```bash
-curl https://management-api.x.ai/auth/teams/{teamId}/api-keys \\
+curl https://management-api.x.ai/auth/api-keys/{apiKeyId} \\
     -X PUT \\
+    -H "Authorization: Bearer <Your Management API Key>" \\
     -d '{
-            "apiKey": "<The apiKey Object with updated qpm>",
+            "apiKey": {
+                "qpm": 200
+            },
             "fieldMask": "qpm",
         }'
 ```
@@ -3516,10 +2990,13 @@ curl https://management-api.x.ai/auth/teams/{teamId}/api-keys \\
 Or to update the `name` of an API key:
 
 ```bash
-curl https://management-api.x.ai/auth/teams/{teamId}/api-keys \\
+curl https://management-api.x.ai/auth/api-keys/{apiKeyId} \\
     -X PUT \\
+    -H "Authorization: Bearer <Your Management API Key>" \\
     -d '{
-            "apiKey": "<The apiKey Object with updated name>",
+            "apiKey": {
+                "name": "Updated API key"
+            },
             "fieldMask": "name",
         }'
 ```
@@ -3614,232 +3091,6 @@ curl "https://management-api.x.ai/audit/teams/{teamId}/events?pageSize=50&eventT
 ```
 
 
-===/developers/management-api/audit===
-## Audit Logs
-
-## GET /audit/teams/\{teamId}/events
-
-API endpoint for GET requests to /audit/teams/\{teamId}/events.
-
-```
-Method: GET
-Path: /audit/teams/{teamId}/events
-```
-
-
-===/developers/management-api/auth===
-## Accounts and Authorization
-
-## POST /auth/teams/\{teamId}/api-keys
-
-API endpoint for POST requests to /auth/teams/\{teamId}/api-keys.
-
-```
-Method: POST
-Path: /auth/teams/{teamId}/api-keys
-```
-
-***
-
-## GET /auth/teams/\{teamId}/api-keys
-
-API endpoint for GET requests to /auth/teams/\{teamId}/api-keys.
-
-```
-Method: GET
-Path: /auth/teams/{teamId}/api-keys
-```
-
-***
-
-## PUT /auth/api-keys/\{api\_key\_id}
-
-API endpoint for PUT requests to /auth/api-keys/\{api\_key\_id}.
-
-```
-Method: PUT
-Path: /auth/api-keys/{api_key_id}
-```
-
-***
-
-## DELETE /auth/api-keys/\{apiKeyId}
-
-API endpoint for DELETE requests to /auth/api-keys/\{apiKeyId}.
-
-```
-Method: DELETE
-Path: /auth/api-keys/{apiKeyId}
-```
-
-***
-
-## GET /auth/api-keys/\{apiKeyId}/propagation
-
-API endpoint for GET requests to /auth/api-keys/\{apiKeyId}/propagation.
-
-```
-Method: GET
-Path: /auth/api-keys/{apiKeyId}/propagation
-```
-
-***
-
-## GET /auth/teams/\{teamId}/models
-
-API endpoint for GET requests to /auth/teams/\{teamId}/models.
-
-```
-Method: GET
-Path: /auth/teams/{teamId}/models
-```
-
-***
-
-## GET /auth/teams/\{teamId}/endpoints
-
-API endpoint for GET requests to /auth/teams/\{teamId}/endpoints.
-
-```
-Method: GET
-Path: /auth/teams/{teamId}/endpoints
-```
-
-***
-
-## GET /auth/management-keys/validation
-
-API endpoint for GET requests to /auth/management-keys/validation.
-
-```
-Method: GET
-Path: /auth/management-keys/validation
-```
-
-
-===/developers/management-api/billing===
-## Billing Management
-
-## GET /v1/billing/teams/\{team\_id}/billing-info
-
-API endpoint for GET requests to /v1/billing/teams/\{team\_id}/billing-info.
-
-```
-Method: GET
-Path: /v1/billing/teams/{team_id}/billing-info
-```
-
-***
-
-## POST /v1/billing/teams/\{team\_id}/billing-info
-
-API endpoint for POST requests to /v1/billing/teams/\{team\_id}/billing-info.
-
-```
-Method: POST
-Path: /v1/billing/teams/{team_id}/billing-info
-```
-
-***
-
-## GET /v1/billing/teams/\{team\_id}/invoices
-
-API endpoint for GET requests to /v1/billing/teams/\{team\_id}/invoices.
-
-```
-Method: GET
-Path: /v1/billing/teams/{team_id}/invoices
-```
-
-***
-
-## GET /v1/billing/teams/\{team\_id}/payment-method
-
-API endpoint for GET requests to /v1/billing/teams/\{team\_id}/payment-method.
-
-```
-Method: GET
-Path: /v1/billing/teams/{team_id}/payment-method
-```
-
-***
-
-## POST /v1/billing/teams/\{team\_id}/payment-method/default
-
-API endpoint for POST requests to /v1/billing/teams/\{team\_id}/payment-method/default.
-
-```
-Method: POST
-Path: /v1/billing/teams/{team_id}/payment-method/default
-```
-
-***
-
-## GET /v1/billing/teams/\{team\_id}/postpaid/invoice/preview
-
-API endpoint for GET requests to /v1/billing/teams/\{team\_id}/postpaid/invoice/preview.
-
-```
-Method: GET
-Path: /v1/billing/teams/{team_id}/postpaid/invoice/preview
-```
-
-***
-
-## GET /v1/billing/teams/\{team\_id}/postpaid/spending-limits
-
-API endpoint for GET requests to /v1/billing/teams/\{team\_id}/postpaid/spending-limits.
-
-```
-Method: GET
-Path: /v1/billing/teams/{team_id}/postpaid/spending-limits
-```
-
-***
-
-## POST /v1/billing/teams/\{team\_id}/postpaid/spending-limits
-
-API endpoint for POST requests to /v1/billing/teams/\{team\_id}/postpaid/spending-limits.
-
-```
-Method: POST
-Path: /v1/billing/teams/{team_id}/postpaid/spending-limits
-```
-
-***
-
-## GET /v1/billing/teams/\{team\_id}/prepaid/balance
-
-API endpoint for GET requests to /v1/billing/teams/\{team\_id}/prepaid/balance.
-
-```
-Method: GET
-Path: /v1/billing/teams/{team_id}/prepaid/balance
-```
-
-***
-
-## POST /v1/billing/teams/\{team\_id}/prepaid/top-up
-
-API endpoint for POST requests to /v1/billing/teams/\{team\_id}/prepaid/top-up.
-
-```
-Method: POST
-Path: /v1/billing/teams/{team_id}/prepaid/top-up
-```
-
-***
-
-## POST /v1/billing/teams/\{team\_id}/usage
-
-API endpoint for POST requests to /v1/billing/teams/\{team\_id}/usage.
-
-```
-Method: POST
-Path: /v1/billing/teams/{team_id}/usage
-```
-
-
 ===/developers/migration/models===
 #### Key Information
 
@@ -3869,7 +3120,7 @@ When you are setting up to use new models, it might also be a good idea to ensur
 latest endpoints have more stable supports for the model functionalities. Endpoints that are marked with `legacy`
 might not receive any updates that support newer functionalities.
 
-In general, the following endpoints are recommended: - Text and image input and text output: [Chat Completions](/developers/api-reference#chat-completions) - `/v1/chat/completions` - Text input and image output: [Image Generation](/developers/api-reference#image-generation) - `/v1/image/generations` - Tokenization: [Tokenize Text](/developers/api-reference#tokenize-text) - `/v1/tokenize-text`
+In general, the following endpoints are recommended: - Text and image input and text output: [Chat Completions](/developers/rest-api-reference/inference/chat#chat-completions) - `/v1/chat/completions` - Text input and image output: [Image Generation](/developers/rest-api-reference/inference/images#image-generation) - `/v1/image/generations` - Tokenization: [Tokenize Text](/developers/rest-api-reference/inference/other#tokenize-text) - `/v1/tokenize-text`
 
 
 ===/developers/model-capabilities/audio/voice-agent===
@@ -4510,7 +3761,7 @@ Tools are configured in the `tools` array of the session configuration. Here are
 
 ### Collections Search with `file_search`
 
-Use the `file_search` tool to enable your voice agent to search through document collections. You'll need to create a collection first using the [Collections API](/developers/collections-api).
+Use the `file_search` tool to enable your voice agent to search through document collections. You'll need to create a collection first using the [Collections API](/developers/rest-api-reference/collections).
 
 ```pythonWithoutSDK
 COLLECTION_ID = "your-collection-id"  # Replace with your collection ID
@@ -4726,7 +3977,7 @@ const sessionConfig = {
 };
 ```
 
-For more details on Collections, see the [Collections API documentation](/developers/collections-api). For search tool parameters and options, see the [Web Search](/developers/tools/web-search) and [X Search](/developers/tools/x-search) guides.
+For more details on Collections, see the [Collections API documentation](/developers/rest-api-reference/collections). For search tool parameters and options, see the [Web Search](/developers/tools/web-search) and [X Search](/developers/tools/x-search) guides.
 
 ### Handling Function Call Responses
 
@@ -5470,12 +4721,9 @@ payload = {
     "input": [
         {
             "role": "user",
-            "content": "What was the total revenue in this report?",
-            "attachments": [
-                {
-                    "file_id": file_id,
-                    "tools": [{"type": "file_search"}]
-                }
+            "content": [
+                {"type": "input_text", "text": "What was the total revenue in this report?"},
+                {"type": "input_file", "file_id": file_id}
             ]
         }
     ]
@@ -6059,6 +5307,37 @@ curl -X POST https://api.x.ai/v1/images/generations \
   }'
 ```
 
+### Resolution
+
+You can specify different resolutions of the output image. Currently supported image resolutions are:
+
+* 1k
+* 2k
+
+```python customLanguage="pythonXAI"
+import xai_sdk
+
+client = xai_sdk.Client()
+
+response = client.image.sample(
+    prompt="An astronaut performing EVA in LEO.",
+    model="grok-imagine-image",
+    resolution="2k"
+)
+
+```
+
+```bash
+curl -X POST https://api.x.ai/v1/images/generations \
+-H "Content-Type: application/json" \
+-H "Authorization: Bearer $XAI_API_KEY" \
+-d '{
+    "model": "grok-imagine-image",
+    "prompt": "An astronaut performing EVA in LEO.",
+    "resolution": "2k"
+}'
+```
+
 ### Base64 Output
 
 For embedding images directly without downloading, request base64:
@@ -6127,7 +5406,7 @@ For full pricing details on the `grok-imagine-image` model, see the [model page]
 
 * [Models](/developers/models) — Available image models
 * [Video Generation](/developers/model-capabilities/video/generation) — Animate generated images
-* [API Reference](/developers/api-reference) — Full endpoint documentation
+* [API Reference](/developers/rest-api-reference) — Full endpoint documentation
 
 
 ===/developers/model-capabilities/images/understanding===
@@ -9457,7 +8736,7 @@ For full pricing details on the `grok-imagine-video` model, see the [model page]
 
 * [Models](/developers/models) — Available video models and pricing
 * [Image Generation](/developers/model-capabilities/images/generation) — Generate still images from text
-* [API Reference](/developers/api-reference) — Full endpoint documentation
+* [API Reference](/developers/rest-api-reference) — Full endpoint documentation
 
 
 ===/developers/models===
@@ -9486,14 +8765,14 @@ An overview of our models' capabilities and their associated pricing.
 | grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 480 RPM | $0.30 ($0.07) / $0.50 |
 | grok-2-image-1212 | text → image | - | - | 300 RPM | $0.07/image |
 | grok-2-image-1212 | text → image | - | - | 300 RPM | $0.07/image |
-| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-2-vision-1212 | text, image → text | functions, structured | 32,768 | 600 RPM | $2.00 ($0.00) / $10.00 |
 | grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
 | grok-2-vision-1212 | text, image → text | functions, structured | 32,768 | 600 RPM | $2.00 ($0.00) / $10.00 |
-| grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
+| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
+| grok-2-vision-1212 | text, image → text | functions, structured | 32,768 | 600 RPM | $2.00 ($0.00) / $10.00 |
+| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
 | grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
+| grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
 | grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
 | grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
 | grok-imagine-video | text, image, video → video | - | - | 60 RPM | $0.050/sec |
@@ -9568,6 +8847,8 @@ For more details on how to get started with the Voice Agent API, see the [Voice 
 ## Usage Guidelines Violation Fee
 
 When your request is deemed to be in violation of our usage guideline by our system, we will still charge for the generation of the request.
+
+For violations that are caught before generation in the Responses API, we will charge a $0.05 usage guideline violation fee per request.
 
 ## Additional Information Regarding Models
 
@@ -9727,7 +9008,7 @@ curl https://api.x.ai/v1/responses \\
 
 As well as a native xAI Python SDK, the majority of our APIs are fully compatible with the OpenAI SDK (and the Anthropic SDK, although this is now deprecated). For example, we can make the same request from Python or JavaScript like so:
 
-**Anthropic SDK Deprecated**: The Anthropic SDK compatibility is fully deprecated. Please migrate to the [Responses API](/developers/api-reference#create-new-response) or [gRPC](/developers/grpc-reference).
+**Anthropic SDK Deprecated**: The Anthropic SDK compatibility is fully deprecated. Please migrate to the [Responses API](/developers/rest-api-reference/inference/chat#create-new-response) or [gRPC](/developers/grpc-api-reference).
 
 ```pythonXAI
 # In your terminal, first run:
@@ -10036,7 +9317,7 @@ After the inference is completed, the completion tokens will be aggregated into 
 Our system will add additional formatting tokens to the input/output token, and if you selected a reasoning model, additional reasoning tokens will be added into the total token consumption as well.
 Your actual consumption will be reflected either in the `usage` object returned in the API response, or in Usage Explorer on the [xAI Console](https://console.x.ai).
 
-You can use [Tokenizer](https://console.x.ai/team/default/tokenizer) on xAI Console to visualize tokens a given text prompt, or use [Tokenize text](/developers/api-reference#tokenize-text) endpoint on the API.
+You can use [Tokenizer](https://console.x.ai/team/default/tokenizer) on xAI Console to visualize tokens a given text prompt, or use [Tokenize text](/developers/rest-api-reference/inference/other#tokenize-text) endpoint on the API.
 
 ### Text tokens
 
@@ -10077,7 +9358,7 @@ Message body:
 
 Tokenize result on Tokenizer page:
 
-You can also utilize the [Tokenize Text](/developers/api-reference#tokenize-text) API endpoint to tokenize the text, and count the output token array length.
+You can also utilize the [Tokenize Text](/developers/rest-api-reference/inference/other#tokenize-text) API endpoint to tokenize the text, and count the output token array length.
 
 ### Cached prompt tokens
 
@@ -10110,7 +9391,7 @@ You can either:
 
 ## Checking token consumption
 
-In each completion response, there is a `usage` object detailing your prompt and completion token count. You might find it helpful to keep track of it, in order to avoid hitting rate limits or having cost surprises. You can view more details of the object on our [API Reference](/developers/api-reference).
+In each completion response, there is a `usage` object detailing your prompt and completion token count. You might find it helpful to keep track of it, in order to avoid hitting rate limits or having cost surprises. You can view more details of the object on our [API Reference](/developers/rest-api-reference).
 
 ```json
 "usage": {
@@ -10498,6 +9779,956 @@ We are happy to announce the immediate availability of our API, which
 gives developers programmatic access to our Grok series of foundation models. To get started, head
 to [console.x.ai](https://console.x.ai/) and sign up to create an account. We are excited to see
 what developers build using Grok.
+
+
+===/developers/rest-api-reference/collections/collection===
+#### Collections API
+
+# Collection Management
+
+The base URL for `collection` management is shared with [Management API](/developers/rest-api-reference/management) at `https://management-api.x.ai/`.
+You have to authenticate using **xAI Management API Key** with the header `Authorization: Bearer <your xAI Management API key>`.
+
+For more details on provisioning xAI Management API key and using Management API, you can visit
+
+***
+
+## POST /v1/collections
+
+API endpoint for POST requests to /v1/collections.
+
+```
+Method: POST
+Path: /v1/collections
+```
+
+***
+
+## GET /v1/collections
+
+API endpoint for GET requests to /v1/collections.
+
+```
+Method: GET
+Path: /v1/collections
+```
+
+***
+
+## GET /v1/collections/\{collection\_id}
+
+API endpoint for GET requests to /v1/collections/\{collection\_id}.
+
+```
+Method: GET
+Path: /v1/collections/{collection_id}
+```
+
+***
+
+## DELETE /v1/collections/\{collection\_id}
+
+API endpoint for DELETE requests to /v1/collections/\{collection\_id}.
+
+```
+Method: DELETE
+Path: /v1/collections/{collection_id}
+```
+
+***
+
+## PUT /v1/collections/\{collection\_id}
+
+API endpoint for PUT requests to /v1/collections/\{collection\_id}.
+
+```
+Method: PUT
+Path: /v1/collections/{collection_id}
+```
+
+***
+
+## POST /v1/collections/\{collection\_id}/documents/\{file\_id}
+
+API endpoint for POST requests to /v1/collections/\{collection\_id}/documents/\{file\_id}.
+
+```
+Method: POST
+Path: /v1/collections/{collection_id}/documents/{file_id}
+```
+
+***
+
+## GET /v1/collections/\{collection\_id}/documents
+
+API endpoint for GET requests to /v1/collections/\{collection\_id}/documents.
+
+```
+Method: GET
+Path: /v1/collections/{collection_id}/documents
+```
+
+***
+
+## GET /v1/collections/\{collection\_id}/documents/\{file\_id}
+
+API endpoint for GET requests to /v1/collections/\{collection\_id}/documents/\{file\_id}.
+
+```
+Method: GET
+Path: /v1/collections/{collection_id}/documents/{file_id}
+```
+
+***
+
+## PATCH /v1/collections/\{collection\_id}/documents/\{file\_id}
+
+API endpoint for PATCH requests to /v1/collections/\{collection\_id}/documents/\{file\_id}.
+
+```
+Method: PATCH
+Path: /v1/collections/{collection_id}/documents/{file_id}
+```
+
+***
+
+## DELETE /v1/collections/\{collection\_id}/documents/\{file\_id}
+
+API endpoint for DELETE requests to /v1/collections/\{collection\_id}/documents/\{file\_id}.
+
+```
+Method: DELETE
+Path: /v1/collections/{collection_id}/documents/{file_id}
+```
+
+***
+
+## GET /v1/collections/\{collection\_id}/documents:batchGet
+
+API endpoint for GET requests to /v1/collections/\{collection\_id}/documents:batchGet.
+
+```
+Method: GET
+Path: /v1/collections/{collection_id}/documents:batchGet
+```
+
+
+===/developers/rest-api-reference/collections===
+#### Collections API
+
+# Collections REST API Overview
+
+The Collections API allows you to manage your Collections `documents` and `collections` programmatically.
+
+The base url for `collection` management is shared with [Management API](/developers/rest-api-reference/management) at `https://management-api.x.ai/v1/`. You have to authenticate using **xAI Management API Key** with the header `Authorization: Bearer <your xAI Management API key>`.
+
+For more details on provisioning xAI Management API key and using Management API, you can visit
+
+.
+
+The base url for searching within `collections` is shared with [REST API](/developers/rest-api-reference) at `https://api.x.ai`. You have to authenticate with the header `Authorization: Bearer <your xAI API key>`.
+
+* [Collection Management](/developers/rest-api-reference/collections/collection)
+* [Search in Collections](/developers/rest-api-reference/collections/search)
+
+
+===/developers/rest-api-reference/collections/search===
+#### Collections API
+
+# Search in Collections
+
+The base url for searching `collections` is shared with [REST API](/developers/rest-api-reference) at `https://api.x.ai`. You have to authenticate using **xAI API Key** with the header `Authorization: Bearer <your xAI API key>`.
+
+***
+
+## POST /v1/documents/search
+
+API endpoint for POST requests to /v1/documents/search.
+
+```
+Method: POST
+Path: /v1/documents/search
+```
+
+
+===/developers/rest-api-reference/files/download===
+#### Files API
+
+# Download
+
+***
+
+## POST /v1/files:download
+
+API endpoint for POST requests to /v1/files:download.
+
+```
+Method: POST
+Path: /v1/files:download
+```
+
+
+===/developers/rest-api-reference/files/manage===
+#### Files API
+
+# Manage
+
+***
+
+## GET /v1/files
+
+API endpoint for GET requests to /v1/files.
+
+```
+Method: GET
+Path: /v1/files
+```
+
+***
+
+## GET /v1/files/\{file\_id}
+
+API endpoint for GET requests to /v1/files/\{file\_id}.
+
+```
+Method: GET
+Path: /v1/files/{file_id}
+```
+
+***
+
+## PUT /v1/files/\{file\_id}
+
+API endpoint for PUT requests to /v1/files/\{file\_id}.
+
+```
+Method: PUT
+Path: /v1/files/{file_id}
+```
+
+***
+
+## DELETE /v1/files/\{file\_id}
+
+API endpoint for DELETE requests to /v1/files/\{file\_id}.
+
+```
+Method: DELETE
+Path: /v1/files/{file_id}
+```
+
+
+===/developers/rest-api-reference/files===
+#### Files API
+
+# Files REST API Overview
+
+The Files API allows you to upload, manage, and download files for use with Grok models. Files can be attached to chat messages for document understanding, or added to collections for semantic search.
+
+The base URL for all file operations is `https://api.x.ai`. You have to authenticate with the header `Authorization: Bearer <your xAI API key>`.
+
+* [Upload](/developers/rest-api-reference/files/upload)
+* [Manage](/developers/rest-api-reference/files/manage)
+* [Download](/developers/rest-api-reference/files/download)
+
+
+===/developers/rest-api-reference/files/upload===
+#### Files API
+
+# Upload
+
+***
+
+## POST /v1/files
+
+API endpoint for POST requests to /v1/files.
+
+```
+Method: POST
+Path: /v1/files
+```
+
+***
+
+## POST /v1/files/batch\_upload
+
+API endpoint for POST requests to /v1/files/batch\_upload.
+
+```
+Method: POST
+Path: /v1/files/batch_upload
+```
+
+***
+
+## POST /v1/files/batch\_upload/\{batch\_job\_id}:complete
+
+API endpoint for POST requests to /v1/files/batch\_upload/\{batch\_job\_id}:complete.
+
+```
+Method: POST
+Path: /v1/files/batch_upload/{batch_job_id}:complete
+```
+
+***
+
+## POST /v1/files:initialize
+
+API endpoint for POST requests to /v1/files:initialize.
+
+```
+Method: POST
+Path: /v1/files:initialize
+```
+
+***
+
+## POST /v1/files:uploadChunks
+
+API endpoint for POST requests to /v1/files:uploadChunks.
+
+```
+Method: POST
+Path: /v1/files:uploadChunks
+```
+
+
+===/developers/rest-api-reference/inference/batches===
+#### Inference API
+
+# Batches
+
+***
+
+## POST /v1/batches
+
+API endpoint for POST requests to /v1/batches.
+
+```
+Method: POST
+Path: /v1/batches
+```
+
+***
+
+## GET /v1/batches
+
+API endpoint for GET requests to /v1/batches.
+
+```
+Method: GET
+Path: /v1/batches
+```
+
+***
+
+## GET /v1/batches/\{batch\_id}
+
+API endpoint for GET requests to /v1/batches/\{batch\_id}.
+
+```
+Method: GET
+Path: /v1/batches/{batch_id}
+```
+
+***
+
+## GET /v1/batches/\{batch\_id}/requests
+
+API endpoint for GET requests to /v1/batches/\{batch\_id}/requests.
+
+```
+Method: GET
+Path: /v1/batches/{batch_id}/requests
+```
+
+***
+
+## POST /v1/batches/\{batch\_id}/requests
+
+API endpoint for POST requests to /v1/batches/\{batch\_id}/requests.
+
+```
+Method: POST
+Path: /v1/batches/{batch_id}/requests
+```
+
+***
+
+## GET /v1/batches/\{batch\_id}/results
+
+API endpoint for GET requests to /v1/batches/\{batch\_id}/results.
+
+```
+Method: GET
+Path: /v1/batches/{batch_id}/results
+```
+
+***
+
+## POST /v1/batches/\{batch\_id}:cancel
+
+API endpoint for POST requests to /v1/batches/\{batch\_id}:cancel.
+
+```
+Method: POST
+Path: /v1/batches/{batch_id}:cancel
+```
+
+
+===/developers/rest-api-reference/inference/chat===
+#### Inference API
+
+# Chat
+
+***
+
+## POST /v1/chat/completions
+
+API endpoint for POST requests to /v1/chat/completions.
+
+```
+Method: POST
+Path: /v1/chat/completions
+```
+
+***
+
+## POST /v1/responses
+
+API endpoint for POST requests to /v1/responses.
+
+```
+Method: POST
+Path: /v1/responses
+```
+
+***
+
+## GET /v1/responses/\{response\_id}
+
+API endpoint for GET requests to /v1/responses/\{response\_id}.
+
+```
+Method: GET
+Path: /v1/responses/{response_id}
+```
+
+***
+
+## DELETE /v1/responses/\{response\_id}
+
+API endpoint for DELETE requests to /v1/responses/\{response\_id}.
+
+```
+Method: DELETE
+Path: /v1/responses/{response_id}
+```
+
+***
+
+## GET /v1/chat/deferred-completion/\{request\_id}
+
+API endpoint for GET requests to /v1/chat/deferred-completion/\{request\_id}.
+
+```
+Method: GET
+Path: /v1/chat/deferred-completion/{request_id}
+```
+
+
+===/developers/rest-api-reference/inference/images===
+#### Inference API
+
+# Images
+
+***
+
+## POST /v1/images/generations
+
+API endpoint for POST requests to /v1/images/generations.
+
+```
+Method: POST
+Path: /v1/images/generations
+```
+
+***
+
+## POST /v1/images/edits
+
+API endpoint for POST requests to /v1/images/edits.
+
+```
+Method: POST
+Path: /v1/images/edits
+```
+
+
+===/developers/rest-api-reference/inference/legacy===
+#### Inference API
+
+# Legacy & Deprecated
+
+***
+
+## POST /v1/completions
+
+API endpoint for POST requests to /v1/completions.
+
+```
+Method: POST
+Path: /v1/completions
+```
+
+***
+
+**Deprecated**: The Anthropic SDK compatibility is fully deprecated. Please migrate to the [Responses API](/developers/rest-api-reference/inference/chat#create-new-response) or [gRPC](/developers/grpc-api-reference).
+
+## POST /v1/messages
+
+API endpoint for POST requests to /v1/messages.
+
+```
+Method: POST
+Path: /v1/messages
+```
+
+***
+
+**Deprecated**: The Anthropic SDK compatibility is fully deprecated. Please migrate to the [Responses API](/developers/rest-api-reference/inference/chat#create-new-response) or [gRPC](/developers/grpc-api-reference).
+
+## POST /v1/complete
+
+API endpoint for POST requests to /v1/complete.
+
+```
+Method: POST
+Path: /v1/complete
+```
+
+
+===/developers/rest-api-reference/inference/models===
+#### Inference API
+
+# Models
+
+***
+
+## GET /v1/models
+
+API endpoint for GET requests to /v1/models.
+
+```
+Method: GET
+Path: /v1/models
+```
+
+***
+
+## GET /v1/models/\{model\_id}
+
+API endpoint for GET requests to /v1/models/\{model\_id}.
+
+```
+Method: GET
+Path: /v1/models/{model_id}
+```
+
+***
+
+## GET /v1/language-models
+
+API endpoint for GET requests to /v1/language-models.
+
+```
+Method: GET
+Path: /v1/language-models
+```
+
+***
+
+## GET /v1/language-models/\{model\_id}
+
+API endpoint for GET requests to /v1/language-models/\{model\_id}.
+
+```
+Method: GET
+Path: /v1/language-models/{model_id}
+```
+
+***
+
+## GET /v1/image-generation-models
+
+API endpoint for GET requests to /v1/image-generation-models.
+
+```
+Method: GET
+Path: /v1/image-generation-models
+```
+
+***
+
+## GET /v1/image-generation-models/\{model\_id}
+
+API endpoint for GET requests to /v1/image-generation-models/\{model\_id}.
+
+```
+Method: GET
+Path: /v1/image-generation-models/{model_id}
+```
+
+
+===/developers/rest-api-reference/inference/other===
+#### Inference API
+
+# Other
+
+***
+
+## GET /v1/api-key
+
+API endpoint for GET requests to /v1/api-key.
+
+```
+Method: GET
+Path: /v1/api-key
+```
+
+***
+
+## POST /v1/tokenize-text
+
+API endpoint for POST requests to /v1/tokenize-text.
+
+```
+Method: POST
+Path: /v1/tokenize-text
+```
+
+
+===/developers/rest-api-reference/inference===
+#### Inference API
+
+# Inference REST API Overview
+
+The xAI Inference REST API is a robust, high-performance RESTful interface designed for seamless integration into existing systems.
+It offers advanced AI capabilities with full compatibility with the OpenAI REST API.
+
+The base for all routes is at `https://api.x.ai`. For all routes, you have to authenticate with the header `Authorization: Bearer <your xAI API key>`.
+
+* [Chat](/developers/rest-api-reference/inference/chat)
+* [Images](/developers/rest-api-reference/inference/images)
+* [Videos](/developers/rest-api-reference/inference/videos)
+* [Models](/developers/rest-api-reference/inference/models)
+* [Files](/developers/rest-api-reference/files)
+* [Batches](/developers/rest-api-reference/inference/batches)
+* [Other](/developers/rest-api-reference/inference/other)
+* [Legacy & Deprecated](/developers/rest-api-reference/inference/legacy)
+
+
+===/developers/rest-api-reference/inference/videos===
+#### Inference API
+
+# Videos
+
+***
+
+## POST /v1/videos/generations
+
+API endpoint for POST requests to /v1/videos/generations.
+
+```
+Method: POST
+Path: /v1/videos/generations
+```
+
+***
+
+## POST /v1/videos/edits
+
+API endpoint for POST requests to /v1/videos/edits.
+
+```
+Method: POST
+Path: /v1/videos/edits
+```
+
+***
+
+## GET /v1/videos/\{request\_id}
+
+API endpoint for GET requests to /v1/videos/\{request\_id}.
+
+```
+Method: GET
+Path: /v1/videos/{request_id}
+```
+
+
+===/developers/rest-api-reference/management/audit===
+#### Management API
+
+# Audit Logs
+
+***
+
+## GET /audit/teams/\{teamId}/events
+
+API endpoint for GET requests to /audit/teams/\{teamId}/events.
+
+```
+Method: GET
+Path: /audit/teams/{teamId}/events
+```
+
+
+===/developers/rest-api-reference/management/auth===
+#### Management API
+
+# Accounts and Authorization
+
+***
+
+## POST /auth/teams/\{teamId}/api-keys
+
+API endpoint for POST requests to /auth/teams/\{teamId}/api-keys.
+
+```
+Method: POST
+Path: /auth/teams/{teamId}/api-keys
+```
+
+***
+
+## GET /auth/teams/\{teamId}/api-keys
+
+API endpoint for GET requests to /auth/teams/\{teamId}/api-keys.
+
+```
+Method: GET
+Path: /auth/teams/{teamId}/api-keys
+```
+
+***
+
+## PUT /auth/api-keys/\{api\_key\_id}
+
+API endpoint for PUT requests to /auth/api-keys/\{api\_key\_id}.
+
+```
+Method: PUT
+Path: /auth/api-keys/{api_key_id}
+```
+
+***
+
+## DELETE /auth/api-keys/\{apiKeyId}
+
+API endpoint for DELETE requests to /auth/api-keys/\{apiKeyId}.
+
+```
+Method: DELETE
+Path: /auth/api-keys/{apiKeyId}
+```
+
+***
+
+## GET /auth/api-keys/\{apiKeyId}/propagation
+
+API endpoint for GET requests to /auth/api-keys/\{apiKeyId}/propagation.
+
+```
+Method: GET
+Path: /auth/api-keys/{apiKeyId}/propagation
+```
+
+***
+
+## GET /auth/teams/\{teamId}/models
+
+API endpoint for GET requests to /auth/teams/\{teamId}/models.
+
+```
+Method: GET
+Path: /auth/teams/{teamId}/models
+```
+
+***
+
+## GET /auth/teams/\{teamId}/endpoints
+
+API endpoint for GET requests to /auth/teams/\{teamId}/endpoints.
+
+```
+Method: GET
+Path: /auth/teams/{teamId}/endpoints
+```
+
+***
+
+## GET /auth/management-keys/validation
+
+API endpoint for GET requests to /auth/management-keys/validation.
+
+```
+Method: GET
+Path: /auth/management-keys/validation
+```
+
+
+===/developers/rest-api-reference/management/billing===
+#### Management API
+
+# Billing Management
+
+***
+
+## GET /v1/billing/teams/\{team\_id}/billing-info
+
+API endpoint for GET requests to /v1/billing/teams/\{team\_id}/billing-info.
+
+```
+Method: GET
+Path: /v1/billing/teams/{team_id}/billing-info
+```
+
+***
+
+## POST /v1/billing/teams/\{team\_id}/billing-info
+
+API endpoint for POST requests to /v1/billing/teams/\{team\_id}/billing-info.
+
+```
+Method: POST
+Path: /v1/billing/teams/{team_id}/billing-info
+```
+
+***
+
+## GET /v1/billing/teams/\{team\_id}/invoices
+
+API endpoint for GET requests to /v1/billing/teams/\{team\_id}/invoices.
+
+```
+Method: GET
+Path: /v1/billing/teams/{team_id}/invoices
+```
+
+***
+
+## GET /v1/billing/teams/\{team\_id}/payment-method
+
+API endpoint for GET requests to /v1/billing/teams/\{team\_id}/payment-method.
+
+```
+Method: GET
+Path: /v1/billing/teams/{team_id}/payment-method
+```
+
+***
+
+## POST /v1/billing/teams/\{team\_id}/payment-method/default
+
+API endpoint for POST requests to /v1/billing/teams/\{team\_id}/payment-method/default.
+
+```
+Method: POST
+Path: /v1/billing/teams/{team_id}/payment-method/default
+```
+
+***
+
+## GET /v1/billing/teams/\{team\_id}/postpaid/invoice/preview
+
+API endpoint for GET requests to /v1/billing/teams/\{team\_id}/postpaid/invoice/preview.
+
+```
+Method: GET
+Path: /v1/billing/teams/{team_id}/postpaid/invoice/preview
+```
+
+***
+
+## GET /v1/billing/teams/\{team\_id}/postpaid/spending-limits
+
+API endpoint for GET requests to /v1/billing/teams/\{team\_id}/postpaid/spending-limits.
+
+```
+Method: GET
+Path: /v1/billing/teams/{team_id}/postpaid/spending-limits
+```
+
+***
+
+## POST /v1/billing/teams/\{team\_id}/postpaid/spending-limits
+
+API endpoint for POST requests to /v1/billing/teams/\{team\_id}/postpaid/spending-limits.
+
+```
+Method: POST
+Path: /v1/billing/teams/{team_id}/postpaid/spending-limits
+```
+
+***
+
+## GET /v1/billing/teams/\{team\_id}/prepaid/balance
+
+API endpoint for GET requests to /v1/billing/teams/\{team\_id}/prepaid/balance.
+
+```
+Method: GET
+Path: /v1/billing/teams/{team_id}/prepaid/balance
+```
+
+***
+
+## POST /v1/billing/teams/\{team\_id}/prepaid/top-up
+
+API endpoint for POST requests to /v1/billing/teams/\{team\_id}/prepaid/top-up.
+
+```
+Method: POST
+Path: /v1/billing/teams/{team_id}/prepaid/top-up
+```
+
+***
+
+## POST /v1/billing/teams/\{team\_id}/usage
+
+API endpoint for POST requests to /v1/billing/teams/\{team\_id}/usage.
+
+```
+Method: POST
+Path: /v1/billing/teams/{team_id}/usage
+```
+
+
+===/developers/rest-api-reference/management===
+#### Management API
+
+# Management REST API Overview
+
+The Management API allows you to perform operations on your team programmatically. You
+need a [management key](https://console.x.ai/team/default/management-keys) in
+order to use this API. The base URL for all endpoints is `https://management-api.x.ai`.
+
+The Management API serves as a dedicated interface to the xAI platform, empowering developers and teams to
+programmatically manage their xAI API teams.
+
+For example, users can provision their API key, handle access controls,
+and perform team-level operations like creating, listing, updating, or deleting keys and associated access control lists
+(ACLs). This API also facilitates oversight of billing aspects, including monitoring prepaid credit balances and usage
+deductions, ensuring seamless scalability and cost transparency for Grok model integrations.
+
+To get started, go to [xAI Console](https://console.x.ai). On users page, make sure your xAI account has
+`Management Keys` Read + Write permission, and obtain your Management API key on the settings page. If you don't see
+any of these options, please ask your team administrator to enable the appropriate permissions.
+
+* [Accounts and Authorization](/developers/rest-api-reference/management/auth)
+* [Billing Management](/developers/rest-api-reference/management/billing)
+* [Audit Logs](/developers/rest-api-reference/management/audit)
 
 
 ===/developers/tools/advanced-usage===
@@ -12016,7 +12247,7 @@ TESLA_10_K_PDF_URL = "https://ir.tesla.com/_flysystem/s3/sec/000162828025003063/
 
 
 async def main():
-    client = AsyncClient(api_key=os.getenv("XAI_API_KEY"))
+    client = AsyncClient(api_key=os.getenv("XAI_API_KEY"), management_api_key=os.getenv("XAI_MANAGEMENT_API_KEY"))
 
     # Step 1: Create a collection for Tesla SEC filings
     response = await client.collections.create("tesla-sec-filings")
@@ -12034,7 +12265,6 @@ async def main():
             collection_id=collection_id,
             name=name,
             data=pdf_content,
-            content_type="application/pdf",
         )
 
         # Poll until document is processed and ready for search

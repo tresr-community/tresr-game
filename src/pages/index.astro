@@ -154,8 +154,7 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
   });
 
   document.getElementById("btn-manual")?.addEventListener("click", () => {
-    // @ts-ignore
-    window.openHowToPlayModal?.();
+    document.dispatchEvent(new CustomEvent("tresr:open-how-to-play"));
   });
 
   // Vault status — lock START button when vault is below minimum cap

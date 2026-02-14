@@ -101,7 +101,7 @@
   }
 
   // Listen for the fee gate open event from the module
-  document.addEventListener("tresr:fee-gate-open", () => {
+  function handleFeeGateOpen() {
     hideStatus();
     hideProgress();
     btnPay.disabled = false;
@@ -109,7 +109,8 @@
     payLabel.textContent = "Pay & Start Mission";
     btnAbort.classList.remove("hidden");
     modal.showModal();
-  });
+  }
+  document.addEventListener("tresr:fee-gate-open", handleFeeGateOpen);
 
   const feeProgress = document.getElementById("fee-progress")!;
   const steps = {
@@ -285,4 +286,15 @@
 
   btnPay.addEventListener("click", payHandler);
   btnAbort.addEventListener("click", abortHandler);
+
+  // Clean up listeners on Astro navigation to prevent accumulation (ticket #289)
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      document.removeEventListener("tresr:fee-gate-open", handleFeeGateOpen);
+      btnPay.removeEventListener("click", payHandler);
+      btnAbort.removeEventListener("click", abortHandler);
+    },
+    {once: true}
+  );
 </script>

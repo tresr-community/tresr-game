@@ -17,6 +17,7 @@ export function validateConfig(config: unknown): config is ConfigTypes {
   if (!c.display || typeof c.display !== "object") return false;
   if (!c.gameplay || typeof c.gameplay !== "object") return false;
   if (!c.sprites || typeof c.sprites !== "object") return false;
+  if (!c.anti_cheat || typeof c.anti_cheat !== "object") return false;
   if (!c.credits || typeof c.credits !== "object") return false;
   if (!c.changelog || typeof c.changelog !== "object") return false;
   // Validate critical nested paths accessed before hash verification

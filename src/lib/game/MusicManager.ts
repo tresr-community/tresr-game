@@ -22,6 +22,9 @@ class MusicManager {
   private narrationDone: boolean = false;
   private deferredPlay: (() => void) | null = null;
   private handleBeforeUnload: (() => void) | null = null;
+  private handleGameplayStart: (() => void) | null = null;
+  private playPromise: Promise<void> | null = null;
+  private toggleInProgress: boolean = false;
 
   // Bound audio event handlers for cleanup (ticket #227)
   private handleTimeUpdate = () => {
@@ -57,16 +60,19 @@ class MusicManager {
 
       // Wait for gameplay to actually start before starting music playback.
       // MainScene dispatches this event after the countdown completes.
+      this.handleGameplayStart = () => {
+        this.narrationDone = true;
+        if (this.deferredPlay) {
+          this.deferredPlay();
+          this.deferredPlay = null;
+        }
+      };
       window.addEventListener(
         "tresr:gameplay-start",
-        () => {
-          this.narrationDone = true;
-          if (this.deferredPlay) {
-            this.deferredPlay();
-            this.deferredPlay = null;
-          }
-        },
-        {once: true}
+        this.handleGameplayStart,
+        {
+          once: true,
+        }
       );
 
       // Load tracks from config (does NOT play — waits for auth callback)
@@ -213,10 +219,7 @@ class MusicManager {
     });
     if (isPlaying) {
       this.audio.volume = 0;
-      this.audio
-        .play()
-        .then(() => this.fadeIn(targetVolume))
-        .catch((e) => log.warn(COMPONENT_NAME, "Play failed:", e));
+      this.safePlay().then(() => this.fadeIn(targetVolume));
       gameActions.updateMusic({
         isPlaying: true,
       });
@@ -231,7 +234,7 @@ class MusicManager {
     // Clean up any existing fade (ticket #197: release media buffer)
     if (this.fadeInterval) clearInterval(this.fadeInterval);
     if (this.fadingOut) {
-      this.fadingOut.pause();
+      this.safePauseElement(this.fadingOut);
       this.fadingOut.src = "";
       this.fadingOut = null;
     }
@@ -267,17 +270,17 @@ class MusicManager {
     const volumeStep = fadeOut.volume / steps;
     let remaining = steps;
 
-    this.fadeInterval = setInterval(() => {
-      // Stale callback — this interval was already cleared by the new
-      // startCrossfade(). Just return; do NOT clear this.fadeInterval
-      // since it now belongs to the new crossfade (ticket #227).
+    const intervalId = setInterval(() => {
+      // Stale callback — a new startCrossfade() replaced this.fadingOut.
+      // Clear our own interval and bail (ticket #291).
       if (fadeOut !== this.fadingOut) {
+        clearInterval(intervalId);
         return;
       }
       remaining--;
       if (remaining <= 0 || !fadeOut) {
-        if (this.fadeInterval) clearInterval(this.fadeInterval);
-        this.fadeInterval = null;
+        clearInterval(intervalId);
+        if (this.fadeInterval === intervalId) this.fadeInterval = null;
         fadeOut.pause();
         fadeOut.src = "";
         this.fadingOut = null;
@@ -285,6 +288,7 @@ class MusicManager {
       }
       fadeOut.volume = Math.max(0, fadeOut.volume - volumeStep);
     }, crossfadeStep);
+    this.fadeInterval = intervalId;
   }
 
   /**
@@ -317,22 +321,67 @@ class MusicManager {
     }, crossfadeStep);
   }
 
-  public toggle() {
-    if (!this.audio) return;
-    if (this.audio.paused) {
-      this.audio
-        .play()
-        .catch((e) => log.warn(COMPONENT_NAME, "Play failed:", e));
-      gameActions.updateMusic({
-        isPlaying: true,
+  /**
+   * Safely start playback, tracking the promise to prevent race conditions.
+   * All pause operations await this promise before pausing.
+   */
+  private safePlay(): Promise<void> {
+    if (!this.audio) return Promise.resolve();
+    this.playPromise = this.audio
+      .play()
+      .catch((e) => {
+        if (e.name !== "AbortError") {
+          log.warn(COMPONENT_NAME, "Play failed:", e);
+        }
+      })
+      .finally(() => {
+        this.playPromise = null;
       });
-    } else {
-      this.audio.pause();
-      gameActions.updateMusic({
-        isPlaying: false,
-      });
+    return this.playPromise;
+  }
+
+  /**
+   * Safely pause the main audio element, awaiting any pending play() first.
+   */
+  private async safePause() {
+    if (this.playPromise) {
+      await this.playPromise;
     }
-    this.persistPreferences();
+    this.audio?.pause();
+  }
+
+  /**
+   * Safely pause an arbitrary audio element (used for crossfade cleanup).
+   */
+  private safePauseElement(el: HTMLAudioElement) {
+    // The element being faded out is never the one with the active playPromise,
+    // but guard defensively anyway.
+    try {
+      el.pause();
+    } catch {
+      // Ignore — element may already be disposed
+    }
+  }
+
+  public async toggle() {
+    if (!this.audio || this.toggleInProgress) return;
+    this.toggleInProgress = true;
+    try {
+      if (this.audio.paused) {
+        await this.safePlay();
+        gameActions.updateMusic({
+          isPlaying: true,
+        });
+      } else {
+        await this.safePause();
+        gameActions.updateMusic({
+          isPlaying: false,
+        });
+      }
+      this.persistPreferences();
+    } finally {
+      this.toggleInProgress = false;
+    }
   }
 
   public setRandom(enabled: boolean) {
@@ -359,7 +408,7 @@ class MusicManager {
       this.fadingOut = null;
     }
     if (!this.audio) return;
-    this.audio.pause();
+    this.safePause();
     this.audio.currentTime = 0;
     gameActions.updateMusic({
       isPlaying: false,
@@ -392,6 +441,14 @@ class MusicManager {
       this.authUnsubscribe();
       this.authUnsubscribe = null;
     }
+    if (this.handleGameplayStart) {
+      window.removeEventListener(
+        "tresr:gameplay-start",
+        this.handleGameplayStart
+      );
+      this.handleGameplayStart = null;
+    }
+    this.deferredPlay = null;
     if (this.handleBeforeUnload) {
       window.removeEventListener("beforeunload", this.handleBeforeUnload);
       this.handleBeforeUnload = null;
@@ -539,14 +596,21 @@ class MusicManager {
   /**
    * Shuffles the queue using Fisher-Yates algorithm.
    * Ensures the last track of the previous queue isn't the first of the new one.
+   *
+   * NOTE (ticket #266): Music shuffle is a non-gameplay path — it does not
+   * affect replay validation, anti-cheat hashes, or seeded-RNG determinism.
+   * We use crypto.getRandomValues() instead of Math.random() to avoid any
+   * argument that the seeded-RNG invariant is not enforced.
    */
   private shuffleQueue() {
     const current = gameState.get().music.currentTrack;
     this.shuffledQueue = [...this.tracks];
 
-    // Fisher-Yates shuffle
+    // Fisher-Yates shuffle using crypto RNG (non-gameplay, see note above)
     for (let i = this.shuffledQueue.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const arr = new Uint32Array(1);
+      crypto.getRandomValues(arr);
+      const j = arr[0] % (i + 1);
       [this.shuffledQueue[i], this.shuffledQueue[j]] = [
         this.shuffledQueue[j],
         this.shuffledQueue[i],

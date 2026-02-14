@@ -53,8 +53,10 @@ dist/
 # Internet Computer
 .dfx/
 
-# Ignore ticket notes
-docs/tickets/
+# Ignore issue notes
+docs/issues/
+
+# Ignore WIP directories
 TODO/
 TEMP/
 

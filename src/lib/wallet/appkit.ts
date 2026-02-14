@@ -260,11 +260,23 @@ export function connectWallet(): Promise<string> {
   return new Promise((resolve, reject) => {
     const appKit = getAppKit();
 
+    // Timeout after 5 minutes
+    const timeoutId = setTimeout(
+      () => {
+        if (!appKit.getIsConnectedState()) {
+          unsubscribe();
+          reject(new Error("Connection timeout"));
+        }
+      },
+      5 * 60 * 1000
+    );
+
     // Subscribe to events to detect connection
     const unsubscribe = appKit.subscribeEvents((event) => {
       log.debug(COMPONENT_NAME, "Connection event:", event);
 
       if (event.data.event === "CONNECT_SUCCESS") {
+        clearTimeout(timeoutId);
         unsubscribe();
         const address = appKit.getAddressByChainNamespace("eip155");
         if (address) {
@@ -276,30 +288,22 @@ export function connectWallet(): Promise<string> {
       } else if (event.data.event === "MODAL_CLOSE") {
         // Check if we're connected after modal closes
         const address = appKit.getAddressByChainNamespace("eip155");
+        clearTimeout(timeoutId);
+        unsubscribe();
         if (address) {
-          unsubscribe();
           log.info(COMPONENT_NAME, `Connected: ${address}`);
           resolve(address);
+        } else {
+          reject(new Error("Wallet modal closed without connecting"));
         }
-        // Don't reject on modal close - user might still be connecting
       }
     });
 
     // Open the modal
     appKit.open().catch((err) => {
+      clearTimeout(timeoutId);
       unsubscribe();
       reject(err);
     });
-
-    // Timeout after 5 minutes
-    setTimeout(
-      () => {
-        if (!appKit.getIsConnectedState()) {
-          unsubscribe();
-          reject(new Error("Connection timeout"));
-        }
-      },
-      5 * 60 * 1000
-    );
   });
 }

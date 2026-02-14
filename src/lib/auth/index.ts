@@ -63,6 +63,9 @@ const STORAGE_KEY_GUEST = "tresr_is_guest";
 // SIWA identity storage
 let siwaIdentity: SiwaIdentity | null = null;
 
+// Named handler for junoSignOutAuthTimer (ticket #271: removable reference)
+let signOutTimerHandler: (() => void) | null = null;
+
 export function getIdentity(): Identity | null {
   if (!siwaIdentity) return null;
   // Get the delegation identity from SIWA identity for use with Juno
@@ -152,6 +155,12 @@ export async function handleSignOut(): Promise<void> {
     authMode: null,
     principalId: null,
   };
+
+  // Remove session expiration listener to prevent stale closure firing
+  if (signOutTimerHandler) {
+    document.removeEventListener("junoSignOutAuthTimer", signOutTimerHandler);
+    signOutTimerHandler = null;
+  }
 
   siwaIdentity = null;
   if (siwaClient) {
@@ -303,7 +312,7 @@ async function doInitAuth(): Promise<void> {
   // Guests don't use Juno delegations — ignore the timer if guest session is active.
   // Stale delegations in IndexedDB (e.g. after `juno hosting clear`) would otherwise
   // trigger a sign-out + reload loop that boots guests back to the menu.
-  document.addEventListener("junoSignOutAuthTimer", () => {
+  signOutTimerHandler = () => {
     const guestInStorage = sessionStorage.getItem(STORAGE_KEY_GUEST) === "true";
     if (authState.isGuest || guestInStorage) {
       log.info(
@@ -314,7 +323,23 @@ async function doInitAuth(): Promise<void> {
     }
     log.info(COMPONENT_NAME, "Session expired, signing out...");
     handleSignOut();
-  });
+  };
+  document.addEventListener("junoSignOutAuthTimer", signOutTimerHandler);
+
+  // Clean up auth timer listener on Astro page navigation
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      if (signOutTimerHandler) {
+        document.removeEventListener(
+          "junoSignOutAuthTimer",
+          signOutTimerHandler
+        );
+        signOutTimerHandler = null;
+      }
+    },
+    {once: true}
+  );
 
   // Restore guest session if present (initial load sync check)
   const isGuest = sessionStorage.getItem(STORAGE_KEY_GUEST) === "true";
