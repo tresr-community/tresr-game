@@ -210,6 +210,7 @@ import Loader from "@/components/game/Loader.astro";
     const portraitMql = window.matchMedia("(orientation: portrait)");
     window.addEventListener("orientationchange", checkOrientation);
     portraitMql.addEventListener("change", checkOrientation);
+    checkOrientation();
 
     // Release lock when leaving game page
     window.addEventListener("beforeunload", releaseLandscapeLock);
