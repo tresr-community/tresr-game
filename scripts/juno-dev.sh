@@ -705,7 +705,6 @@ function cmd_nuke_juno() {
 		node_modules \
 		dist \
 		.cache \
-		"${JUNO_DEV_DIR}" \
 		"${HOME}/.config/juno-"* || log_warn "Could not remove some caches."
 
 	log_success "All done. Juno has now been reset."

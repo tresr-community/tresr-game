@@ -22,6 +22,7 @@ export default defineConfig(({mode}) => ({
     ids: {
       local: satelliteId,
       development: satelliteId,
+      staging: satelliteId,
       production: satelliteId,
     },
     source: "dist",
@@ -34,6 +35,7 @@ export default defineConfig(({mode}) => ({
   orbiter: {
     ids: {
       development: substitute(junoConfig.orbiter_id),
+      staging: substitute(junoConfig.orbiter_id),
       production: substitute(junoConfig.orbiter_id),
     },
   },

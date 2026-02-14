@@ -30,6 +30,10 @@ server:
           read: "managed"
           write: "managed"
           memory: "stable"
+        - collection: "leaderboard"
+          read: "public"
+          write: "managed"
+          memory: "stable"
       storage:
         - collection: "images"
           read: "public"

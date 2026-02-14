@@ -94,14 +94,15 @@
     }, 10000);
 
     try {
-      // Juno: listDocs on "users" collection — no Rust hooks triggered (read-only).
+      // Juno: listDocs on "leaderboard" collection — public read, no auth required.
+      // The leaderboard collection contains sanitized data only (nickname, highScore, gamesWon).
       const {items} = await listDocs({
-        collection: "users",
+        collection: "leaderboard",
         filter: {
           order: {
             desc: true,
-            // @ts-ignore
-            field: "stats.highScore",
+            // @ts-ignore — Juno supports nested field ordering
+            field: "highScore",
           },
         },
         paginate: {
@@ -109,8 +110,18 @@
         },
       });
 
+      if (items.length === 0) {
+        list.replaceChildren(
+          createMessageRow(
+            "No scores yet. Be the first!",
+            "text-info opacity-60"
+          )
+        );
+        return;
+      }
+
       items.forEach((item, index) => {
-        const profile = item.data as Record<string, unknown> | undefined;
+        const entry = item.data as Record<string, unknown> | undefined;
         const row = document.createElement("tr");
         row.className = "hover:bg-primary/5 transition-colors";
 
@@ -119,16 +130,11 @@
           : "N/A";
 
         const nickname =
-          typeof profile?.nickname === "string"
-            ? profile.nickname
+          typeof entry?.nickname === "string"
+            ? entry.nickname
             : "Unknown Agent";
         const avatarLetter = nickname[0]?.toUpperCase() || "A";
-        const userId =
-          typeof profile?.userId === "string"
-            ? profile.userId.substring(0, 8)
-            : "????????";
-        const stats = profile?.stats as Record<string, unknown> | undefined;
-        const score = stats?.highScore?.toString() || "0";
+        const score = entry?.highScore?.toString() || "0";
 
         // Rank cell
         const tdRank = document.createElement("td");
@@ -155,11 +161,7 @@
         const nameDiv = document.createElement("div");
         nameDiv.className = "font-bold text-sm";
         nameDiv.textContent = nickname;
-        const idDiv = document.createElement("div");
-        idDiv.className = "text-[10px] opacity-40 font-mono";
-        idDiv.textContent = `${userId}...`;
         infoDiv.appendChild(nameDiv);
-        infoDiv.appendChild(idDiv);
 
         agentWrapper.appendChild(avatarDiv);
         agentWrapper.appendChild(infoDiv);
@@ -183,10 +185,26 @@
         list.appendChild(row);
       });
     } catch (err) {
-      log.error(COMPONENT_NAME, "Failed to load leaderboard", err);
-      list.replaceChildren(
-        createMessageRow("Failed to load mainframe data.", "text-error")
-      );
+      const errMsg = err instanceof Error ? err.message : String(err);
+      // Graceful handling for collection not yet provisioned
+      if (errMsg.includes("not_found") || errMsg.includes("Datastore")) {
+        log.warn(
+          COMPONENT_NAME,
+          "Leaderboard collection not found — may not be provisioned yet",
+          err
+        );
+        list.replaceChildren(
+          createMessageRow(
+            "Leaderboard not available yet. Deploy in progress.",
+            "text-warning opacity-70"
+          )
+        );
+      } else {
+        log.error(COMPONENT_NAME, "Failed to load leaderboard", err);
+        list.replaceChildren(
+          createMessageRow("Failed to load mainframe data.", "text-error")
+        );
+      }
     } finally {
       clearTimeout(timeoutId);
       loading.classList.add("hidden");

@@ -1,23 +1,30 @@
 ---
 ##################################################
-# Name: cd-juno-publish-mainnet.yaml
-# Description: Publish Juno Functions to mainnet
+# Name: cd-juno-testnet.yaml
+# Description: Deploy Juno to testnet (hosting + functions + config)
+#
+# Trigger: prereleased event (from cd-release.yaml)
+#
+# Steps:
+#   1. Build serverless functions
+#   2. Deploy hosting assets
+#   3. Apply collection configuration
+#   4. Publish serverless functions
 ##################################################
 
-name: Juno Publish (Mainnet)
+name: Juno Deploy (Testnet)
 
 on:
-  workflow_dispatch:
   release:
     types:
-      - released
+      - prereleased
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
   packages: read
   pull-requests: read
   statuses: write
@@ -47,20 +54,14 @@ defaults:
 
 jobs:
   deploy:
-    name: Publish (Mainnet)
+    name: Deploy (Testnet)
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     timeout-minutes: 30
     continue-on-error: false
 
-    environment: Mainnet
-
-    strategy:
-      fail-fast: true
-      matrix:
-        os:
-          - ubuntu-latest
+    environment: Testnet
 
     steps:
       - id: check_vars
@@ -98,6 +99,7 @@ jobs:
         run: |
           TAG="${{ github.event.release.tag_name }}"
           VERSION="${TAG#v}"
+          VERSION="${VERSION%-testnet}"
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
       - uses: ./.github/actions/version
@@ -109,7 +111,7 @@ jobs:
       - uses: ./.github/actions/version
         if: steps.parse_tag.outputs.version == ''
         with:
-          mode: current
+          mode: bump
 
       - uses: ./.github/actions/setup-juno
 
@@ -118,71 +120,23 @@ jobs:
         run: |
           juno functions build
 
-      - name: Publish Juno Functions (Mainnet)
+      - name: Deploy Hosting (Testnet)
         env:
           JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
         shell: devenv shell --quiet bash -- -e {0}
         run: |
-          juno functions publish --mode production
+          juno hosting deploy --mode staging
 
-  ##################################################
-  # Create a full release after mainnet publish
-  ##################################################
-
-  create-release:
-    name: Create Release
-    needs: [deploy]
-    runs-on: ubuntu-latest
-    environment: Mainnet
-    timeout-minutes: 15
-
-    steps:
-      - id: checkout_repository
-        name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - id: setup_devenv
-        name: Setup devenv
-        uses: ./.github/actions/setup-devenv
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - id: compute_version
-        name: Compute version
-        shell: devenv shell --quiet bash -- -e {0}
-        run: |
-          VERSION=$(convco version)
-          TAG="v${VERSION}"
-
-          # Check if tag already exists
-          if git tag --list | grep -q "^${TAG}$"; then
-            echo "Tag ${TAG} already exists, skipping release"
-            echo "skip=true" >> "${GITHUB_OUTPUT}"
-          else
-            echo "skip=false" >> "${GITHUB_OUTPUT}"
-          fi
-
-          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
-          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
-          echo "Version: ${VERSION}, Tag: ${TAG}"
-
-      - id: generate_changelog
-        name: Generate changelog
-        if: steps.compute_version.outputs.skip != 'true'
-        shell: devenv shell --quiet bash -- -e {0}
-        run: |
-          CHANGELOG=$(convco changelog --unreleased 2>/dev/null || echo "No changelog available")
-          echo "${CHANGELOG}" > /tmp/changelog.md
-
-      - id: create_release
-        name: Create Release
-        if: steps.compute_version.outputs.skip != 'true'
+      - name: Apply Configuration (Testnet)
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
+        shell: devenv shell --quiet bash -- -e {0}
         run: |
-          gh release create "${{ steps.compute_version.outputs.tag }}" \
-            --title "Release ${{ steps.compute_version.outputs.tag }}" \
-            --notes-file /tmp/changelog.md \
-            --target "${{ github.sha }}"
+          juno config apply --force --mode staging
+
+      - name: Publish Functions (Testnet)
+        env:
+          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          juno functions publish --mode staging
