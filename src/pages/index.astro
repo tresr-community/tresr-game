@@ -173,7 +173,7 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
       vaultLocked = true;
       loginBtn.setAttribute("disabled", "true");
       loginBtn.classList.add("btn-disabled", "opacity-50");
-      loginBtn.textContent = "VAULT RECHARGING";
+      loginBtn.textContent = "RECHARGING";
     } else if (!locked && vaultLocked) {
       vaultLocked = false;
       loginBtn.removeAttribute("disabled");
