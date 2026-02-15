@@ -152,7 +152,10 @@
     return "<1m";
   }
 
-  function buildAgentCell(nickname: string): HTMLTableCellElement {
+  function buildAgentCell(
+    nickname: string,
+    avatarUrl?: string
+  ): HTMLTableCellElement {
     const tdAgent = document.createElement("td");
     const agentWrapper = document.createElement("div");
     agentWrapper.className = "flex items-center gap-2";
@@ -161,11 +164,21 @@
     avatarDiv.className = "avatar placeholder";
     const avatarInner = document.createElement("div");
     avatarInner.className =
-      "bg-primary/20 text-primary w-8 rounded-full border border-primary/30";
-    const avatarSpan = document.createElement("span");
-    avatarSpan.className = "text-xs";
-    avatarSpan.textContent = nickname[0]?.toUpperCase() || "A";
-    avatarInner.appendChild(avatarSpan);
+      "bg-primary/20 text-primary w-8 rounded-full border border-primary/30 overflow-hidden";
+
+    if (avatarUrl) {
+      const img = document.createElement("img");
+      img.src = avatarUrl;
+      img.alt = nickname;
+      img.className = "h-full w-full object-cover";
+      avatarInner.appendChild(img);
+    } else {
+      const avatarSpan = document.createElement("span");
+      avatarSpan.className = "text-xs";
+      avatarSpan.textContent = nickname[0]?.toUpperCase() || "A";
+      avatarInner.appendChild(avatarSpan);
+    }
+
     avatarDiv.appendChild(avatarInner);
 
     const infoDiv = document.createElement("div");
@@ -246,6 +259,8 @@
             : "Unknown Agent";
         const score = entry?.activeScore?.toString() || "0";
         const expiresAt = (entry?.expiresAt as number) || 0;
+        const avatarUrl =
+          typeof entry?.avatarUrl === "string" ? entry.avatarUrl : undefined;
 
         // Rank cell
         const tdRank = document.createElement("td");
@@ -253,7 +268,7 @@
         tdRank.textContent = String(index + 1);
 
         // Agent cell
-        const tdAgent = buildAgentCell(nickname);
+        const tdAgent = buildAgentCell(nickname, avatarUrl);
 
         // Score cell
         const tdScore = document.createElement("td");
@@ -371,6 +386,8 @@
             ? entry.nickname
             : "Unknown Agent";
         const score = entry?.highScore?.toString() || "0";
+        const avatarUrl =
+          typeof entry?.avatarUrl === "string" ? entry.avatarUrl : undefined;
 
         // Rank cell
         const tdRank = document.createElement("td");
@@ -378,7 +395,7 @@
         tdRank.textContent = String(index + 1);
 
         // Agent cell
-        const tdAgent = buildAgentCell(nickname);
+        const tdAgent = buildAgentCell(nickname, avatarUrl);
 
         // Score cell
         const tdScore = document.createElement("td");
