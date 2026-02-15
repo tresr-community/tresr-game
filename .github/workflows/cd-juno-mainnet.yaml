@@ -82,6 +82,13 @@ jobs:
           done
           echo "All required variables are set"
 
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
       - id: setup_devenv
         name: Setup Devenv
         uses: ./.github/actions/setup-devenv

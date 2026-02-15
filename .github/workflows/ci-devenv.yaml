@@ -49,6 +49,13 @@ jobs:
     environment: Testnet
 
     steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
       - id: setup_devenv
         name: Setup Devenv
         uses: ./.github/actions/setup-devenv
@@ -74,8 +81,8 @@ jobs:
         uses: ./.github/actions/report-status
         with:
           result: ${{ steps.devenv_test.outcome }}
-          success-description: "Devenv test passed!"
-          failure-description: "Devenv test failed!"
+          success-message: "Devenv test passed!"
+          failure-message: "Devenv test failed!"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           workflow-name: ${{ github.workflow }}
           repository: ${{ github.repository }}

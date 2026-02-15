@@ -46,6 +46,13 @@ jobs:
     environment: Testnet
 
     steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
       - id: setup_devenv
         name: Setup Devenv
         uses: ./.github/actions/setup-devenv
@@ -66,8 +73,8 @@ jobs:
         uses: ./.github/actions/report-status
         with:
           result: ${{ steps.check_solidity.outcome }}
-          success-description: "Foundry CI passed: contract checks"
-          failure-description: "Foundry CI failed"
+          success-message: "Foundry CI passed: contract checks"
+          failure-message: "Foundry CI failed"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           workflow-name: ${{ github.workflow }}
           repository: ${{ github.repository }}

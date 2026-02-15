@@ -52,6 +52,20 @@ This replaces the previous event-based chaining (`release: types: [prereleased/r
 
 Config values (RPC URL, addresses) are read dynamically from `config/tresr.yaml` based on the resolved network.
 
+## Workflow Inventory
+
+| Workflow                   | Prefix | Trigger                     | Purpose                                  |
+| -------------------------- | ------ | --------------------------- | ---------------------------------------- |
+| `cd-release.yaml`          | cd     | push to trunk, dispatch     | Create pre-release or promote to release |
+| `cd-juno-testnet.yaml`     | cd     | workflow_call, dispatch     | Deploy Juno to Testnet                   |
+| `cd-juno-mainnet.yaml`     | cd     | workflow_call, dispatch     | Deploy Juno to Mainnet                   |
+| `cd-foundry.yaml`          | cd     | push (contracts/), dispatch | Deploy Solidity contracts                |
+| `ci-devenv.yaml`           | ci     | pull_request                | Test devenv shell                        |
+| `ci-foundry.yaml`          | ci     | pull_request                | Lint and check Solidity                  |
+| `ci-juno.yaml`             | ci     | pull_request                | Build and check Juno                     |
+| `chore-devenv-update.yaml` | chore  | schedule (weekly), dispatch | Update devenv.lock, create PR            |
+| `comments.yaml`            | —      | issue_comment               | Handle slash commands in comments        |
+
 ## Naming Conventions
 
 | Element           | Convention                                 | Example                    |

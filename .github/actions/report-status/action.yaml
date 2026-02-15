@@ -6,11 +6,11 @@ inputs:
   result:
     description: "Outcome of the step to check (e.g. steps.build.outcome)"
     required: true
-  success-description:
-    description: "Description when the step succeeded"
+  success-message:
+    description: "Message when the step succeeded"
     required: true
-  failure-description:
-    description: "Description when the step failed"
+  failure-message:
+    description: "Message when the step failed"
     required: true
   github-token:
     description: "GitHub token for API calls"
@@ -39,10 +39,10 @@ runs:
       run: |
         if [[ "${{ inputs.result }}" == "success" ]]; then
           RESULT="success"
-          DESCRIPTION="${{ inputs.success-description }}"
+          DESCRIPTION="${{ inputs.success-message }}"
         else
           RESULT="failure"
-          DESCRIPTION="${{ inputs.failure-description }}"
+          DESCRIPTION="${{ inputs.failure-message }}"
         fi
         gh api \
           repos/${{ inputs.repository }}/statuses/${{ inputs.sha }} \
