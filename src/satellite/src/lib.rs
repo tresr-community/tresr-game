@@ -33,8 +33,9 @@ use junobuild_macros::{
 use junobuild_satellite::{
     AssertDeleteDocContext, AssertSetDocContext, OnDeleteAssetContext, OnDeleteDocContext,
     OnDeleteManyAssetsContext, OnDeleteManyDocsContext, OnSetDocContext, OnSetManyDocsContext,
-    OnUploadAssetContext, SetDoc, get_doc_store, include_satellite, set_doc_store,
+    OnUploadAssetContext, SetDoc, get_doc_store, include_satellite, list_docs_store, set_doc_store,
 };
+use junobuild_shared::types::list::ListParams;
 use junobuild_utils::{decode_doc_data, encode_doc_data};
 use libsecp256k1::{Message, RecoveryId, Signature, recover};
 use tiny_keccak::{Hasher, Keccak};
@@ -250,10 +251,24 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
         return Ok(());
     }
 
+    // Preserve existing active score fields from the leaderboard entry
+    let existing = get_doc_store(
+        context.caller,
+        "leaderboard".to_string(),
+        context.data.key.clone(),
+    )
+    .ok()
+    .flatten()
+    .and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
+
     let entry = LeaderboardEntry {
         nickname: profile.nickname.clone(),
         high_score: profile.stats.high_score,
         games_won: profile.stats.total_games_won,
+        active_score: existing.as_ref().map_or(0, |e| e.active_score),
+        scored_at: existing.as_ref().and_then(|e| e.scored_at),
+        expires_at: existing.as_ref().and_then(|e| e.expires_at),
+        session_id: existing.as_ref().and_then(|e| e.session_id.clone()),
     };
 
     let leaderboard_doc = SetDoc {
@@ -537,92 +552,134 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
 
     // Handle initial claim creation: generate signature
     if claim.status == ClaimStatus::Pending && claim.signature.is_none() {
-        // 1. Fetch Game Session
-        let session_doc = get_doc_store(
-            context.caller,
-            "game_sessions".to_string(),
-            claim.game_session_id.clone(),
-        )?;
+        if claim.claim_type == "consolation" {
+            // --- Consolation claim: skip game session validation ---
+            let user_doc = get_doc_store(
+                context.caller,
+                "users".to_string(),
+                context.caller.to_text(),
+            )?;
 
-        let session: GameSession = match session_doc {
-            Some(ref doc) => decode_doc_data(&doc.data)?,
-            None => {
-                return update_claim_error(context, &mut claim, "Game session not found").await;
-            }
-        };
+            let user_profile: UserProfile = match user_doc {
+                Some(doc) => decode_doc_data(&doc.data)?,
+                None => {
+                    return update_claim_error(context, &mut claim, "User profile not found").await;
+                }
+            };
 
-        // 2. Validate session
-        if !session.boss_defeated {
-            return update_claim_error(context, &mut claim, "Boss not defeated").await;
-        }
+            let wallet_addr = match &user_profile.evm_wallet {
+                Some(w) if !w.is_empty() => w.clone(),
+                _ => {
+                    return update_claim_error(context, &mut claim, "No linked EVM wallet").await;
+                }
+            };
 
-        if session.reward_claimed {
-            return update_claim_error(context, &mut claim, "Reward already claimed").await;
-        }
+            // Generate signature for consolation claim (keys_collected = 0)
+            let signature = generate_claim_signature(
+                &claim.game_session_id,
+                &wallet_addr,
+                claim.amount,
+                0,
+            ).await?;
+            claim.signature = Some(signature);
+            claim.status = ClaimStatus::ReadyForChain;
 
-        // 3. Fetch User Profile for EVM wallet
-        let user_doc = get_doc_store(
-            context.caller,
-            "users".to_string(),
-            context.caller.to_text(),
-        )?;
+            update_claim_doc(&context, &claim).await?;
 
-        let user_profile: UserProfile = match user_doc {
-            Some(doc) => decode_doc_data(&doc.data)?,
-            None => {
-                return update_claim_error(context, &mut claim, "User profile not found").await;
-            }
-        };
-
-        let wallet_addr = match &user_profile.evm_wallet {
-            Some(w) if !w.is_empty() => w.clone(),
-            _ => {
-                return update_claim_error(context, &mut claim, "No linked EVM wallet").await;
-            }
-        };
-
-        // 4. Generate signature (include keys_collected for Vault.sol verification)
-        claim.keys_collected = session.keys_collected;
-        let signature = generate_claim_signature(
-            &claim.game_session_id,
-            &wallet_addr,
-            claim.amount,
-            session.keys_collected,
-        ).await?;
-        claim.signature = Some(signature);
-        claim.status = ClaimStatus::ReadyForChain;
-
-        // 5. Mark session as claimed IMMEDIATELY after signature generation (ticket #286).
-        // This prevents a race where a second claim could generate another valid
-        // signature before the first claim's on-chain tx is verified.
-        {
-            let mut claimed_session = session.clone();
-            claimed_session.reward_claimed = true;
-            let sd = session_doc.as_ref().unwrap(); // Safe: matched Some above
-            let description = sd
-                .description
-                .clone()
-                .ok_or_else(|| "session description missing".to_string())?;
-            let version = sd
-                .version
-                .ok_or_else(|| "session version missing".to_string())?;
-            update_session_doc(
-                &context,
-                &claimed_session,
+            ic_cdk::print(format!(
+                "Consolation claim signature generated for user {} amount {}",
+                context.caller.to_text(),
+                claim.amount
+            ));
+        } else {
+            // --- Boss kill claim: full game session validation ---
+            // 1. Fetch Game Session
+            let session_doc = get_doc_store(
+                context.caller,
+                "game_sessions".to_string(),
                 claim.game_session_id.clone(),
-                description,
-                version,
-            )
-            .await?;
+            )?;
+
+            let session: GameSession = match session_doc {
+                Some(ref doc) => decode_doc_data(&doc.data)?,
+                None => {
+                    return update_claim_error(context, &mut claim, "Game session not found").await;
+                }
+            };
+
+            // 2. Validate session
+            if !session.boss_defeated {
+                return update_claim_error(context, &mut claim, "Boss not defeated").await;
+            }
+
+            if session.reward_claimed {
+                return update_claim_error(context, &mut claim, "Reward already claimed").await;
+            }
+
+            // 3. Fetch User Profile for EVM wallet
+            let user_doc = get_doc_store(
+                context.caller,
+                "users".to_string(),
+                context.caller.to_text(),
+            )?;
+
+            let user_profile: UserProfile = match user_doc {
+                Some(doc) => decode_doc_data(&doc.data)?,
+                None => {
+                    return update_claim_error(context, &mut claim, "User profile not found").await;
+                }
+            };
+
+            let wallet_addr = match &user_profile.evm_wallet {
+                Some(w) if !w.is_empty() => w.clone(),
+                _ => {
+                    return update_claim_error(context, &mut claim, "No linked EVM wallet").await;
+                }
+            };
+
+            // 4. Generate signature (include keys_collected for Vault.sol verification)
+            claim.keys_collected = session.keys_collected;
+            let signature = generate_claim_signature(
+                &claim.game_session_id,
+                &wallet_addr,
+                claim.amount,
+                session.keys_collected,
+            ).await?;
+            claim.signature = Some(signature);
+            claim.status = ClaimStatus::ReadyForChain;
+
+            // 5. Mark session as claimed IMMEDIATELY after signature generation (ticket #286).
+            // This prevents a race where a second claim could generate another valid
+            // signature before the first claim's on-chain tx is verified.
+            {
+                let mut claimed_session = session.clone();
+                claimed_session.reward_claimed = true;
+                let sd = session_doc.as_ref().unwrap(); // Safe: matched Some above
+                let description = sd
+                    .description
+                    .clone()
+                    .ok_or_else(|| "session description missing".to_string())?;
+                let version = sd
+                    .version
+                    .ok_or_else(|| "session version missing".to_string())?;
+                update_session_doc(
+                    &context,
+                    &claimed_session,
+                    claim.game_session_id.clone(),
+                    description,
+                    version,
+                )
+                .await?;
+            }
+
+            update_claim_doc(&context, &claim).await?;
+
+            ic_cdk::print(format!(
+                "Claim signature generated for user {} session {}",
+                context.caller.to_text(),
+                claim.game_session_id
+            ));
         }
-
-        update_claim_doc(&context, &claim).await?;
-
-        ic_cdk::print(format!(
-            "Claim signature generated for user {} session {}",
-            context.caller.to_text(),
-            claim.game_session_id
-        ));
 
     // Handle claim completion: verify transaction
     } else if claim.status == ClaimStatus::ReadyForChain && claim.tx_hash.is_some() {
@@ -752,19 +809,264 @@ async fn on_balance_refresh(context: OnSetDocContext) -> Result<(), String> {
     Ok(())
 }
 
-/// Log game session completion for analytics
+/// Process game session updates: update leaderboard active score and resolve expired top scores.
 async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> {
     let session: GameSession = decode_doc_data(&context.data.data.after.data)?;
 
-    // Log when a session ends with boss defeated
-    if session.ended_at.is_some() && session.boss_defeated {
-        ic_cdk::print(format!(
-            "Game won! User {} defeated boss with score {} and {} keys",
-            context.caller.to_text(),
-            session.score,
-            session.keys_collected
-        ));
+    // Only process completed sessions
+    if session.ended_at.is_none() {
+        return Ok(());
     }
+
+    let caller_key = context.caller.to_text();
+    let now_ms = time() / 1_000_000;
+
+    // Read caller's user profile for nickname
+    let user_doc = get_doc_store(
+        context.caller,
+        "users".to_string(),
+        caller_key.clone(),
+    )?;
+    let nickname = match user_doc {
+        Some(ref doc) => {
+            let profile: UserProfile = decode_doc_data(&doc.data)?;
+            profile.nickname
+        }
+        None => "Unknown".to_string(),
+    };
+
+    // Read existing leaderboard entry
+    let existing = get_doc_store(
+        context.caller,
+        "leaderboard".to_string(),
+        caller_key.clone(),
+    )?
+    .and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
+
+    let prev_high = existing.as_ref().map_or(0, |e| e.high_score);
+    let prev_won = existing.as_ref().map_or(0, |e| e.games_won);
+
+    // Update leaderboard entry with active score
+    let entry = LeaderboardEntry {
+        nickname,
+        high_score: prev_high.max(session.score),
+        games_won: if session.boss_defeated { prev_won + 1 } else { prev_won },
+        active_score: session.score,
+        scored_at: Some(now_ms),
+        expires_at: Some(now_ms + config::SCORE_TTL_HOURS * 3_600_000),
+        session_id: Some(context.data.key.clone()),
+    };
+
+    let leaderboard_doc = SetDoc {
+        data: encode_doc_data(&entry)?,
+        description: Some("Leaderboard entry with active score".to_string()),
+        version: None,
+    };
+
+    set_doc_store(
+        context.caller,
+        "leaderboard".to_string(),
+        caller_key.clone(),
+        leaderboard_doc,
+    )?;
+
+    ic_cdk::print(format!(
+        "Active score updated for user {}: score={}, expires_at={}",
+        caller_key,
+        session.score,
+        now_ms + config::SCORE_TTL_HOURS * 3_600_000
+    ));
+
+    // Resolve any expired top scores (consolation prize)
+    resolve_expired_top_score().await?;
+
+    Ok(())
+}
+
+/// Check if the top active score has expired and award a consolation prize if so.
+/// Called lazily on every game session update.
+async fn resolve_expired_top_score() -> Result<(), String> {
+    let canister_id = ic_cdk::id();
+    let now_ms = time() / 1_000_000;
+
+    // List all leaderboard entries
+    let result = list_docs_store(
+        canister_id,
+        "leaderboard".to_string(),
+        &ListParams {
+            matcher: None,
+            paginate: None,
+            order: None,
+            owner: None,
+        },
+    )?;
+
+    // Find the entry with the highest active_score that has an expires_at set
+    let mut top_entry: Option<(String, LeaderboardEntry, candid::Principal)> = None;
+
+    for (key, doc) in &result.items {
+        let entry: LeaderboardEntry = match decode_doc_data(&doc.data) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        // Only consider entries with an active expiry
+        if entry.expires_at.is_none() || entry.active_score == 0 {
+            continue;
+        }
+
+        let owner = doc.owner;
+
+        match &top_entry {
+            None => {
+                top_entry = Some((key.clone(), entry, owner));
+            }
+            Some((_, current_top, _)) => {
+                if entry.active_score > current_top.active_score
+                    || (entry.active_score == current_top.active_score
+                        && entry.scored_at < current_top.scored_at)
+                {
+                    top_entry = Some((key.clone(), entry, owner));
+                }
+            }
+        }
+    }
+
+    let (winner_key, winner_entry, winner_principal) = match top_entry {
+        Some(t) => t,
+        None => return Ok(()), // No active scores
+    };
+
+    // Check if the top entry has expired
+    let expires_at = match winner_entry.expires_at {
+        Some(ts) => ts,
+        None => return Ok(()),
+    };
+
+    if expires_at >= now_ms {
+        return Ok(()); // Not expired yet
+    }
+
+    // Check if winner is banned
+    let winner_profile_doc = get_doc_store(
+        winner_principal,
+        "users".to_string(),
+        winner_key.clone(),
+    )?;
+
+    let mut winner_profile: UserProfile = match winner_profile_doc {
+        Some(ref doc) => decode_doc_data(&doc.data)?,
+        None => return Ok(()), // No profile found
+    };
+
+    if check_ban(&winner_profile).is_err() {
+        // Banned user — clear their expires_at and skip
+        clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
+        ic_cdk::print(format!(
+            "Skipped consolation for banned user {}",
+            winner_key
+        ));
+        return Ok(());
+    }
+
+    // Calculate consolation amount (use fixed max for simplicity, avoiding expensive vault query)
+    let consolation_amount = config::CONSOLATION_PRIZE_MAX;
+
+    // Create consolation claim
+    let claim_key = format!("consolation_{}_{}", winner_key, now_ms);
+    let session_id = winner_entry.session_id.clone().unwrap_or_default();
+
+    let claim = ClaimRequest {
+        amount: consolation_amount,
+        status: ClaimStatus::Pending,
+        signature: None,
+        tx_hash: None,
+        game_session_id: session_id,
+        keys_collected: 0,
+        error: None,
+        claim_type: "consolation".to_string(),
+    };
+
+    let claim_doc = SetDoc {
+        data: encode_doc_data(&claim)?,
+        description: Some("Consolation prize for expired #1 active score".to_string()),
+        version: None,
+    };
+
+    set_doc_store(
+        winner_principal,
+        "claims".to_string(),
+        claim_key.clone(),
+        claim_doc,
+    )?;
+
+    // Clear winner's expires_at to prevent double-award
+    clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
+
+    // Add notification to winner's profile
+    let notification = serde_json::json!({
+        "key": format!("consolation_{}", now_ms),
+        "data": {
+            "type": "consolation_prize",
+            "message": format!("You earned a {} TRESR consolation prize! Your #1 active score expired.", consolation_amount),
+            "urgency": "urgent",
+            "timestamp": now_ms,
+        }
+    });
+
+    // Append to existing notifications array
+    let notifications = match &winner_profile.notifications {
+        Some(serde_json::Value::Array(arr)) => {
+            let mut new_arr = arr.clone();
+            new_arr.push(notification);
+            serde_json::Value::Array(new_arr)
+        }
+        _ => serde_json::Value::Array(vec![notification]),
+    };
+    winner_profile.notifications = Some(notifications);
+
+    let profile_doc = SetDoc {
+        data: encode_doc_data(&winner_profile)?,
+        description: Some("Consolation prize notification added".to_string()),
+        version: winner_profile_doc.as_ref().and_then(|d| d.version),
+    };
+
+    set_doc_store(
+        winner_principal,
+        "users".to_string(),
+        winner_key.clone(),
+        profile_doc,
+    )?;
+
+    ic_cdk::print(format!(
+        "Consolation prize of {} awarded to user {} (claim: {})",
+        consolation_amount, winner_key, claim_key
+    ));
+
+    Ok(())
+}
+
+/// Clear the expires_at on a leaderboard entry to prevent re-processing.
+fn clear_leaderboard_expiry(
+    key: &str,
+    entry: &LeaderboardEntry,
+    owner: candid::Principal,
+) -> Result<(), String> {
+    let mut cleared = entry.clone();
+    cleared.expires_at = None;
+
+    let doc = SetDoc {
+        data: encode_doc_data(&cleared)?,
+        description: Some("Active score expired — cleared".to_string()),
+        version: None,
+    };
+
+    set_doc_store(
+        owner,
+        "leaderboard".to_string(),
+        key.to_string(),
+        doc,
+    )?;
 
     Ok(())
 }

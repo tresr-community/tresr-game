@@ -2,11 +2,16 @@
   <div class="modal-box bg-base-100 border-primary/30 w-11/12 max-w-2xl border">
     <div class="mb-4 flex items-center justify-between">
       <h2 class="text-primary flex items-center gap-2 text-2xl font-bold">
-        <span>🏆</span> DEGENERATE HALL OF FAME
+        <span>&#x1F3C6;</span> DEGENERATE HALL OF FAME
       </h2>
       <button id="btn-close-leaderboard" class="btn btn-sm btn-circle btn-ghost"
-        >✕</button
+        >&#x2715;</button
       >
+    </div>
+
+    <div role="tablist" class="tabs tabs-box mb-4">
+      <button role="tab" class="tab tab-active" id="tab-active">ACTIVE</button>
+      <button role="tab" class="tab" id="tab-alltime">ALL TIME</button>
     </div>
 
     <div id="leaderboard-loading" class="py-10 text-center">
@@ -14,7 +19,23 @@
       <p class="text-primary mt-2 animate-pulse">Accessing Mainframe...</p>
     </div>
 
-    <div id="leaderboard-table-container" class="hidden overflow-x-auto">
+    <div id="tab-content-active" class="hidden overflow-x-auto">
+      <table class="table-zebra table w-full">
+        <thead>
+          <tr class="text-secondary text-xs uppercase">
+            <th>#</th>
+            <th>Agent</th>
+            <th class="text-right">Score</th>
+            <th class="text-right">Expires</th>
+          </tr>
+        </thead>
+        <tbody id="active-list">
+          <!-- Rows injected here -->
+        </tbody>
+      </table>
+    </div>
+
+    <div id="tab-content-alltime" class="hidden overflow-x-auto">
       <table class="table-zebra table w-full">
         <thead>
           <tr class="text-secondary text-xs uppercase">
@@ -24,7 +45,7 @@
             <th class="hidden text-right sm:table-cell">Date</th>
           </tr>
         </thead>
-        <tbody id="leaderboard-list">
+        <tbody id="alltime-list">
           <!-- Rows injected here -->
         </tbody>
       </table>
@@ -43,59 +64,272 @@
   const COMPONENT_NAME = "LeaderboardModal";
 
   const loading = document.getElementById("leaderboard-loading");
-  const container = document.getElementById("leaderboard-table-container");
-  const list = document.getElementById("leaderboard-list");
+  const activeContent = document.getElementById("tab-content-active");
+  const alltimeContent = document.getElementById("tab-content-alltime");
+  const activeList = document.getElementById("active-list");
+  const alltimeList = document.getElementById("alltime-list");
   const modal = document.getElementById(
     "leaderboard-modal"
   ) as HTMLDialogElement;
+  const tabActive = document.getElementById("tab-active");
+  const tabAlltime = document.getElementById("tab-alltime");
+
+  let countdownInterval: ReturnType<typeof setInterval> | null = null;
+  let currentTab: "active" | "alltime" = "active";
 
   function openLeaderboardModal() {
     modal?.showModal();
-    loadLeaderboard();
+    currentTab = "active";
+    updateTabUI();
+    loadActiveLeaderboard();
     PWA.getInstance().checkForUpdates();
   }
 
-  // Close logic (ticket #241: named handler for cleanup)
+  // Tab switching
+  tabActive?.addEventListener("click", () => {
+    currentTab = "active";
+    updateTabUI();
+    loadActiveLeaderboard();
+  });
+
+  tabAlltime?.addEventListener("click", () => {
+    currentTab = "alltime";
+    updateTabUI();
+    loadAlltimeLeaderboard();
+  });
+
+  function updateTabUI() {
+    if (currentTab === "active") {
+      tabActive?.classList.add("tab-active");
+      tabAlltime?.classList.remove("tab-active");
+      activeContent?.classList.remove("hidden");
+      alltimeContent?.classList.add("hidden");
+    } else {
+      tabActive?.classList.remove("tab-active");
+      tabAlltime?.classList.add("tab-active");
+      activeContent?.classList.add("hidden");
+      alltimeContent?.classList.remove("hidden");
+    }
+  }
+
+  // Close logic
   const btnCloseLeaderboard = document.getElementById("btn-close-leaderboard");
   function handleCloseLeaderboard() {
+    clearCountdownInterval();
     modal?.close();
   }
   btnCloseLeaderboard?.addEventListener("click", handleCloseLeaderboard);
 
-  // Safe DOM builder for message rows (ticket #239)
+  function clearCountdownInterval() {
+    if (countdownInterval !== null) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+  }
+
+  // Safe DOM builder for message rows
   function createMessageRow(
     message: string,
-    colorClass: string
+    colorClass: string,
+    colSpan: number = 4
   ): HTMLTableRowElement {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 4;
+    td.colSpan = colSpan;
     td.className = `p-4 text-center ${colorClass}`;
     td.textContent = message;
     tr.appendChild(td);
     return tr;
   }
 
-  async function loadLeaderboard() {
-    if (!loading || !container || !list) return;
+  function formatCountdown(ms: number): string {
+    if (ms <= 0) return "Expired";
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    if (minutes > 0) return `${minutes}m`;
+    return "<1m";
+  }
 
+  function buildAgentCell(nickname: string): HTMLTableCellElement {
+    const tdAgent = document.createElement("td");
+    const agentWrapper = document.createElement("div");
+    agentWrapper.className = "flex items-center gap-2";
+
+    const avatarDiv = document.createElement("div");
+    avatarDiv.className = "avatar placeholder";
+    const avatarInner = document.createElement("div");
+    avatarInner.className =
+      "bg-primary/20 text-primary w-8 rounded-full border border-primary/30";
+    const avatarSpan = document.createElement("span");
+    avatarSpan.className = "text-xs";
+    avatarSpan.textContent = nickname[0]?.toUpperCase() || "A";
+    avatarInner.appendChild(avatarSpan);
+    avatarDiv.appendChild(avatarInner);
+
+    const infoDiv = document.createElement("div");
+    const nameDiv = document.createElement("div");
+    nameDiv.className = "font-bold text-sm";
+    nameDiv.textContent = nickname;
+    infoDiv.appendChild(nameDiv);
+
+    agentWrapper.appendChild(avatarDiv);
+    agentWrapper.appendChild(infoDiv);
+    tdAgent.appendChild(agentWrapper);
+    return tdAgent;
+  }
+
+  async function loadActiveLeaderboard() {
+    if (!loading || !activeContent || !activeList) return;
+
+    clearCountdownInterval();
     loading.classList.remove("hidden");
-    container.classList.add("hidden");
-    list.replaceChildren();
+    activeContent.classList.add("hidden");
+    activeList.replaceChildren();
 
-    // Timeout after 10 seconds (ticket #165)
     const timeoutId = setTimeout(() => {
       if (loading) loading.classList.add("hidden");
-      if (container) container.classList.remove("hidden");
-      if (list)
-        list.replaceChildren(
+      if (activeContent) activeContent.classList.remove("hidden");
+      if (activeList)
+        activeList.replaceChildren(
           createMessageRow("Connection timed out. Try again.", "text-warning")
         );
     }, 10000);
 
     try {
-      // Juno: listDocs on "leaderboard" collection — public read, no auth required.
-      // The leaderboard collection contains sanitized data only (nickname, highScore, gamesWon).
+      const {items} = await listDocs({
+        collection: "leaderboard",
+        filter: {
+          order: {
+            desc: true,
+            // @ts-ignore — Juno supports nested field ordering
+            field: "activeScore",
+          },
+        },
+        paginate: {
+          limit: 50,
+        },
+      });
+
+      const now = Date.now();
+
+      // Client-side filter: only show entries with active (non-expired) scores
+      const activeItems = items.filter((item) => {
+        const entry = item.data as Record<string, unknown> | undefined;
+        const expiresAt = entry?.expiresAt as number | undefined;
+        const activeScore = entry?.activeScore as number | undefined;
+        return expiresAt && expiresAt > now && activeScore && activeScore > 0;
+      });
+
+      if (activeItems.length === 0) {
+        activeList.replaceChildren(
+          createMessageRow(
+            "No active scores. Play to claim #1!",
+            "text-info opacity-60"
+          )
+        );
+        return;
+      }
+
+      // Show top 10
+      const top10 = activeItems.slice(0, 10);
+
+      top10.forEach((item, index) => {
+        const entry = item.data as Record<string, unknown> | undefined;
+        const row = document.createElement("tr");
+        row.className = "hover:bg-primary/5 transition-colors";
+
+        const nickname =
+          typeof entry?.nickname === "string"
+            ? entry.nickname
+            : "Unknown Agent";
+        const score = entry?.activeScore?.toString() || "0";
+        const expiresAt = (entry?.expiresAt as number) || 0;
+
+        // Rank cell
+        const tdRank = document.createElement("td");
+        tdRank.className = "font-mono text-xs opacity-50";
+        tdRank.textContent = String(index + 1);
+
+        // Agent cell
+        const tdAgent = buildAgentCell(nickname);
+
+        // Score cell
+        const tdScore = document.createElement("td");
+        tdScore.className = "text-right font-mono font-bold text-primary";
+        tdScore.textContent = score;
+
+        // Countdown cell
+        const tdCountdown = document.createElement("td");
+        tdCountdown.className =
+          "text-right font-mono text-[10px] opacity-60 uppercase";
+        tdCountdown.dataset.expiresAt = String(expiresAt);
+        tdCountdown.textContent = formatCountdown(expiresAt - now);
+
+        row.appendChild(tdRank);
+        row.appendChild(tdAgent);
+        row.appendChild(tdScore);
+        row.appendChild(tdCountdown);
+        activeList.appendChild(row);
+      });
+
+      // Update countdowns every minute
+      countdownInterval = setInterval(() => {
+        const cells = activeList.querySelectorAll("[data-expires-at]");
+        const currentTime = Date.now();
+        cells.forEach((cell) => {
+          const el = cell as HTMLElement;
+          const expiresAt = parseInt(el.dataset.expiresAt || "0", 10);
+          el.textContent = formatCountdown(expiresAt - currentTime);
+        });
+      }, 60000);
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (errMsg.includes("not_found") || errMsg.includes("Datastore")) {
+        log.warn(
+          COMPONENT_NAME,
+          "Leaderboard collection not found — may not be provisioned yet",
+          err
+        );
+        activeList.replaceChildren(
+          createMessageRow(
+            "Leaderboard not available yet. Deploy in progress.",
+            "text-warning opacity-70"
+          )
+        );
+      } else {
+        log.error(COMPONENT_NAME, "Failed to load active leaderboard", err);
+        activeList.replaceChildren(
+          createMessageRow("Failed to load mainframe data.", "text-error")
+        );
+      }
+    } finally {
+      clearTimeout(timeoutId);
+      loading.classList.add("hidden");
+      if (currentTab === "active") {
+        activeContent.classList.remove("hidden");
+      }
+    }
+  }
+
+  async function loadAlltimeLeaderboard() {
+    if (!loading || !alltimeContent || !alltimeList) return;
+
+    loading.classList.remove("hidden");
+    alltimeContent.classList.add("hidden");
+    alltimeList.replaceChildren();
+
+    const timeoutId = setTimeout(() => {
+      if (loading) loading.classList.add("hidden");
+      if (alltimeContent) alltimeContent.classList.remove("hidden");
+      if (alltimeList)
+        alltimeList.replaceChildren(
+          createMessageRow("Connection timed out. Try again.", "text-warning")
+        );
+    }, 10000);
+
+    try {
       const {items} = await listDocs({
         collection: "leaderboard",
         filter: {
@@ -106,12 +340,12 @@
           },
         },
         paginate: {
-          limit: 10,
+          limit: 100,
         },
       });
 
       if (items.length === 0) {
-        list.replaceChildren(
+        alltimeList.replaceChildren(
           createMessageRow(
             "No scores yet. Be the first!",
             "text-info opacity-60"
@@ -120,7 +354,10 @@
         return;
       }
 
-      items.forEach((item, index) => {
+      // Show top 10
+      const top10 = items.slice(0, 10);
+
+      top10.forEach((item, index) => {
         const entry = item.data as Record<string, unknown> | undefined;
         const row = document.createElement("tr");
         row.className = "hover:bg-primary/5 transition-colors";
@@ -133,7 +370,6 @@
           typeof entry?.nickname === "string"
             ? entry.nickname
             : "Unknown Agent";
-        const avatarLetter = nickname[0]?.toUpperCase() || "A";
         const score = entry?.highScore?.toString() || "0";
 
         // Rank cell
@@ -142,30 +378,7 @@
         tdRank.textContent = String(index + 1);
 
         // Agent cell
-        const tdAgent = document.createElement("td");
-        const agentWrapper = document.createElement("div");
-        agentWrapper.className = "flex items-center gap-2";
-
-        const avatarDiv = document.createElement("div");
-        avatarDiv.className = "avatar placeholder";
-        const avatarInner = document.createElement("div");
-        avatarInner.className =
-          "bg-primary/20 text-primary w-8 rounded-full border border-primary/30";
-        const avatarSpan = document.createElement("span");
-        avatarSpan.className = "text-xs";
-        avatarSpan.textContent = avatarLetter;
-        avatarInner.appendChild(avatarSpan);
-        avatarDiv.appendChild(avatarInner);
-
-        const infoDiv = document.createElement("div");
-        const nameDiv = document.createElement("div");
-        nameDiv.className = "font-bold text-sm";
-        nameDiv.textContent = nickname;
-        infoDiv.appendChild(nameDiv);
-
-        agentWrapper.appendChild(avatarDiv);
-        agentWrapper.appendChild(infoDiv);
-        tdAgent.appendChild(agentWrapper);
+        const tdAgent = buildAgentCell(nickname);
 
         // Score cell
         const tdScore = document.createElement("td");
@@ -182,46 +395,48 @@
         row.appendChild(tdAgent);
         row.appendChild(tdScore);
         row.appendChild(tdDate);
-        list.appendChild(row);
+        alltimeList.appendChild(row);
       });
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      // Graceful handling for collection not yet provisioned
       if (errMsg.includes("not_found") || errMsg.includes("Datastore")) {
         log.warn(
           COMPONENT_NAME,
           "Leaderboard collection not found — may not be provisioned yet",
           err
         );
-        list.replaceChildren(
+        alltimeList.replaceChildren(
           createMessageRow(
             "Leaderboard not available yet. Deploy in progress.",
             "text-warning opacity-70"
           )
         );
       } else {
-        log.error(COMPONENT_NAME, "Failed to load leaderboard", err);
-        list.replaceChildren(
+        log.error(COMPONENT_NAME, "Failed to load all-time leaderboard", err);
+        alltimeList.replaceChildren(
           createMessageRow("Failed to load mainframe data.", "text-error")
         );
       }
     } finally {
       clearTimeout(timeoutId);
       loading.classList.add("hidden");
-      container.classList.remove("hidden");
+      if (currentTab === "alltime") {
+        alltimeContent.classList.remove("hidden");
+      }
     }
   }
 
-  // Listen for custom event instead of window global (ticket #165)
+  // Listen for custom event
   function handleOpenLeaderboard() {
     openLeaderboardModal();
   }
   document.addEventListener("tresr:open-leaderboard", handleOpenLeaderboard);
 
-  // Cleanup document-level listener on navigation (ticket #241)
+  // Cleanup on navigation
   document.addEventListener(
     "astro:before-preparation",
     () => {
+      clearCountdownInterval();
       document.removeEventListener(
         "tresr:open-leaderboard",
         handleOpenLeaderboard

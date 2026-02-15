@@ -1309,6 +1309,18 @@ export const config: ConfigTypes = {
   "changelog": {
     "versions": [
       {
+        "version": "0.3.0",
+        "date": "2026-02-15",
+        "title": "Decaying High Score & Consolation Prize",
+        "notes": [
+          "Active score leaderboard with 24h TTL decay",
+          "Consolation prize for expired #1 active score",
+          "Two-tab leaderboard UI (ACTIVE + ALL TIME)",
+          "Game session tracking on victory and defeat",
+          "Countdown timers on active leaderboard entries"
+        ]
+      },
+      {
         "version": "0.2.0",
         "date": "2026-02-14",
         "title": "Leaderboard",

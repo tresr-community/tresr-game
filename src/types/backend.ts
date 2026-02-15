@@ -65,6 +65,16 @@ export interface UserProfile {
   offence_count?: number; // Cumulative cheat attempts. Escalates ban duration.
 }
 
+export interface LeaderboardEntry {
+  nickname: string;
+  highScore: number;
+  gamesWon: number;
+  activeScore: number;
+  scoredAt?: number;
+  expiresAt?: number;
+  sessionId?: string;
+}
+
 export interface GlobalStats {
   totalFees: number;
   totalBurned: number;

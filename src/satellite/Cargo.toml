@@ -12,6 +12,7 @@ crate-type = ["cdylib"]
 
 # Juno SDK
 junobuild-satellite = { version = "0.4.0", default-features = false }
+junobuild-shared = "0.6.0"
 junobuild-macros = "0.2.0"
 junobuild-storage = { version = "0.5.0", default-features = false }
 junobuild-utils = "0.2.0"

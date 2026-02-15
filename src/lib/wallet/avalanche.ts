@@ -88,7 +88,7 @@ export async function payFeeForGame(
     abi: ERC20Abi,
     functionName: "approve",
     args: [chainConfig.vault_contract as `0x${string}`, amount],
-    chain: null,
+    chain: getTargetChain(),
   });
 
   // Pay fee to the Vault
@@ -99,7 +99,7 @@ export async function payFeeForGame(
     abi: VaultAbi,
     functionName: "payFee",
     args: [amount, sessionId as `0x${string}`],
-    chain: null,
+    chain: getTargetChain(),
   });
 
   return hash;
@@ -132,7 +132,7 @@ export async function claimWin(
     abi: VaultAbi,
     functionName: "claim",
     args: [sessionId as `0x${string}`, amount, BigInt(keys), signature],
-    chain: null, // Chain is already configured in the wallet client
+    chain: getTargetChain(), // Chain is already configured in the wallet client
   });
 
   return hash;

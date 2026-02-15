@@ -1739,6 +1739,7 @@ dependencies = [
  "ic-cdk",
  "junobuild-macros",
  "junobuild-satellite",
+ "junobuild-shared",
  "junobuild-storage",
  "junobuild-utils",
  "lazy_static",

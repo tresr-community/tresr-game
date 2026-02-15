@@ -12,6 +12,7 @@ import {TresrBot} from "@/lib/game/prefabs/TresrBot";
 import {gameActions, gameState} from "@/lib/game/state";
 import {Recorder} from "@/lib/game/Recorder";
 import {SpriteManager, type SpritesConfig} from "@/lib/game/SpriteManager";
+import {setDoc} from "@junobuild/core";
 import {claimAuthorize} from "@/declarations/satellite/satellite.api";
 import {getUserProfile, saveUserProfile} from "@/lib/user";
 import {getAuthState} from "@/lib/auth";
@@ -2062,6 +2063,36 @@ export class MainScene extends Phaser.Scene {
             log.info(COMPONENT_NAME, "Win stats saved to Juno.");
           }
         }
+
+        // Save game session for leaderboard active score tracking
+        if (this.sessionId && !this.sessionId.startsWith("guest-")) {
+          try {
+            await setDoc({
+              collection: "game_sessions",
+              doc: {
+                key: this.sessionId,
+                data: {
+                  startedAt:
+                    Date.now() -
+                    (this.gameplayConfig.time_limit_seconds -
+                      this.survivalTimer) *
+                      1000,
+                  endedAt: Date.now(),
+                  keysCollected: this.collectedKeys,
+                  bossDefeated: true,
+                  score: this.score,
+                  rewardClaimed: false,
+                },
+              },
+            });
+            log.info(
+              COMPONENT_NAME,
+              "Game session saved for active score tracking."
+            );
+          } catch (err) {
+            log.error(COMPONENT_NAME, "Failed to save game session:", err);
+          }
+        }
       } else {
         log.error(COMPONENT_NAME, "Claim authorization failed:", result.Err);
       }
@@ -2111,6 +2142,36 @@ export class MainScene extends Phaser.Scene {
           }
           await saveUserProfile(auth.user.key, profile, profileDoc.version);
           log.info(COMPONENT_NAME, "High score saved to Juno.");
+        }
+
+        // Save game session for leaderboard active score tracking
+        if (this.sessionId && !this.sessionId.startsWith("guest-")) {
+          try {
+            await setDoc({
+              collection: "game_sessions",
+              doc: {
+                key: this.sessionId,
+                data: {
+                  startedAt:
+                    Date.now() -
+                    (this.gameplayConfig.time_limit_seconds -
+                      this.survivalTimer) *
+                      1000,
+                  endedAt: Date.now(),
+                  keysCollected: this.collectedKeys,
+                  bossDefeated: false,
+                  score: this.score,
+                  rewardClaimed: false,
+                },
+              },
+            });
+            log.info(
+              COMPONENT_NAME,
+              "Game session saved for active score tracking."
+            );
+          } catch (err) {
+            log.error(COMPONENT_NAME, "Failed to save game session:", err);
+          }
         }
       } catch {
         log.error(COMPONENT_NAME, "Failed to save high score");

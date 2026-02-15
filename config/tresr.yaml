@@ -48,6 +48,11 @@ server:
       - score_exceeds_maximum
       - is_a_sore_loser
       - wallet_tampering
+  highscore:
+    score_ttl_hours: 24
+    consolation_prize_percent: 5
+    consolation_prize_max: 100
+    consolation_prize_min_games: 3
 ##################################################
 # Client side configuration.
 #

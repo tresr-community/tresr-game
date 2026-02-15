@@ -144,8 +144,18 @@ fn default_theme() -> String {
 #[serde(rename_all = "camelCase")]
 pub struct LeaderboardEntry {
     pub nickname: String,
+    // --- ALL TIME ---
     pub high_score: u64,
     pub games_won: u64,
+    // --- ACTIVE (decays) ---
+    #[serde(default)]
+    pub active_score: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub scored_at: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
 }
 
 // =============================================================================
@@ -228,6 +238,14 @@ pub struct ClaimRequest {
     /// Error message if failed
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+
+    /// Claim type: "boss_kill" (default) or "consolation"
+    #[serde(default = "default_claim_type")]
+    pub claim_type: String,
+}
+
+fn default_claim_type() -> String {
+    "boss_kill".to_string()
 }
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq)]

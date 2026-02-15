@@ -233,6 +233,8 @@ gify
 retardio
 
 # Dev and game terms
+alltime
 bootup
 cheatcode
+consolation
 prereleased
