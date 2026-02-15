@@ -49,6 +49,7 @@ midground
 powerup
 Powerups
 mult
+regen
 rdist
 scanlines
 Scanline
@@ -76,6 +77,8 @@ Lambos
 libsecp
 normie
 normies
+retardio
+retardios
 recid
 Secp
 SIWA

@@ -11,9 +11,9 @@ type EnemyAIType =
   | "flanker"
   | "cautious"
   | "erratic"
-  | "ranged"
   | "swarm"
-  | "burrower";
+  | "passive"
+  | "retardio";
 
 export class Enemy extends BaseEntity {
   private target?: Phaser.GameObjects.Components.Transform;
@@ -24,13 +24,24 @@ export class Enemy extends BaseEntity {
   private aiTimer: number = 0;
   private flankDirection: number = 1;
   private erraticOffset: {x: number; y: number} = {x: 0, y: 0};
-  private burrowerTriggered: boolean = false;
-  private burrowerEdgeX: number = 0;
   private rng!: Phaser.Math.RandomDataGenerator;
   private walkableArea?: WalkableArea;
   private enemyGroup?: Phaser.Physics.Arcade.Group;
   private swarmNearbyCount: number = 0;
   private swarmCheckCounter: number = 0;
+
+  // Passive AI state
+  private passiveDirection: number = 1; // 1 = right, -1 = left
+  private provoked: boolean = false;
+
+  // Retardio AI state — targets other enemies instead of the player
+  private retardioTarget?: Enemy;
+  private retardioTimer: number = 0;
+
+  // Cautious AI state
+  private cautiousCharging: boolean = false;
+  private cautiousCheckCounter: number = 0;
+  private cautiousNearbyCount: number = 0;
 
   // Per-enemy damage cooldown (ticket #139: each enemy tracks its own cooldown)
   public lastPlayerDamageTime: number = 0;
@@ -89,9 +100,9 @@ export class Enemy extends BaseEntity {
       ["flanker", weights.flanker],
       ["cautious", weights.cautious],
       ["erratic", weights.erratic],
-      ["ranged", weights.ranged],
       ["swarm", weights.swarm],
-      ["burrower", weights.burrower],
+      ["passive", weights.passive],
+      ["retardio", weights.retardio],
     ];
     const totalWeight = entries.reduce((sum, [, w]) => sum + w, 0);
     let roll = this.rng.frac() * totalWeight;
@@ -110,7 +121,6 @@ export class Enemy extends BaseEntity {
     switch (this.aiType) {
       case "cautious":
         this.speed = this.baseSpeed * aiConfig.cautious.speed_mult;
-        this.attackRange = this.attackRange * aiConfig.cautious.range_mult;
         break;
       case "erratic":
         this.speed = this.baseSpeed * aiConfig.erratic.speed_mult;
@@ -118,27 +128,25 @@ export class Enemy extends BaseEntity {
       case "flanker":
         this.speed = this.baseSpeed * aiConfig.flanker.speed_mult;
         break;
-      case "ranged":
-        this.speed = this.baseSpeed * aiConfig.ranged.speed_mult;
-        break;
       case "swarm":
         this.speed = this.baseSpeed * aiConfig.swarm.speed_mult;
         break;
-      case "burrower": {
-        // Burrower enemies hide off-screen and rush in when the player is nearby
-        this.speed = 0;
-        const cam = this.scene.cameras.main;
-        const offDist = aiConfig.burrower.offscreen_distance;
-        // Pick nearest edge based on spawn position, park just off-screen
-        if (this.x < cam.width / 2) {
-          this.burrowerEdgeX = -offDist;
-        } else {
-          this.burrowerEdgeX = cam.width + offDist;
-        }
-        this.setPosition(this.burrowerEdgeX, this.y);
-        this.setVisible(false);
-        // Hide shadow too — otherwise a ghost shadow appears on the walkable area
-        if (this.shadow) this.shadow.setVisible(false);
+      case "passive": {
+        this.speed = this.baseSpeed * aiConfig.passive.speed_mult;
+        this.provoked = false;
+        // Pick random walk direction
+        this.passiveDirection = this.rng.frac() < 0.5 ? 1 : -1;
+        // Higher HP for passive enemies
+        const hpMult = aiConfig.passive.hp_mult ?? 1.5;
+        this.hp = Math.round(this.maxHp * hpMult);
+        this.maxHp = this.hp;
+        break;
+      }
+      case "retardio": {
+        // Erratic speed, targets other enemies
+        this.speed = this.baseSpeed * (aiConfig.retardio?.speed_mult ?? 1.1);
+        this.retardioTarget = undefined;
+        this.retardioTimer = 0;
         break;
       }
       default:
@@ -204,6 +212,112 @@ export class Enemy extends BaseEntity {
 
     this.aiTimer += timestep;
 
+    // --- Passive AI: Walk across screen, ignore player unless provoked ---
+    if (this.aiType === "passive" && !this.provoked) {
+      const {width} = this.scene.cameras.main;
+      this.setFlipX(this.passiveDirection < 0);
+      this.setVelocityX(this.passiveDirection * this.speed);
+      this.setVelocityY(0);
+      this.play(this.animKeys.walk, true);
+
+      // Walk off-screen → self-destruct (no kill event, just disappears)
+      if (this.x < -50 || this.x > width + 50) {
+        this.kill();
+        return;
+      }
+
+      // Clamp to walkable area
+      if (this.walkableArea) {
+        const clamped = this.walkableArea.clampToWalkable(this.x, this.groundY);
+        this.x = clamped.x;
+        this.groundY = clamped.groundY;
+      }
+
+      super.update();
+      return;
+    }
+
+    // --- Retardio AI: Chase and attack other enemies (not the player) ---
+    if (this.aiType === "retardio") {
+      const dt = timestep;
+      const aiConfig = this.config.gameplay.entities.enemy.ai;
+      const jitterTime = aiConfig.retardio?.jitter_time ?? 0.3;
+
+      // Re-pick target every few seconds or if current target is dead
+      this.retardioTimer += dt;
+      if (
+        !this.retardioTarget ||
+        !this.retardioTarget.active ||
+        this.retardioTarget.hp <= 0 ||
+        this.retardioTimer > (aiConfig.retardio?.retarget_time ?? 4)
+      ) {
+        this.retardioTimer = 0;
+        this.retardioTarget = this.findNearestEnemy();
+      }
+
+      if (this.retardioTarget) {
+        const targetGY = this.retardioTarget.groundY ?? this.retardioTarget.y;
+        // Add some erratic jitter
+        if (this.aiTimer > jitterTime) {
+          this.erraticOffset = {
+            x: (this.rng.frac() - 0.5) * 80,
+            y: (this.rng.frac() - 0.5) * 40,
+          };
+          this.aiTimer = 0;
+        }
+        const tX = this.retardioTarget.x + this.erraticOffset.x;
+        const tGY = targetGY + this.erraticOffset.y;
+        const dx = tX - this.x;
+        const dy = tGY - this.groundY;
+        const dist = Phaser.Math.Distance.Between(
+          this.x,
+          this.groundY,
+          tX,
+          tGY
+        );
+        const angle = Math.atan2(dy, dx);
+        this.setFlipX(dx < 0);
+
+        if (dist < this.attackRange) {
+          // Punch the other enemy
+          this.play(this.animKeys.attack, true);
+          this.setVelocityX(0);
+          this.setVelocityY(0);
+          // Actually deal damage to the target enemy
+          if (this.retardioTarget.active && this.retardioTarget.hp > 0) {
+            // Damage every ~0.5s
+            if (this.retardioTimer > 0.5 || this.retardioTimer === 0) {
+              this.retardioTarget.takeDamage(
+                aiConfig.retardio?.attack_damage ?? 10
+              );
+            }
+          }
+        } else {
+          this.setVelocityX(Math.cos(angle) * this.speed);
+          this.setVelocityY(0);
+          this.groundY += Math.sin(angle) * this.speed * dt;
+          if (this.walkableArea) {
+            const clamped = this.walkableArea.clampToWalkable(
+              this.x,
+              this.groundY
+            );
+            this.x = clamped.x;
+            this.groundY = clamped.groundY;
+          }
+          this.play(this.animKeys.walk, true);
+        }
+      } else {
+        // No enemies nearby — wander erratically
+        this.setFlipX(this.rng.frac() < 0.5);
+        this.setVelocityX((this.rng.frac() - 0.5) * this.speed);
+        this.setVelocityY(0);
+        this.play(this.animKeys.walk, true);
+      }
+
+      super.update();
+      return;
+    }
+
     if (this.target) {
       const dt = timestep;
 
@@ -212,23 +326,6 @@ export class Enemy extends BaseEntity {
         "groundY" in this.target
           ? (this.target as BaseEntity).groundY
           : this.target.y;
-
-      // Burrower AI: hide off-screen until player is near the edge, then rush in
-      if (this.aiType === "burrower" && !this.burrowerTriggered) {
-        // Check if player is within trigger_radius of the burrower's edge
-        const playerDistToEdge = Math.abs(this.target.x - this.burrowerEdgeX);
-        if (playerDistToEdge <= aiConfig.burrower.trigger_radius) {
-          this.burrowerTriggered = true;
-          this.setVisible(true);
-          if (this.shadow) this.shadow.setVisible(true);
-          this.speed = this.baseSpeed * aiConfig.burrower.speed_mult;
-        } else {
-          // Stay hidden off-screen
-          this.setVelocity(0, 0);
-          super.update();
-          return;
-        }
-      }
 
       let targetX = this.target.x;
       let targetGY = targetGroundY;
@@ -258,74 +355,96 @@ export class Enemy extends BaseEntity {
           targetX += this.erraticOffset.x;
           targetGY += this.erraticOffset.y;
           break;
-        case "cautious":
-          // Stop and wait occasionally
-          if (Math.sin(this.aiTimer * 2) > 0.8) {
-            this.setVelocity(0, 0);
-            this.play(this.animKeys.idle, true);
-            super.update();
-            return;
-          }
-          break;
-        case "ranged": {
-          // Keep preferred distance from player, fire projectiles
-          const rdx = this.target.x - this.x;
-          const rdy = targetGroundY - this.groundY;
-          const rdist = Phaser.Math.Distance.Between(
+        case "cautious": {
+          // Pack mentality: hang back until allies gather, then charge
+          const cautiousConfig = aiConfig.cautious;
+          const distToPlayer = Phaser.Math.Distance.Between(
             this.x,
             this.groundY,
             this.target.x,
             targetGroundY
           );
-          const preferred = aiConfig.ranged.preferred_distance;
 
-          this.setFlipX(rdx < 0);
+          // Count nearby allies every 10 frames
+          this.cautiousCheckCounter++;
+          if (this.cautiousCheckCounter >= 10) {
+            this.cautiousCheckCounter = 0;
+            let nearbyCount = 0;
+            if (this.enemyGroup) {
+              for (const child of this.enemyGroup.getChildren()) {
+                const ally = child as Enemy;
+                if (ally === this || !ally.active || ally.hp <= 0) continue;
+                if (
+                  Phaser.Math.Distance.Between(
+                    this.x,
+                    this.groundY,
+                    ally.x,
+                    ally.groundY
+                  ) <= cautiousConfig.group_radius
+                ) {
+                  nearbyCount++;
+                }
+              }
+            }
+            this.cautiousNearbyCount = nearbyCount;
 
-          if (rdist < preferred * 0.8) {
-            // Too close — retreat
-            const retreatAngle = Math.atan2(rdy, rdx);
-            const retreatSpeed =
-              this.baseSpeed * aiConfig.ranged.retreat_speed_mult;
-            this.setVelocityX(-Math.cos(retreatAngle) * retreatSpeed);
-            this.setVelocityY(0);
-            this.groundY += -Math.sin(retreatAngle) * retreatSpeed * dt;
-          } else {
-            // Hold position
-            this.setVelocity(0, 0);
-          }
-
-          // Fire timer
-          if (this.aiTimer >= aiConfig.ranged.fire_rate) {
-            this.aiTimer = 0;
-            const dirX = rdx / (rdist || 1);
-            const dirY = rdy / (rdist || 1);
-            this.scene.events.emit("enemy_projectile_fire", {
-              x: this.x,
-              y: this.y,
-              groundY: this.groundY,
-              dirX,
-              dirY,
-              speed: aiConfig.ranged.projectile_speed,
-              damage: aiConfig.ranged.projectile_damage,
-            });
-          }
-
-          // Clamp to walkable area (both X and groundY)
-          if (this.walkableArea) {
-            const clamped = this.walkableArea.clampToWalkable(
-              this.x,
-              this.groundY
-            );
-            this.groundY = clamped.groundY;
-            if (this.x !== clamped.x) {
-              this.x = clamped.x;
-              this.setVelocityX(0);
+            // Decide whether to charge or retreat
+            if (
+              this.cautiousNearbyCount >= cautiousConfig.pack_threshold &&
+              !this.cautiousCharging
+            ) {
+              this.cautiousCharging = true;
+              this.speed = this.baseSpeed * cautiousConfig.charge_speed_mult;
+            } else if (
+              this.cautiousNearbyCount < cautiousConfig.pack_threshold &&
+              this.cautiousCharging
+            ) {
+              this.cautiousCharging = false;
+              this.speed = this.baseSpeed * cautiousConfig.speed_mult;
             }
           }
 
-          this.play(this.animKeys.idle, true);
-          super.update();
-          return;
+          // If not charging, maintain preferred distance
+          if (!this.cautiousCharging) {
+            const preferred = cautiousConfig.preferred_distance;
+            if (distToPlayer < preferred * 0.9) {
+              // Too close — back away from player
+              const retreatAngle = Math.atan2(
+                this.groundY - targetGroundY,
+                this.x - this.target.x
+              );
+              this.setFlipX(this.target.x < this.x);
+              this.setVelocityX(Math.cos(retreatAngle) * this.speed);
+              this.setVelocityY(0);
+              this.groundY += Math.sin(retreatAngle) * this.speed * dt;
+
+              // Clamp to walkable area
+              if (this.walkableArea) {
+                const clamped = this.walkableArea.clampToWalkable(
+                  this.x,
+                  this.groundY
+                );
+                this.x = clamped.x;
+                this.groundY = clamped.groundY;
+              }
+
+              this.play(this.animKeys.walk, true);
+              super.update();
+              return;
+            } else if (distToPlayer > preferred * 1.1) {
+              // Too far — creep closer but slowly
+              // Fall through to normal chase with slow speed
+            } else {
+              // In the sweet spot — idle and wait
+              this.setVelocity(0, 0);
+              this.setFlipX(this.target.x < this.x);
+              this.play(this.animKeys.idle, true);
+              super.update();
+              return;
+            }
+          }
+          // If charging or too far, fall through to normal chase behavior
+          break;
         }
         case "swarm": {
           // Speed boost from nearby allies (re-evaluate every 10 frames)
@@ -360,7 +479,7 @@ export class Enemy extends BaseEntity {
           // Fall through to default chase behavior
           break;
         }
-        // "direct" and "burrower" (once triggered) — no modification, chase directly
+        // "direct", "passive" (provoked), "retardio" (handled above) — no modification
       }
 
       const dx = targetX - this.x;
@@ -415,6 +534,14 @@ export class Enemy extends BaseEntity {
 
   public takeDamage(amount: number) {
     if (this.hp <= 0) return;
+
+    // Passive enemies become provoked when attacked
+    if (this.aiType === "passive" && !this.provoked) {
+      this.provoked = true;
+      const aiConfig = this.config.gameplay.entities.enemy.ai;
+      this.speed = this.baseSpeed * aiConfig.passive.provoked_speed_mult;
+    }
+
     super.takeDamage(amount);
     // Show health bar after damage applied, but not for dead enemies
     if (!this.showHealthBar && this.hp > 0 && this.hp < this.maxHp) {
@@ -513,8 +640,13 @@ export class Enemy extends BaseEntity {
     // Reset AI state
     this.aiTimer = 0;
     this.erraticOffset = {x: 0, y: 0};
-    this.burrowerTriggered = false;
-    this.burrowerEdgeX = 0;
+    this.provoked = false;
+    this.passiveDirection = 1;
+    this.retardioTarget = undefined;
+    this.retardioTimer = 0;
+    this.cautiousCharging = false;
+    this.cautiousCheckCounter = 0;
+    this.cautiousNearbyCount = 0;
     this.swarmNearbyCount = 0;
     this.swarmCheckCounter = 0;
     this.lastPlayerDamageTime = 0;
@@ -527,11 +659,7 @@ export class Enemy extends BaseEntity {
     this.selectRandomAI();
 
     // Walk-in state: enemy walks from off-screen to target position
-    // Burrower enemies skip walk-in — they stay at their edge position
-    // until triggered by player proximity.
-    if (this.aiType === "burrower") {
-      this.enterState = "active";
-    } else if (walkInTargetX !== undefined) {
+    if (walkInTargetX !== undefined) {
       this.enterState = "walking_in";
       this.walkInTargetX = walkInTargetX;
     } else {
@@ -539,6 +667,32 @@ export class Enemy extends BaseEntity {
     }
     this.anims.stop();
     this.play(this.animKeys.walk, true);
+  }
+
+  /**
+   * Find the nearest living enemy (for retardio AI targeting).
+   * Excludes self and other retardio enemies.
+   */
+  private findNearestEnemy(): Enemy | undefined {
+    if (!this.enemyGroup) return undefined;
+    let nearest: Enemy | undefined;
+    let nearestDist = Infinity;
+    for (const child of this.enemyGroup.getChildren()) {
+      const e = child as Enemy;
+      if (e === this || !e.active || e.hp <= 0) continue;
+      if (e.aiType === "retardio") continue; // don't target other retardios
+      const d = Phaser.Math.Distance.Between(
+        this.x,
+        this.groundY,
+        e.x,
+        e.groundY
+      );
+      if (d < nearestDist) {
+        nearestDist = d;
+        nearest = e;
+      }
+    }
+    return nearest;
   }
 
   /**

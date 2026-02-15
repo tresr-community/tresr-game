@@ -190,12 +190,12 @@ client:
         #chain_id: 31337 # Anvil
         chain_id: 43113 # Fuji Fork
         rpc_url: http://localhost:8545
-        tresr_token_ticker: tTRESR
-        tresr_token_contract: "0x6EB523A381e725F115b7454BaA3cb199E4770970"
+        tresr_token_ticker: tTRESRDev
+        tresr_token_contract: "0xF92FB772445695d6d5A5A4dBBFD2D886B1500A52"
         tresr_token_treasury: "0x533d95Fa7D5CEd8f09e38aa359E406A3809Bc0e0"
         deployer_address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-        vault_contract: "0x4CbFBec8643B7aaC22EBd875AE8c11c94B7A7833"
-        faucet_contract: "0xA2ECeA4F1f0631024e5f37b65673479E6AC9EEEE"
+        vault_contract: "0x5e586b9202A4022392Fa219C4771084De7c571c4"
+        faucet_contract: "0x7EE0D65ed222Db98b8FA4E7AB84707055d53D05b"
         player_wallet: "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       testnet:
         fee: 10 # Fee in tokens to play
@@ -385,11 +385,24 @@ client:
         # Enemy AI behaviour profiles.
         # Each enemy is randomly assigned a behaviour at spawn based on the weights below.
         ai:
-          # Cautious: Keeps its distance from the player, circling at range.
-          # Slower but engages from further away, making it harder to pin down.
+          # Direct: Charges straight at the player with no special movement.
+          # Simple but effective in groups. Bread and butter enemy.
+          direct: {}
+          # Flanker: Circles around the player to attack from the side.
+          # Periodically switches flanking direction to stay unpredictable.
+          flanker:
+            speed_mult: 1.1
+            offset: 100
+            switch_time: 3
+          # Cautious: Hangs back at preferred distance, watching.
+          # Once enough allies gather nearby (pack_threshold), charges in.
+          # If allies die and count drops below threshold, retreats back.
           cautious:
             speed_mult: 0.7
-            range_mult: 1.5
+            preferred_distance: 180
+            group_radius: 200
+            pack_threshold: 2
+            charge_speed_mult: 1.3
           # Erratic: Moves unpredictably with random jitter offsets.
           # Fast and hard to track, constantly shifting position.
           erratic:
@@ -397,25 +410,6 @@ client:
             update_time: 0.5
             jitter_x: 150
             jitter_y: 100
-          # Flanker: Circles around the player to attack from the side.
-          # Periodically switches flanking direction to stay unpredictable.
-          flanker:
-            speed_mult: 1.1
-            offset: 100
-            switch_time: 3
-          # Direct: Charges straight at the player with no special movement.
-          # Simple but effective in groups.
-          direct: {}
-          # Ranged: Hangs back at a preferred distance and fires projectiles.
-          # Retreats if the player gets too close.
-          # TODO: Improve ranged animation.
-          ranged:
-            speed_mult: 0.6
-            preferred_distance: 200
-            retreat_speed_mult: 1.0
-            fire_rate: 2.0
-            projectile_speed: 500
-            projectile_damage: 5
           # Swarm: Clusters with nearby allies for strength in numbers.
           # Gets faster with more allies nearby, up to a speed cap.
           swarm:
@@ -423,20 +417,28 @@ client:
             group_radius: 150
             speed_bonus_per_ally: 0.15
             max_speed_mult: 2.0
-          # Burrower: Hides off-screen and rushes in when the player is nearby.
-          # Charges from the nearest edge at high speed for a surprise attack.
-          burrower:
-            speed_mult: 1.8
-            trigger_radius: 200
-            offscreen_distance: 80
+          # Passive ("The Banker"): Walks slowly across the screen, minding
+          # its own business. Only attacks if the player hits it first.
+          # Higher HP, better loot — risk/reward choice for the player.
+          passive:
+            speed_mult: 0.5
+            provoked_speed_mult: 1.3
+            hp_mult: 1.5
+          # Retardio: Rare, chaotic enemy that attacks OTHER enemies.
+          # Walks around erratically punching bankers. Can be killed.
+          retardio:
+            speed_mult: 1.1
+            jitter_time: 0.3
+            retarget_time: 4
+            attack_damage: 10
           weights:
-            direct: 15
-            flanker: 15
             cautious: 15
+            direct: 25
             erratic: 15
-            ranged: 15
+            flanker: 20
+            passive: 10
+            retardio: 1
             swarm: 15
-            burrower: 10
         animations:
           death_delay: 500 # Delay before kill() after hurt animation (ms)
         spawner:
@@ -615,7 +617,7 @@ client:
       enemy_damage_cooldown_ms: 500 # Minimum ms between damage ticks per enemy
       enemy_spawn_offscreen_px: 80 # Off-screen distance for enemy spawn
       boss_melee_range_bonus: 20 # Extra hitbox range for player attacks on boss
-      projectile_hit_radius: 40 # Impact radius for ranged enemy projectiles
+      projectile_hit_radius: 40 # Impact radius for projectiles
     # Phase announcement overlay
     announcements:
       font: "80px Orbitron" # Font family and size for phase text

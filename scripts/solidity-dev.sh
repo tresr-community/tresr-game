@@ -157,10 +157,11 @@ function show_help() {
 	echo "  --check                                Run all Solidity checks (fmt, slither, build, test)"
 	echo "  --start [--network N] [--wallet ADDR]  Start Anvil, fund wallet, tail logs"
 	echo "  --stop                                 Stop any running Anvil instance"
-	echo "  --fund  [--wallet ADDR]                Fund a wallet with tTRESR (Anvil must be running)"
-	echo "  --balance [--wallet ADDR]              Show tTRESR + AVAX balance for an address"
-	echo "  --deploy                               Deploy Vault contract to Anvil and print address"
-	echo "  --deploy-token                         Deploy mock token + faucet to Anvil"
+	echo "  --loop  [--wallet ADDR]                One-shot: deploy-token → deploy-vault → fund"
+	echo "  --fund  [--wallet ADDR]                Fund vault + wallet with tokens (Anvil must be running)"
+	echo "  --balance [--wallet ADDR]              Show token + AVAX balance for an address"
+	echo "  --deploy-token                         Deploy mock token + faucet to Anvil (run FIRST)"
+	echo "  --deploy-vault                         Deploy Vault contract to Anvil (run AFTER --deploy-token)"
 	echo "  --help                                 Show this help message"
 	echo ""
 	echo "Start options:"
@@ -238,11 +239,6 @@ function fund_wallet() {
 
 	log_info "Funding wallet: ${CYAN}${wallet_address}${NC}"
 
-	if [[ $NETWORK == "local" ]]; then
-		log_warn "Skipping treasury impersonation on local network (no fork state)."
-		return 0
-	fi
-
 	# Read vault address from config (anvil environment)
 	local vault_address
 	vault_address=$(yq -r '.client.blockchain.avalanche.anvil.vault_contract // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
@@ -254,99 +250,162 @@ function fund_wallet() {
 		log_warn "Vault contract not deployed — all funds go to browser wallet."
 	fi
 
-	# Check treasury balance
-	log_info "Checking treasury balance..."
-	local treasury_raw
-	treasury_raw=$(
-		cast call \
+	# Detect whether the token has a treasury with balance (real forked tTRESR)
+	# or is a mock token (TresrTestToken deployed via --deploy-token).
+	local use_mock_mint=false
+	local treasury_balance="0"
+
+	if [[ -z $ANVIL_TOKEN_TREASURY || $ANVIL_TOKEN_TREASURY == "null" ]]; then
+		use_mock_mint=true
+		log_info "No treasury configured — using mock token mint flow."
+	else
+		# Check if treasury actually has a balance on-chain
+		local treasury_raw
+		treasury_raw=$(
+			cast call \
+				"$ANVIL_TOKEN_ADDRESS" \
+				"balanceOf(address)(uint256)" \
+				"$ANVIL_TOKEN_TREASURY" \
+				--rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "0"
+		)
+		treasury_balance=$(echo "$treasury_raw" | awk '{print $1}')
+
+		if [[ $treasury_balance == "0" ]]; then
+			use_mock_mint=true
+			log_info "Treasury balance is 0 — using mock token mint flow."
+		fi
+	fi
+
+	# Amount to fund per call (10,000 tokens)
+	local fund_amount="10000000000000000000000" # 10,000e18
+	local fund_human="10,000.00"
+
+	if [[ $use_mock_mint == true ]]; then
+		# ——— Mock Token Mint Flow ———
+		# Use deployer (who is owner of TresrTestToken) to mint fresh tokens.
+		log_info "Minting ${GREEN}${fund_human}${NC} $TOKEN_TICKER via deployer..."
+
+		# Calculate splits
+		local vault_amount="0"
+		local wallet_amount="$fund_amount"
+		if [[ $vault_deployed == true ]]; then
+			vault_amount=$(echo "$fund_amount / 2" | bc)
+			wallet_amount=$(echo "$fund_amount - $vault_amount" | bc)
+			local vault_human_split wallet_human_split
+			vault_human_split=$(cast from-wei "$vault_amount" 2>/dev/null || echo "$vault_amount")
+			vault_human_split=$(printf "%'.2f" "$vault_human_split")
+			wallet_human_split=$(cast from-wei "$wallet_amount" 2>/dev/null || echo "$wallet_amount")
+			wallet_human_split=$(printf "%'.2f" "$wallet_human_split")
+			log_info "Splitting: ${GREEN}${vault_human_split}${NC} → vault, ${GREEN}${wallet_human_split}${NC} → wallet"
+		fi
+
+		# Mint + transfer to vault
+		if [[ $vault_deployed == true && $vault_amount != "0" ]]; then
+			log_info "Minting → vault (${vault_amount} wei)..."
+			cast send \
+				"$ANVIL_TOKEN_ADDRESS" \
+				"mint(address,uint256)" \
+				"$vault_address" \
+				"$vault_amount" \
+				--private-key "$DEPLOYER_PRIVATE_KEY" \
+				--rpc-url "$ANVIL_RPC_URL" >/dev/null
+		fi
+
+		# Mint to wallet
+		log_info "Minting → wallet (${wallet_amount} wei)..."
+		cast send \
 			"$ANVIL_TOKEN_ADDRESS" \
-			"balanceOf(address)(uint256)" \
+			"mint(address,uint256)" \
+			"$wallet_address" \
+			"$wallet_amount" \
+			--private-key "$DEPLOYER_PRIVATE_KEY" \
+			--rpc-url "$ANVIL_RPC_URL" >/dev/null
+
+	else
+		# ——— Real Token Treasury Flow ———
+		# Impersonate the treasury of the real forked tTRESR.
+		if [[ $NETWORK == "local" ]]; then
+			log_warn "Skipping treasury impersonation on local network (no fork state)."
+			return 0
+		fi
+
+		local treasury_human
+		treasury_human=$(cast from-wei "$treasury_balance" 2>/dev/null || echo "$treasury_balance")
+		treasury_human=$(printf "%'.2f" "$treasury_human")
+		log_info "Treasury balance: ${GREEN}${treasury_human}${NC} $TOKEN_TICKER"
+
+		# Cap at ~0.9% of treasury (contract enforces strict < 1% bootup transfer limit)
+		local pillage_amount
+		pillage_amount=$(echo "$treasury_balance * 9 / 1000" | bc)
+		local pillage_human
+		pillage_human=$(cast from-wei "$pillage_amount" 2>/dev/null || echo "$pillage_amount")
+		pillage_human=$(printf "%'.2f" "$pillage_human")
+		log_info "Pillaging ~0.9%: ${GREEN}${pillage_human}${NC} $TOKEN_TICKER (under bootup transfer limit)"
+
+		# Calculate splits from pillaged amount
+		local vault_amount="0"
+		local wallet_amount="$pillage_amount"
+		if [[ $vault_deployed == true ]]; then
+			vault_amount=$(echo "$pillage_amount / 2" | bc)
+			wallet_amount=$(echo "$pillage_amount - $vault_amount" | bc)
+			local vault_human_split wallet_human_split
+			vault_human_split=$(cast from-wei "$vault_amount" 2>/dev/null || echo "$vault_amount")
+			vault_human_split=$(printf "%'.2f" "$vault_human_split")
+			wallet_human_split=$(cast from-wei "$wallet_amount" 2>/dev/null || echo "$wallet_amount")
+			wallet_human_split=$(printf "%'.2f" "$wallet_human_split")
+			log_info "Splitting: ${GREEN}${vault_human_split}${NC} → vault, ${GREEN}${wallet_human_split}${NC} → wallet"
+		fi
+
+		# Fund treasury with native AVAX for gas
+		log_info "Setting treasury gas balance (1 AVAX)..."
+		cast rpc anvil_setBalance \
 			"$ANVIL_TOKEN_TREASURY" \
-			--rpc-url "$ANVIL_RPC_URL"
-	)
-	# Strip any foundry formatting like [1e22] suffix
-	local treasury_balance
-	treasury_balance=$(echo "$treasury_raw" | awk '{print $1}')
-	local treasury_human
-	treasury_human=$(cast from-wei "$treasury_balance" 2>/dev/null || echo "$treasury_balance")
-	treasury_human=$(printf "%'.2f" "$treasury_human")
-	log_info "Treasury balance: ${GREEN}${treasury_human}${NC} $TOKEN_TICKER"
+			"0xDE0B6B3A7640000" \
+			--rpc-url "$ANVIL_RPC_URL" >/dev/null
 
-	if [[ $treasury_balance == "0" ]]; then
-		log_error "Treasury is empty, nothing to fund."
-		return 1
-	fi
+		# Impersonate the Treasury
+		log_info "Impersonating treasury..."
+		cast rpc \
+			anvil_impersonateAccount "$ANVIL_TOKEN_TREASURY" \
+			--rpc-url "$ANVIL_RPC_URL" >/dev/null
 
-	# Cap at ~0.9% of treasury (contract enforces strict < 1% bootup transfer limit)
-	local pillage_amount
-	pillage_amount=$(echo "$treasury_balance * 9 / 1000" | bc)
-	local pillage_human
-	pillage_human=$(cast from-wei "$pillage_amount" 2>/dev/null || echo "$pillage_amount")
-	pillage_human=$(printf "%'.2f" "$pillage_human")
-	log_info "Pillaging ~0.9%: ${GREEN}${pillage_human}${NC} $TOKEN_TICKER (under bootup transfer limit)"
+		# Fund vault (if deployed)
+		if [[ $vault_deployed == true && $vault_amount != "0" ]]; then
+			log_info "Treasury → vault (${vault_amount} wei)..."
+			cast send \
+				"$ANVIL_TOKEN_ADDRESS" \
+				"transfer(address,uint256)" \
+				"$vault_address" \
+				"$vault_amount" \
+				--from "$ANVIL_TOKEN_TREASURY" \
+				--rpc-url "$ANVIL_RPC_URL" \
+				--unlocked >/dev/null
+		fi
 
-	# Calculate splits from pillaged amount
-	local vault_amount="0"
-	local wallet_amount="$pillage_amount"
-	if [[ $vault_deployed == true ]]; then
-		# 50/50 split — vault gets half, wallet gets half
-		vault_amount=$(echo "$pillage_amount / 2" | bc)
-		wallet_amount=$(echo "$pillage_amount - $vault_amount" | bc)
-		local vault_human wallet_human_split
-		vault_human=$(cast from-wei "$vault_amount" 2>/dev/null || echo "$vault_amount")
-		vault_human=$(printf "%'.2f" "$vault_human")
-		wallet_human_split=$(cast from-wei "$wallet_amount" 2>/dev/null || echo "$wallet_amount")
-		wallet_human_split=$(printf "%'.2f" "$wallet_human_split")
-		log_info "Splitting: ${GREEN}${vault_human}${NC} → vault, ${GREEN}${wallet_human_split}${NC} → wallet"
-	fi
-
-	# Fund treasury with native AVAX for gas (it has 0 on the fork).
-	# Treasury is a contract with no receive(), so use anvil_setBalance cheatcode.
-	log_info "Setting treasury gas balance (1 AVAX)..."
-	cast rpc anvil_setBalance \
-		"$ANVIL_TOKEN_TREASURY" \
-		"0xDE0B6B3A7640000" \
-		--rpc-url "$ANVIL_RPC_URL" >/dev/null
-
-	# Impersonate the Treasury
-	log_info "Impersonating treasury..."
-	cast rpc \
-		anvil_impersonateAccount "$ANVIL_TOKEN_TREASURY" \
-		--rpc-url "$ANVIL_RPC_URL" >/dev/null
-
-	# Send directly from treasury to destinations (avoids admin hop which
-	# would trigger the bootup 1% transfer limit a second time).
-
-	# Fund vault (if deployed)
-	if [[ $vault_deployed == true && $vault_amount != "0" ]]; then
-		log_info "Treasury → vault (${vault_amount} wei)..."
+		# Fund wallet
+		log_info "Treasury → wallet (${wallet_amount} wei)..."
 		cast send \
 			"$ANVIL_TOKEN_ADDRESS" \
 			"transfer(address,uint256)" \
-			"$vault_address" \
-			"$vault_amount" \
+			"$wallet_address" \
+			"$wallet_amount" \
 			--from "$ANVIL_TOKEN_TREASURY" \
 			--rpc-url "$ANVIL_RPC_URL" \
 			--unlocked >/dev/null
+
+		# Stop impersonating
+		cast rpc \
+			anvil_stopImpersonatingAccount "$ANVIL_TOKEN_TREASURY" \
+			--rpc-url "$ANVIL_RPC_URL" >/dev/null
 	fi
 
-	# Fund wallet
-	log_info "Treasury → wallet (${wallet_amount} wei)..."
-	cast send \
-		"$ANVIL_TOKEN_ADDRESS" \
-		"transfer(address,uint256)" \
+	# Fund wallet with native AVAX for gas
+	log_info "Setting wallet gas balance (10 AVAX)..."
+	cast rpc anvil_setBalance \
 		"$wallet_address" \
-		"$wallet_amount" \
-		--from "$ANVIL_TOKEN_TREASURY" \
-		--rpc-url "$ANVIL_RPC_URL" \
-		--unlocked >/dev/null
-
-	# Stop impersonating the Treasury
-	cast rpc \
-		anvil_stopImpersonatingAccount "$ANVIL_TOKEN_TREASURY" \
+		"0x8AC7230489E80000" \
 		--rpc-url "$ANVIL_RPC_URL" >/dev/null
 
-	# Summary
 	log_info "${GREEN}Funding complete!${NC}"
 }
 
@@ -472,7 +531,29 @@ function run_fund() {
 }
 
 # =============================================================================
-# Deploy — Deploy Vault contract to Anvil
+# Regenerate client config — keep frontend in sync with tresr.yaml
+# =============================================================================
+
+function regen_client_config() {
+	local project_root
+	project_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+	local config_script="${project_root}/bin/client-config.ts"
+
+	if [[ ! -f $config_script ]]; then
+		log_warn "client-config.ts not found — skipping frontend config regeneration."
+		return 0
+	fi
+
+	log_info "Regenerating ${CYAN}src/lib/config/client.ts${NC} from tresr.yaml..."
+	(cd "$project_root" && bunx tsx "$config_script") || {
+		log_warn "Failed to regenerate client config (non-fatal)."
+		return 0
+	}
+	log_info "Frontend config regenerated ${GREEN}successfully${NC}."
+}
+
+# =============================================================================
+# Deploy Vault — Deploy Vault contract to Anvil
 # =============================================================================
 
 # Burn address for testing
@@ -560,6 +641,9 @@ function run_deploy() {
 	EOF
 
 	log_info "Done!"
+
+	# Regenerate frontend config
+	regen_client_config
 }
 
 # =============================================================================
@@ -639,6 +723,9 @@ function run_deploy_token() {
 	EOF
 
 	log_info "Done!"
+
+	# Regenerate frontend config
+	regen_client_config
 }
 
 # =============================================================================
@@ -799,11 +886,22 @@ case "${1:-}" in
 --balance)
 	run_balance "$@"
 	;;
---deploy)
+--deploy-vault)
 	run_deploy
 	;;
 --deploy-token)
 	run_deploy_token
+	;;
+--loop)
+	# One-shot: deploy-token → deploy-vault → fund
+	assert_anvil_running
+	run_deploy_token
+	# Reload config after deploy-token updated tresr.yaml
+	load_config && verify_config
+	run_deploy
+	# Reload config after deploy updated tresr.yaml
+	load_config && verify_config
+	run_fund "$@"
 	;;
 --help | -h | "")
 	show_help

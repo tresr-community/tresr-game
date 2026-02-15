@@ -91,12 +91,12 @@ export const config: ConfigTypes = {
         "burn_rate": 1000,
         "chain_id": 43113,
         "rpc_url": "http://localhost:8545",
-        "tresr_token_ticker": "tTRESR",
-        "tresr_token_contract": "0x6EB523A381e725F115b7454BaA3cb199E4770970",
+        "tresr_token_ticker": "tTRESRDev",
+        "tresr_token_contract": "0xF92FB772445695d6d5A5A4dBBFD2D886B1500A52",
         "tresr_token_treasury": "0x533d95Fa7D5CEd8f09e38aa359E406A3809Bc0e0",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0x4CbFBec8643B7aaC22EBd875AE8c11c94B7A7833",
-        "faucet_contract": "0xA2ECeA4F1f0631024e5f37b65673479E6AC9EEEE",
+        "vault_contract": "0x5e586b9202A4022392Fa219C4771084De7c571c4",
+        "faucet_contract": "0x7EE0D65ed222Db98b8FA4E7AB84707055d53D05b",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       },
       "testnet": {
@@ -503,9 +503,18 @@ export const config: ConfigTypes = {
           "attack_check_ms": 500
         },
         "ai": {
+          "direct": {},
+          "flanker": {
+            "speed_mult": 1.1,
+            "offset": 100,
+            "switch_time": 3
+          },
           "cautious": {
             "speed_mult": 0.7,
-            "range_mult": 1.5
+            "preferred_distance": 180,
+            "group_radius": 200,
+            "pack_threshold": 2,
+            "charge_speed_mult": 1.3
           },
           "erratic": {
             "speed_mult": 1.2,
@@ -513,39 +522,31 @@ export const config: ConfigTypes = {
             "jitter_x": 150,
             "jitter_y": 100
           },
-          "flanker": {
-            "speed_mult": 1.1,
-            "offset": 100,
-            "switch_time": 3
-          },
-          "direct": {},
-          "ranged": {
-            "speed_mult": 0.6,
-            "preferred_distance": 200,
-            "retreat_speed_mult": 1,
-            "fire_rate": 2,
-            "projectile_speed": 500,
-            "projectile_damage": 5
-          },
           "swarm": {
             "speed_mult": 1,
             "group_radius": 150,
             "speed_bonus_per_ally": 0.15,
             "max_speed_mult": 2
           },
-          "burrower": {
-            "speed_mult": 1.8,
-            "trigger_radius": 200,
-            "offscreen_distance": 80
+          "passive": {
+            "speed_mult": 0.5,
+            "provoked_speed_mult": 1.3,
+            "hp_mult": 1.5
+          },
+          "retardio": {
+            "speed_mult": 1.1,
+            "jitter_time": 0.3,
+            "retarget_time": 4,
+            "attack_damage": 10
           },
           "weights": {
-            "direct": 15,
-            "flanker": 15,
             "cautious": 15,
+            "direct": 25,
             "erratic": 15,
-            "ranged": 15,
-            "swarm": 15,
-            "burrower": 10
+            "flanker": 20,
+            "passive": 10,
+            "retardio": 1,
+            "swarm": 15
           }
         },
         "animations": {
@@ -1320,7 +1321,8 @@ export const config: ConfigTypes = {
           "Consolation prize for expired #1 active score",
           "Two-tab leaderboard UI (ACTIVE + ALL TIME)",
           "Game session tracking on victory and defeat",
-          "Countdown timers on active leaderboard entries"
+          "Countdown timers on active leaderboard entries",
+          "5 new enemy AI types"
         ]
       },
       {
@@ -1354,5 +1356,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "656b021e7dd04ef7870ca7a7d07e17c1742997f588ae57945fd78c26050c3206"
+  "configHash": "d54879d9d6c237720f4c65e66691d45fdf6e3e1ec47726911bef498dd4b4a41d"
 };

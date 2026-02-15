@@ -663,7 +663,6 @@ export class MainScene extends Phaser.Scene {
     this.events.on("player_death", this.onPlayerDeath, this);
     this.events.on("entity_death", this.onEntityDeath, this);
     this.events.on("bomb_explosion", this.handleBombExplosion, this);
-    this.events.on("enemy_projectile_fire", this.handleEnemyProjectile, this);
     this.events.on("boss_ground_pound", this.handleBossGroundPound, this);
     this.events.on("boss_summon", this.handleBossSummon, this);
     this.events.on("bot_attack", this.handleBotAttack, this);
@@ -822,7 +821,6 @@ export class MainScene extends Phaser.Scene {
     this.events.off("player_death", this.onPlayerDeath, this);
     this.events.off("entity_death", this.onEntityDeath, this);
     this.events.off("bomb_explosion", this.handleBombExplosion, this);
-    this.events.off("enemy_projectile_fire", this.handleEnemyProjectile, this);
     this.events.off("boss_ground_pound", this.handleBossGroundPound, this);
     this.events.off("boss_summon", this.handleBossSummon, this);
     this.events.off("bot_attack", this.handleBotAttack, this);
@@ -1239,70 +1237,6 @@ export class MainScene extends Phaser.Scene {
         this.tresrBot.takeDamage(data.damage);
       }
     }
-  }
-
-  /**
-   * Handle ranged enemy projectile fire — simple tweened circle toward player
-   */
-  private handleEnemyProjectile(data: {
-    x: number;
-    y: number;
-    groundY: number;
-    dirX: number;
-    dirY: number;
-    speed: number;
-    damage: number;
-  }) {
-    if (!this.player || !this.player.active || this.player.hp <= 0) return;
-
-    // Create a gold coin projectile at enemy position
-    const proj = this.add.circle(data.x, data.y, 6, 0xffd700, 1);
-    proj.setStrokeStyle(1.5, 0xb8860b);
-    proj.setDepth(data.groundY + 1);
-
-    // Target the player's current position
-    const targetX = this.player.x;
-    const targetY = this.player.groundY;
-    const dist = Phaser.Math.Distance.Between(
-      data.x,
-      data.groundY,
-      targetX,
-      targetY
-    );
-    const duration = (dist / data.speed) * 1000; // ms
-
-    const damage = data.damage;
-    const playerRef = this.player;
-
-    this.tweens.add({
-      targets: proj,
-      x: targetX,
-      y: targetY,
-      duration: Math.max(duration, 200),
-      onComplete: () => {
-        // Check if player is still near the impact point
-        if (playerRef && playerRef.active && playerRef.hp > 0) {
-          const hitDist = Phaser.Math.Distance.Between(
-            proj.x,
-            proj.y,
-            playerRef.x,
-            playerRef.groundY
-          );
-          if (hitDist < this.gameplayConfig.combat.projectile_hit_radius) {
-            playerRef.takeDamage(damage);
-            this.playSound("hurt");
-          }
-        }
-        proj.destroy();
-      },
-    });
-
-    // Failsafe auto-destroy after 3 seconds
-    this.adHocTimers.push(
-      this.time.delayedCall(3000, () => {
-        if (proj && proj.active) proj.destroy();
-      })
-    );
   }
 
   /**

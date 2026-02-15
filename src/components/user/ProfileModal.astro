@@ -444,6 +444,16 @@
 
     saveBtn.classList.add("loading");
     try {
+      // Re-fetch latest doc to get authoritative version.
+      // Prevents version_outdated_or_future errors when avatar upload
+      // or other operations have bumped the version since we loaded.
+      const latestDoc = await getUserProfile(auth.user.key);
+      if (latestDoc) {
+        currentVersion = latestDoc.version;
+        // Merge server-side data we don't control (e.g. avatar set by upload)
+        currentProfile = {...latestDoc.data};
+      }
+
       currentProfile.nickname = newNickname;
       currentProfile.email = emailInput.value.trim();
 
