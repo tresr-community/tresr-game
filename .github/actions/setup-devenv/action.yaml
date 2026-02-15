@@ -19,21 +19,21 @@ runs:
   using: composite
   steps:
     - id: checkout_repository
-      name: Checkout repository
+      name: Checkout Repository
       uses: actions/checkout@v6
       with:
-        lfs: false
+        fetch-depth: 0
         submodules: recursive
 
     - id: install_nix
-      name: "Install Nix"
+      name: Install Nix
       uses: cachix/install-nix-action@v31
       with:
         github_access_token: ${{ inputs.github-token }}
         enable_kvm: true
 
-    - id: cachix
-      name: "Enable Cachix"
+    - id: enable_cachix
+      name: Enable Cachix
       if: inputs.cachix-cache-name != ''
       uses: cachix/cachix-action@v16
       with:
@@ -42,14 +42,14 @@ runs:
         useDaemon: true
         skipPush: false
 
-    - id: devenv_install
-      name: Devenv install
+    - id: install_devenv
+      name: Install Devenv
       shell: bash
       run: |
         nix profile install --accept-flake-config nixpkgs#devenv
 
     - id: secretspec_check
-      name: "Secretspec Check"
+      name: Secretspec Check
       shell: devenv shell --quiet bash -- -e {0}
       run: |
         secretspec check

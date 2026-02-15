@@ -1,90 +1,66 @@
-# CI/CD Pipeline
-
-## Overview
-
-The tresr-game project uses GitHub Actions for CI/CD with a release-driven deployment model.
-Workflows are chained using `workflow_call` for reliable, explicit orchestration.
+# CI/CD Architecture
 
 ## Release Flow
 
 ```mermaid
-flowchart TD
+graph TD
     A["Push to trunk"] --> B["cd-release.yaml"]
-    C["Manual dispatch<br/>(Testnet)"] --> B
-    D["Manual dispatch<br/>(Mainnet)"] --> B
+    C["Manual dispatch"] --> B
 
-    B --> E{"Environment?"}
+    B --> D{"Environment?"}
+    D -->|"Testnet (auto/manual)"| E["pre-release job"]
+    D -->|"Mainnet (manual)"| F["promote job"]
 
-    E -->|"Testnet<br/>(auto or manual)"| F["pre-release job"]
-    E -->|"Mainnet<br/>(manual only)"| G["promote job"]
+    E --> G["Create GitHub Pre-Release"]
+    G --> H["cd-juno-testnet.yaml<br/>(workflow_call)"]
 
-    F --> F1["Compute version<br/>(convco)"]
-    F1 --> F2["Bump version files"]
-    F2 --> F3["Generate changelog"]
-    F3 --> F4["Create GitHub<br/>Pre-Release"]
-    F4 --> H["deploy-juno-testnet<br/>(workflow_call)"]
+    F --> I["Promote Pre-Release → Release"]
+    I --> J["cd-juno-mainnet.yaml<br/>(workflow_call)"]
 
-    G --> G1["Validate release tag"]
-    G1 --> G2["Promote to<br/>full release"]
-    G2 --> I["deploy-juno-mainnet<br/>(workflow_call)"]
-
-    H --> H1["Build Juno Functions"]
-    H1 --> H2["Deploy Hosting<br/>(staging)"]
-    H2 --> H3["Apply Config<br/>(staging)"]
-    H3 --> H4["Publish Functions<br/>(staging)"]
-
-    I --> I1["Build Juno Functions"]
-    I1 --> I2["Deploy Hosting<br/>(production)"]
-    I2 --> I3["Apply Config<br/>(production)"]
-    I3 --> I4["Publish Functions<br/>(production)"]
+    H --> K["Deploy Hosting + Functions + Config"]
+    J --> L["Deploy Hosting + Functions + Config"]
 ```
 
-## CI Pipelines
+## CI Pipeline
 
 ```mermaid
-flowchart LR
-    subgraph "CI (Pull Requests)"
-        CI1["ci-devenv.yaml<br/>Devenv health check"]
-        CI2["ci-foundry.yaml<br/>Solidity tests"]
-        CI3["ci-juno.yaml<br/>Juno build + lint"]
-    end
+graph LR
+    PR["Pull Request"] --> CI["ci-devenv.yaml"]
+    PR --> FCI["ci-foundry.yaml"]
+    PR --> JCI["ci-juno.yaml"]
 
-    subgraph "CD (Releases)"
-        CD1["cd-release.yaml<br/>Version + tag"]
-        CD2["cd-foundry-testnet.yaml<br/>Deploy contracts"]
-        CD3["cd-juno-testnet.yaml<br/>Deploy Juno (testnet)"]
-        CD4["cd-juno-mainnet.yaml<br/>Deploy Juno (mainnet)"]
-    end
-
-    CD1 -->|workflow_call| CD3
-    CD1 -->|workflow_call| CD4
+    CI --> T1["devenv test"]
+    FCI --> T2["forge lint + check"]
+    JCI --> T3["juno build + check"]
 ```
 
-## Workflows
+## `workflow_call` Design
 
-| Workflow                  | Trigger                      | Description                                |
-| ------------------------- | ---------------------------- | ------------------------------------------ |
-| `ci-devenv.yaml`          | PR, push                     | Validates devenv builds correctly          |
-| `ci-foundry.yaml`         | PR, push                     | Runs Solidity tests via Foundry            |
-| `ci-juno.yaml`            | PR, push                     | Builds Juno satellite + functions          |
-| `cd-release.yaml`         | Push to trunk, manual        | Creates pre-release or promotes to release |
-| `cd-foundry-testnet.yaml` | Push to trunk (contracts/)   | Deploys Solidity contracts to Fuji         |
-| `cd-juno-testnet.yaml`    | Called by cd-release, manual | Deploys Juno to testnet                    |
-| `cd-juno-mainnet.yaml`    | Called by cd-release, manual | Deploys Juno to mainnet                    |
+Deploy workflows (`cd-juno-testnet.yaml`, `cd-juno-mainnet.yaml`) accept both `workflow_call` and `workflow_dispatch` triggers:
 
-## Environments
+- **`workflow_call`** — called by `cd-release.yaml` after creating/promoting a release. Version is passed as input. Uses `secrets: inherit`.
+- **`workflow_dispatch`** — manual fallback for re-deploying a specific version.
 
-| Environment | Purpose                                    | Secrets                                                   |
-| ----------- | ------------------------------------------ | --------------------------------------------------------- |
-| **Testnet** | Staging deployments                        | `JUNO_TOKEN`, `DEPLOYER_PRIVATE_KEY`, `SNOWTRACE_API_KEY` |
-| **Mainnet** | Production deployments (requires approval) | `JUNO_TOKEN`, `DEPLOYER_PRIVATE_KEY`, `SNOWTRACE_API_KEY` |
+This replaces the previous event-based chaining (`release: types: [prereleased/released]`), which required a Personal Access Token because `GITHUB_TOKEN` events don't trigger further workflows.
 
-## Design Decisions
+## Foundry Deploy
 
-### workflow_call over event chaining
+`cd-foundry.yaml` is a single parameterized workflow that handles both testnet and mainnet:
 
-Deploy workflows are called directly via `workflow_call` rather than triggered by `release` events
-(`prereleased`/`released`). This avoids [GitHub's `GITHUB_TOKEN` limitation](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/triggering-a-workflow#triggering-a-workflow-from-a-workflow)
-where events created by `GITHUB_TOKEN` do not trigger other workflows.
+- **Push to trunk** (contracts/ changes) → always deploys to Testnet (Fuji)
+- **Manual dispatch** → choose Testnet or Mainnet
 
-Deploy workflows also support `workflow_dispatch` for manual re-runs independent of the release flow.
+Config values (RPC URL, addresses) are read dynamically from `config/tresr.yaml` based on the resolved network.
+
+## Naming Conventions
+
+| Element           | Convention                                 | Example                 |
+| ----------------- | ------------------------------------------ | ----------------------- |
+| Workflow filename | `{ci\|cd\|chore}-{component}[-{env}].yaml` | `cd-juno-testnet.yaml`  |
+| Workflow `name:`  | Title Case                                 | `Juno Deploy (Testnet)` |
+| Job ID            | `kebab-case`                               | `deploy-juno-testnet`   |
+| Job `name:`       | Title Case                                 | `Deploy Juno (Testnet)` |
+| Step ID           | `snake_case`                               | `setup_devenv`          |
+| Step `name:`      | Title Case Verb-Noun                       | `Setup Devenv`          |
+| Action inputs     | `kebab-case`                               | `github-token`          |
+| File extension    | `.yaml`                                    | —                       |

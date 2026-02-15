@@ -1,9 +1,7 @@
 ---
 ##################################################
 # Name: comments.yaml
-# Description:
-#   A Workflow that triggers on issue comments so
-#   they can be reviewed for spam.
+# Description: React to issue comments (giphy, discord)
 ##################################################
 
 name: Comments
@@ -26,55 +24,36 @@ env:
   ENABLE_DISCORD: ${{ vars.ENABLE_DISCORD || 'false' }}
 
 jobs:
-  ##################################################
-  # Posts Giphy comments on '/giphy search_term'
-  ##################################################
-
   giphy:
     name: Giphy
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     timeout-minutes: 5
 
-    strategy:
-      fail-fast: true
-      matrix:
-        os:
-          - ubuntu-latest
-
     steps:
-      - id: giphy
-        name: Giphy image search
+      - id: giphy_search
+        name: Search Giphy
         uses: IAmHughes/giphy-generator@v1.0.0
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
           GIPHY_TOKEN: "${{ secrets.GIPHY_TOKEN }}"
         with:
-          rating: "PG-13" # G, PG, PG-13, R
+          rating: "PG-13"
           lang: "en"
-
-  ##################################################
-  # Send a notification to Discord
-  ##################################################
 
   discord:
     name: Discord
 
     if: ${{ vars.ENABLE_DISCORD == 'true' }}
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     timeout-minutes: 5
 
-    strategy:
-      fail-fast: true
-      matrix:
-        os:
-          - ubuntu-latest
     steps:
-      - name: Post message to Discord
-        id: discord_message
+      - id: post_discord
+        name: Post Message to Discord
         env:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_DISCORD }}
           PING: "@CI"

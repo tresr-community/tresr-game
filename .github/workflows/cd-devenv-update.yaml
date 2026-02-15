@@ -1,13 +1,12 @@
 ---
 ##################################################
 # Name: cd-devenv-update.yaml
-# Description: Workflow for Updating Developer Environment
+# Description: Update devenv dependencies and create PR
 ##################################################
 
 name: Devenv Update
 
-# prettier-ignore
-on:  # yamllint disable-line rule:truthy
+on:
   schedule:
     - cron: "0 0 * * 0"
   workflow_dispatch:
@@ -23,15 +22,7 @@ permissions:
   statuses: read
 
 env:
-  # GitHub
-  PROJECT: ${{ github.repository }}
-  BRANCH_NAME_CURRENT: ${{ github.head_ref || github.ref_name }}
-  BRANCH_NAME_DEFAULT: ${{ github.event.repository.default_branch }}
-
-  # Nix
   NIXPKGS_ALLOW_UNFREE: 1
-
-  # SecretSpec
   SECRETSPEC_PROVIDER: env
 
 defaults:
@@ -42,38 +33,33 @@ jobs:
   update:
     name: Update
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     timeout-minutes: 30
     continue-on-error: false
 
-    strategy:
-      fail-fast: true
-      matrix:
-        os:
-          - ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-devenv
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - id: devenv_update
-        name: Devenv update
+        name: Update Devenv
         run: |
           devenv update
 
       - id: install_deps
-        name: Install dependencies
+        name: Install Dependencies
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           bun install
 
       - id: devenv_test
-        name: Devenv test
+        name: Run Devenv Test
         run: |
           devenv test
 
@@ -86,7 +72,7 @@ jobs:
           title: "chore: Update devenv.lock"
           body: "This PR updates the devenv input dependencies"
           branch: "update-devenv-lock"
-          base: ${{ env.BRANCH_NAME_DEFAULT }}
+          base: ${{ github.event.repository.default_branch }}
           labels: "dependencies"
           assignees: "MAHDTech"
           reviewers: "MAHDTech"

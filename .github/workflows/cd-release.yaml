@@ -49,13 +49,7 @@ permissions:
   contents: write
 
 env:
-  # GitHub
-  PROJECT: ${{ github.repository }}
-  BRANCH_NAME_CURRENT: ${{ github.head_ref || github.ref_name }}
-  BRANCH_NAME_DEFAULT: ${{ github.event.repository.default_branch }}
-  # Nix
   NIXPKGS_ALLOW_UNFREE: 1
-  # Secretspec
   SECRETSPEC_PROVIDER: env
 
 defaults:
@@ -87,20 +81,14 @@ jobs:
       skip: ${{ steps.compute_version.outputs.skip }}
 
     steps:
-      - id: checkout_repository
-        name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
       - id: setup_devenv
-        name: Setup devenv
+        name: Setup Devenv
         uses: ./.github/actions/setup-devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - id: compute_version
-        name: Compute version
+        name: Compute Version
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           # Get next version from conventional commits
@@ -127,14 +115,14 @@ jobs:
           echo "Version: ${NEXT_VERSION}, Tag: ${TAG}"
 
       - id: bump_version
-        name: Bump version files
+        name: Bump Version Files
         if: steps.compute_version.outputs.skip != 'true'
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           bun run version-set ${{ steps.compute_version.outputs.version }}
 
       - id: generate_changelog
-        name: Generate changelog
+        name: Generate Changelog
         if: steps.compute_version.outputs.skip != 'true'
         shell: devenv shell --quiet bash -- -e {0}
         run: |
@@ -189,11 +177,11 @@ jobs:
     continue-on-error: false
 
     outputs:
-      tag: ${{ steps.validate.outputs.tag }}
+      tag: ${{ steps.validate_tag.outputs.tag }}
 
     steps:
-      - id: validate
-        name: Validate release tag
+      - id: validate_tag
+        name: Validate Release Tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.event.inputs.release_tag }}
@@ -218,16 +206,16 @@ jobs:
           echo "tag=${RELEASE_TAG}" >> "${GITHUB_OUTPUT}"
           echo "Validated: ${RELEASE_TAG} is a pre-release, ready to promote"
 
-      - id: promote
-        name: Promote pre-release to release
+      - id: promote_release
+        name: Promote Pre-Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release edit "${{ steps.validate.outputs.tag }}" \
+          gh release edit "${{ steps.validate_tag.outputs.tag }}" \
             --prerelease=false \
-            --title "Release ${{ steps.validate.outputs.tag }}"
+            --title "Release ${{ steps.validate_tag.outputs.tag }}"
 
-          echo "Promoted ${{ steps.validate.outputs.tag }} to release"
+          echo "Promoted ${{ steps.validate_tag.outputs.tag }} to release"
 
   ##################################################
   # Deploy to Mainnet (Juno)

@@ -31,9 +31,9 @@ inputs:
 runs:
   using: composite
   steps:
-    - id: report
+    - id: report_status
       name: Report Status
-      shell: devenv shell --quiet bash -- -e {0}
+      shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
       run: |

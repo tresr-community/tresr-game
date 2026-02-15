@@ -1,0 +1,114 @@
+---
+##################################################
+# Name: cd-foundry.yaml
+# Description: Deploy Solidity contracts to Avalanche
+#
+# Triggers:
+#   - Push to trunk (contracts/ changes) → Deploy to Testnet (Fuji)
+#   - Manual dispatch → Deploy to Testnet or Mainnet
+##################################################
+
+name: Foundry Deploy
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - trunk
+    paths:
+      - "contracts/**"
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - Testnet
+          - Mainnet
+        default: Testnet
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
+permissions:
+  contents: read
+  packages: read
+  pull-requests: read
+  statuses: write
+
+env:
+  NIXPKGS_ALLOW_UNFREE: 1
+  SECRETSPEC_PROVIDER: env
+  FOUNDRY_PROFILE: ci
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    name: Deploy (${{ github.event_name == 'push' && 'Testnet' || github.event.inputs.environment }})
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+    continue-on-error: false
+
+    environment: ${{ github.event_name == 'push' && 'Testnet' || github.event.inputs.environment }}
+
+    steps:
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: resolve_environment
+        name: Resolve Environment
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "network=testnet" >> "$GITHUB_OUTPUT"
+          else
+            ENV="${{ github.event.inputs.environment }}"
+            echo "network=$(echo "${ENV}" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          fi
+
+      - id: read_config
+        name: Read Config
+        run: |
+          NETWORK="${{ steps.resolve_environment.outputs.network }}"
+          {
+            echo "RPC_URL=$(yq ".client.blockchain.avalanche.${NETWORK}.rpc_url" config/tresr.yaml)"
+            echo "TOKEN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.tresr_token_contract" config/tresr.yaml)"
+            echo "ORACLE_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.oracle_address" config/tresr.yaml)"
+            echo "ADMIN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.safe_address" config/tresr.yaml)"
+          } >> "$GITHUB_OUTPUT"
+
+      - id: build_contracts
+        name: Build Contracts
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          forge build --root contracts
+
+      - id: deploy_contracts
+        name: Deploy Contracts
+        shell: devenv shell --quiet bash -- -e {0}
+        env:
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          TOKEN_ADDRESS: ${{ steps.read_config.outputs.TOKEN_ADDRESS }}
+          ADMIN_ADDRESS: ${{ steps.read_config.outputs.ADMIN_ADDRESS }}
+          ORACLE_ADDRESS: ${{ steps.read_config.outputs.ORACLE_ADDRESS }}
+          SNOWTRACE_API_KEY: ${{ secrets.SNOWTRACE_API_KEY }}
+        run: |
+          forge script script/Vault.s.sol:DeployVault \
+            --root contracts \
+            --rpc-url ${{ steps.read_config.outputs.RPC_URL }} \
+            --broadcast \
+            --verify \
+            --etherscan-api-key "$SNOWTRACE_API_KEY"
