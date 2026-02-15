@@ -137,6 +137,8 @@ export class Enemy extends BaseEntity {
         }
         this.setPosition(this.burrowerEdgeX, this.y);
         this.setVisible(false);
+        // Hide shadow too — otherwise a ghost shadow appears on the walkable area
+        if (this.shadow) this.shadow.setVisible(false);
         break;
       }
       default:
@@ -218,6 +220,7 @@ export class Enemy extends BaseEntity {
         if (playerDistToEdge <= aiConfig.burrower.trigger_radius) {
           this.burrowerTriggered = true;
           this.setVisible(true);
+          if (this.shadow) this.shadow.setVisible(true);
           this.speed = this.baseSpeed * aiConfig.burrower.speed_mult;
         } else {
           // Stay hidden off-screen
@@ -524,7 +527,11 @@ export class Enemy extends BaseEntity {
     this.selectRandomAI();
 
     // Walk-in state: enemy walks from off-screen to target position
-    if (walkInTargetX !== undefined) {
+    // Burrower enemies skip walk-in — they stay at their edge position
+    // until triggered by player proximity.
+    if (this.aiType === "burrower") {
+      this.enterState = "active";
+    } else if (walkInTargetX !== undefined) {
       this.enterState = "walking_in";
       this.walkInTargetX = walkInTargetX;
     } else {

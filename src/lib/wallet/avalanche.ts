@@ -1,11 +1,10 @@
-/**
- * Avalanche Wallet Utilities
- *
- * Read-only client creation and contract interactions for Avalanche C-Chain.
- * Connection handling is done via connection.ts (uses Wagmi/AppKit).
- */
-
-import {createPublicClient, http, type PublicClient, type Chain} from "viem";
+import {
+  createPublicClient,
+  http,
+  encodeFunctionData,
+  type PublicClient,
+  type Chain,
+} from "viem";
 import {avalanche, avalancheFuji} from "viem/chains";
 import {loadConfigAsync} from "../config";
 import {JUNO_ENVIRONMENT} from "../config/constants";
@@ -17,9 +16,26 @@ const COMPONENT_NAME = "Avalanche";
 
 /**
  * Get the target chain based on environment.
+ *
+ * For Anvil, we must override the RPC URL to point at localhost.
+ * The built-in `avalancheFuji` chain hardcodes the public Fuji RPC,
+ * which causes gas estimation failures when running a local fork.
  */
-export function getTargetChain(): Chain {
-  return JUNO_ENVIRONMENT === "production" ? avalanche : avalancheFuji;
+export function getTargetChain(rpcUrl?: string): Chain {
+  if (JUNO_ENVIRONMENT === "production") return avalanche;
+
+  // For non-production, use avalancheFuji as a base but override
+  // the RPC URL if one is provided (e.g. localhost:8545 for Anvil)
+  if (rpcUrl) {
+    return {
+      ...avalancheFuji,
+      rpcUrls: {
+        default: {http: [rpcUrl]},
+      },
+    } as Chain;
+  }
+
+  return avalancheFuji;
 }
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -58,7 +74,7 @@ export async function getPublicClient(): Promise<PublicClient> {
   const chainConfig = config.blockchain.avalanche[env];
 
   return createPublicClient({
-    chain: getTargetChain(),
+    chain: getTargetChain(chainConfig.rpc_url),
     transport: http(chainConfig.rpc_url),
   });
 }
@@ -79,27 +95,62 @@ export async function payFeeForGame(
   const config = await loadConfigAsync();
   const env = getEnvironmentKey();
   const chainConfig = config.blockchain.avalanche[env];
+  const chain = getTargetChain(chainConfig.rpc_url);
 
-  // Approve the Vault to spend TRESR tokens
+  // Create a public client for gas estimation (uses correct RPC)
+  const publicClient = createPublicClient({
+    chain,
+    transport: http(chainConfig.rpc_url),
+  });
+
+  // --- Approve the Vault to spend TRESR tokens ---
   log.info(COMPONENT_NAME, "Approving TRESR spend for vault fee...");
+
+  const approveData = encodeFunctionData({
+    abi: ERC20Abi,
+    functionName: "approve",
+    args: [chainConfig.vault_contract as `0x${string}`, amount],
+  });
+
+  const approveGas = await publicClient.estimateGas({
+    account: accounts[0],
+    to: chainConfig.tresr_token_contract as `0x${string}`,
+    data: approveData,
+  });
+
   await walletClient.writeContract({
     account: accounts[0],
     address: chainConfig.tresr_token_contract as `0x${string}`,
     abi: ERC20Abi,
     functionName: "approve",
     args: [chainConfig.vault_contract as `0x${string}`, amount],
-    chain: getTargetChain(),
+    chain,
+    gas: approveGas,
   });
 
-  // Pay fee to the Vault
+  // --- Pay fee to the Vault ---
   log.info(COMPONENT_NAME, "Paying fee to vault for session:", sessionId);
+
+  const payFeeData = encodeFunctionData({
+    abi: VaultAbi,
+    functionName: "payFee",
+    args: [amount, sessionId as `0x${string}`],
+  });
+
+  const payFeeGas = await publicClient.estimateGas({
+    account: accounts[0],
+    to: chainConfig.vault_contract as `0x${string}`,
+    data: payFeeData,
+  });
+
   const hash = await walletClient.writeContract({
     account: accounts[0],
     address: chainConfig.vault_contract as `0x${string}`,
     abi: VaultAbi,
     functionName: "payFee",
     args: [amount, sessionId as `0x${string}`],
-    chain: getTargetChain(),
+    chain,
+    gas: payFeeGas,
   });
 
   return hash;

@@ -1,0 +1,238 @@
+---
+import {JUNO_ENVIRONMENT} from "@/lib/config/constants";
+
+const isProduction = JUNO_ENVIRONMENT === "production";
+---
+
+{
+  !isProduction && (
+    <button
+      id="faucet-btn"
+      class="btn btn-ghost btn-circle hidden text-xl"
+      title="Claim test tokens"
+    >
+      🚰
+    </button>
+  )
+}
+
+<script>
+  import {subscribeToAuth} from "@/lib/auth";
+  import {
+    subscribeToConnection,
+    getConnectedAddress,
+  } from "@/lib/wallet/connection";
+  import {
+    claimFaucet,
+    getFaucetCooldownStatus,
+    getFaucetDripAmount,
+    isFaucetDeployed,
+  } from "@/lib/wallet/faucet";
+  import {clearCachedBalance, formatBalance} from "@/lib/wallet/balance";
+  import {config} from "@/lib/config/client";
+  import {log} from "@/lib/utils/log";
+
+  const COMPONENT_NAME = "FaucetButton";
+
+  const btn = document.getElementById("faucet-btn") as HTMLButtonElement | null;
+  if (btn) {
+    let disposed = false;
+    let walletConnected = false;
+    let isAuthenticatedNonGuest = false;
+    let isProcessing = false;
+    let cooldownRemaining = 0;
+    let cooldownInterval: ReturnType<typeof setInterval> | null = null;
+
+    const EMOJI_CONTENT = "\u{1F6B0}"; // 🚰
+
+    function setSpinner() {
+      btn!.textContent = "";
+      const spinner = document.createElement("span");
+      spinner.className = "loading loading-spinner loading-sm";
+      btn!.appendChild(spinner);
+      btn!.disabled = true;
+    }
+
+    function resetButton() {
+      btn!.textContent = EMOJI_CONTENT;
+      btn!.disabled = false;
+    }
+
+    function setCooldownState(seconds: number) {
+      cooldownRemaining = seconds;
+      if (seconds <= 0) {
+        resetButton();
+        btn!.title = "Claim test tokens";
+        stopCooldownTick();
+        return;
+      }
+      btn!.disabled = true;
+      btn!.title = `Cooldown: ${formatCooldownTime(seconds)}`;
+      startCooldownTick();
+    }
+
+    function formatCooldownTime(seconds: number): string {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return m > 0 ? `${m}m ${s}s` : `${s}s`;
+    }
+
+    function startCooldownTick() {
+      stopCooldownTick();
+      if (cooldownRemaining <= 0) return;
+      cooldownInterval = setInterval(() => {
+        if (disposed) return;
+        cooldownRemaining = Math.max(0, cooldownRemaining - 1);
+        if (cooldownRemaining <= 0) {
+          resetButton();
+          btn!.title = "Claim test tokens";
+          stopCooldownTick();
+        } else {
+          btn!.title = `Cooldown: ${formatCooldownTime(cooldownRemaining)}`;
+        }
+      }, 1_000);
+    }
+
+    function stopCooldownTick() {
+      if (cooldownInterval) {
+        clearInterval(cooldownInterval);
+        cooldownInterval = null;
+      }
+    }
+
+    function evaluateVisibility() {
+      if (!btn) return;
+      if (isAuthenticatedNonGuest && isFaucetDeployed(config)) {
+        btn.classList.remove("hidden");
+      } else {
+        btn.classList.add("hidden");
+      }
+    }
+
+    async function handleClick() {
+      if (isProcessing || disposed) return;
+
+      if (!walletConnected) {
+        log.warn(COMPONENT_NAME, "Connect wallet first");
+        return;
+      }
+
+      const address = getConnectedAddress();
+      if (!address) {
+        log.warn(COMPONENT_NAME, "No wallet address found");
+        return;
+      }
+
+      // Check cooldown before attempting
+      try {
+        const status = await getFaucetCooldownStatus(address);
+        if (!status.canClaim) {
+          log.warn(
+            COMPONENT_NAME,
+            `Faucet on cooldown: ${formatCooldownTime(status.remainingSeconds)}`
+          );
+          setCooldownState(status.remainingSeconds);
+          return;
+        }
+      } catch (err) {
+        log.error(COMPONENT_NAME, "Failed to check cooldown", err);
+        return;
+      }
+
+      isProcessing = true;
+      setSpinner();
+
+      try {
+        await claimFaucet();
+
+        // Read drip amount for the toast
+        let amountDisplay = "tokens";
+        try {
+          const dripAmount = await getFaucetDripAmount();
+          const env = (
+            await import("@/lib/wallet/avalanche")
+          ).getEnvironmentKey();
+          const ticker = config.blockchain.avalanche[env].tresr_token_ticker;
+          amountDisplay = `${formatBalance(dripAmount)} $${ticker}`;
+        } catch {
+          // Non-critical — just show generic message
+        }
+
+        window.showInfoToast?.(`Claimed ${amountDisplay}!`);
+
+        // Clear cached balance so next check is fresh
+        clearCachedBalance(address);
+
+        // Signal balance refresh to other components
+        document.dispatchEvent(new CustomEvent("tresr:balance-refresh"));
+
+        // Start cooldown after successful claim
+        try {
+          const status = await getFaucetCooldownStatus(address);
+          if (!status.canClaim) {
+            setCooldownState(status.remainingSeconds);
+          }
+        } catch {
+          // Non-critical
+        }
+      } catch (err) {
+        log.error(COMPONENT_NAME, "Faucet claim failed", err);
+      } finally {
+        isProcessing = false;
+        if (cooldownRemaining <= 0) {
+          resetButton();
+        }
+      }
+    }
+
+    btn.addEventListener("click", handleClick);
+
+    // Check initial cooldown when wallet connects
+    async function checkInitialCooldown() {
+      if (!walletConnected || disposed) return;
+      const address = getConnectedAddress();
+      if (!address) return;
+      try {
+        const status = await getFaucetCooldownStatus(address);
+        if (!status.canClaim) {
+          setCooldownState(status.remainingSeconds);
+        }
+      } catch {
+        // Silently fail — cooldown check is a nice-to-have
+      }
+    }
+
+    let unsubWallet: (() => void) | null = null;
+
+    const unsubAuth = subscribeToAuth((state) => {
+      isAuthenticatedNonGuest = state.isAuthenticated && !state.isGuest;
+
+      if (isAuthenticatedNonGuest && !unsubWallet) {
+        unsubWallet = subscribeToConnection((connected) => {
+          walletConnected = connected;
+          evaluateVisibility();
+          if (connected) checkInitialCooldown();
+        });
+      } else if (!isAuthenticatedNonGuest && unsubWallet) {
+        unsubWallet();
+        unsubWallet = null;
+        walletConnected = false;
+      }
+
+      evaluateVisibility();
+    });
+
+    // Cleanup on navigation
+    document.addEventListener(
+      "astro:before-preparation",
+      () => {
+        disposed = true;
+        stopCooldownTick();
+        unsubAuth();
+        if (unsubWallet) unsubWallet();
+        btn.removeEventListener("click", handleClick);
+      },
+      {once: true}
+    );
+  }
+</script>

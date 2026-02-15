@@ -5,7 +5,7 @@
  * and upload to Juno Storage "images" collection.
  */
 
-import {uploadFile} from "@junobuild/core";
+import {uploadBlob} from "@junobuild/core";
 import {getSatelliteConfig} from "../auth";
 import {log} from "../utils/log";
 
@@ -54,8 +54,9 @@ export async function uploadAvatar(
   // --- Upload to Juno Storage ---
   const fullPath = `/avatars/${principal}.webp`;
 
-  const result = await uploadFile({
+  const result = await uploadBlob({
     data: blob,
+    filename: `${principal}.webp`,
     collection: "images",
     fullPath,
     ...getSatelliteConfig(),

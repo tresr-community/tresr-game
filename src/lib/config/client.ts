@@ -95,7 +95,8 @@ export const config: ConfigTypes = {
         "tresr_token_contract": "0x6EB523A381e725F115b7454BaA3cb199E4770970",
         "tresr_token_treasury": "0x533d95Fa7D5CEd8f09e38aa359E406A3809Bc0e0",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0x24AF790c2A3095FE2200E4EC466eaF83094cd08A",
+        "vault_contract": "0x4CbFBec8643B7aaC22EBd875AE8c11c94B7A7833",
+        "faucet_contract": "0xA2ECeA4F1f0631024e5f37b65673479E6AC9EEEE",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       },
       "testnet": {
@@ -107,7 +108,8 @@ export const config: ConfigTypes = {
         "oracle_address": "0x0000000000000000000000000000000000000000",
         "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
         "tresr_token_contract": "0x6EB523A381e725F115b7454BaA3cb199E4770970",
-        "vault_contract": "0x0000000000000000000000000000000000000000"
+        "vault_contract": "0x0000000000000000000000000000000000000000",
+        "faucet_contract": "0x0000000000000000000000000000000000000000"
       },
       "mainnet": {
         "fee": 10,
@@ -351,6 +353,7 @@ export const config: ConfigTypes = {
     "time_limit_seconds": 300,
     "max_keys": 150,
     "guest": {
+      "enabled": true,
       "max_sessions_per_day": 24,
       "storage_key": "tresr_guest_sessions"
     },
@@ -521,7 +524,7 @@ export const config: ConfigTypes = {
             "preferred_distance": 200,
             "retreat_speed_mult": 1,
             "fire_rate": 2,
-            "projectile_speed": 300,
+            "projectile_speed": 500,
             "projectile_damage": 5
           },
           "swarm": {
@@ -536,12 +539,12 @@ export const config: ConfigTypes = {
             "offscreen_distance": 80
           },
           "weights": {
-            "direct": 20,
-            "flanker": 20,
+            "direct": 15,
+            "flanker": 15,
             "cautious": 15,
             "erratic": 15,
-            "ranged": 10,
-            "swarm": 10,
+            "ranged": 15,
+            "swarm": 15,
             "burrower": 10
           }
         },
@@ -660,7 +663,7 @@ export const config: ConfigTypes = {
           "delay_ms": 2000,
           "start_z": 500,
           "x_margin": 100,
-          "y_margin_top": 680,
+          "y_margin_top": 600,
           "y_margin_bottom": 25
         }
       },
@@ -680,7 +683,7 @@ export const config: ConfigTypes = {
           "delay_ms": 5000,
           "start_z": 400,
           "x_margin": 100,
-          "y_margin_top": 680,
+          "y_margin_top": 600,
           "y_margin_bottom": 25
         }
       },
@@ -1351,5 +1354,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "e2ef21b109e33c423497c0ccec4d1abe54b32a7a36f6571a9b5bf038778ed497"
+  "configHash": "656b021e7dd04ef7870ca7a7d07e17c1742997f588ae57945fd78c26050c3206"
 };

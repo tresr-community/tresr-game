@@ -160,6 +160,7 @@ function show_help() {
 	echo "  --fund  [--wallet ADDR]                Fund a wallet with tTRESR (Anvil must be running)"
 	echo "  --balance [--wallet ADDR]              Show tTRESR + AVAX balance for an address"
 	echo "  --deploy                               Deploy Vault contract to Anvil and print address"
+	echo "  --deploy-token                         Deploy mock token + faucet to Anvil"
 	echo "  --help                                 Show this help message"
 	echo ""
 	echo "Start options:"
@@ -562,6 +563,85 @@ function run_deploy() {
 }
 
 # =============================================================================
+# Deploy Token — Deploy mock TresrTestToken + TresrFaucet to Anvil
+# =============================================================================
+
+function run_deploy_token() {
+	assert_anvil_running
+
+	log_info "Building and deploying TresrTestToken + TresrFaucet to Anvil..."
+
+	cd contracts
+	export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
+
+	# Build first to catch compile errors
+	forge build --force || {
+		log_error "Forge build failed!"
+		exit 1
+	}
+
+	# Deploy via script
+	local deploy_output
+	local deploy_exit
+	set +e
+	deploy_output=$(
+		DEPLOYER_PRIVATE_KEY="$DEPLOYER_PRIVATE_KEY" \
+			FAUCET_FUND_AMOUNT="100000000000000000000000" \
+			forge script script/DeployTestToken.s.sol:DeployTestToken \
+			--rpc-url "$ANVIL_RPC_URL" \
+			--broadcast \
+			2>&1
+	)
+	deploy_exit=$?
+	set -e
+
+	if [[ $deploy_exit -ne 0 ]]; then
+		log_error "Forge script failed (exit code ${deploy_exit}):"
+		echo "$deploy_output"
+		exit 1
+	fi
+
+	# Extract addresses
+	local token_address
+	token_address=$(echo "$deploy_output" | grep -oP 'TresrTestToken deployed at: \K0x[0-9a-fA-F]+' || true)
+	local faucet_address
+	faucet_address=$(echo "$deploy_output" | grep -oP 'TresrFaucet deployed at: \K0x[0-9a-fA-F]+' || true)
+
+	if [[ -z $token_address || -z $faucet_address ]]; then
+		log_error "Failed to extract deployed contract addresses."
+		echo "$deploy_output"
+		exit 1
+	fi
+
+	# Auto-update tresr.yaml with deployed addresses (anvil section only)
+	cd ..
+	sed -i "/anvil:/,/testnet:/ s|tresr_token_contract: \"0x[0-9a-fA-F]*\"|tresr_token_contract: \"${token_address}\"|" "$CONFIG_FILE"
+	sed -i "/anvil:/,/testnet:/ s|tresr_token_ticker: .*|tresr_token_ticker: tTRESRDev|" "$CONFIG_FILE"
+	sed -i "/anvil:/,/testnet:/ s|faucet_contract: \"0x[0-9a-fA-F]*\"|faucet_contract: \"${faucet_address}\"|" "$CONFIG_FILE"
+	log_info "Updated ${CYAN}${CONFIG_FILE}${NC}:"
+	log_info "  anvil.tresr_token_contract: ${GREEN}${token_address}${NC}"
+	log_info "  anvil.tresr_token_ticker:   ${GREEN}tTRESRDev${NC}"
+	log_info "  anvil.faucet_contract:      ${GREEN}${faucet_address}${NC}"
+
+	# Banner
+	cat <<-EOF
+
+		${CYAN}==============================================================================${NC}
+		${GREEN}   TresrTestToken + TresrFaucet deployed successfully!${NC}
+		${CYAN}==============================================================================${NC}
+
+		  Token:      ${GREEN}${token_address}${NC}  ← auto-updated in tresr.yaml
+		  Ticker:     ${GREEN}tTRESRDev${NC}          ← auto-updated in tresr.yaml
+		  Faucet:     ${GREEN}${faucet_address}${NC}  ← auto-updated in tresr.yaml
+
+		${CYAN}==============================================================================${NC}
+
+	EOF
+
+	log_info "Done!"
+}
+
+# =============================================================================
 # Stop — Kill any running Anvil on the configured port
 # =============================================================================
 
@@ -721,6 +801,9 @@ case "${1:-}" in
 	;;
 --deploy)
 	run_deploy
+	;;
+--deploy-token)
+	run_deploy_token
 	;;
 --help | -h | "")
 	show_help

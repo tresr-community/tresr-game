@@ -36,6 +36,7 @@ declare module "/config-client.json" {
           tresr_token_treasury: string;
           deployer_address: string;
           vault_contract: string;
+          faucet_contract: string;
           player_wallet: string;
         };
         testnet: {          fee: number;
@@ -47,6 +48,7 @@ declare module "/config-client.json" {
           safe_address: string;
           tresr_token_contract: string;
           vault_contract: string;
+          faucet_contract: string;
         };
         mainnet: {          fee: number;
           burn_rate: number;
@@ -75,7 +77,8 @@ declare module "/config-client.json" {
     };
     gameplay: {      time_limit_seconds: number;
       max_keys: number;
-      guest: {        max_sessions_per_day: number;
+      guest: {        enabled: boolean;
+        max_sessions_per_day: number;
         storage_key: string;
       };
       fee_gate: {        transaction_timeout_ms: number;
@@ -684,6 +687,7 @@ declare module "../../../public/config-client.json" {
           tresr_token_treasury: string;
           deployer_address: string;
           vault_contract: string;
+          faucet_contract: string;
           player_wallet: string;
         };
         testnet: {          fee: number;
@@ -695,6 +699,7 @@ declare module "../../../public/config-client.json" {
           safe_address: string;
           tresr_token_contract: string;
           vault_contract: string;
+          faucet_contract: string;
         };
         mainnet: {          fee: number;
           burn_rate: number;
@@ -723,7 +728,8 @@ declare module "../../../public/config-client.json" {
     };
     gameplay: {      time_limit_seconds: number;
       max_keys: number;
-      guest: {        max_sessions_per_day: number;
+      guest: {        enabled: boolean;
+        max_sessions_per_day: number;
         storage_key: string;
       };
       fee_gate: {        transaction_timeout_ms: number;

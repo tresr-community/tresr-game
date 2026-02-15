@@ -136,10 +136,18 @@ export class TresrBot extends BaseEntity {
     if (!this.active || !this.isAlive) return;
     const botConfig = this.config.gameplay.entities.tresr_bot;
 
-    // Cancel existing timer
+    // Calculate remaining time from the current timer
+    let remainingMs = 0;
     if (this.lifetimeTimer) {
+      remainingMs = Math.max(
+        0,
+        this.lifetimeTimer.delay - this.lifetimeTimer.elapsed
+      );
       this.lifetimeTimer.destroy();
     }
+
+    // ADD remaining time to new duration (don't reset)
+    const newDuration = botConfig.lifetime.duration_ms + remainingMs;
 
     // Restore full HP
     this.hp = this.maxHp;
@@ -152,14 +160,17 @@ export class TresrBot extends BaseEntity {
       })
     );
 
-    // Start new lifetime timer
+    // Start new lifetime timer with additive duration
     this.lifetimeTimer = this.trackTimer(
-      this.scene.time.delayedCall(botConfig.lifetime.duration_ms, () => {
+      this.scene.time.delayedCall(newDuration, () => {
         this.beginFadeOut();
       })
     );
 
-    log.info(COMPONENT_NAME, "Lifetime refreshed");
+    log.info(
+      COMPONENT_NAME,
+      `Lifetime extended: +${botConfig.lifetime.duration_ms}ms (${remainingMs}ms remaining = ${newDuration}ms total)`
+    );
   }
 
   /**
