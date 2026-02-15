@@ -1,6 +1,6 @@
 ---
 ##################################################
-# Name: cd-devenv-update.yaml
+# Name: chore-devenv-update.yaml
 # Description: Update devenv dependencies and create PR
 ##################################################
 

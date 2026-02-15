@@ -54,13 +54,13 @@ Config values (RPC URL, addresses) are read dynamically from `config/tresr.yaml`
 
 ## Naming Conventions
 
-| Element           | Convention                                 | Example                 |
-| ----------------- | ------------------------------------------ | ----------------------- |
-| Workflow filename | `{ci\|cd\|chore}-{component}[-{env}].yaml` | `cd-juno-testnet.yaml`  |
-| Workflow `name:`  | Title Case                                 | `Juno Deploy (Testnet)` |
-| Job ID            | `kebab-case`                               | `deploy-juno-testnet`   |
-| Job `name:`       | Title Case                                 | `Deploy Juno (Testnet)` |
-| Step ID           | `snake_case`                               | `setup_devenv`          |
-| Step `name:`      | Title Case Verb-Noun                       | `Setup Devenv`          |
-| Action inputs     | `kebab-case`                               | `github-token`          |
-| File extension    | `.yaml`                                    | —                       |
+| Element           | Convention                                 | Example                    |
+| ----------------- | ------------------------------------------ | -------------------------- |
+| Workflow filename | `{ci\|cd\|chore}-{component}[-{env}].yaml` | `chore-devenv-update.yaml` |
+| Workflow `name:`  | Title Case                                 | `Juno Deploy (Testnet)`    |
+| Job ID            | `kebab-case`                               | `deploy-juno-testnet`      |
+| Job `name:`       | Title Case                                 | `Deploy Juno (Testnet)`    |
+| Step ID           | `snake_case`                               | `setup_devenv`             |
+| Step `name:`      | Title Case Verb-Noun                       | `Setup Devenv`             |
+| Action inputs     | `kebab-case`                               | `github-token`             |
+| File extension    | `.yaml`                                    | —                          |
