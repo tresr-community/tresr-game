@@ -293,10 +293,8 @@ export class Preloader extends Phaser.Scene {
   private loadConfigAssets() {
     const assets = clientConfig.assets;
 
-    // Load audio assets
-    assets.music.forEach((track: string) => {
-      this.load.audio(track, `/assets/audio/music/${track}.webm`);
-    });
+    // SFX loaded via Phaser's audio system (used by this.sound.play())
+    // Music is NOT loaded here — MusicManager streams via HTMLAudioElement
     assets.sfx.forEach((sfx: string) => {
       this.load.audio(sfx, `/assets/audio/sfx/${sfx}.webm`);
     });

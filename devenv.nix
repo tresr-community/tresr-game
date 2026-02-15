@@ -176,9 +176,11 @@ in
       echo "#### Helper scripts #####"
       echo "#########################"
       echo "🦾"
-      ${pkgs.gnused}/bin/sed -e 's| |••|g' -e 's|=| |' <<'SCRIPTS' | ${pkgs.util-linuxMinimal}/bin/column -t | ${pkgs.gnused}/bin/sed -e 's|^|🦾 |' -e 's|••| |g'
-      ${lib.generators.toKeyValue { } (lib.mapAttrs (_name: value: value.description) config.scripts)}
-      SCRIPTS
+      ${lib.concatStrings (
+        lib.mapAttrsToList (
+          name: value: "printf '🦾 %-20s  %s\\n' '${name}' '${value.description}'\n"
+        ) config.scripts
+      )}
       echo "🦾"
       echo "#########################"
     fi

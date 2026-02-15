@@ -292,3 +292,20 @@ export const trackPwaInstall = async () => {
     metadata: {environment: JUNO_ENVIRONMENT},
   });
 };
+
+export const trackError = async (
+  event: string,
+  error: string,
+  metadata?: Record<string, string>
+) => {
+  await ensureInit();
+  trackEvent({
+    name: "error",
+    metadata: {
+      event,
+      error: error.slice(0, 200),
+      ...metadata,
+      environment: JUNO_ENVIRONMENT,
+    },
+  });
+};

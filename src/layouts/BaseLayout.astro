@@ -34,12 +34,6 @@ const {title, description = "A 2.5D platformer for the Tresr Community"} =
         if (t) document.documentElement.setAttribute("data-theme", t);
       })();
     </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
     <title>{title}</title>
   </head>
   <body
@@ -129,10 +123,19 @@ const {title, description = "A 2.5D platformer for the Tresr Community"} =
       import {initAnalytics, trackPageView} from "@/lib/metrics/analytics";
 
       // Register PWA on load
-      document.addEventListener("DOMContentLoaded", async () => {
+      document.addEventListener("DOMContentLoaded", () => {
         PWA.getInstance().register();
-        await initAnalytics();
-        await trackPageView(window.location.pathname);
+
+        // Defer analytics init to avoid blocking INP
+        const initAndTrack = async () => {
+          await initAnalytics();
+          await trackPageView(window.location.pathname);
+        };
+        if ("requestIdleCallback" in window) {
+          requestIdleCallback(() => initAndTrack());
+        } else {
+          setTimeout(() => initAndTrack(), 0);
+        }
       });
     </script>
   </body>

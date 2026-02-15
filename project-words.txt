@@ -180,6 +180,7 @@ wakatime
 yzhang
 
 # External services
+amannn
 giphy
 Giphy
 GIPHY
@@ -191,6 +192,8 @@ oxalica
 # Word fragments from hyphenated compounds
 # cspell splits on hyphens and suffixes, producing these fragments
 atal
+cript
+ility
 ontal
 ator
 backg
@@ -221,6 +224,7 @@ produ
 repe
 rint
 rboard
+ution
 
 # Code and API names
 camerafadeoutcomplete
@@ -247,3 +251,5 @@ bootup
 cheatcode
 consolation
 prereleased
+appinstalled
+brrr

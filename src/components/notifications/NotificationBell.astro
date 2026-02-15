@@ -205,9 +205,10 @@
         const upgradeBtn = document.createElement("button");
         upgradeBtn.className = "btn btn-xs btn-primary mt-2 w-full";
         upgradeBtn.textContent = "Upgrade Now";
-        upgradeBtn.addEventListener("click", () =>
-          PWA.getInstance().applyUpdate()
-        );
+        upgradeBtn.addEventListener("click", () => {
+          notificationManager.dismiss(n.key);
+          PWA.getInstance().applyUpdate();
+        });
         card.appendChild(upgradeBtn);
       }
 

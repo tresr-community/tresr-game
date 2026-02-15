@@ -31,6 +31,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
   import {clearCachedBalance, formatBalance} from "@/lib/wallet/balance";
   import {config} from "@/lib/config/client";
   import {log} from "@/lib/utils/log";
+  import {trackFaucetClaim, trackError} from "@/lib/metrics/analytics";
 
   const COMPONENT_NAME = "FaucetButton";
 
@@ -158,6 +159,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
           // Non-critical — just show generic message
         }
 
+        trackFaucetClaim(amountDisplay);
         window.showInfoToast?.(`Claimed ${amountDisplay}!`);
 
         // Clear cached balance so next check is fresh
@@ -176,7 +178,9 @@ const isProduction = JUNO_ENVIRONMENT === "production";
           // Non-critical
         }
       } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
         log.error(COMPONENT_NAME, "Faucet claim failed", err);
+        trackError("faucet_claim", message);
       } finally {
         isProcessing = false;
         if (cooldownRemaining <= 0) {

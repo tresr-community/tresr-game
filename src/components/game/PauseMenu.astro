@@ -3,18 +3,20 @@
 ---
 
 <dialog id="pause-modal" class="modal modal-middle">
-  <div class="modal-box border-primary/30 bg-base-300 border text-center">
+  <div
+    class="modal-box border-primary/30 bg-base-300 max-h-[90vh] overflow-y-auto border p-4 text-center sm:p-6"
+  >
     <h3
-      class="text-primary font-display text-4xl font-black tracking-widest uppercase"
+      class="text-primary font-display text-2xl font-black tracking-widest uppercase sm:text-4xl"
     >
       Mission Paused
     </h3>
-    <p class="py-4 italic opacity-70">
+    <p class="py-2 text-sm italic opacity-70 sm:py-4 sm:text-base">
       "Time is a flat circle, but Gary is still waiting for you."
     </p>
 
     <!-- Audio settings (ticket #188) -->
-    <div class="bg-base-200/50 mt-4 rounded-lg p-4">
+    <div class="bg-base-200/50 mt-2 rounded-lg p-3 sm:mt-4 sm:p-4">
       <div class="mb-3 flex items-center justify-between">
         <label class="text-xs font-bold uppercase opacity-60" for="slider-music"
           >Music</label
@@ -47,7 +49,7 @@
       />
     </div>
 
-    <div class="modal-action flex-col gap-2">
+    <div class="modal-action flex-col gap-1 sm:gap-2">
       <button id="btn-resume" class="btn btn-primary btn-block"
         >Get back in the fight</button
       >

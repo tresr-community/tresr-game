@@ -3,7 +3,11 @@ import {BootScene} from "./scenes/BootScene";
 import {Preloader} from "./scenes/Preloader";
 import {MainScene} from "./scenes/MainScene";
 import {config} from "@/lib/config/client";
-import {getDevicePerfTier, getEffectsMultiplier, isMobileDevice} from "@/lib/utils/mobile";
+import {
+  getDevicePerfTier,
+  getEffectsMultiplier,
+  isMobileDevice,
+} from "@/lib/utils/mobile";
 
 export const getGameConfig = (
   containerId: string
@@ -56,4 +60,3 @@ export const getGameConfig = (
 export const initGame = (containerId: string) => {
   return new Phaser.Game(getGameConfig(containerId));
 };
-

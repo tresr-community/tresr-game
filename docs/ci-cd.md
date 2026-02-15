@@ -9,17 +9,65 @@ graph TD
 
     B --> D{"Environment?"}
     D -->|"Testnet (auto/manual)"| E["pre-release job"]
-    D -->|"Mainnet (manual)"| F["promote job"]
+    D -->|"Mainnet (manual only)"| F["promote job"]
 
-    E --> G["Create GitHub Pre-Release"]
+    E --> G["Create GitHub Pre-Release<br/>(with convco changelog)"]
     G --> H["cd-juno-testnet.yaml<br/>(workflow_call)"]
 
-    F --> I["Promote Pre-Release → Release"]
-    I --> J["cd-juno-mainnet.yaml<br/>(workflow_call)"]
+    F --> I["Auto-discover or validate tag"]
+    I --> J["Promote Pre-Release → Release<br/>(with convco changelog)"]
+    J --> K["cd-juno-mainnet.yaml<br/>(workflow_call)"]
 
-    H --> K["Deploy Hosting + Functions + Config"]
-    J --> L["Deploy Hosting + Functions + Config"]
+    H --> L["Deploy Hosting + Functions + Config"]
+    K --> M["Deploy Hosting + Functions + Config"]
 ```
+
+## Developer Workflow
+
+```mermaid
+graph LR
+    A["Create branch"] --> B["Open PR"]
+    B --> C["CI runs<br/>(lint, test, build, security)"]
+    C --> D["PR approved"]
+    D --> E["Merge queue"]
+    E --> F["Merged to trunk"]
+    F --> G["Pre-release created<br/>(automatic)"]
+    G --> H["Testnet deployed"]
+    H --> I["UAT / QA"]
+    I --> J["Run cd-release<br/>(Mainnet)"]
+    J --> K["Promoted + deployed"]
+```
+
+## Manually Runnable Workflows
+
+Only these workflows can be triggered manually via `workflow_dispatch`:
+
+| Workflow                   | Purpose                                           |
+| -------------------------- | ------------------------------------------------- |
+| `cd-release.yaml`          | Create pre-release (Testnet) or promote (Mainnet) |
+| `cd-foundry.yaml`          | Deploy Solidity contracts to Testnet or Mainnet   |
+| `chore-devenv-update.yaml` | Update devenv.lock, create PR                     |
+
+All other workflows are triggered automatically by events (PR, push, merge_group, schedule, workflow_call).
+
+## Mainnet Promotion
+
+When running `cd-release.yaml` with `Environment: Mainnet`:
+
+- **With `release_tag`**: Promotes that specific pre-release
+- **Without `release_tag`**: Auto-discovers the latest pre-release and promotes it
+- **If latest release is already promoted**: Errors with a helpful message
+
+The GitHub `Mainnet` environment requires manual approval before the promote job runs.
+
+## Foundry Deploy
+
+`cd-foundry.yaml` is a single parameterized workflow that handles both testnet and mainnet:
+
+- **Push to trunk** (contracts/ changes) → always deploys to Testnet (Fuji)
+- **Manual dispatch** → choose Testnet or Mainnet
+
+Config values (RPC URL, addresses) are read dynamically from `config/tresr.yaml` based on the resolved network.
 
 ## CI Pipeline
 
@@ -34,37 +82,22 @@ graph LR
     JCI --> T3["juno build + check"]
 ```
 
-## `workflow_call` Design
-
-Deploy workflows (`cd-juno-testnet.yaml`, `cd-juno-mainnet.yaml`) accept both `workflow_call` and `workflow_dispatch` triggers:
-
-- **`workflow_call`** — called by `cd-release.yaml` after creating/promoting a release. Version is passed as input. Uses `secrets: inherit`.
-- **`workflow_dispatch`** — manual fallback for re-deploying a specific version.
-
-This replaces the previous event-based chaining (`release: types: [prereleased/released]`), which required a Personal Access Token because `GITHUB_TOKEN` events don't trigger further workflows.
-
-## Foundry Deploy
-
-`cd-foundry.yaml` is a single parameterized workflow that handles both testnet and mainnet:
-
-- **Push to trunk** (contracts/ changes) → always deploys to Testnet (Fuji)
-- **Manual dispatch** → choose Testnet or Mainnet
-
-Config values (RPC URL, addresses) are read dynamically from `config/tresr.yaml` based on the resolved network.
-
 ## Workflow Inventory
 
-| Workflow                   | Prefix | Trigger                     | Purpose                                  |
-| -------------------------- | ------ | --------------------------- | ---------------------------------------- |
-| `cd-release.yaml`          | cd     | push to trunk, dispatch     | Create pre-release or promote to release |
-| `cd-juno-testnet.yaml`     | cd     | workflow_call, dispatch     | Deploy Juno to Testnet                   |
-| `cd-juno-mainnet.yaml`     | cd     | workflow_call, dispatch     | Deploy Juno to Mainnet                   |
-| `cd-foundry.yaml`          | cd     | push (contracts/), dispatch | Deploy Solidity contracts                |
-| `ci-devenv.yaml`           | ci     | pull_request                | Test devenv shell                        |
-| `ci-foundry.yaml`          | ci     | pull_request                | Lint and check Solidity                  |
-| `ci-juno.yaml`             | ci     | pull_request                | Build and check Juno                     |
-| `chore-devenv-update.yaml` | chore  | schedule (weekly), dispatch | Update devenv.lock, create PR            |
-| `comments.yaml`            | —      | issue_comment               | Handle slash commands in comments        |
+| Workflow                   | Prefix | Trigger                         | Purpose                                  |
+| -------------------------- | ------ | ------------------------------- | ---------------------------------------- |
+| `cd-release.yaml`          | cd     | push to trunk, dispatch         | Create pre-release or promote to release |
+| `cd-juno-testnet.yaml`     | cd     | workflow_call only              | Deploy Juno to Testnet                   |
+| `cd-juno-mainnet.yaml`     | cd     | workflow_call only              | Deploy Juno to Mainnet                   |
+| `cd-foundry.yaml`          | cd     | push (contracts/), dispatch     | Deploy Solidity contracts                |
+| `ci-devenv.yaml`           | ci     | pull_request, merge_group       | Test devenv shell                        |
+| `ci-foundry.yaml`          | ci     | pull_request, merge_group       | Lint and check Solidity                  |
+| `ci-juno.yaml`             | ci     | pull_request, merge_group       | Build and check Juno                     |
+| `chore-devenv-update.yaml` | chore  | schedule (weekly), dispatch     | Update devenv.lock, create PR            |
+| `chore-pr-title.yaml`      | chore  | pull_request                    | Validate conventional commit PR titles   |
+| `sec-codeql.yaml`          | sec    | PR, push, merge_group, schedule | CodeQL security analysis                 |
+| `sec-trivy.yaml`           | sec    | PR, merge_group, schedule       | Trivy vulnerability scanning             |
+| `comments.yaml`            | —      | issue_comment                   | Handle slash commands in comments        |
 
 ## Naming Conventions
 

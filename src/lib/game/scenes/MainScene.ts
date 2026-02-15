@@ -16,7 +16,16 @@ import {setDoc} from "@junobuild/core";
 import {claimAuthorize} from "@/declarations/satellite/satellite.api";
 import {getUserProfile, saveUserProfile} from "@/lib/user";
 import {getAuthState} from "@/lib/auth";
-import {trackGameLoss, trackGameWin} from "@/lib/metrics/analytics";
+import {
+  trackGameLoss,
+  trackGameWin,
+  trackBossSpawned,
+  trackBossDefeated,
+  trackPlayerDeath,
+  trackLevelComplete,
+  trackGamePause,
+  trackGameResume,
+} from "@/lib/metrics/analytics";
 import MusicManager from "@/lib/game/MusicManager";
 import {WalkableArea} from "@/lib/game/WalkableArea";
 import {log} from "@/lib/utils/log";
@@ -455,6 +464,7 @@ export class MainScene extends Phaser.Scene {
 
   private setPause(isPaused: boolean) {
     if (isPaused) {
+      trackGamePause();
       // Cancel active hit-stop before pausing (ticket #230)
       if (this.hitStopActive) {
         if (this.hitStopTimer) {
@@ -468,6 +478,7 @@ export class MainScene extends Phaser.Scene {
       this.anims.pauseAll();
       this.time.paused = true;
     } else {
+      trackGameResume();
       this.physics.world.resume();
       this.anims.resumeAll();
       this.time.paused = false;
@@ -1118,9 +1129,9 @@ export class MainScene extends Phaser.Scene {
     // Re-scale background to cover the new canvas
     if (this.background) {
       this.background.setPosition(width / 2, height / 2);
-      const tex = this.textures.get(
-        this.registry.get("selected_wallpaper") as string
-      ).getSourceImage();
+      const tex = this.textures
+        .get(this.registry.get("selected_wallpaper") as string)
+        .getSourceImage();
       const scaleX = width / tex.width;
       const scaleY = height / tex.height;
       this.background.setScale(Math.max(scaleX, scaleY));
@@ -1186,7 +1197,9 @@ export class MainScene extends Phaser.Scene {
     const bombSpawner = this.gameplayConfig.entities.bomb.spawner;
     const xMargin = bombSpawner.x_margin;
     const yMarginTop = Math.round(bombSpawner.y_margin_top_ratio * height);
-    const yMarginBottom = Math.round(bombSpawner.y_margin_bottom_ratio * height);
+    const yMarginBottom = Math.round(
+      bombSpawner.y_margin_bottom_ratio * height
+    );
     const startZ = bombSpawner.start_z;
 
     const x = this.rng.integerInRange(xMargin, width - xMargin);
@@ -1738,6 +1751,7 @@ export class MainScene extends Phaser.Scene {
       const maxCharge = playerSuper.max_charge;
       gameActions.addSuperCharge(chargePerKill, maxCharge);
     } else if (data.type === "boss") {
+      trackBossDefeated();
       this.playSound("explosion");
       MusicManager.getInstance().stop();
 
@@ -1873,6 +1887,7 @@ export class MainScene extends Phaser.Scene {
     this.triggerFlash();
     this.playSound("explosion"); // Arrival sound
     this.showPhaseAnnouncement("BOSS PHASE");
+    trackBossSpawned();
   }
 
   /**
@@ -1881,6 +1896,7 @@ export class MainScene extends Phaser.Scene {
    */
   private spawnChest() {
     if (this.chest) return; // Prevent double spawn
+    trackLevelComplete(this.score, this.collectedKeys);
 
     // Kill all remaining enemies when boss is defeated
     if (this.enemies) {
@@ -1948,7 +1964,13 @@ export class MainScene extends Phaser.Scene {
 
     this.playSound("victory");
     this.showPhaseAnnouncement("VICTORY");
-    trackGameWin(this.score);
+    const winDuration = Math.round(
+      this.gameplayConfig.time_limit_seconds - this.survivalTimer
+    );
+    trackGameWin(this.score, {
+      keysCollected: this.collectedKeys,
+      duration: winDuration,
+    });
 
     const auth = getAuthState();
     if (auth.isGuest) {
@@ -2085,7 +2107,16 @@ export class MainScene extends Phaser.Scene {
     this.playSound("game_over");
     MusicManager.getInstance().stop();
     this.showPhaseAnnouncement("DEFEAT");
-    trackGameLoss("player_died");
+    const deathDuration = Math.round(
+      this.gameplayConfig.time_limit_seconds - this.survivalTimer
+    );
+    trackPlayerDeath(this.score, this.phase, this.collectedKeys);
+    trackGameLoss("player_died", {
+      score: this.score,
+      phase: this.phase,
+      keysCollected: this.collectedKeys,
+      duration: deathDuration,
+    });
 
     // Increment guest session counter after game completes
     const auth = getAuthState();

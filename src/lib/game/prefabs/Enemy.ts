@@ -29,6 +29,11 @@ export class Enemy extends BaseEntity {
   private enemyGroup?: Phaser.Physics.Arcade.Group;
   private swarmNearbyCount: number = 0;
   private swarmCheckCounter: number = 0;
+  private swarmRushing: boolean = false;
+
+  // Flanker AI state — orbit → lunge → recover
+  private flankerPhase: "orbiting" | "lunging" | "recovering" = "orbiting";
+  private flankerOrbitAngle: number = 0;
 
   // Passive AI state
   private passiveDirection: number = 1; // 1 = right, -1 = left
@@ -42,6 +47,8 @@ export class Enemy extends BaseEntity {
   private cautiousCharging: boolean = false;
   private cautiousCheckCounter: number = 0;
   private cautiousNearbyCount: number = 0;
+  private cautiousStrafeDir: number = 1;
+  private cautiousStrafeTimer: number = 0;
 
   // Per-enemy damage cooldown (ticket #139: each enemy tracks its own cooldown)
   public lastPlayerDamageTime: number = 0;
@@ -167,11 +174,6 @@ export class Enemy extends BaseEntity {
     const gp = this.config.gameplay;
     const aiConfig = gp.entities.enemy.ai;
     const timestep = gp.physics.timestep;
-    const flankerOffset = aiConfig.flanker.offset;
-    const flankerSwitchTime = aiConfig.flanker.switch_time;
-    const erraticUpdateTime = aiConfig.erratic.update_time;
-    const erraticJitterX = aiConfig.erratic.jitter_x;
-    const erraticJitterY = aiConfig.erratic.jitter_y;
 
     // Handle walk-in from off-screen
     if (this.enterState === "walking_in") {
@@ -332,31 +334,121 @@ export class Enemy extends BaseEntity {
 
       // Apply AI-specific movement modifiers
       switch (this.aiType) {
-        case "flanker":
-          // Try to approach from the side
-          targetX += this.flankDirection * flankerOffset;
-          // Switch flank direction occasionally
-          if (this.aiTimer > flankerSwitchTime) {
-            this.flankDirection *= -1;
-            this.aiTimer = 0;
+        case "flanker": {
+          const flankerConfig = aiConfig.flanker;
+          const orbitRadius = flankerConfig.offset;
+
+          if (this.flankerPhase === "orbiting") {
+            // Circle around the player at orbit radius
+            this.flankerOrbitAngle += dt * 2; // ~2 rad/s orbit speed
+            const orbitX =
+              this.target.x +
+              Math.cos(this.flankerOrbitAngle) *
+                orbitRadius *
+                this.flankDirection;
+            const orbitGY =
+              targetGroundY +
+              Math.sin(this.flankerOrbitAngle) * (orbitRadius * 0.4); // squished ellipse for 2.5D
+
+            const dxOrbit = orbitX - this.x;
+            const dyOrbit = orbitGY - this.groundY;
+            const orbitAngle = Math.atan2(dyOrbit, dxOrbit);
+
+            this.setFlipX(this.target.x < this.x);
+            this.setVelocityX(Math.cos(orbitAngle) * this.speed);
+            this.setVelocityY(0);
+            this.groundY += Math.sin(orbitAngle) * this.speed * dt;
+
+            if (this.walkableArea) {
+              const clamped = this.walkableArea.clampToWalkable(
+                this.x,
+                this.groundY
+              );
+              this.x = clamped.x;
+              this.groundY = clamped.groundY;
+            }
+
+            this.play(this.animKeys.walk, true);
+
+            // Transition to lunge after orbit_time
+            if (this.aiTimer > flankerConfig.orbit_time) {
+              this.flankerPhase = "lunging";
+              this.aiTimer = 0;
+              this.speed = this.baseSpeed * flankerConfig.lunge_speed_mult;
+            }
+            super.update();
+            return;
+          }
+
+          if (this.flankerPhase === "lunging") {
+            // Dash straight at the player
+            // targetX/targetGY already point at the player — fall through to chase
+            if (this.aiTimer > flankerConfig.lunge_duration) {
+              this.flankerPhase = "recovering";
+              this.aiTimer = 0;
+              this.speed = this.baseSpeed * flankerConfig.speed_mult;
+            }
+            // Fall through to normal chase with boosted speed
+            break;
+          }
+
+          if (this.flankerPhase === "recovering") {
+            // Back away from the player
+            const retreatAngle = Math.atan2(
+              this.groundY - targetGroundY,
+              this.x - this.target.x
+            );
+            this.setFlipX(this.target.x < this.x);
+            this.setVelocityX(Math.cos(retreatAngle) * this.speed);
+            this.setVelocityY(0);
+            this.groundY += Math.sin(retreatAngle) * this.speed * dt;
+
+            if (this.walkableArea) {
+              const clamped = this.walkableArea.clampToWalkable(
+                this.x,
+                this.groundY
+              );
+              this.x = clamped.x;
+              this.groundY = clamped.groundY;
+            }
+
+            this.play(this.animKeys.walk, true);
+
+            if (this.aiTimer > flankerConfig.recovery_time) {
+              this.flankerPhase = "orbiting";
+              this.aiTimer = 0;
+              this.speed = this.baseSpeed * flankerConfig.speed_mult;
+            }
+            super.update();
+            return;
           }
           break;
-        case "erratic":
-          // Add random jitter to movement
-          if (this.aiTimer > erraticUpdateTime) {
-            const randX = this.rng.frac();
-            const randY = this.rng.frac();
-            this.erraticOffset = {
-              x: (randX - 0.5) * erraticJitterX,
-              y: (randY - 0.5) * erraticJitterY,
-            };
-            this.aiTimer = 0;
+        }
+        case "erratic": {
+          // Continuous sine-wave zigzag — snake toward the player
+          const erraticConfig = aiConfig.erratic;
+          const lateralOffset =
+            Math.sin(
+              this.aiTimer * erraticConfig.zigzag_frequency * Math.PI * 2
+            ) * erraticConfig.zigzag_amplitude;
+
+          // Perpendicular offset: rotate the direction-to-player by 90°
+          const dxToPlayer = this.target.x - this.x;
+          const dyToPlayer = targetGroundY - this.groundY;
+          const distToP = Math.sqrt(
+            dxToPlayer * dxToPlayer + dyToPlayer * dyToPlayer
+          );
+          if (distToP > 1) {
+            // Unit perpendicular vector (rotated 90°)
+            const perpX = -dyToPlayer / distToP;
+            const perpGY = dxToPlayer / distToP;
+            targetX = this.target.x + perpX * lateralOffset;
+            targetGY = targetGroundY + perpGY * lateralOffset;
           }
-          targetX += this.erraticOffset.x;
-          targetGY += this.erraticOffset.y;
           break;
+        }
         case "cautious": {
-          // Pack mentality: hang back until allies gather, then charge
+          // Strafe laterally when solo, charge with pack
           const cautiousConfig = aiConfig.cautious;
           const distToPlayer = Phaser.Math.Distance.Between(
             this.x,
@@ -388,7 +480,7 @@ export class Enemy extends BaseEntity {
             }
             this.cautiousNearbyCount = nearbyCount;
 
-            // Decide whether to charge or retreat
+            // Toggle charge state based on ally count
             if (
               this.cautiousNearbyCount >= cautiousConfig.pack_threshold &&
               !this.cautiousCharging
@@ -400,15 +492,23 @@ export class Enemy extends BaseEntity {
               this.cautiousCharging
             ) {
               this.cautiousCharging = false;
-              this.speed = this.baseSpeed * cautiousConfig.speed_mult;
+              this.speed = this.baseSpeed * cautiousConfig.strafe_speed_mult;
             }
           }
 
-          // If not charging, maintain preferred distance
+          // When not charging: strafe laterally at preferred distance
           if (!this.cautiousCharging) {
             const preferred = cautiousConfig.preferred_distance;
-            if (distToPlayer < preferred * 0.9) {
-              // Too close — back away from player
+
+            // Flip strafe direction periodically
+            this.cautiousStrafeTimer += dt;
+            if (this.cautiousStrafeTimer > cautiousConfig.strafe_switch_time) {
+              this.cautiousStrafeDir *= -1;
+              this.cautiousStrafeTimer = 0;
+            }
+
+            if (distToPlayer < preferred * 0.7) {
+              // Too close — actively retreat
               const retreatAngle = Math.atan2(
                 this.groundY - targetGroundY,
                 this.x - this.target.x
@@ -418,7 +518,6 @@ export class Enemy extends BaseEntity {
               this.setVelocityY(0);
               this.groundY += Math.sin(retreatAngle) * this.speed * dt;
 
-              // Clamp to walkable area
               if (this.walkableArea) {
                 const clamped = this.walkableArea.clampToWalkable(
                   this.x,
@@ -431,17 +530,34 @@ export class Enemy extends BaseEntity {
               this.play(this.animKeys.walk, true);
               super.update();
               return;
-            } else if (distToPlayer > preferred * 1.1) {
-              // Too far — creep closer but slowly
-              // Fall through to normal chase with slow speed
-            } else {
-              // In the sweet spot — idle and wait
-              this.setVelocity(0, 0);
-              this.setFlipX(this.target.x < this.x);
-              this.play(this.animKeys.idle, true);
+            } else if (distToPlayer <= preferred * 1.3) {
+              // Within strafe zone — move laterally (perpendicular to player)
+              const dxP = this.target.x - this.x;
+              const dyP = targetGroundY - this.groundY;
+              const dP = Math.sqrt(dxP * dxP + dyP * dyP);
+              if (dP > 1) {
+                const perpX = (-dyP / dP) * this.cautiousStrafeDir;
+                const perpGY = (dxP / dP) * this.cautiousStrafeDir;
+                this.setFlipX(this.target.x < this.x);
+                this.setVelocityX(perpX * this.speed);
+                this.setVelocityY(0);
+                this.groundY += perpGY * this.speed * dt;
+
+                if (this.walkableArea) {
+                  const clamped = this.walkableArea.clampToWalkable(
+                    this.x,
+                    this.groundY
+                  );
+                  this.x = clamped.x;
+                  this.groundY = clamped.groundY;
+                }
+              }
+
+              this.play(this.animKeys.walk, true);
               super.update();
               return;
             }
+            // Too far — creep closer (fall through to normal chase)
           }
           // If charging or too far, fall through to normal chase behavior
           break;
@@ -470,6 +586,21 @@ export class Enemy extends BaseEntity {
               }
             }
             this.swarmNearbyCount = nearbyCount;
+
+            // Rush activation: apply/clear tint when threshold crossed
+            if (
+              this.swarmNearbyCount >= swarmConfig.rush_threshold &&
+              !this.swarmRushing
+            ) {
+              this.swarmRushing = true;
+              this.setTint(swarmConfig.rush_tint);
+            } else if (
+              this.swarmNearbyCount < swarmConfig.rush_threshold &&
+              this.swarmRushing
+            ) {
+              this.swarmRushing = false;
+              this.clearTint();
+            }
           }
           const swarmMult = Math.min(
             swarmConfig.max_speed_mult,
@@ -647,8 +778,13 @@ export class Enemy extends BaseEntity {
     this.cautiousCharging = false;
     this.cautiousCheckCounter = 0;
     this.cautiousNearbyCount = 0;
+    this.cautiousStrafeDir = this.rng?.frac() < 0.5 ? 1 : -1;
+    this.cautiousStrafeTimer = 0;
     this.swarmNearbyCount = 0;
     this.swarmCheckCounter = 0;
+    this.swarmRushing = false;
+    this.flankerPhase = "orbiting";
+    this.flankerOrbitAngle = this.rng ? this.rng.frac() * Math.PI * 2 : 0;
     this.lastPlayerDamageTime = 0;
     this.walkableArea = this.scene.registry.get(
       "walkable_area"

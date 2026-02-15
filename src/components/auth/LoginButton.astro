@@ -54,30 +54,32 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
     </h3>
 
     <div class="tabs tabs-lift">
-      <!-- Normie Tab (hidden when guest mode is disabled) -->
-      <input
-        type="radio"
-        name="auth_tabs"
-        class:list={["tab", {hidden: !guestEnabled}]}
-        aria-label="Normie"
-        checked={guestEnabled}
-      />
-      <div
-        class:list={[
-          "tab-content border-base-300 bg-base-100 p-6",
-          {hidden: !guestEnabled},
-        ]}
-      >
-        <p class="mb-6 text-center text-sm italic opacity-70">
-          "Fight some bankers without spending tokens. No risk, no reward."
-        </p>
-        <button
-          id="btn-login-normie"
-          class="btn btn-secondary w-full font-bold tracking-widest uppercase"
-        >
-          Login as a Normie
-        </button>
-      </div>
+      <!-- Normie Tab (only rendered when guest mode is enabled) -->
+      {
+        guestEnabled && (
+          <>
+            <input
+              type="radio"
+              name="auth_tabs"
+              class="tab"
+              aria-label="Normie"
+              checked
+            />
+            <div class="tab-content border-base-300 bg-base-100 p-6">
+              <p class="mb-6 text-center text-sm italic opacity-70">
+                "Fight some bankers without spending tokens. No risk, no
+                reward."
+              </p>
+              <button
+                id="btn-login-normie"
+                class="btn btn-secondary w-full font-bold tracking-widest uppercase"
+              >
+                Login as a Normie
+              </button>
+            </div>
+          </>
+        )
+      }
 
       <!-- Degen Tab -->
       <input

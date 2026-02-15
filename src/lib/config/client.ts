@@ -143,7 +143,6 @@ export const config: ConfigTypes = {
       "Neon Overdrive",
       "Neural Knot",
       "Riot in Sector 4",
-      "Silicon Soul",
       "Terminal Velocity",
       "VHS Violence",
       "Velvet Static"
@@ -353,7 +352,7 @@ export const config: ConfigTypes = {
     "time_limit_seconds": 300,
     "max_keys": 150,
     "guest": {
-      "enabled": false,
+      "enabled": true,
       "max_sessions_per_day": 24,
       "storage_key": "tresr_guest_sessions"
     },
@@ -506,27 +505,34 @@ export const config: ConfigTypes = {
           "direct": {},
           "flanker": {
             "speed_mult": 1.1,
-            "offset": 100,
-            "switch_time": 3
+            "offset": 120,
+            "switch_time": 3,
+            "orbit_time": 2,
+            "lunge_speed_mult": 2.5,
+            "lunge_duration": 0.3,
+            "recovery_time": 0.8
           },
           "cautious": {
             "speed_mult": 0.7,
             "preferred_distance": 180,
             "group_radius": 200,
             "pack_threshold": 2,
-            "charge_speed_mult": 1.3
+            "charge_speed_mult": 1.3,
+            "strafe_speed_mult": 0.9,
+            "strafe_switch_time": 2
           },
           "erratic": {
             "speed_mult": 1.2,
-            "update_time": 0.5,
-            "jitter_x": 150,
-            "jitter_y": 100
+            "zigzag_frequency": 3,
+            "zigzag_amplitude": 80
           },
           "swarm": {
             "speed_mult": 1,
             "group_radius": 150,
             "speed_bonus_per_ally": 0.15,
-            "max_speed_mult": 2
+            "max_speed_mult": 2,
+            "rush_threshold": 3,
+            "rush_tint": 65416
           },
           "passive": {
             "speed_mult": 0.5,
@@ -540,13 +546,13 @@ export const config: ConfigTypes = {
             "attack_damage": 10
           },
           "weights": {
-            "cautious": 0,
-            "direct": 100,
-            "erratic": 0,
-            "flanker": 0,
-            "passive": 0,
-            "retardio": 0,
-            "swarm": 0
+            "direct": 25,
+            "flanker": 20,
+            "cautious": 15,
+            "swarm": 15,
+            "erratic": 10,
+            "passive": 10,
+            "retardio": 5
           }
         },
         "animations": {
@@ -554,7 +560,7 @@ export const config: ConfigTypes = {
         },
         "spawner": {
           "pool_size": 50,
-          "delay_ms": 3000,
+          "delay_ms": 2500,
           "buffer_distance": 50
         },
         "loot": {
@@ -1361,5 +1367,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "232fd20a09d099bef5c9cfa0cff0b9a88c0d6d9706140b014dd2ca3d320815a5"
+  "configHash": "47bb7bddf53336e8003937796ff518a209279d9bdfd34212e15080c4abb395c2"
 };

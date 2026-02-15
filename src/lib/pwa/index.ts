@@ -1,6 +1,7 @@
 // PWA Utilities: Service Worker Registration and Version Update Handling
 
 import {log, JUNO_ENVIRONMENT} from "../utils/log";
+import {trackPwaInstall} from "../metrics/analytics";
 
 const COMPONENT_NAME = "PWA";
 
@@ -79,6 +80,12 @@ class PWA {
     } else {
       log.warn(COMPONENT_NAME, "SW not supported");
     }
+
+    // Track PWA install prompt
+    window.addEventListener("appinstalled", () => {
+      log.info(COMPONENT_NAME, "PWA installed");
+      trackPwaInstall();
+    });
 
     // Start periodic checks — version poll works even without SW support
     this.startPeriodicUpdateCheck();
