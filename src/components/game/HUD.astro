@@ -13,7 +13,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
 ---
 
 <div
-  class="pointer-events-none absolute inset-0 flex flex-col justify-between p-4"
+  class="pointer-events-none absolute inset-0 flex flex-col justify-between p-2 sm:p-4"
 >
   <!-- Top Bar -->
   <div class="grid w-full grid-cols-3 items-start gap-4">
@@ -22,33 +22,58 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
       <div
         class="stats bg-base-300/80 border-primary/20 pointer-events-auto border shadow-lg backdrop-blur"
       >
-        <div class="stat p-2 px-4">
-          <div class="stat-title text-[10px] uppercase opacity-50">HP</div>
-          <div id="hud-hp" class="stat-value text-error font-mono text-xl">
+        <div class="stat p-1 px-2 sm:p-2 sm:px-4">
+          <div
+            class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
+          >
+            HP
+          </div>
+          <div
+            id="hud-hp"
+            class="stat-value text-error font-mono text-sm sm:text-xl"
+          >
             {playerHealth}
           </div>
         </div>
-        <div class="stat border-primary/10 border-l p-2 px-4">
-          <div class="stat-title text-[10px] uppercase opacity-50">Score</div>
-          <div id="hud-score" class="stat-value text-primary font-mono text-xl">
+        <div class="stat border-primary/10 border-l p-1 px-2 sm:p-2 sm:px-4">
+          <div
+            class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
+          >
+            Score
+          </div>
+          <div
+            id="hud-score"
+            class="stat-value text-primary font-mono text-sm sm:text-xl"
+          >
             0
           </div>
         </div>
-        <div class="stat border-primary/10 border-l p-2 px-4">
-          <div class="stat-title text-[10px] uppercase opacity-50">Keys</div>
+        <div class="stat border-primary/10 border-l p-1 px-2 sm:p-2 sm:px-4">
+          <div
+            class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
+          >
+            Keys
+          </div>
           <div
             id="hud-keys"
-            class="stat-value text-secondary font-mono text-xl"
+            class="stat-value text-secondary font-mono text-sm sm:text-xl"
           >
             0
           </div>
         </div>
         <div
           id="hud-lives-stat"
-          class="stat border-primary/10 hidden border-l p-2 px-4"
+          class="stat border-primary/10 hidden border-l p-1 px-2 sm:p-2 sm:px-4"
         >
-          <div class="stat-title text-[10px] uppercase opacity-50">Lives</div>
-          <div id="hud-lives" class="stat-value text-warning font-mono text-xl">
+          <div
+            class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
+          >
+            Lives
+          </div>
+          <div
+            id="hud-lives"
+            class="stat-value text-warning font-mono text-sm sm:text-xl"
+          >
             1
           </div>
         </div>
@@ -60,11 +85,16 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
       <div
         class="stats bg-base-300/80 border-error/20 pointer-events-auto border shadow-lg backdrop-blur"
       >
-        <div class="stat p-2 px-6">
-          <div class="stat-title text-center text-[10px] uppercase opacity-50">
+        <div class="stat p-1 px-3 sm:p-2 sm:px-6">
+          <div
+            class="stat-title text-center text-[8px] uppercase opacity-50 sm:text-[10px]"
+          >
             System Clock
           </div>
-          <div id="hud-timer" class="stat-value text-error font-mono text-3xl">
+          <div
+            id="hud-timer"
+            class="stat-value text-error font-mono text-lg sm:text-3xl"
+          >
             {timerMin}:{timerSec}
           </div>
         </div>
@@ -97,7 +127,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
       <!-- Super Power Bar -->
       <div
         id="hud-super-bar"
-        class="bg-base-300/80 border-warning/30 pointer-events-auto w-48 rounded-lg border p-2 shadow-lg backdrop-blur"
+        class="bg-base-300/80 border-warning/30 pointer-events-auto w-32 rounded-lg border p-1.5 shadow-lg backdrop-blur sm:w-48 sm:p-2"
       >
         <div class="flex items-center justify-between">
           <span class="text-warning text-[10px] font-bold uppercase opacity-80"

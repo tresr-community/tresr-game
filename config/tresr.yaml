@@ -303,14 +303,15 @@ client:
         critical: 0xff0000
     # TODO: Get these right, need to test on many maps.
     # Walkable ground plane — the street area where characters walk
-    # Matches wallpaper layout: bottom ~35% of 720px screen
+    # Values are ratios (0.0–1.0) of canvas dimensions so they scale dynamically.
+    # Original reference: 1280×720 → top_y=600 (0.833), bottom_y=700 (0.972)
     walkable_area:
-      # Set top_y smaller to walk higher on the screen.
-      top_y: 600
-      # Set bottom_y larger to walk lower on the screen.
-      bottom_y: 700
-      left_x: 0
-      right_x: 1280 # screen width
+      # Set top_y_ratio smaller to walk higher on the screen.
+      top_y_ratio: 0.833
+      # Set bottom_y_ratio larger to walk lower on the screen.
+      bottom_y_ratio: 0.972
+      left_x_ratio: 0.0
+      right_x_ratio: 1.0
     # ─── Entities ───
     entities:
       player:
@@ -355,8 +356,8 @@ client:
           attack_shake_intensity: 0.01
           victory_flash_duration: 500
         spawn:
-          x: 50 # Just inside left edge of screen, "walking into picture..."
-          y: 650 # Within walkable area (midpoint of 600–700)
+          x_ratio: 0.039 # Just inside left edge of screen, "walking into picture..." (50/1280)
+          y_ratio: 0.903 # Within walkable area midpoint of 600–700 (650/720)
         lives: 1 # Number of respawns (1 = no respawn, die once and game over)
         respawn:
           invincibility_ms: 3000 # Invincibility duration after respawn
@@ -484,7 +485,7 @@ client:
         descent:
           speed: 3 # Speed at which boss descends from above
           start_y: -100
-          threshold: 650 # groundY at which boss starts fighting (within walkable area)
+          threshold_ratio: 0.903 # groundY ratio at which boss starts fighting (650/720)
         # TODO: This needs improvements.
         # Boss enters Phase 2 (enrage) when HP drops below the threshold
         phases:
@@ -547,8 +548,8 @@ client:
           delay_ms: 2000
           start_z: 500
           x_margin: 100
-          y_margin_top: 600 # Top of walkable area (must match walkable_area.top_y)
-          y_margin_bottom: 25 # Bottom margin from screen edge
+          y_margin_top_ratio: 0.833 # Top of walkable area ratio (must match walkable_area.top_y_ratio)
+          y_margin_bottom_ratio: 0.035 # Bottom margin ratio from screen edge (25/720)
       # Bombs fall from the sky and explode on landing, damaging the player
       bomb:
         damage: 50 # Damage dealt to player caught in explosion
@@ -564,8 +565,8 @@ client:
           delay_ms: 5000 # Interval between bomb drops (ms)
           start_z: 400 # Initial height above ground (px, for fall animation)
           x_margin: 100 # Horizontal margin from screen edges for spawn (px)
-          y_margin_top: 600 # Top of walkable area (must match walkable_area.top_y)
-          y_margin_bottom: 25 # Bottom margin from screen edge
+          y_margin_top_ratio: 0.833 # Top of walkable area ratio (must match walkable_area.top_y_ratio)
+          y_margin_bottom_ratio: 0.035 # Bottom margin ratio from screen edge (25/720)
       # Treasure chest that air-drops after the boss is defeated
       chest:
         combat:

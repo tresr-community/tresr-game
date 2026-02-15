@@ -63,6 +63,7 @@
     rejectFeeGate,
   } from "@/lib/game/fee-gate";
   import {log} from "@/lib/utils/log";
+  import {trackFeePaid} from "@/lib/metrics/analytics";
 
   const COMPONENT_NAME = "FeeGate";
 
@@ -244,6 +245,7 @@
       // Store session info in the fee-gate module (async — generates HMAC signature)
       await markFeePaid(txHash, sessionId);
 
+      trackFeePaid(txHash);
       log.info(COMPONENT_NAME, `Fee paid: ${txHash}, session: ${sessionId}`);
       showStatus("Payment confirmed! Starting mission...");
 

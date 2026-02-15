@@ -18,7 +18,10 @@ const {title, description = "A 2.5D platformer for the Tresr Community"} =
 <html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#1a1025" />
     <link rel="icon" type="image/png" href="/assets/icons/ios/32.png" />
@@ -39,11 +42,84 @@ const {title, description = "A 2.5D platformer for the Tresr Community"} =
     />
     <title>{title}</title>
   </head>
-  <body class="bg-base-300 min-h-screen overflow-x-hidden">
+  <body
+    class="bg-base-300 min-h-screen overflow-x-hidden"
+    style="touch-action:manipulation"
+  >
     <Header />
     <main>
       <slot />
     </main>
+
+    <!-- Portrait orientation blocker — global across all pages -->
+    <div
+      id="portrait-warning"
+      class="fixed inset-0 z-[99999] hidden flex-col items-center justify-center gap-6 bg-black text-center"
+    >
+      <div class="animate-bounce text-7xl">📱</div>
+      <p class="font-display text-primary text-3xl font-bold tracking-wide">
+        ROTATE YOUR DEVICE
+      </p>
+      <p class="max-w-xs text-lg opacity-60">
+        This game is best played in landscape mode.
+      </p>
+      <div class="mt-4 animate-pulse text-5xl">↻</div>
+    </div>
+    <script is:inline>
+      // Portrait detection — runs immediately, no module loading needed.
+      // Uses both matchMedia AND dimension check for reliability across all devices.
+      (function () {
+        var warning = document.getElementById("portrait-warning");
+        if (!warning) return;
+
+        function isTouchDevice() {
+          return "ontouchstart" in window || navigator.maxTouchPoints > 0;
+        }
+
+        function isPortrait() {
+          // Only block portrait on touch devices (phones/tablets)
+          if (!isTouchDevice()) return false;
+          // Primary check: dimensions (most reliable)
+          if (window.innerHeight > window.innerWidth) return true;
+          // Fallback: media query
+          if (
+            window.matchMedia &&
+            window.matchMedia("(orientation: portrait)").matches
+          )
+            return true;
+          return false;
+        }
+
+        function check() {
+          if (isPortrait()) {
+            warning.classList.remove("hidden");
+            warning.classList.add("flex");
+            document.dispatchEvent(
+              new CustomEvent("tresr:portrait-change", {
+                detail: {portrait: true},
+              })
+            );
+          } else {
+            warning.classList.add("hidden");
+            warning.classList.remove("flex");
+            document.dispatchEvent(
+              new CustomEvent("tresr:portrait-change", {
+                detail: {portrait: false},
+              })
+            );
+          }
+        }
+
+        // Check on load, resize, and orientation change
+        check();
+        window.addEventListener("resize", check);
+        window.addEventListener("orientationchange", function () {
+          // Delay slightly — some browsers update dimensions after the event
+          setTimeout(check, 100);
+        });
+      })();
+    </script>
+
     <UpdatePrompt />
     <NotificationToast />
     <ProfileModal />

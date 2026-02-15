@@ -247,6 +247,13 @@
   import type {UserProfile} from "@/types/backend";
   import {log} from "@/lib/utils/log";
   import {profileStore} from "@/lib/user/store";
+  import {
+    trackModalOpen,
+    trackProfileUpdate,
+    trackAvatarUpload,
+    trackWalletLink,
+    trackWalletUnlink,
+  } from "@/lib/metrics/analytics";
 
   const COMPONENT_NAME = "ProfileModal";
 
@@ -288,6 +295,7 @@
   async function openProfileModal() {
     log.info(COMPONENT_NAME, "Opening modal");
     modal?.showModal();
+    trackModalOpen("profile");
     await loadProfile();
   }
 
@@ -471,6 +479,7 @@
       );
       // Update the profile store so LoginButton's subscription picks up the new nickname
       profileStore.set({...currentProfile});
+      trackProfileUpdate("nickname");
       window.showInfoToast("Profile updated successfully");
       log.info(COMPONENT_NAME, "Profile saved successfully.", currentProfile);
     } catch (error) {
@@ -511,6 +520,7 @@
           currentVersion = savedDoc.version;
         }
         updateWalletUI();
+        trackWalletLink();
         window.showInfoToast("Neural link established");
       }
     } catch (err: unknown) {
@@ -551,6 +561,7 @@
             currentVersion = savedDoc.version;
           }
           updateWalletUI();
+          trackWalletUnlink();
           window.showInfoToast("Neural link severed");
         }
       } catch (err) {
@@ -663,6 +674,7 @@
       // Update display
       renderAvatar(currentProfile);
       profileStore.set({...currentProfile});
+      trackAvatarUpload();
       window.showInfoToast("Avatar updated!");
       log.info(COMPONENT_NAME, "Avatar uploaded successfully:", url);
     } catch (err) {

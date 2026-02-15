@@ -52,6 +52,7 @@ concurrency:
 
 permissions:
   contents: write
+  id-token: write
 
 env:
   NIXPKGS_ALLOW_UNFREE: 1

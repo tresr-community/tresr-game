@@ -412,10 +412,10 @@ export const config: ConfigTypes = {
       }
     },
     "walkable_area": {
-      "top_y": 600,
-      "bottom_y": 700,
-      "left_x": 0,
-      "right_x": 1280
+      "top_y_ratio": 0.833,
+      "bottom_y_ratio": 0.972,
+      "left_x_ratio": 0,
+      "right_x_ratio": 1
     },
     "entities": {
       "player": {
@@ -467,8 +467,8 @@ export const config: ConfigTypes = {
           "victory_flash_duration": 500
         },
         "spawn": {
-          "x": 50,
-          "y": 650
+          "x_ratio": 0.039,
+          "y_ratio": 0.903
         },
         "lives": 1,
         "respawn": {
@@ -597,7 +597,7 @@ export const config: ConfigTypes = {
         "descent": {
           "speed": 3,
           "start_y": -100,
-          "threshold": 650
+          "threshold_ratio": 0.903
         },
         "phases": {
           "enrage_threshold": 0.5,
@@ -664,8 +664,8 @@ export const config: ConfigTypes = {
           "delay_ms": 2000,
           "start_z": 500,
           "x_margin": 100,
-          "y_margin_top": 600,
-          "y_margin_bottom": 25
+          "y_margin_top_ratio": 0.833,
+          "y_margin_bottom_ratio": 0.035
         }
       },
       "bomb": {
@@ -684,8 +684,8 @@ export const config: ConfigTypes = {
           "delay_ms": 5000,
           "start_z": 400,
           "x_margin": 100,
-          "y_margin_top": 600,
-          "y_margin_bottom": 25
+          "y_margin_top_ratio": 0.833,
+          "y_margin_bottom_ratio": 0.035
         }
       },
       "chest": {
@@ -1317,12 +1317,17 @@ export const config: ConfigTypes = {
         "date": "2026-02-15",
         "title": "Decaying High Score & Consolation Prize",
         "notes": [
-          "Active score leaderboard with 24h TTL decay",
-          "Consolation prize for expired #1 active score",
-          "Two-tab leaderboard UI (ACTIVE + ALL TIME)",
-          "Game session tracking on victory and defeat",
-          "Countdown timers on active leaderboard entries",
-          "5 new enemy AI types"
+          "Active score leaderboard with 24h TTL decay — your high score rugs itself",
+          "Consolation prize for expired #1 active score — a participation trophy for degens",
+          "Two-tab leaderboard UI (ACTIVE + ALL TIME) — so you can cope in two dimensions",
+          "Game session tracking on victory and defeat — receipts for your bags and your L's",
+          "Countdown timers on active leaderboard entries — watch your clout evaporate in real time",
+          "5 new enemy AI types — the bankers brought reinforcements from TradFi",
+          "Mobile support so you can beat-up bankers from the toilet",
+          "PWA Mobile support for that poor-man native app feel",
+          "Portrait mode blocked — forced landscape, no vertical charts allowed",
+          "Screen wake lock — your phone won't paper-hand and go to sleep mid-boss",
+          "CI pipeline caching — builds go brrr 🚀"
         ]
       },
       {
@@ -1330,8 +1335,8 @@ export const config: ConfigTypes = {
         "date": "2026-02-14",
         "title": "Leaderboard",
         "notes": [
-          "Add Leaderboard",
-          "Add CI Pipelines"
+          "Leaderboard — finally some on-chain clout to flex",
+          "CI Pipelines — because yolo-pushing to main was getting old (it wasn't)"
         ]
       },
       {
@@ -1356,5 +1361,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "c117f7817b6d8d897f40e1a949f856fec5af5014c504501256172bd94c1b654a"
+  "configHash": "232fd20a09d099bef5c9cfa0cff0b9a88c0d6d9706140b014dd2ca3d320815a5"
 };

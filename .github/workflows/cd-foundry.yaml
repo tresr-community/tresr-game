@@ -39,6 +39,7 @@ permissions:
   packages: read
   pull-requests: read
   statuses: write
+  id-token: write
 
 env:
   NIXPKGS_ALLOW_UNFREE: 1
@@ -75,6 +76,10 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: cache_foundry
+        name: Cache Foundry
+        uses: ./.github/actions/cache-foundry
 
       - id: resolve_environment
         name: Resolve Environment

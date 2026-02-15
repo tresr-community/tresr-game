@@ -48,6 +48,7 @@ const instructions: ConfigTypes["app"]["instructions"] = processor
   import PWA from "@/lib/pwa";
   import {getAuthState} from "@/lib/auth";
   import {getUserProfile, saveUserProfile} from "@/lib/user";
+  import {trackModalOpen} from "@/lib/metrics/analytics";
 
   const modal = document.getElementById(
     "how-to-play-modal"
@@ -55,6 +56,7 @@ const instructions: ConfigTypes["app"]["instructions"] = processor
 
   async function openHowToPlayModal() {
     modal?.showModal();
+    trackModalOpen("how_to_play");
     PWA.getInstance().checkForUpdates();
 
     // Mark instructions as read

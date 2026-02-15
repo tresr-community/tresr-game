@@ -315,8 +315,9 @@ export class Player extends BaseEntity {
    */
   public respawn() {
     const playerConfig = this.config.gameplay.entities.player;
-    const spawnX = playerConfig.spawn.x;
-    const spawnY = playerConfig.spawn.y;
+    const {width, height} = this.scene.cameras.main;
+    const spawnX = Math.round(playerConfig.spawn.x_ratio * width);
+    const spawnY = Math.round(playerConfig.spawn.y_ratio * height);
     const respawnConfig = playerConfig.respawn;
 
     // Reset death guard and HP

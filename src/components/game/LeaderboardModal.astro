@@ -60,6 +60,7 @@
   import {listDocs} from "@junobuild/core";
   import PWA from "@/lib/pwa";
   import {log} from "@/lib/utils/log";
+  import {trackModalOpen} from "@/lib/metrics/analytics";
 
   const COMPONENT_NAME = "LeaderboardModal";
 
@@ -79,6 +80,7 @@
 
   function openLeaderboardModal() {
     modal?.showModal();
+    trackModalOpen("leaderboard");
     currentTab = "active";
     updateTabUI();
     loadActiveLeaderboard();

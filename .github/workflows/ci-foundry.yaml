@@ -15,6 +15,10 @@ on:
     paths:
       - "contracts/**"
 
+  merge_group:
+    branches:
+      - trunk
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -24,6 +28,7 @@ permissions:
   packages: read
   pull-requests: read
   statuses: write
+  id-token: write
 
 env:
   NIXPKGS_ALLOW_UNFREE: 1
@@ -60,6 +65,10 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: cache_foundry
+        name: Cache Foundry
+        uses: ./.github/actions/cache-foundry
 
       - id: check_solidity
         name: Check Solidity Contracts

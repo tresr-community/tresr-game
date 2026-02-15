@@ -28,6 +28,10 @@ on:
       - "docs/**"
       - "**/*.md"
 
+  merge_group:
+    branches:
+      - trunk
+
   schedule:
     - cron: "0 0 * * 0"
 
@@ -42,6 +46,7 @@ permissions:
   statuses: write
   security-events: write
   actions: read
+  id-token: write
 
 env:
   NIXPKGS_ALLOW_UNFREE: 1

@@ -81,7 +81,7 @@ interface GameplayConfig {
         attack_shake_intensity: number;
         victory_flash_duration: number;
       };
-      spawn: {x: number; y: number};
+      spawn: {x_ratio: number; y_ratio: number};
       lives: number;
       respawn: {
         invincibility_ms: number;
@@ -127,7 +127,7 @@ interface GameplayConfig {
       knockback: {force: number; stun_ms: number};
       hitbox: {radius: number; offsetX: number; offsetY: number};
       combat: {attack_range: number; contact_depth_threshold: number};
-      descent: {speed: number; start_y: number; threshold: number};
+      descent: {speed: number; start_y: number; threshold_ratio: number};
       phases: {
         enrage_threshold: number;
         phase2_speed_mult: number;
@@ -182,8 +182,8 @@ interface GameplayConfig {
         delay_ms: number;
         start_z: number;
         x_margin: number;
-        y_margin_top: number;
-        y_margin_bottom: number;
+        y_margin_top_ratio: number;
+        y_margin_bottom_ratio: number;
       };
     };
     bomb: {
@@ -196,8 +196,8 @@ interface GameplayConfig {
         delay_ms: number;
         start_z: number;
         x_margin: number;
-        y_margin_top: number;
-        y_margin_bottom: number;
+        y_margin_top_ratio: number;
+        y_margin_bottom_ratio: number;
       };
     };
     chest: {
@@ -249,10 +249,10 @@ interface GameplayConfig {
     };
   };
   walkable_area: {
-    top_y: number;
-    bottom_y: number;
-    left_x: number;
-    right_x: number;
+    top_y_ratio: number;
+    bottom_y_ratio: number;
+    left_x_ratio: number;
+    right_x_ratio: number;
   };
   combat: {
     enemy_damage_cooldown_ms: number;
@@ -516,13 +516,15 @@ export class MainScene extends Phaser.Scene {
     // Initialize survival timer from config
     this.survivalTimer = this.gameplayConfig.time_limit_seconds;
 
-    // Initialize walkable area from config
+    // Initialize walkable area from config ratios × canvas dimensions
     const wa = this.gameplayConfig.walkable_area;
     this.walkableArea = new WalkableArea(
-      wa.top_y,
-      wa.bottom_y,
-      wa.left_x,
-      wa.right_x
+      wa.top_y_ratio,
+      wa.bottom_y_ratio,
+      wa.left_x_ratio,
+      wa.right_x_ratio,
+      width,
+      height
     );
     // Store in registry so entities can access it
     this.registry.set("walkable_area", this.walkableArea);
@@ -555,6 +557,9 @@ export class MainScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, width, height);
     this.cameras.main.setBounds(0, 0, width, height);
 
+    // Listen for canvas resize events
+    this.scale.on("resize", this.handleResize, this);
+
     // Get entity configs
     const entities = this.gameplayConfig.entities;
 
@@ -578,11 +583,11 @@ export class MainScene extends Phaser.Scene {
       runChildUpdate: true,
     });
 
-    // Instantiate Player at spawn position from config
+    // Instantiate Player at spawn position from config ratios
     this.player = new Player(
       this,
-      entities.player.spawn.x,
-      entities.player.spawn.y
+      Math.round(entities.player.spawn.x_ratio * width),
+      Math.round(entities.player.spawn.y_ratio * height)
     );
     const spritesConfig = this.registry.get("sprites_config") as SpritesConfig;
     const heroScale = SpriteManager.getScaleFactor(spritesConfig, "hero");
@@ -812,6 +817,7 @@ export class MainScene extends Phaser.Scene {
     log.info(COMPONENT_NAME, "Shutting down, cleaning up...");
 
     // Clean up event listeners
+    this.scale.off("resize", this.handleResize, this);
     this.events.off("boss_defeated", this.spawnChest, this);
     this.events.off("game_win", this.onVictory, this);
     this.events.off("player_attack", this.handlePlayerAttack, this);
@@ -1092,6 +1098,35 @@ export class MainScene extends Phaser.Scene {
     gameActions.setTimer(this.survivalTimer);
   }
 
+  /**
+   * Handle dynamic canvas resize — recompute world bounds, walkable area,
+   * and background cover-scale so the game fills any viewport.
+   */
+  private handleResize(gameSize: Phaser.Structs.Size) {
+    const width = gameSize.width;
+    const height = gameSize.height;
+
+    // Update world and camera bounds
+    this.physics.world.setBounds(0, 0, width, height);
+    this.cameras.main.setBounds(0, 0, width, height);
+
+    // Update walkable area pixel values from ratios
+    if (this.walkableArea) {
+      this.walkableArea.resize(width, height);
+    }
+
+    // Re-scale background to cover the new canvas
+    if (this.background) {
+      this.background.setPosition(width / 2, height / 2);
+      const tex = this.textures.get(
+        this.registry.get("selected_wallpaper") as string
+      ).getSourceImage();
+      const scaleX = width / tex.width;
+      const scaleY = height / tex.height;
+      this.background.setScale(Math.max(scaleX, scaleY));
+    }
+  }
+
   private spawnEnemy() {
     if (this.phase !== "survival" || !this.enemies || !this.player) return;
 
@@ -1130,8 +1165,8 @@ export class MainScene extends Phaser.Scene {
     const {width, height} = this.cameras.main;
     const keySpawner = this.gameplayConfig.entities.key.spawner;
     const xMargin = keySpawner.x_margin;
-    const yMarginTop = keySpawner.y_margin_top;
-    const yMarginBottom = keySpawner.y_margin_bottom;
+    const yMarginTop = Math.round(keySpawner.y_margin_top_ratio * height);
+    const yMarginBottom = Math.round(keySpawner.y_margin_bottom_ratio * height);
 
     const x = this.rng.integerInRange(xMargin, width - xMargin);
     const groundY = this.rng.integerInRange(yMarginTop, height - yMarginBottom);
@@ -1150,8 +1185,8 @@ export class MainScene extends Phaser.Scene {
     const {width, height} = this.cameras.main;
     const bombSpawner = this.gameplayConfig.entities.bomb.spawner;
     const xMargin = bombSpawner.x_margin;
-    const yMarginTop = bombSpawner.y_margin_top;
-    const yMarginBottom = bombSpawner.y_margin_bottom;
+    const yMarginTop = Math.round(bombSpawner.y_margin_top_ratio * height);
+    const yMarginBottom = Math.round(bombSpawner.y_margin_bottom_ratio * height);
     const startZ = bombSpawner.start_z;
 
     const x = this.rng.integerInRange(xMargin, width - xMargin);

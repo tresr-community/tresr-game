@@ -4,7 +4,7 @@
 
 <div
   id="music-player"
-  class="bg-base-300/80 border-primary/20 pointer-events-auto flex w-64 flex-col gap-2 rounded-lg border p-3 shadow-lg backdrop-blur select-none"
+  class="bg-base-300/80 border-primary/20 pointer-events-auto flex w-40 flex-col gap-1 rounded-lg border p-2 shadow-lg backdrop-blur select-none sm:w-64 sm:gap-2 sm:p-3"
 >
   <!-- Track Info & Controls -->
   <div class="flex items-center justify-between gap-2">
@@ -103,8 +103,8 @@
     </div>
   </div>
 
-  <!-- Progress Bar -->
-  <div class="flex flex-col gap-1">
+  <!-- Progress Bar (hidden on mobile) -->
+  <div class="hidden flex-col gap-1 sm:flex">
     <input
       id="music-seek"
       type="range"
@@ -119,8 +119,8 @@
     </div>
   </div>
 
-  <!-- Bottom: Track Selector -->
-  <div class="flex items-center gap-3">
+  <!-- Bottom: Track Selector (hidden on mobile) -->
+  <div class="hidden items-center gap-3 sm:flex">
     <div class="dropdown dropdown-top dropdown-start flex-1">
       <div
         tabindex="0"
@@ -158,8 +158,11 @@
     </div>
   </div>
 
-  <!-- Narration Toggle (logged-in users only) -->
-  <div id="narration-toggle-row" class="flex hidden items-center gap-2">
+  <!-- Narration Toggle (logged-in users only, hidden on mobile) -->
+  <div
+    id="narration-toggle-row"
+    class="hidden items-center gap-2 max-sm:!hidden"
+  >
     <label class="label cursor-pointer gap-2 p-0">
       <span class="font-mono text-[10px] opacity-50">Narration</span>
       <input
@@ -171,8 +174,8 @@
     </label>
   </div>
 
-  <!-- Volume Controls: Music & SFX -->
-  <div class="flex items-center gap-4">
+  <!-- Volume Controls: Music & SFX (hidden on mobile) -->
+  <div class="hidden items-center gap-4 sm:flex">
     <!-- Music Volume -->
     <div class="flex flex-1 items-center gap-2">
       <svg
