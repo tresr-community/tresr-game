@@ -92,6 +92,7 @@ jobs:
           NETWORK="${{ steps.resolve_environment.outputs.network }}"
           {
             echo "RPC_URL=$(yq ".client.blockchain.avalanche.${NETWORK}.rpc_url" config/tresr.yaml)"
+            echo "CHAIN_ID=$(yq ".client.blockchain.avalanche.${NETWORK}.chain_id" config/tresr.yaml)"
             echo "TOKEN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.tresr_token_contract" config/tresr.yaml)"
             echo "ORACLE_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.oracle_address" config/tresr.yaml)"
             echo "ADMIN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.safe_address" config/tresr.yaml)"
@@ -102,6 +103,21 @@ jobs:
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           forge build --root contracts
+
+      - id: deploy_test_token
+        name: Deploy Test Token (Testnet Only)
+        if: steps.resolve_environment.outputs.network == 'testnet'
+        shell: devenv shell --quiet bash -- -e {0}
+        env:
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          SNOWTRACE_API_KEY: ${{ secrets.SNOWTRACE_API_KEY }}
+        run: |
+          forge script script/DeployTestToken.s.sol:DeployTestToken \
+            --root contracts \
+            --rpc-url ${{ steps.read_config.outputs.RPC_URL }} \
+            --broadcast \
+            --verify \
+            --etherscan-api-key "$SNOWTRACE_API_KEY"
 
       - id: deploy_contracts
         name: Deploy Contracts
@@ -119,3 +135,70 @@ jobs:
             --broadcast \
             --verify \
             --etherscan-api-key "$SNOWTRACE_API_KEY"
+
+      - id: deploy_summary
+        name: Deploy Summary
+        if: always()
+        run: |
+          NETWORK="${{ steps.resolve_environment.outputs.network }}"
+          CHAIN_ID="${{ steps.read_config.outputs.CHAIN_ID }}"
+
+          # Set explorer URL based on network
+          if [[ "$NETWORK" == "mainnet" ]]; then
+            EXPLORER="https://snowtrace.io"
+            NET_EMOJI="🟢"
+            NET_LABEL="Mainnet (C-Chain)"
+          else
+            EXPLORER="https://testnet.snowtrace.io"
+            NET_EMOJI="🟡"
+            NET_LABEL="Testnet (Fuji)"
+          fi
+
+          {
+            echo "## 🏗️ Foundry Deploy Summary"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| **Network** | ${NET_EMOJI} ${NET_LABEL} |"
+            echo "| **Chain ID** | \`${CHAIN_ID}\` |"
+            echo "| **Explorer** | [${EXPLORER}](${EXPLORER}) |"
+            echo ""
+
+            # Find all broadcast run-latest.json files
+            FOUND_CONTRACTS=false
+            for BROADCAST in contracts/broadcast/*/; do
+              SCRIPT_NAME=$(basename "$BROADCAST")
+              LATEST="contracts/broadcast/${SCRIPT_NAME}/${CHAIN_ID}/run-latest.json"
+
+              if [[ ! -f "$LATEST" ]]; then
+                continue
+              fi
+
+              # Extract CREATE transactions (deployed contracts)
+              CONTRACTS=$(jq -r '.transactions[] | select(.transactionType == "CREATE") | "\(.contractName)|\(.contractAddress)"' "$LATEST" 2>/dev/null)
+
+              if [[ -z "$CONTRACTS" ]]; then
+                continue
+              fi
+
+              if [[ "$FOUND_CONTRACTS" == "false" ]]; then
+                echo "### 📋 Deployed Contracts"
+                echo ""
+                echo "| Contract | Address | Explorer |"
+                echo "|----------|---------|----------|"
+                FOUND_CONTRACTS=true
+              fi
+
+              while IFS='|' read -r NAME ADDR; do
+                echo "| 📦 **${NAME}** | \`${ADDR}\` | [View ↗](${EXPLORER}/address/${ADDR}) |"
+              done <<< "$CONTRACTS"
+            done
+
+            if [[ "$FOUND_CONTRACTS" == "false" ]]; then
+              echo "> ⚠️ No contracts were deployed (check step logs above)."
+            fi
+
+            echo ""
+            echo "---"
+            echo "*Deployed via \`cd-foundry.yaml\` • $(date -u '+%Y-%m-%d %H:%M UTC')*"
+          } >> "$GITHUB_STEP_SUMMARY"

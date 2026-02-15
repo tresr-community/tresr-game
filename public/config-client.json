@@ -349,7 +349,7 @@
     "time_limit_seconds": 300,
     "max_keys": 150,
     "guest": {
-      "enabled": true,
+      "enabled": false,
       "max_sessions_per_day": 24,
       "storage_key": "tresr_guest_sessions"
     },
@@ -536,13 +536,13 @@
             "attack_damage": 10
           },
           "weights": {
-            "cautious": 15,
-            "direct": 25,
-            "erratic": 15,
-            "flanker": 20,
-            "passive": 10,
-            "retardio": 1,
-            "swarm": 15
+            "cautious": 0,
+            "direct": 100,
+            "erratic": 0,
+            "flanker": 0,
+            "passive": 0,
+            "retardio": 0,
+            "swarm": 0
           }
         },
         "animations": {
@@ -1352,5 +1352,5 @@
       }
     ]
   },
-  "configHash": "d54879d9d6c237720f4c65e66691d45fdf6e3e1ec47726911bef498dd4b4a41d"
+  "configHash": "c117f7817b6d8d897f40e1a949f856fec5af5014c504501256172bd94c1b654a"
 }

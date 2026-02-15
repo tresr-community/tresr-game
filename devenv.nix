@@ -316,6 +316,13 @@ in
         files = "^config/.*\.yaml$";
         pass_filenames = false;
       };
+      version-reset = {
+        enable = true;
+        name = "version-reset";
+        entry = "bun run version-reset";
+        files = "(^package\\.json$|^public/manifest\\.json$|^src/satellite/Cargo\\.toml$)";
+        pass_filenames = false;
+      };
       commitizen.enable = true;
       deadnix.enable = true;
       editorconfig-checker.enable = true;

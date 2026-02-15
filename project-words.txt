@@ -127,6 +127,12 @@ VITE
 webp
 webps
 
+# Security
+misconfig
+sarif
+SARIF
+trivy
+
 # Art and design
 Lizardcube
 narr

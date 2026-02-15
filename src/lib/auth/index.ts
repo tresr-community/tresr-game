@@ -93,6 +93,24 @@ function getSiwaClient(): SiwaClient {
       canisterId: JUNO_SIWA_PROVIDER,
       host: IC_HOST,
       autoRefresh: true,
+      onRefresh: (refreshedIdentity) => {
+        // Re-bridge the refreshed delegation to IDB so Juno sees it
+        siwaIdentity = refreshedIdentity;
+        bridgeSiwaToIdb(refreshedIdentity)
+          .then(() => {
+            log.info(
+              COMPONENT_NAME,
+              "Re-bridged refreshed SIWA identity to IDB"
+            );
+          })
+          .catch((err) => {
+            log.warn(
+              COMPONENT_NAME,
+              "Failed to re-bridge refreshed identity:",
+              err
+            );
+          });
+      },
     });
   }
   log.debug(COMPONENT_NAME, "Juno SIWA Provider:", JUNO_SIWA_PROVIDER);

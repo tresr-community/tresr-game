@@ -8,7 +8,7 @@
 #   - Manual dispatch → Create pre-release (Testnet) or promote to release (Mainnet)
 #
 # Flow:
-#   1. Compute next version via convco (conventional commits)
+#   1. Compute next version via convco (or use version_override if provided)
 #   2. Bump version in package.json, manifest.json, Cargo.toml
 #   3. Testnet: Tag as v{version}, create pre-release
 #      → calls cd-juno-testnet.yaml (workflow_call)
@@ -37,6 +37,11 @@ on:
         default: Testnet
       release_tag:
         description: "Tag to promote (Mainnet only, e.g. v0.2.0)"
+        required: false
+        type: string
+        default: ""
+      version_override:
+        description: "Force a specific version (Testnet only, e.g. 0.3.0 or v0.3.0)"
         required: false
         type: string
         default: ""
@@ -98,13 +103,26 @@ jobs:
         name: Compute Version
         shell: devenv shell --quiet bash -- -e {0}
         run: |
-          # Get next version from conventional commits
-          NEXT_VERSION=$(convco version --bump 2>/dev/null || echo "")
+          OVERRIDE="${{ github.event.inputs.version_override }}"
 
-          if [[ -z "${NEXT_VERSION}" ]]; then
-            echo "No conventional commits found to bump version"
-            # Fall back to current version
-            NEXT_VERSION=$(convco version)
+          if [[ -n "${OVERRIDE}" ]]; then
+            # Strip leading 'v' if present and validate
+            NEXT_VERSION="${OVERRIDE#v}"
+
+            if ! [[ "${NEXT_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+              echo "::error::Invalid version format: '${OVERRIDE}'. Expected semver (e.g. 0.3.0 or v0.3.0)"
+              exit 1
+            fi
+
+            echo "Using manual version override: ${NEXT_VERSION}"
+          else
+            # Get next version from conventional commits
+            NEXT_VERSION=$(convco version --bump 2>/dev/null || echo "")
+
+            if [[ -z "${NEXT_VERSION}" ]]; then
+              echo "No conventional commits found to bump version"
+              NEXT_VERSION=$(convco version)
+            fi
           fi
 
           TAG="v${NEXT_VERSION}"

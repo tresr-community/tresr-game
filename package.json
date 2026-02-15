@@ -9,6 +9,8 @@
     "version-bump": "bun run bin/version.ts --bump",
     "version-set": "bun run bin/version.ts --set",
     "version-get": "bun run bin/version.ts --get",
+    "version-dev": "bun run bin/version.ts --dev-bump",
+    "version-reset": "bun run bin/version.ts --reset",
     "client-config": "bun run bin/client-config.ts",
     "prebuild": "bun run client-config",
     "build": "astro build",

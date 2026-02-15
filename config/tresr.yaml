@@ -242,7 +242,7 @@ client:
     max_keys: 150
     # Guest rate limiting
     guest:
-      enabled: true # Enable/Disable the "normie mode"
+      enabled: false # Enable/Disable the "normie mode"
       max_sessions_per_day: 24
       storage_key: "tresr_guest_sessions"
     # Fee gate configuration
@@ -432,13 +432,20 @@ client:
             retarget_time: 4
             attack_damage: 10
           weights:
-            cautious: 15
-            direct: 25
-            erratic: 15
-            flanker: 20
-            passive: 10
-            retardio: 1
-            swarm: 15
+            #cautious: 15
+            #direct: 25
+            #erratic: 15
+            #flanker: 20
+            #passive: 10
+            #retardio: 1
+            # TEST
+            cautious: 0 # TODO: Test
+            direct: 100 # TODO: Test
+            erratic: 0 # TODO: Test
+            flanker: 0 # TODO: Test
+            passive: 0 # TODO: Test
+            retardio: 0 # TODO: Test
+            swarm: 0 # TODO: Test
         animations:
           death_delay: 500 # Delay before kill() after hurt animation (ms)
         spawner:

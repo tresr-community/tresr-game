@@ -67,17 +67,26 @@ function cmd_functions_build() {
 }
 
 # =============================================================================
-# Deploy: Juno Serverless Functions (Publish to CDN)
+# Deploy: Build + Upgrade Juno Serverless Functions (Direct Deploy)
 # =============================================================================
 
 function cmd_functions_deploy() {
 	local mode="${1:-development}"
-	log_info "📤 Publishing Juno serverless functions (mode=$mode)..."
-	juno functions publish --mode "$mode" || {
-		log_error "Functions publish failed!"
+
+	# Step 1: Bump dev version before build so it's compiled into the WASM
+	log_info "📦 Bumping dev version..."
+	bun run version-dev || log_warn "Dev version bump failed (continuing anyway)"
+
+	# Step 2: Build Rust → WASM (includes the bumped version)
+	cmd_functions_build || return 1
+
+	# Step 3: Upgrade (direct deploy, skips CDN — use 'publish' for CI/CD)
+	log_info "📤 Upgrading Juno serverless functions (mode=$mode)..."
+	juno functions upgrade --mode "$mode" || {
+		log_error "Functions upgrade failed!"
 		return 1
 	}
-	log_success "✅ Functions published (mode=$mode)."
+	log_success "✅ Functions upgraded (mode=$mode)."
 }
 
 # =============================================================================
