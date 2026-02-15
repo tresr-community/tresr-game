@@ -3,6 +3,7 @@ import NotificationBell from "@/components/notifications/NotificationBell.astro"
 import WalletLink from "@/components/wallet/WalletLink.astro";
 import FaucetButton from "@/components/wallet/FaucetButton.astro";
 import NotificationToast from "@/components/notifications/NotificationToast.astro";
+import MusicPlayer from "@/components/game/MusicPlayer.astro";
 ---
 
 <header
@@ -12,6 +13,22 @@ import NotificationToast from "@/components/notifications/NotificationToast.astr
   <div
     class="bg-base-100/50 border-primary/20 pointer-events-auto flex items-center gap-2 rounded-full border p-1 shadow-lg backdrop-blur-md"
   >
+    <!-- Music Player Toggle -->
+    <div class="dropdown dropdown-end" id="music-dropdown">
+      <label
+        tabindex="0"
+        class="btn btn-ghost btn-circle text-xl"
+        title="Music Player"
+        aria-label="Toggle music player"
+        id="btn-music-dropdown"
+      >
+        🎵
+      </label>
+      <div tabindex="0" class="dropdown-content z-[1] mt-3">
+        <MusicPlayer />
+      </div>
+    </div>
+
     <NotificationBell />
 
     <!-- Theme Selector -->
@@ -227,4 +244,22 @@ import NotificationToast from "@/components/notifications/NotificationToast.astr
   setTheme(savedTheme);
 
   startup();
+
+  // Music dropdown: close on click-outside
+  const musicDropdown = document.getElementById("music-dropdown");
+  const musicBtn = document.getElementById("btn-music-dropdown");
+  function handleMusicClickOutside(e: MouseEvent) {
+    if (musicDropdown && !musicDropdown.contains(e.target as Node)) {
+      // Blur the label to close DaisyUI dropdown
+      musicBtn?.blur();
+    }
+  }
+  document.addEventListener("click", handleMusicClickOutside);
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      document.removeEventListener("click", handleMusicClickOutside);
+    },
+    {once: true}
+  );
 </script>

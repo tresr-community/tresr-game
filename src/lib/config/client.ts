@@ -427,9 +427,9 @@ export const config: ConfigTypes = {
           "stun_ms": 300
         },
         "hitbox": {
-          "radius": 40,
-          "offsetX": 460,
-          "offsetY": 920
+          "radius": 20,
+          "offsetX": 236,
+          "offsetY": 472
         },
         "combat": {
           "reach": 80,
@@ -492,9 +492,9 @@ export const config: ConfigTypes = {
           "stun_ms": 200
         },
         "hitbox": {
-          "radius": 35,
-          "offsetX": 465,
-          "offsetY": 930
+          "radius": 18,
+          "offsetX": 238,
+          "offsetY": 476
         },
         "combat": {
           "attack_range": 80,
@@ -592,9 +592,9 @@ export const config: ConfigTypes = {
           "stun_ms": 100
         },
         "hitbox": {
-          "radius": 40,
-          "offsetX": 460,
-          "offsetY": 920
+          "radius": 20,
+          "offsetX": 236,
+          "offsetY": 472
         },
         "combat": {
           "attack_range": 60,
@@ -678,8 +678,8 @@ export const config: ConfigTypes = {
         "damage": 50,
         "explosion_radius": 250,
         "hitbox": {
-          "width": 50,
-          "height": 50
+          "width": 25,
+          "height": 25
         },
         "effects": {
           "shake_duration": 150,
@@ -727,9 +727,9 @@ export const config: ConfigTypes = {
           "stun_ms": 200
         },
         "hitbox": {
-          "radius": 25,
-          "offsetX": 377,
-          "offsetY": 705
+          "radius": 13,
+          "offsetX": 193,
+          "offsetY": 361
         },
         "combat": {
           "attack_range": 80,
@@ -802,7 +802,7 @@ export const config: ConfigTypes = {
       "frameHeight": 512
     },
     "hero": {
-      "scaleFactor": 0.3,
+      "scaleFactor": 0.586,
       "anims": [
         {
           "name": "idle",
@@ -875,7 +875,7 @@ export const config: ConfigTypes = {
       ]
     },
     "boss": {
-      "scaleFactor": 0.6,
+      "scaleFactor": 1.172,
       "anims": [
         {
           "name": "idle",
@@ -925,7 +925,7 @@ export const config: ConfigTypes = {
       ]
     },
     "enemies": {
-      "scaleFactor": 0.3,
+      "scaleFactor": 0.586,
       "count": 5,
       "anims": [
         {
@@ -976,7 +976,7 @@ export const config: ConfigTypes = {
       ]
     },
     "tresr_bot": {
-      "scaleFactor": 0.3,
+      "scaleFactor": 0.586,
       "anims": [
         {
           "name": "idle",
@@ -1018,7 +1018,7 @@ export const config: ConfigTypes = {
     },
     "items": {
       "key": {
-        "scaleFactor": 0.1,
+        "scaleFactor": 0.2,
         "anims": [
           {
             "name": "idle",
@@ -1032,7 +1032,7 @@ export const config: ConfigTypes = {
         ]
       },
       "bomb": {
-        "scaleFactor": 0.1,
+        "scaleFactor": 0.2,
         "anims": [
           {
             "name": "idle",
@@ -1046,7 +1046,7 @@ export const config: ConfigTypes = {
         ]
       },
       "loader": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1367,5 +1367,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "47bb7bddf53336e8003937796ff518a209279d9bdfd34212e15080c4abb395c2"
+  "configHash": "df6727eab4d7101d2fd49510a0d389684b8501e60ea6fbe2471148325df553cd"
 };

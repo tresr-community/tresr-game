@@ -323,9 +323,9 @@ client:
           force: 200 # Knockback impulse when hit
           stun_ms: 300 # Brief immobility during knockback recovery
         hitbox:
-          radius: 40
-          offsetX: 460 # Center horizontally: (1000 - 80) / 2
-          offsetY: 920 # Near feet: 1000 - 80 (origin is bottom)
+          radius: 20
+          offsetX: 236 # Center horizontally: (512 - 40) / 2
+          offsetY: 472 # Near feet: 512 - 40 (origin is bottom)
         combat:
           reach: 80 # Distance player punch extends (matches enemy attack_range)
           attack_range: 80 # Hitbox radius for player attacks (matches enemy range)
@@ -376,9 +376,9 @@ client:
           force: 300 # Knockback impulse when hit by player
           stun_ms: 200 # Brief immobility during knockback recovery
         hitbox:
-          radius: 35
-          offsetX: 465 # Center horizontally: (1000 - 70) / 2
-          offsetY: 930 # Near feet: 1000 - 70 (origin is bottom)
+          radius: 18
+          offsetX: 238 # Center horizontally: (512 - 36) / 2
+          offsetY: 476 # Near feet: 512 - 36 (origin is bottom)
         combat:
           attack_range: 80 # Contact range for enemy damage (2.5D distance check)
           depth_threshold: 40 # Max groundY difference for enemy attack to connect
@@ -476,9 +476,9 @@ client:
           force: 50 # Boss is heavy — minimal knockback
           stun_ms: 100
         hitbox:
-          radius: 40
-          offsetX: 460 # Center horizontally: (1000 - 80) / 2
-          offsetY: 920 # Near feet: 1000 - 80 (origin is bottom)
+          radius: 20
+          offsetX: 236 # Center horizontally: (512 - 40) / 2
+          offsetY: 472 # Near feet: 512 - 40 (origin is bottom)
         combat:
           attack_range: 60 # Contact range for boss damage (larger)
           contact_depth_threshold: 60 # Max groundY difference for boss contact damage
@@ -555,8 +555,8 @@ client:
         damage: 50 # Damage dealt to player caught in explosion
         explosion_radius: 250 # Blast radius in pixels
         hitbox:
-          width: 50 # Collision box width (px)
-          height: 50 # Collision box height (px)
+          width: 25 # Collision box width (px)
+          height: 25 # Collision box height (px)
         effects:
           shake_duration: 150 # Camera shake length on explosion (ms)
           shake_intensity: 0.015 # Camera shake strength (fraction of screen)
@@ -599,9 +599,9 @@ client:
           force: 120 # Knockback force applied to enemies on hit
           stun_ms: 200 # Stun duration on knocked-back enemies (ms)
         hitbox:
-          radius: 25 # Collision circle radius (px)
-          offsetX: 377 # Center horizontally: (804 - 50) / 2
-          offsetY: 705 # Near feet: 755 - 50 (origin is bottom)
+          radius: 13 # Collision circle radius (px)
+          offsetX: 193 # Center horizontally: (512 - 26) / 2
+          offsetY: 361 # Near feet: scaled from 1000→512
         combat:
           attack_range: 80 # Distance to engage enemies (px)
           attack_cooldown_ms: 800 # Minimum time between attacks (ms)
@@ -663,7 +663,7 @@ client:
 
     # Hero character (Ron Jay)
     hero:
-      scaleFactor: 0.3
+      scaleFactor: 0.586
       anims:
         - name: idle
           frames: 6
@@ -720,7 +720,7 @@ client:
           frameHeight: 512
     # Boss character (Gary Gensler)
     boss:
-      scaleFactor: 0.6
+      scaleFactor: 1.172
       anims:
         - name: idle
           frames: 6
@@ -761,7 +761,7 @@ client:
     # Each one uses the same animations/mechanics.
     # Per-anim paths use {i} placeholder for variant number.
     enemies:
-      scaleFactor: 0.3
+      scaleFactor: 0.586
       count: 5
       anims:
         - name: idle
@@ -801,7 +801,7 @@ client:
           frameHeight: 512
     # TRESR-BOT companion (AI ally spawned from powerup pickup)
     tresr_bot:
-      scaleFactor: 0.3
+      scaleFactor: 0.586
       anims:
         - name: idle
           frames: 6
@@ -834,7 +834,7 @@ client:
     # Items (per-animation sheets)
     items:
       key:
-        scaleFactor: 0.1
+        scaleFactor: 0.2
         anims:
           - name: idle
             frames: 5
@@ -844,7 +844,7 @@ client:
             frameWidth: 256
             frameHeight: 512
       bomb:
-        scaleFactor: 0.1
+        scaleFactor: 0.2
         anims:
           - name: idle
             frames: 5
@@ -854,7 +854,7 @@ client:
             frameWidth: 256
             frameHeight: 512
       loader:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 5

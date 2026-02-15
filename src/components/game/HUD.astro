@@ -1,5 +1,4 @@
 ---
-import MusicPlayer from "./MusicPlayer.astro";
 import {config} from "@/lib/config/client";
 
 const gp = config.gameplay;
@@ -109,11 +108,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
 
   <!-- Bottom HUD Area: 3-column grid with min-w-0 on sides to guarantee true centering -->
   <div class="grid w-full grid-cols-3 items-end">
-    <!-- Music Player (Bottom Left) — overflow-visible lets the player render
-         beyond its grid column without pushing the center column off-center -->
-    <div class="min-w-0 overflow-visible">
-      <MusicPlayer />
-    </div>
+    <div class="min-w-0"></div>
 
     <!-- Center: Phase Alerts, Super Bar & Pause Button -->
     <div class="flex flex-col items-center gap-2 pb-4">
