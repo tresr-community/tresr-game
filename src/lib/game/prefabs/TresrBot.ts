@@ -32,7 +32,7 @@ export class TresrBot extends BaseEntity {
   };
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, "tresr_bot");
+    super(scene, x, y, "tresr_bot_idle");
 
     const botConfig = this.config.gameplay.entities.tresr_bot;
     this.hp = botConfig.health;

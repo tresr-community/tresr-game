@@ -9,6 +9,7 @@
  *   --calc       Analyse sprite sheets and display frame dimensions
  *   --cut        Cut multi-row sprite sheets into per-animation strips
  *   --chromakey  Remove green screen (#00FF00) background → transparent PNG
+ *   --shrink     Downscale oversized sprite sheets to target frame size
  *   --help       Show this help message
  *
  * Usage:
@@ -17,6 +18,7 @@
  *   bun run bin/sprites.ts --calc
  *   bun run bin/sprites.ts --cut
  *   bun run bin/sprites.ts --chromakey
+ *   bun run bin/sprites.ts --shrink [--target 512]
  */
 
 import fs from "node:fs";
@@ -689,6 +691,203 @@ async function runChromaKey(): Promise<void> {
 }
 
 // ═════════════════════════════════════════════════════════════════════
+// MODE: --shrink
+// ═════════════════════════════════════════════════════════════════════
+
+/**
+ * Default target frame size. Frames at or below this size are skipped.
+ * Override with --target <px>.
+ */
+const DEFAULT_SHRINK_TARGET = 512;
+
+interface ShrinkEntry {
+  label: string;
+  filePath: string;
+  frames: number;
+  oldFW: number;
+  oldFH: number;
+}
+
+/**
+ * Collect every sprite sheet referenced in tresr.yaml that exceeds the target
+ * frame dimensions.
+ */
+function collectShrinkEntries(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  sprites: any,
+  targetSize: number
+): ShrinkEntry[] {
+  const entries: ShrinkEntry[] = [];
+
+  const addEntity = (
+    label: string,
+    anims: {
+      name: string;
+      frames: number;
+      path?: string;
+      pathTemplate?: string;
+      frameWidth: number;
+      frameHeight: number;
+    }[],
+    templateIndex?: number
+  ) => {
+    for (const anim of anims) {
+      if (anim.frameWidth <= targetSize && anim.frameHeight <= targetSize)
+        continue;
+      const filePath =
+        templateIndex !== undefined
+          ? `public${anim.pathTemplate!.replace("{i}", String(templateIndex))}`
+          : `public${anim.path}`;
+      entries.push({
+        label: `${label}/${anim.name}`,
+        filePath,
+        frames: anim.frames,
+        oldFW: anim.frameWidth,
+        oldFH: anim.frameHeight,
+      });
+    }
+  };
+
+  if (sprites.hero) addEntity("hero", sprites.hero.anims);
+  if (sprites.super) addEntity("super", sprites.super.anims);
+  if (sprites.boss) addEntity("boss", sprites.boss.anims);
+  if (sprites.tresr_bot) addEntity("tresr_bot", sprites.tresr_bot.anims);
+
+  if (sprites.enemies) {
+    for (let i = 1; i <= sprites.enemies.count; i++) {
+      addEntity(`enemy_${i}`, sprites.enemies.anims, i);
+    }
+  }
+
+  if (sprites.items) {
+    for (const [key, item] of Object.entries(sprites.items)) {
+      const spriteItem = item as {
+        anims: {
+          name: string;
+          frames: number;
+          path: string;
+          frameWidth: number;
+          frameHeight: number;
+        }[];
+      };
+      addEntity(key, spriteItem.anims);
+    }
+  }
+
+  return entries;
+}
+
+async function runShrink(targetSize: number) {
+  console.log();
+  info(
+    `${c.bold}${c.magenta}Sprite Shrink${c.reset} ${c.dim}(--shrink, target: ${targetSize}px)${c.reset}`
+  );
+  divider();
+
+  const configPath = join(projectRoot, "config", "tresr.yaml");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const config = load(fs.readFileSync(configPath, "utf8")) as any;
+  if (!config?.client?.sprites) {
+    fail("Sprites configuration not found in config/tresr.yaml");
+    process.exit(1);
+  }
+
+  const entries = collectShrinkEntries(config.client.sprites, targetSize);
+
+  if (entries.length === 0) {
+    ok(`All sprite frames are already ≤ ${targetSize}px — nothing to shrink`);
+    return;
+  }
+
+  info(`Found ${entries.length} oversized sprite sheet(s) to shrink`);
+
+  let shrunk = 0;
+  let skipped = 0;
+  let failed = 0;
+  let savedBytes = 0;
+
+  for (const entry of entries) {
+    if (!fs.existsSync(entry.filePath)) {
+      warn(`SKIP ${entry.label} — file not found: ${entry.filePath}`);
+      skipped++;
+      continue;
+    }
+
+    try {
+      const metadata = await sharp(entry.filePath).metadata();
+      if (!metadata.width || !metadata.height) {
+        warn(`SKIP ${entry.label} — cannot read dimensions`);
+        skipped++;
+        continue;
+      }
+
+      const oldW = metadata.width;
+      const oldH = metadata.height;
+      const oldSize = fs.statSync(entry.filePath).size;
+
+      // Calculate new dimensions: scale frame down to targetSize, preserving aspect
+      // The sheet is frames × frameWidth wide, frameHeight tall
+      const scaleX = Math.min(1, targetSize / entry.oldFW);
+      const scaleY = Math.min(1, targetSize / entry.oldFH);
+      const scale = Math.min(scaleX, scaleY);
+
+      if (scale >= 1) {
+        skipped++;
+        continue;
+      }
+
+      const newW = Math.round(oldW * scale);
+      const newH = Math.round(oldH * scale);
+
+      // Resize and overwrite
+      const tmpPath = entry.filePath + ".tmp";
+      await sharp(entry.filePath)
+        .resize(newW, newH, {fit: "fill"})
+        .webp({quality: WEBP_QUALITY, alphaQuality: 100, lossless: false})
+        .toFile(tmpPath);
+
+      fs.renameSync(tmpPath, entry.filePath);
+
+      const newSize = fs.statSync(entry.filePath).size;
+      const saved = oldSize - newSize;
+      savedBytes += saved;
+
+      const newFW = Math.round(entry.oldFW * scale);
+      const newFH = Math.round(entry.oldFH * scale);
+
+      ok(
+        `${entry.label}: ${oldW}×${oldH} → ${newW}×${newH} ` +
+          `(frame: ${entry.oldFW}×${entry.oldFH} → ${newFW}×${newFH}) ` +
+          `${c.dim}saved ${(saved / 1024).toFixed(0)}KB${c.reset}`
+      );
+      shrunk++;
+    } catch (err) {
+      fail(
+        `${entry.label}: ${err instanceof Error ? err.message : String(err)}`
+      );
+      failed++;
+    }
+  }
+
+  divider();
+  info(
+    `Done: ${c.green}${shrunk} shrunk${c.reset}, ${skipped} skipped` +
+      `${failed > 0 ? `, ${c.red}${failed} failed${c.reset}` : ""}` +
+      ` — ${c.bold}${(savedBytes / 1048576).toFixed(1)}MB saved on disk${c.reset}`
+  );
+
+  if (shrunk > 0) {
+    console.log();
+    warn(
+      `${c.bold}ACTION REQUIRED:${c.reset} Update frameWidth/frameHeight in config/tresr.yaml ` +
+        `to match the new frame sizes (e.g., 1000 → ${targetSize}).`
+    );
+  }
+
+  if (failed > 0) process.exit(1);
+}
+
+// ═════════════════════════════════════════════════════════════════════
 // HELP
 // ═════════════════════════════════════════════════════════════════════
 
@@ -702,7 +901,11 @@ ${c.bold}Usage:${c.reset}
   bun run bin/sprites.ts ${c.bold}--calc${c.reset}       Analyse sprite sheets and display frame dimensions
   bun run bin/sprites.ts ${c.bold}--cut${c.reset}        Cut multi-row sheets into per-animation strips
   bun run bin/sprites.ts ${c.bold}--chromakey${c.reset}  Remove #00FF00 green background → transparent PNG
+  bun run bin/sprites.ts ${c.bold}--shrink${c.reset}     Downscale oversized sprite sheets (default target: 512px)
   bun run bin/sprites.ts ${c.bold}--help${c.reset}       Show this help message
+
+${c.bold}Options:${c.reset}
+  ${c.bold}--target${c.reset} <px>   Target frame size for --shrink (default: 512)
 
 ${c.bold}Source Paths:${c.reset}
   Sources:        assets-source/images/sprites/{entity}/{action}.png|jpg
@@ -730,6 +933,15 @@ if (args.includes("--convert")) {
   runCut();
 } else if (args.includes("--chromakey")) {
   await runChromaKey();
+} else if (args.includes("--shrink")) {
+  const targetIdx = args.indexOf("--target");
+  const target =
+    targetIdx >= 0 ? parseInt(args[targetIdx + 1], 10) : DEFAULT_SHRINK_TARGET;
+  if (isNaN(target) || target < 32) {
+    fail("Invalid --target value. Must be a number >= 32.");
+    process.exit(1);
+  }
+  await runShrink(target);
 } else if (args.includes("--help") || args.includes("-h")) {
   showHelp();
 } else {

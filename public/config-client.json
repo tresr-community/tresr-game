@@ -806,8 +806,8 @@
           "frameRate": 6,
           "repeat": -1,
           "path": "/assets/images/sprites/hero/idle.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "walk",
@@ -815,8 +815,8 @@
           "frameRate": 8,
           "repeat": -1,
           "path": "/assets/images/sprites/hero/walk.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "jump",
@@ -824,8 +824,8 @@
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/hero/jump.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "attack",
@@ -833,8 +833,8 @@
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/hero/attack.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "hurt",
@@ -842,8 +842,8 @@
           "frameRate": 8,
           "repeat": 0,
           "path": "/assets/images/sprites/hero/hurt.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "super",
@@ -851,8 +851,8 @@
           "frameRate": 12,
           "repeat": 0,
           "path": "/assets/images/sprites/hero/super.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         }
       ]
     },
@@ -879,8 +879,8 @@
           "frameRate": 6,
           "repeat": -1,
           "path": "/assets/images/sprites/boss/idle.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "walk",
@@ -888,8 +888,8 @@
           "frameRate": 8,
           "repeat": -1,
           "path": "/assets/images/sprites/boss/walk.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "jump",
@@ -897,8 +897,8 @@
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/jump.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "attack",
@@ -906,8 +906,8 @@
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/attack.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "hurt",
@@ -915,8 +915,8 @@
           "frameRate": 8,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/hurt.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         }
       ]
     },
@@ -930,8 +930,8 @@
           "frameRate": 6,
           "repeat": -1,
           "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/idle.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "walk",
@@ -939,8 +939,8 @@
           "frameRate": 8,
           "repeat": -1,
           "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/walk.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "jump",
@@ -948,8 +948,8 @@
           "frameRate": 10,
           "repeat": 0,
           "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/jump.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "attack",
@@ -957,8 +957,8 @@
           "frameRate": 10,
           "repeat": 0,
           "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/attack.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "hurt",
@@ -966,8 +966,8 @@
           "frameRate": 8,
           "repeat": 0,
           "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/hurt.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         }
       ]
     },
@@ -980,8 +980,8 @@
           "frameRate": 6,
           "repeat": -1,
           "path": "/assets/images/sprites/tresr_bot/idle.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "walk",
@@ -989,8 +989,8 @@
           "frameRate": 8,
           "repeat": -1,
           "path": "/assets/images/sprites/tresr_bot/walk.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "attack",
@@ -998,8 +998,8 @@
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/tresr_bot/attack.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "special",
@@ -1007,8 +1007,8 @@
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/tresr_bot/special.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         }
       ]
     },
@@ -1022,8 +1022,8 @@
             "frameRate": 4,
             "repeat": -1,
             "path": "/assets/images/sprites/key/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 1024
+            "frameWidth": 256,
+            "frameHeight": 512
           }
         ]
       },
@@ -1036,8 +1036,8 @@
             "frameRate": 10,
             "repeat": -1,
             "path": "/assets/images/sprites/bomb/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 1024
+            "frameWidth": 256,
+            "frameHeight": 512
           }
         ]
       },
@@ -1050,8 +1050,8 @@
             "frameRate": 8,
             "repeat": -1,
             "path": "/assets/images/sprites/loader/idle.webp",
-            "frameWidth": 1024,
-            "frameHeight": 1024
+            "frameWidth": 512,
+            "frameHeight": 512
           }
         ]
       },

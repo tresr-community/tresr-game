@@ -810,8 +810,8 @@ export const config: ConfigTypes = {
           "frameRate": 6,
           "repeat": -1,
           "path": "/assets/images/sprites/hero/idle.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "walk",
@@ -819,8 +819,8 @@ export const config: ConfigTypes = {
           "frameRate": 8,
           "repeat": -1,
           "path": "/assets/images/sprites/hero/walk.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "jump",
@@ -828,8 +828,8 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/hero/jump.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "attack",
@@ -837,8 +837,8 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/hero/attack.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "hurt",
@@ -846,8 +846,8 @@ export const config: ConfigTypes = {
           "frameRate": 8,
           "repeat": 0,
           "path": "/assets/images/sprites/hero/hurt.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "super",
@@ -855,8 +855,8 @@ export const config: ConfigTypes = {
           "frameRate": 12,
           "repeat": 0,
           "path": "/assets/images/sprites/hero/super.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         }
       ]
     },
@@ -883,8 +883,8 @@ export const config: ConfigTypes = {
           "frameRate": 6,
           "repeat": -1,
           "path": "/assets/images/sprites/boss/idle.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "walk",
@@ -892,8 +892,8 @@ export const config: ConfigTypes = {
           "frameRate": 8,
           "repeat": -1,
           "path": "/assets/images/sprites/boss/walk.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "jump",
@@ -901,8 +901,8 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/jump.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "attack",
@@ -910,8 +910,8 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/attack.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "hurt",
@@ -919,8 +919,8 @@ export const config: ConfigTypes = {
           "frameRate": 8,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/hurt.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         }
       ]
     },
@@ -934,8 +934,8 @@ export const config: ConfigTypes = {
           "frameRate": 6,
           "repeat": -1,
           "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/idle.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "walk",
@@ -943,8 +943,8 @@ export const config: ConfigTypes = {
           "frameRate": 8,
           "repeat": -1,
           "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/walk.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "jump",
@@ -952,8 +952,8 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/jump.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "attack",
@@ -961,8 +961,8 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/attack.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "hurt",
@@ -970,8 +970,8 @@ export const config: ConfigTypes = {
           "frameRate": 8,
           "repeat": 0,
           "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/hurt.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         }
       ]
     },
@@ -984,8 +984,8 @@ export const config: ConfigTypes = {
           "frameRate": 6,
           "repeat": -1,
           "path": "/assets/images/sprites/tresr_bot/idle.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "walk",
@@ -993,8 +993,8 @@ export const config: ConfigTypes = {
           "frameRate": 8,
           "repeat": -1,
           "path": "/assets/images/sprites/tresr_bot/walk.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "attack",
@@ -1002,8 +1002,8 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/tresr_bot/attack.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "special",
@@ -1011,8 +1011,8 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/tresr_bot/special.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         }
       ]
     },
@@ -1026,8 +1026,8 @@ export const config: ConfigTypes = {
             "frameRate": 4,
             "repeat": -1,
             "path": "/assets/images/sprites/key/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 1024
+            "frameWidth": 256,
+            "frameHeight": 512
           }
         ]
       },
@@ -1040,8 +1040,8 @@ export const config: ConfigTypes = {
             "frameRate": 10,
             "repeat": -1,
             "path": "/assets/images/sprites/bomb/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 1024
+            "frameWidth": 256,
+            "frameHeight": 512
           }
         ]
       },
@@ -1054,8 +1054,8 @@ export const config: ConfigTypes = {
             "frameRate": 8,
             "repeat": -1,
             "path": "/assets/images/sprites/loader/idle.webp",
-            "frameWidth": 1024,
-            "frameHeight": 1024
+            "frameWidth": 512,
+            "frameHeight": 512
           }
         ]
       },

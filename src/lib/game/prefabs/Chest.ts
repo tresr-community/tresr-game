@@ -13,7 +13,7 @@ export class Chest extends BaseEntity {
     groundY: number,
     airDrop: boolean = false
   ) {
-    super(scene, x, groundY, "chest");
+    super(scene, x, groundY, "chest_idle");
 
     if (this.body) {
       (this.body as Phaser.Physics.Arcade.Body).setImmovable(true);

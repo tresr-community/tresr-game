@@ -620,7 +620,7 @@ export class MainScene extends Phaser.Scene {
     // Setup Groups
     this.enemies = this.physics.add.group({
       classType: Enemy,
-      defaultKey: "enemy_1",
+      defaultKey: "enemy_1_idle",
       maxSize: entities.enemy.spawner.pool_size,
       runChildUpdate: true,
     });
@@ -1157,18 +1157,23 @@ export class MainScene extends Phaser.Scene {
     const spritesConfig = this.registry.get("sprites_config") as SpritesConfig;
     const enemyCount = spritesConfig.enemies.count;
     const enemyVariant = this.rng.integerInRange(1, enemyCount);
-    const textureKey = `enemy_${enemyVariant}`;
-    const enemy = this.enemies.get(spawnX, groundY, textureKey) as Enemy;
-    if (enemy) {
-      enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
-      enemy.setTarget(this.player);
-      const enemyScale = SpriteManager.getScaleFactor(
-        spritesConfig,
-        textureKey
-      );
-      enemy.setScale(enemyScale);
-      this.scaleCircleBody(enemy, this.gameplayConfig.entities.enemy.hitbox);
-    }
+    const textureKey = `enemy_${enemyVariant}_idle`;
+
+    // Lazy-load enemy variant sprites on first spawn
+    this.spriteManager.ensureEnemyLoaded(enemyVariant).then(() => {
+      if (!this.enemies || !this.player) return;
+      const enemy = this.enemies.get(spawnX, groundY, textureKey) as Enemy;
+      if (enemy) {
+        enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
+        enemy.setTarget(this.player);
+        const enemyScale = SpriteManager.getScaleFactor(
+          spritesConfig,
+          textureKey
+        );
+        enemy.setScale(enemyScale);
+        this.scaleCircleBody(enemy, this.gameplayConfig.entities.enemy.hitbox);
+      }
+    });
   }
 
   private spawnKey() {
@@ -1354,18 +1359,26 @@ export class MainScene extends Phaser.Scene {
       );
 
       const enemyVariant = this.rng.integerInRange(1, enemyCount);
-      const textureKey = `enemy_${enemyVariant}`;
-      const enemy = this.enemies.get(spawnX, groundY, textureKey) as Enemy;
-      if (enemy) {
-        enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
-        enemy.setTarget(this.player);
-        const enemyScale = SpriteManager.getScaleFactor(
-          spritesConfig,
-          textureKey
-        );
-        enemy.setScale(enemyScale);
-        this.scaleCircleBody(enemy, this.gameplayConfig.entities.enemy.hitbox);
-      }
+      const textureKey = `enemy_${enemyVariant}_idle`;
+
+      // Lazy-load enemy variant sprites on first spawn
+      this.spriteManager.ensureEnemyLoaded(enemyVariant).then(() => {
+        if (!this.enemies || !this.player) return;
+        const enemy = this.enemies.get(spawnX, groundY, textureKey) as Enemy;
+        if (enemy) {
+          enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
+          enemy.setTarget(this.player);
+          const enemyScale = SpriteManager.getScaleFactor(
+            spritesConfig,
+            textureKey
+          );
+          enemy.setScale(enemyScale);
+          this.scaleCircleBody(
+            enemy,
+            this.gameplayConfig.entities.enemy.hitbox
+          );
+        }
+      });
     }
   }
 

@@ -64,7 +64,7 @@ export class Enemy extends BaseEntity {
     scene: Phaser.Scene,
     x: number,
     y: number,
-    texture: string = "enemy_1"
+    texture: string = "enemy_1_idle"
   ) {
     super(scene, x, y, texture);
 
@@ -81,11 +81,13 @@ export class Enemy extends BaseEntity {
     this.body?.setCircle(hitbox.radius, hitbox.offsetX, hitbox.offsetY);
 
     // Pre-compute animation keys to avoid string concatenation every frame
+    // Strip _idle suffix from texture if present to get base entity key
+    const baseKey = texture.replace(/_idle$/, "");
     this.animKeys = {
-      idle: `${texture}_idle`,
-      walk: `${texture}_walk`,
-      attack: `${texture}_attack`,
-      hurt: `${texture}_hurt`,
+      idle: `${baseKey}_idle`,
+      walk: `${baseKey}_walk`,
+      attack: `${baseKey}_attack`,
+      hurt: `${baseKey}_hurt`,
     };
   }
 
@@ -734,18 +736,21 @@ export class Enemy extends BaseEntity {
     // Re-compute animation keys for the target texture variant.
     // Phaser's Group.getFirst() does NOT apply the texture key to recycled
     // members — this.texture.key may still reference the last animation's
-    // per-anim texture (e.g. "enemy_1_hurt" instead of "enemy_1"), which
+    // per-anim texture (e.g. "enemy_1_hurt" instead of "enemy_1_idle"), which
     // causes invalid anim keys like "enemy_1_hurt_idle". Use the explicit
     // textureKey parameter passed by the caller instead.
+    // Strip any anim suffix to get the base entity key (e.g., "enemy_1")
     const tex = textureKey || this.texture.key;
+    const baseKey = tex.replace(/_(idle|walk|jump|attack|hurt)$/, "");
     if (textureKey) {
-      this.setTexture(textureKey);
+      // Set to the _idle texture for this variant
+      this.setTexture(`${baseKey}_idle`);
     }
     this.animKeys = {
-      idle: `${tex}_idle`,
-      walk: `${tex}_walk`,
-      attack: `${tex}_attack`,
-      hurt: `${tex}_hurt`,
+      idle: `${baseKey}_idle`,
+      walk: `${baseKey}_walk`,
+      attack: `${baseKey}_attack`,
+      hurt: `${baseKey}_hurt`,
     };
 
     // Enable physics body FIRST so setPosition/setVelocity are not no-ops (ticket #245)

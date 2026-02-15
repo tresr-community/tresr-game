@@ -25,7 +25,7 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
   private despawnTimer?: Phaser.Time.TimerEvent;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, "health_1");
+    super(scene, x, y, "health_1_idle");
     this.config = scene.registry.get("full_config") as ConfigTypes;
     // Feet-anchored origin to match BaseEntity/Player convention
     this.setOrigin(0.5, 1.0);

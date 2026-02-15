@@ -670,43 +670,43 @@ client:
           frameRate: 6
           repeat: -1
           path: /assets/images/sprites/hero/idle.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: walk
           frames: 6
           frameRate: 8
           repeat: -1
           path: /assets/images/sprites/hero/walk.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: jump
           frames: 6
           frameRate: 10
           repeat: 0
           path: /assets/images/sprites/hero/jump.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: attack
           frames: 6
           frameRate: 10
           repeat: 0
           path: /assets/images/sprites/hero/attack.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: hurt
           frames: 4
           frameRate: 8
           repeat: 0
           path: /assets/images/sprites/hero/hurt.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: super
           frames: 6
           frameRate: 12
           repeat: 0
           path: /assets/images/sprites/hero/super.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
     # Super Attack Projectile (spinning coin hadouken)
     super:
       scaleFactor: 0.5
@@ -727,36 +727,36 @@ client:
           frameRate: 6
           repeat: -1
           path: /assets/images/sprites/boss/idle.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: walk
           frames: 6
           frameRate: 8
           repeat: -1
           path: /assets/images/sprites/boss/walk.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: jump
           frames: 6
           frameRate: 10
           repeat: 0
           path: /assets/images/sprites/boss/jump.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: attack
           frames: 6
           frameRate: 10
           repeat: 0
           path: /assets/images/sprites/boss/attack.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: hurt
           frames: 4
           frameRate: 8
           repeat: 0
           path: /assets/images/sprites/boss/hurt.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
     # Businessmen enemies (templated for 5 variants)
     # Each one uses the same animations/mechanics.
     # Per-anim paths use {i} placeholder for variant number.
@@ -769,36 +769,36 @@ client:
           frameRate: 6
           repeat: -1
           pathTemplate: /assets/images/sprites/enemy_{i}_boss/idle.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: walk
           frames: 6
           frameRate: 8
           repeat: -1
           pathTemplate: /assets/images/sprites/enemy_{i}_boss/walk.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: jump
           frames: 6
           frameRate: 10
           repeat: 0
           pathTemplate: /assets/images/sprites/enemy_{i}_boss/jump.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: attack
           frames: 6
           frameRate: 10
           repeat: 0
           pathTemplate: /assets/images/sprites/enemy_{i}_boss/attack.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: hurt
           frames: 4
           frameRate: 8
           repeat: 0
           pathTemplate: /assets/images/sprites/enemy_{i}_boss/hurt.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
     # TRESR-BOT companion (AI ally spawned from powerup pickup)
     tresr_bot:
       scaleFactor: 0.3
@@ -808,29 +808,29 @@ client:
           frameRate: 6
           repeat: -1
           path: /assets/images/sprites/tresr_bot/idle.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: walk
           frames: 6
           frameRate: 8
           repeat: -1
           path: /assets/images/sprites/tresr_bot/walk.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: attack
           frames: 8
           frameRate: 10
           repeat: 0
           path: /assets/images/sprites/tresr_bot/attack.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
         - name: special
           frames: 6
           frameRate: 10
           repeat: 0
           path: /assets/images/sprites/tresr_bot/special.webp
-          frameWidth: 1000
-          frameHeight: 1000
+          frameWidth: 512
+          frameHeight: 512
     # Items (per-animation sheets)
     items:
       key:
@@ -841,8 +841,8 @@ client:
             frameRate: 4
             repeat: -1
             path: /assets/images/sprites/key/idle.webp
-            frameWidth: 512
-            frameHeight: 1024
+            frameWidth: 256
+            frameHeight: 512
       bomb:
         scaleFactor: 0.1
         anims:
@@ -851,8 +851,8 @@ client:
             frameRate: 10
             repeat: -1
             path: /assets/images/sprites/bomb/idle.webp
-            frameWidth: 512
-            frameHeight: 1024
+            frameWidth: 256
+            frameHeight: 512
       loader:
         scaleFactor: 0.5
         anims:
@@ -861,8 +861,8 @@ client:
             frameRate: 8
             repeat: -1
             path: /assets/images/sprites/loader/idle.webp
-            frameWidth: 1024
-            frameHeight: 1024
+            frameWidth: 512
+            frameHeight: 512
       chest:
         scaleFactor: 0.5
         anims:

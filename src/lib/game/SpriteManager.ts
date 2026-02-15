@@ -7,9 +7,10 @@
  *
  * All sprites use per-animation sheets (one single-row strip per animation).
  * Each anim entry specifies its own path, frameWidth, and frameHeight.
- * Every anim is loaded as "{entity}_{anim}". The first anim is also loaded
- * as the bare "{entity}" key for Phaser sprite constructor compatibility.
- * Animations always reference per-anim keys to avoid texture-swap flickering.
+ * Every anim is loaded as "{entity}_{anim}" (e.g., "hero_idle").
+ * Entity constructors use the first animation key as their initial texture.
+ *
+ * Enemy sprites are lazy-loaded on first spawn to reduce memory usage.
  *
  * Part of R-005: Create reusable Sprite Functions/Module
  */
@@ -73,6 +74,9 @@ export class SpriteManager {
   private scene: Phaser.Scene;
   private config: SpritesConfig | null = null;
 
+  /** Track which enemy variants have been lazy-loaded */
+  private loadedEnemyVariants: Set<number> = new Set();
+
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
   }
@@ -89,10 +93,6 @@ export class SpriteManager {
   /**
    * Load per-animation sprite sheets for an entity.
    * Every anim is loaded as "{entityKey}_{animName}" (e.g., "hero_idle").
-   * The first anim is ALSO loaded as the bare "{entityKey}" so that entity
-   * constructors (which pass the base key to Phaser.Sprite) get valid
-   * frame dimensions. Animations never reference the base key — they all
-   * use per-anim keys — so no texture-swap flickering occurs.
    */
   private preloadEntitySprites(
     entityKey: string,
@@ -105,20 +105,12 @@ export class SpriteManager {
         frameWidth: anim.frameWidth,
         frameHeight: anim.frameHeight,
       });
-      // Also load the first anim as the base entity key for the constructor
-      if (i === 0) {
-        this.scene.load.spritesheet(entityKey, anim.path, {
-          frameWidth: anim.frameWidth,
-          frameHeight: anim.frameHeight,
-        });
-      }
     }
   }
 
   /**
    * Load per-animation sprite sheets for a templated enemy variant.
-   * Resolves {i} in pathTemplate for each anim. Same dual-key pattern:
-   * every anim gets "{entityKey}_{animName}", first also gets "{entityKey}".
+   * Resolves {i} in pathTemplate for each anim.
    */
   private preloadEnemySprites(
     variantIndex: number,
@@ -134,19 +126,15 @@ export class SpriteManager {
         frameWidth: anim.frameWidth,
         frameHeight: anim.frameHeight,
       });
-      // Also load the first anim as the base entity key for the constructor
-      if (i === 0) {
-        this.scene.load.spritesheet(entityKey, path, {
-          frameWidth: anim.frameWidth,
-          frameHeight: anim.frameHeight,
-        });
-      }
     }
   }
 
   /**
    * Preload all sprite assets based on configuration.
    * Call this in the scene's preload() method.
+   *
+   * NOTE: Enemy sprites are NOT loaded here — they are lazy-loaded
+   * on first spawn via ensureEnemyLoaded() to reduce startup memory.
    */
   preloadSprites(spritesCfg?: SpritesConfig): void {
     const spriteConfig = spritesCfg || this.loadConfig();
@@ -171,12 +159,7 @@ export class SpriteManager {
       this.preloadEntitySprites("tresr_bot", spriteConfig.tresr_bot);
     }
 
-    // Load enemy sprite sheets (templated for N variants)
-    if (spriteConfig.enemies) {
-      for (let i = 1; i <= spriteConfig.enemies.count; i++) {
-        this.preloadEnemySprites(i, spriteConfig.enemies);
-      }
-    }
+    // Enemy sprites are lazy-loaded via ensureEnemyLoaded() on first spawn
 
     // Load item sprite sheets
     if (spriteConfig.items) {
@@ -192,12 +175,54 @@ export class SpriteManager {
       });
     }
 
-    log.info(COMPONENT_NAME, "Sprites queued for loading");
+    log.info(COMPONENT_NAME, "Sprites queued for loading (enemies deferred)");
+  }
+
+  /**
+   * Lazy-load sprites for a specific enemy variant on first spawn.
+   * Returns a Promise that resolves once the textures are loaded and
+   * animations are created. Subsequent calls for the same variant
+   * resolve immediately.
+   */
+  ensureEnemyLoaded(variantIndex: number): Promise<void> {
+    if (this.loadedEnemyVariants.has(variantIndex)) {
+      return Promise.resolve();
+    }
+
+    const spriteConfig = this.loadConfig();
+    if (!spriteConfig.enemies) {
+      return Promise.resolve();
+    }
+
+    // Check if textures already exist (e.g. from a previous scene)
+    const firstAnimKey = `enemy_${variantIndex}_${spriteConfig.enemies.anims[0].name}`;
+    if (this.scene.textures.exists(firstAnimKey)) {
+      this.loadedEnemyVariants.add(variantIndex);
+      // Still create animations in case they don't exist yet
+      this.createEnemyAnimations(variantIndex, spriteConfig.enemies.anims);
+      return Promise.resolve();
+    }
+
+    // Queue the sprite sheets for loading
+    this.preloadEnemySprites(variantIndex, spriteConfig.enemies);
+
+    // Start the loader and wait for completion
+    return new Promise<void>((resolve) => {
+      this.scene.load.once("complete", () => {
+        this.createEnemyAnimations(variantIndex, spriteConfig.enemies.anims);
+        this.loadedEnemyVariants.add(variantIndex);
+        log.info(COMPONENT_NAME, `Lazy-loaded enemy variant ${variantIndex}`);
+        resolve();
+      });
+      this.scene.load.start();
+    });
   }
 
   /**
    * Create all animations based on configuration.
    * Call this in the scene's create() method.
+   *
+   * NOTE: Enemy animations are created lazily via ensureEnemyLoaded().
    */
   createAnimations(spritesCfg?: SpritesConfig): void {
     const spriteConfig = spritesCfg || this.loadConfig();
@@ -222,12 +247,7 @@ export class SpriteManager {
       this.createEntityAnimations("tresr_bot", spriteConfig.tresr_bot.anims);
     }
 
-    // Create enemy animations (templated)
-    if (spriteConfig.enemies) {
-      for (let i = 1; i <= spriteConfig.enemies.count; i++) {
-        this.createEnemyAnimations(i, spriteConfig.enemies.anims);
-      }
-    }
+    // Enemy animations are created lazily via ensureEnemyLoaded()
 
     // Create item animations
     if (spriteConfig.items) {
@@ -236,7 +256,7 @@ export class SpriteManager {
       });
     }
 
-    log.info(COMPONENT_NAME, "Animations created");
+    log.info(COMPONENT_NAME, "Animations created (enemies deferred)");
   }
 
   /**
