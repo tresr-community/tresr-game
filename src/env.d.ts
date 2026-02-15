@@ -28,6 +28,7 @@ declare module "/config-client.json" {
       instructions: string;
     };
     blockchain: {      avalanche: {        anvil: {          fee: number;
+          burn_rate: number;
           chain_id: number;
           rpc_url: string;
           tresr_token_ticker: string;
@@ -38,6 +39,7 @@ declare module "/config-client.json" {
           player_wallet: string;
         };
         testnet: {          fee: number;
+          burn_rate: number;
           chain_id: number;
           rpc_url: string;
           tresr_token_ticker: string;
@@ -47,6 +49,7 @@ declare module "/config-client.json" {
           vault_contract: string;
         };
         mainnet: {          fee: number;
+          burn_rate: number;
           chain_id: number;
           rpc_url: string;
           tresr_token_ticker: string;
@@ -673,6 +676,7 @@ declare module "../../../public/config-client.json" {
       instructions: string;
     };
     blockchain: {      avalanche: {        anvil: {          fee: number;
+          burn_rate: number;
           chain_id: number;
           rpc_url: string;
           tresr_token_ticker: string;
@@ -683,6 +687,7 @@ declare module "../../../public/config-client.json" {
           player_wallet: string;
         };
         testnet: {          fee: number;
+          burn_rate: number;
           chain_id: number;
           rpc_url: string;
           tresr_token_ticker: string;
@@ -692,6 +697,7 @@ declare module "../../../public/config-client.json" {
           vault_contract: string;
         };
         mainnet: {          fee: number;
+          burn_rate: number;
           chain_id: number;
           rpc_url: string;
           tresr_token_ticker: string;

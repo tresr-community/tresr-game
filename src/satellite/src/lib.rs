@@ -6,8 +6,9 @@
 //!
 //! Collections:
 //! - `users`: User profiles with wallet linking and game stats
-//! - `deposits`: Deposit requests for EVM transaction verification
+//! - `fees`: Fee requests for EVM transaction verification
 //! - `claims`: Reward claim requests
+//! - `stats`: Aggregate burn/payout statistics
 //!
 //! HTTP Endpoints:
 //! - `game_sessions`: Game session data for anti-cheat validation
@@ -17,6 +18,7 @@ mod evm_rpc;
 mod types;
 
 /// Build-time generated constants from config/tresr.yaml (see build.rs).
+#[allow(dead_code)]
 mod config {
     include!(concat!(env!("OUT_DIR"), "/generated_config.rs"));
 }
@@ -38,8 +40,8 @@ use libsecp256k1::{Message, RecoveryId, Signature, recover};
 use tiny_keccak::{Hasher, Keccak};
 
 use types::{
-    BalanceRefreshRequest, ClaimRequest, ClaimStatus, DepositRequest, DepositStatus, GameSession,
-    LeaderboardEntry, RefreshStatus, UserProfile,
+    BalanceRefreshRequest, ClaimRequest, ClaimStatus, FeeRequest, FeeStatus, GameSession,
+    GlobalStats, LeaderboardEntry, RefreshStatus, UserProfile,
 };
 
 // =============================================================================
@@ -48,11 +50,11 @@ use types::{
 
 /// Single assertion handler for all collections
 /// Juno only allows one #[assert_set_doc] per module, so we dispatch by collection name
-#[assert_set_doc(collections = ["users", "deposits", "claims", "game_sessions", "balance_refresh"])]
+#[assert_set_doc(collections = ["users", "fees", "claims", "game_sessions", "balance_refresh"])]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     match context.data.collection.as_str() {
         "users" => assert_user_profile(&context),
-        "deposits" => assert_deposit_request(&context),
+        "fees" => assert_fee_request(&context),
         "claims" => assert_claim_request(&context),
         "game_sessions" => assert_game_session(&context),
         "balance_refresh" => Ok(()), // No validation needed for refresh requests
@@ -142,9 +144,9 @@ fn verify_wallet_signature(
     Ok(())
 }
 
-/// Validate deposit requests
-fn assert_deposit_request(context: &AssertSetDocContext) -> Result<(), String> {
-    let data: DepositRequest = decode_doc_data(&context.data.data.proposed.data)?;
+/// Validate fee requests
+fn assert_fee_request(context: &AssertSetDocContext) -> Result<(), String> {
+    let data: FeeRequest = decode_doc_data(&context.data.data.proposed.data)?;
 
     // Validate transaction hash format
     if !data.tx_hash.starts_with("0x") || data.tx_hash.len() != 66 {
@@ -155,17 +157,17 @@ fn assert_deposit_request(context: &AssertSetDocContext) -> Result<(), String> {
     }
 
     // Only allow pending status on creation
-    if data.status != DepositStatus::Pending {
-        return Err("Deposits must be created with 'pending' status.".to_string());
+    if data.status != FeeStatus::Pending {
+        return Err("Fees must be created with 'pending' status.".to_string());
     }
 
-    // Enforce document key == tx_hash to prevent deposit replay (ticket #288).
+    // Enforce document key == tx_hash to prevent fee replay (ticket #288).
     // Juno enforces key uniqueness per user, so the same tx_hash cannot be
     // submitted twice under different keys. Combined with tx.from validation
-    // (ticket #285), this prevents any user from replaying another's deposit.
+    // (ticket #285), this prevents any user from replaying another's fee.
     if context.data.key != data.tx_hash {
         return Err(
-            "Deposit document key must equal the transaction hash.".to_string(),
+            "Fee document key must equal the transaction hash.".to_string(),
         );
     }
 
@@ -214,7 +216,7 @@ fn assert_game_session(context: &AssertSetDocContext) -> Result<(), String> {
 }
 
 /// Prevent deletion of critical data
-#[assert_delete_doc(collections = ["users", "deposits", "claims", "game_sessions"])]
+#[assert_delete_doc(collections = ["users", "fees", "claims", "game_sessions"])]
 fn assert_delete_doc(_context: AssertDeleteDocContext) -> Result<(), String> {
     // For now, allow deletion. In production, you might want to check for pending claims
     Ok(())
@@ -226,10 +228,10 @@ fn assert_delete_doc(_context: AssertDeleteDocContext) -> Result<(), String> {
 
 /// Single hook handler for all collections
 /// Juno only allows one #[on_set_doc] per module, so we dispatch by collection name
-#[on_set_doc(collections = ["users", "deposits", "claims", "game_sessions", "balance_refresh"])]
+#[on_set_doc(collections = ["users", "fees", "claims", "game_sessions", "balance_refresh"])]
 async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
     match context.data.collection.as_str() {
-        "deposits" => on_deposit_created(context).await,
+        "fees" => on_fee_created(context).await,
         "claims" => on_claim_created(context).await,
         "balance_refresh" => on_balance_refresh(context).await,
         "game_sessions" => on_game_session_update(context).await,
@@ -276,17 +278,17 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
     Ok(())
 }
 
-/// Process deposit requests - verify on EVM chain
-async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
-    let mut deposit: DepositRequest = decode_doc_data(&context.data.data.after.data)?;
+/// Process fee requests - verify on EVM chain
+async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
+    let mut fee: FeeRequest = decode_doc_data(&context.data.data.after.data)?;
 
-    // Only process pending deposits
-    if deposit.status != DepositStatus::Pending {
+    // Only process pending fees
+    if fee.status != FeeStatus::Pending {
         return Ok(());
     }
 
     // Verify the transaction on Avalanche
-    match evm_rpc::verify_avalanche_deposit(&deposit.tx_hash).await {
+    match evm_rpc::verify_avalanche_fee(&fee.tx_hash).await {
         Ok(parsed) => {
             // Validate tx.from matches the caller's linked EVM wallet (ticket #285)
             let user_key = context.caller.to_text();
@@ -296,10 +298,10 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
                 let caller_wallet = match &user_profile_check.evm_wallet {
                     Some(w) if !w.is_empty() => w.clone(),
                     _ => {
-                        deposit.status = DepositStatus::Failed;
-                        deposit.error = Some("No linked EVM wallet to verify deposit sender".to_string());
+                        fee.status = FeeStatus::Failed;
+                        fee.error = Some("No linked EVM wallet to verify fee sender".to_string());
                         let updated_doc = SetDoc {
-                            data: encode_doc_data(&deposit)?,
+                            data: encode_doc_data(&fee)?,
                             description: context.data.data.after.description.clone(),
                             version: context.data.data.after.version,
                         };
@@ -308,19 +310,19 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
                     }
                 };
                 if !parsed.from.eq_ignore_ascii_case(&caller_wallet) {
-                    deposit.status = DepositStatus::Failed;
-                    deposit.error = Some(format!(
-                        "Deposit tx sender {} does not match caller wallet {}",
+                    fee.status = FeeStatus::Failed;
+                    fee.error = Some(format!(
+                        "Fee tx sender {} does not match caller wallet {}",
                         parsed.from, caller_wallet
                     ));
                     let updated_doc = SetDoc {
-                        data: encode_doc_data(&deposit)?,
+                        data: encode_doc_data(&fee)?,
                         description: context.data.data.after.description.clone(),
                         version: context.data.data.after.version,
                     };
                     set_doc_store(context.caller, context.data.collection.clone(), context.data.key.clone(), updated_doc)?;
                     ic_cdk::print(format!(
-                        "Deposit rejected: tx.from {} != caller wallet {}",
+                        "Fee rejected: tx.from {} != caller wallet {}",
                         parsed.from, caller_wallet
                     ));
                     return Ok(());
@@ -329,14 +331,14 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
 
             let verified_amount = parsed.amount;
 
-            // Update deposit status
-            deposit.status = DepositStatus::Verified;
-            deposit.amount = verified_amount;
-            deposit.verified_at = Some(time() / 1_000_000); // Convert ns to ms
+            // Update fee status
+            fee.status = FeeStatus::Verified;
+            fee.amount = verified_amount;
+            fee.verified_at = Some(time() / 1_000_000); // Convert ns to ms
 
-            // Save updated deposit
+            // Save updated fee
             let updated_doc = SetDoc {
-                data: encode_doc_data(&deposit)?,
+                data: encode_doc_data(&fee)?,
                 description: context.data.data.after.description.clone(),
                 version: context.data.data.after.version,
             };
@@ -348,7 +350,7 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
                 updated_doc,
             )?;
 
-            // Credit verified deposit to user's wallet balance
+            // Credit verified fee to user's wallet balance
             if let Some(user_doc_inner) = user_doc {
                 let mut user_profile: UserProfile = decode_doc_data(&user_doc_inner.data)?;
                 user_profile.wallet.balance += verified_amount;
@@ -359,23 +361,30 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
                 };
                 set_doc_store(context.caller, "users".to_string(), user_key.clone(), updated_user)?;
                 ic_cdk::print(format!(
-                    "Deposit verified: {} tokens for user {}. New balance: {}",
+                    "Fee verified: {} tokens for user {}. New balance: {}",
                     verified_amount, user_key, user_profile.wallet.balance
                 ));
             } else {
                 ic_cdk::print(format!(
-                    "Warning: Deposit verified but user profile not found for {}",
+                    "Warning: Fee verified but user profile not found for {}",
                     context.caller.to_text()
                 ));
             }
+
+            // Update global stats: track total fees and burned amount
+            let burn_amount = (verified_amount * config::BURN_RATE_BPS) / 10000;
+            update_global_stats(|stats| {
+                stats.total_fees += verified_amount;
+                stats.total_burned += burn_amount;
+            })?;
         }
         Err(e) => {
-            // Mark deposit as failed
-            deposit.status = DepositStatus::Failed;
-            deposit.error = Some(e.clone());
+            // Mark fee as failed
+            fee.status = FeeStatus::Failed;
+            fee.error = Some(e.clone());
 
             let updated_doc = SetDoc {
-                data: encode_doc_data(&deposit)?,
+                data: encode_doc_data(&fee)?,
                 description: context.data.data.after.description.clone(),
                 version: context.data.data.after.version,
             };
@@ -387,10 +396,33 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
                 updated_doc,
             )?;
 
-            ic_cdk::print(format!("Deposit verification failed: {}", e));
+            ic_cdk::print(format!("Fee verification failed: {}", e));
         }
     }
 
+    Ok(())
+}
+
+/// Update global stats atomically (read-modify-write).
+/// Uses `ic_cdk::id()` as caller for the `write: "managed"` stats collection.
+fn update_global_stats<F: FnOnce(&mut GlobalStats)>(updater: F) -> Result<(), String> {
+    let canister_id = ic_cdk::id();
+    let key = "global".to_string();
+
+    let mut stats = match get_doc_store(canister_id, "stats".to_string(), key.clone()) {
+        Ok(Some(doc)) => decode_doc_data::<GlobalStats>(&doc.data).unwrap_or_default(),
+        _ => GlobalStats::default(),
+    };
+
+    updater(&mut stats);
+
+    let doc = SetDoc {
+        data: encode_doc_data(&stats)?,
+        description: Some("Global burn/payout stats".to_string()),
+        version: None, // Allow upsert
+    };
+
+    set_doc_store(canister_id, "stats".to_string(), key, doc)?;
     Ok(())
 }
 
@@ -604,6 +636,11 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
         claim.status = ClaimStatus::Completed;
 
         update_claim_doc(&context, &claim).await?;
+
+        // Update global stats: track total rewards paid out
+        update_global_stats(|stats| {
+            stats.total_rewarded += claim.amount;
+        })?;
 
         ic_cdk::print(format!(
             "Claim completed for user {} session {}",
@@ -831,7 +868,7 @@ fn apply_ban(profile: &mut UserProfile) {
 async fn claim_authorize(
     session_id: String,
     reported_keys: u64,
-    deposit_tx_hash: String,
+    fee_tx_hash: String,
     replay_inputs: Vec<u8>,
 ) -> Result<(u128, Vec<u8>), String> {
     let caller = ic_cdk::caller();
@@ -850,7 +887,7 @@ async fn claim_authorize(
     // Reject if currently banned
     check_ban(&user_profile)?;
 
-    // Get user's linked EVM wallet for deposit sender validation
+    // Get user's linked EVM wallet for fee sender validation
     let wallet_addr = match &user_profile.evm_wallet {
         Some(w) if !w.is_empty() => w.clone(),
         _ => return Err("No linked EVM wallet".to_string()),
@@ -874,19 +911,19 @@ async fn claim_authorize(
         return Err("Reward already claimed".to_string());
     }
 
-    // 2. Verify deposit transaction on-chain and get actual deposit amount
-    let parsed_deposit = evm_rpc::verify_avalanche_deposit(&deposit_tx_hash).await?;
+    // 2. Verify fee transaction on-chain and get actual fee amount
+    let parsed_fee = evm_rpc::verify_avalanche_fee(&fee_tx_hash).await?;
 
-    // Validate that the deposit sender matches the caller's linked wallet
-    if !parsed_deposit.from.eq_ignore_ascii_case(&wallet_addr) {
+    // Validate that the fee sender matches the caller's linked wallet
+    if !parsed_fee.from.eq_ignore_ascii_case(&wallet_addr) {
         return Err(format!(
-            "Deposit sender {} does not match linked wallet {}",
-            parsed_deposit.from, wallet_addr
+            "Fee sender {} does not match linked wallet {}",
+            parsed_fee.from, wallet_addr
         ));
     }
 
-    // Convert deposit amount from tokens (u64) to wei (u128) for reward calculation
-    let deposit_amount: u128 = (parsed_deposit.amount as u128) * 1_000_000_000_000_000_000u128;
+    // Convert fee amount from tokens (u64) to wei (u128) for reward calculation
+    let fee_amount: u128 = (parsed_fee.amount as u128) * 1_000_000_000_000_000_000u128;
 
     // 3. Query vault balance via EVM RPC
     let vault_balance_tokens = evm_rpc::get_token_balance(
@@ -949,7 +986,7 @@ async fn claim_authorize(
     // 5. Calc amount
     let perf_mult = (reported_keys as f64 / config::MAX_KEYS_COLLECTED as f64) * 0.5;
     let max_perf = ((vault_balance as f64 * perf_mult) as u128).min(vault_balance / 2);
-    let guaranteed = deposit_amount * 11 / 10;
+    let guaranteed = fee_amount * 11 / 10;
     let amount = max_perf.max(guaranteed).min(vault_balance);
 
     // 6. Sign with IC threshold ECDSA

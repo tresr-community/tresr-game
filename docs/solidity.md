@@ -225,7 +225,7 @@ export ANVIL_VAULT_ADDRESS="0x54AE79264B79855454A8fEC913d6352907e6FA10"
 - **Update Config for App Testing**:
   - In config/tresr.yaml, set anvil.vault_contract to deployed address.
 
-- **Approve $tTRESR deposits from the admin Wallet into the Vault**:
+- **Approve $tTRESR fees from the admin Wallet into the Vault**:
 
 ```bash
 cast send \
@@ -237,16 +237,16 @@ cast send \
   --rpc-url $ANVIL_RPC_URL
 ```
 
-- **Test a Game Deposit from the Admin Wallet**:
+- **Test a Game Fee Payment from the Admin Wallet**:
 
 ```bash
-# Use a random session id to simulate a game deposit
+# Use a random session id to simulate a game fee payment
 export SESSION_ID="0x$(openssl rand -hex 32)"
 
-# Make the deposit
+# Pay the fee
 cast send \
   ${ANVIL_VAULT_ADDRESS} \
-  "deposit(uint256,bytes32)" \
+  "payFee(uint256,bytes32)" \
   "1000000000000000000" \
   "$SESSION_ID" \
   --private-key $ANVIL_ADMIN_PRIVATE_KEY \
@@ -327,7 +327,7 @@ cast call \
   --rpc-url $ANVIL_RPC_URL
 ```
 
-- Launch your game app! Connect browser wallet to local RPC, test deposit/claim flows.
+- Launch your game app! Connect browser wallet to local RPC, test fee/claim flows.
 
 ### Additional Notes
 

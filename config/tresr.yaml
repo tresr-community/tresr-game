@@ -14,7 +14,7 @@ server:
           read: "managed"
           write: "managed"
           memory: "stable"
-        - collection: "deposits"
+        - collection: "fees"
           read: "managed"
           write: "managed"
           memory: "stable"
@@ -26,11 +26,11 @@ server:
           read: "managed"
           write: "managed"
           memory: "stable"
-        - collection: "rewards"
-          read: "managed"
+        - collection: "leaderboard"
+          read: "public"
           write: "managed"
           memory: "stable"
-        - collection: "leaderboard"
+        - collection: "stats"
           read: "public"
           write: "managed"
           memory: "stable"
@@ -180,7 +180,8 @@ client:
     # NOTE: The vault_contract is the proxy smart contract address.
     avalanche:
       anvil:
-        fee: 10
+        fee: 10 # Fee in tokens to play
+        burn_rate: 1000 # 10% in basis points — must match Vault.sol burnRate
         #chain_id: 31337 # Anvil
         chain_id: 43113 # Fuji Fork
         rpc_url: http://localhost:8545
@@ -191,7 +192,8 @@ client:
         vault_contract: "0x24AF790c2A3095FE2200E4EC466eaF83094cd08A"
         player_wallet: "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       testnet:
-        fee: 10
+        fee: 10 # Fee in tokens to play
+        burn_rate: 1000 # 10% in basis points — must match Vault.sol burnRate
         chain_id: 43113
         rpc_url: https://api.avax-test.network/ext/bc/C/rpc
         tresr_token_ticker: tTRESR
@@ -200,7 +202,8 @@ client:
         tresr_token_contract: "0x6EB523A381e725F115b7454BaA3cb199E4770970"
         vault_contract: "0x0000000000000000000000000000000000000000"
       mainnet:
-        fee: 10
+        fee: 10 # Fee in tokens to play
+        burn_rate: 1000 # 10% in basis points — must match Vault.sol burnRate
         chain_id: 43114
         rpc_url: https://api.avax.network/ext/bc/C/rpc
         tresr_token_ticker: TRESR

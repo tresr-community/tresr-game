@@ -21,7 +21,7 @@ export {
   getTargetChain,
   getEnvironmentKey,
   getPublicClient,
-  depositForGame,
+  payFeeForGame,
   claimWin,
   getVaultBalance,
   shortenAddress,

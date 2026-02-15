@@ -25,5 +25,5 @@ cargo test --manifest-path src/satellite/Cargo.toml
 - [ ] Game controls responsive
 - [ ] Progress saves correctly
 - [ ] High scores update
-- [ ] Deposit verification (testnet)
+- [ ] Fee verification (testnet)
 - [ ] Withdrawal sending (testnet)

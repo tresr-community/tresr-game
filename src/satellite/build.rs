@@ -53,9 +53,12 @@ struct AvalancheNetworks {
 
 #[derive(Deserialize)]
 struct AvalancheNetwork {
+    fee: u64,
+    burn_rate: u64,
     chain_id: u64,
     vault_contract: String,
     tresr_token_contract: String,
+    tresr_token_ticker: String,
 }
 
 #[derive(Deserialize)]
@@ -132,6 +135,15 @@ pub const VAULT_CONTRACT_ADDRESS: &str = "{vault_contract}";
 /// TRESR token contract address on Avalanche (from client.blockchain.avalanche.{network}.tresr_token_contract)
 pub const TRESR_TOKEN_CONTRACT: &str = "{token_contract}";
 
+/// TRESR token ticker symbol (from client.blockchain.avalanche.{network}.tresr_token_ticker)
+pub const TRESR_TOKEN_TICKER: &str = "{token_ticker}";
+
+/// Entry fee in tokens (from client.blockchain.avalanche.{network}.fee)
+pub const FEE: u64 = {fee};
+
+/// Burn rate in basis points, 1000 = 10% (from client.blockchain.avalanche.{network}.burn_rate)
+pub const BURN_RATE_BPS: u64 = {burn_rate};
+
 /// Network name for conditional logic (anvil/testnet/mainnet)
 pub const NETWORK_NAME: &str = "{network}";
 
@@ -146,6 +158,9 @@ pub const ECDSA_KEY_NAME: &str = "{ecdsa_key_name}";
         chain_id = chain.chain_id,
         vault_contract = chain.vault_contract,
         token_contract = chain.tresr_token_contract,
+        token_ticker = chain.tresr_token_ticker,
+        fee = chain.fee,
+        burn_rate = chain.burn_rate,
         ecdsa_key_name = ecdsa_key_name,
     );
 

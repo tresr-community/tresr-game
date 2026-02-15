@@ -149,21 +149,35 @@ pub struct LeaderboardEntry {
 }
 
 // =============================================================================
-// Deposit Request (stored in "deposits" collection)
+// Global Stats (stored in "stats" collection)
 // =============================================================================
 
-/// Deposit request for verification
+/// Aggregate burn and payout statistics.
+/// Single document with key "global", written by satellite hooks.
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct GlobalStats {
+    pub total_fees: u64,
+    pub total_burned: u64,
+    pub total_rewarded: u64,
+}
+
+// =============================================================================
+// Fee Request (stored in "fees" collection)
+// =============================================================================
+
+/// Fee request for verification
 /// Document key: EVM transaction hash
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
-pub struct DepositRequest {
+pub struct FeeRequest {
     /// EVM transaction hash
     pub tx_hash: String,
 
     /// Amount in tokens (not wei)
     pub amount: u64,
 
-    /// Current status of the deposit
-    pub status: DepositStatus,
+    /// Current status of the fee
+    pub status: FeeStatus,
 
     /// Timestamp when verified (if verified)
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -176,7 +190,7 @@ pub struct DepositRequest {
 
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub enum DepositStatus {
+pub enum FeeStatus {
     Pending,
     Verified,
     Failed,

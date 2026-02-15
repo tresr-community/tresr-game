@@ -5,6 +5,7 @@ import LeaderboardModal from "@/components/game/LeaderboardModal.astro";
 import Loader from "@/components/game/Loader.astro";
 import LoginButton from "@/components/auth/LoginButton.astro";
 import VaultBalance from "@/components/wallet/VaultBalance.astro";
+import BurnStats from "@/components/wallet/BurnStats.astro";
 import Footer from "@/components/user/Footer.astro";
 import type {ConfigTypes} from "@/types/config.ts";
 import {config} from "@/lib/config/client.ts";
@@ -71,6 +72,8 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
                 </div>
               </div>
             </div>
+
+            <BurnStats />
           </div>
         </div>
       </div>

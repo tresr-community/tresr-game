@@ -144,6 +144,8 @@ Pickel
 
 # Technical terms
 alnum
+upserted
+verif
 Graphviz
 mgmt
 reentrancy
@@ -179,6 +181,8 @@ oxalica
 
 # Word fragments from hyphenated compounds
 # cspell splits on hyphens and suffixes, producing these fragments
+atal
+ontal
 ator
 backg
 cano

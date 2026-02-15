@@ -64,13 +64,13 @@ export async function getPublicClient(): Promise<PublicClient> {
 }
 
 /**
- * Deposit tokens to start a game session.
+ * Pay fee to start a game session.
  *
  * @param sessionId - Game session identifier
- * @param amount - Amount to deposit in wei
+ * @param amount - Fee amount in wei
  * @returns Transaction hash
  */
-export async function depositForGame(
+export async function payFeeForGame(
   sessionId: string,
   amount: bigint
 ): Promise<`0x${string}`> {
@@ -81,7 +81,7 @@ export async function depositForGame(
   const chainConfig = config.blockchain.avalanche[env];
 
   // Approve the Vault to spend TRESR tokens
-  log.info(COMPONENT_NAME, "Approving TRESR spend for vault deposit...");
+  log.info(COMPONENT_NAME, "Approving TRESR spend for vault fee...");
   await walletClient.writeContract({
     account: accounts[0],
     address: chainConfig.tresr_token_contract as `0x${string}`,
@@ -91,13 +91,13 @@ export async function depositForGame(
     chain: null,
   });
 
-  // Deposit into the Vault
-  log.info(COMPONENT_NAME, "Depositing to vault for session:", sessionId);
+  // Pay fee to the Vault
+  log.info(COMPONENT_NAME, "Paying fee to vault for session:", sessionId);
   const hash = await walletClient.writeContract({
     account: accounts[0],
     address: chainConfig.vault_contract as `0x${string}`,
     abi: VaultAbi,
-    functionName: "deposit",
+    functionName: "payFee",
     args: [amount, sessionId as `0x${string}`],
     chain: null,
   });

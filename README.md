@@ -29,7 +29,7 @@ This project follows **Juno's "One Repo, One App"** architecture, where the fron
 | **Functions**       | Rust (Juno Serverless Functions)               | Game logic, user management, blockchain integration |
 | **Authentication**  | Juno + Internet Identity                       | Decentralized user authentication                   |
 | **Blockchain**      | Internet Computer (ICP)                        | Host platform                                       |
-| **EVM Integration** | Avalanche C-Chain via EVM RPC Canister         | Token deposits and withdrawals                      |
+| **EVM Integration** | Avalanche C-Chain via EVM RPC Canister         | Token fees and withdrawals                          |
 | **Development**     | devenv (Nix)                                   | Hermetic development environment                    |
 
 ### TypeScript Components
@@ -108,7 +108,7 @@ tresr-game/
 
 #### Blockchain Integration
 
-- **Token Deposits**: Verify Avalanche C-Chain transactions
+- **Token Fees**: Verify Avalanche C-Chain transactions
 - **Reward Claims**: Send tokens to withdrawal addresses
 - **EVM RPC Integration**: Cross-canister calls to DFINITY's EVM RPC canister
 - **Transaction Verification**: Parse and validate blockchain transactions
@@ -297,7 +297,7 @@ The game uses DFINITY's EVM RPC canister to interact with Avalanche C-Chain:
 
 ### Token Flow
 
-1. **Deposit**: User sends tokens to game contract on Avalanche
+1. **Fee**: User sends tokens to game contract on Avalanche
 2. **Verification**: Backend verifies transaction via EVM RPC
 3. **Credit**: Balance updated in user profile
 4. **Gameplay**: Player earns additional tokens through gameplay
@@ -420,7 +420,7 @@ cargo test --manifest-path src/satellite/Cargo.toml
 - [ ] Game controls responsive
 - [ ] Progress saves correctly
 - [ ] High scores update
-- [ ] Deposit verification (testnet)
+- [ ] Fee verification (testnet)
 - [ ] Withdrawal sending (testnet)
 
 ## Troubleshooting

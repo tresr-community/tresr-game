@@ -88,6 +88,7 @@ export const config: ConfigTypes = {
     "avalanche": {
       "anvil": {
         "fee": 10,
+        "burn_rate": 1000,
         "chain_id": 43113,
         "rpc_url": "http://localhost:8545",
         "tresr_token_ticker": "tTRESR",
@@ -99,6 +100,7 @@ export const config: ConfigTypes = {
       },
       "testnet": {
         "fee": 10,
+        "burn_rate": 1000,
         "chain_id": 43113,
         "rpc_url": "https://api.avax-test.network/ext/bc/C/rpc",
         "tresr_token_ticker": "tTRESR",
@@ -109,6 +111,7 @@ export const config: ConfigTypes = {
       },
       "mainnet": {
         "fee": 10,
+        "burn_rate": 1000,
         "chain_id": 43114,
         "rpc_url": "https://api.avax.network/ext/bc/C/rpc",
         "tresr_token_ticker": "TRESR",
@@ -1326,7 +1329,7 @@ export const config: ConfigTypes = {
           "Boss encounters with ground pound and charge attacks",
           "Key and loot drop system",
           "Bear Market of endless retardio bankers",
-          "Avalanche blockchain integration for deposits and claims",
+          "Avalanche blockchain integration for fees and claims",
           "Guest and authenticated play modes",
           "AI generated Art, SFX and Music",
           "Mobile touch controls and Game Pad support",

@@ -87,7 +87,7 @@ falling bombs (environmental hazards that damage both enemies and the player).
 
 Upon timer expiration, all basic enemies are cleared and the final boss Gary Gensler descends from above. If the boss is defeated, a treasure chest appears and the Degen can claim $TRESR rewards.
 
-When logged in, Degens deposit $TRESR to join the vault pot; otherwise, guest mode provides a demo without tokens.
+When logged in, Degens pay a $TRESR fee to join the vault pot; otherwise, guest mode provides a demo without tokens.
 
 ## Win Mechanics
 
@@ -102,7 +102,7 @@ When logged in, Degens deposit $TRESR to join the vault pot; otherwise, guest mo
   (`entities.boss.descent.threshold`), boss enters fighting state and pursues the player.
 - **Win Condition**: Defeat the boss, then punch-open the central treasure chest to claim reward. The chest plays an open animation and emits `game_win` to trigger the claim flow.
 - **Reward Formula**: [Planned] Claim percentage of vault = `(keys_collected / 150) * 50%`, capped at 50% vault. Oracle-enforced.
-- **Loss Condition**: Player dies (HP reaches 0) during survival or boss phase. Lose deposit (if logged in), vault pot grows; end session.
+- **Loss Condition**: Player dies (HP reaches 0) during survival or boss phase. Lose fee (if logged in), vault pot grows; end session.
 - **On Loss**: Display themed DaisyUI Game Over modal with stats and auto-save high score. Stats are saved to Juno Collection storage.
 - **Scoring**: Config-driven scoring system:
   - Key collection: 100 points (config: `scoring.key_collection`)
@@ -192,25 +192,25 @@ src/
 
 ### Economy Flow
 
-#### Deposit Flow (Entry Fee)
+#### Fee Flow (Entry Fee)
 
 1. **User Link**: User connects EVM wallet and signs a message to link it to their Juno Principal ID.
-2. **User Action**: User clicks "Start Game" when logged in. The FeeGate component prompts for a deposit.
-3. **Avalanche Tx**: User signs a deposit transaction. [Planned: `deposit(amount, sessionId)` on `Vault.sol`]. Currently uses message signing as placeholder.
+2. **User Action**: User clicks "Start Game" when logged in. The FeeGate component prompts for a fee payment.
+3. **Avalanche Tx**: User signs a fee transaction. [Planned: `payFee(amount, sessionId)` on `Vault.sol`]. Currently uses message signing as placeholder.
    - `sessionId` is generated client-side via `crypto.randomUUID()`. [Planned: deterministic hash `SHA256(clientGeneratedSeed + timestamp + principal)`].
-   - [Planned] A percentage (10%) of the deposit is burned as an anti-inflation measure.
+   - [Planned] A percentage (10%) of the fee is burned as an anti-inflation measure.
 4. **Session Start**: Fee paid status stored in `sessionStorage`. Game session begins.
    - [Planned] Juno verifies txHash via Avalanche RPC and creates a "Game Session" record.
 
 #### Gameplay Mechanics
 
-1. **Session Start**: If logged in, FeeGate prompts EVM wallet deposit (fee configured per chain in `blockchain.avalanche.[env].fee`). Guest mode: Start directly without fee.
+1. **Session Start**: If logged in, FeeGate prompts EVM wallet fee payment (fee configured per chain in `blockchain.avalanche.[env].fee`). Guest mode: Start directly without fee.
 2. **Bear Market (survival phase)**: 5-minute countdown. Enemies spawn from screen edges (5 variants, 4 AI types). Keys airdrop with parachute physics.
    Bombs fall and explode on impact. Player moves/jumps/attacks. Inputs recorded via `Recorder`.
 3. **Bull Market (boss phase)**: Timer expires, all enemies cleared, boss descends from above. Fight boss while dodging bombs.
 4. **Claim Phase**: Defeat boss -> Treasure chest airdrops center -> Punch to open -> Triggers claim authorization.
 5. **Win/Loss**:
-   - **Loss**: Player dies (no HP left). If logged in: Lose deposit, vault pot grows.
+   - **Loss**: Player dies (no HP left). If logged in: Lose fee, vault pot grows.
    - **Win**: Defeat boss and open chest. If logged in: Claim $TRESR via vault.
 
 #### Claim Flow (Reward)
@@ -219,7 +219,7 @@ Only if logged in and player defeats the boss does claim unlock.
 
 1. **Submission**: Frontend submits `sessionId`, `score`, `userAddr`, and a binary payload to Juno `claimAuthorize`.
    Payload format: `[4B input len][inputs][config hash][4B seed len][seed]`.
-2. **Verification**: [Planned] Juno fetches vault balance, verifies deposit, replays inputs to confirm survival, boss defeat, and chest open. Calculates amount per key multiplier formula.
+2. **Verification**: [Planned] Juno fetches vault balance, verifies fee, replays inputs to confirm survival, boss defeat, and chest open. Calculates amount per key multiplier formula.
 3. **Oracle Sig**: Juno signs and returns `(amount, signature)`.
 4. **Avalanche Tx**: Frontend calls `Vault.claim(sessionId, amount, keys, signature)` via the victory modal.
 5. **Settlement**: [Planned] Vault verifies sig and transfers $TRESR. Cooldown enforced.
@@ -239,7 +239,7 @@ Only if logged in and player defeats the boss does claim unlock.
   - `key`: Session ID
   - `user`: Principal ID
   - `status`: 'active' | 'completed' | 'claimed'
-  - `depositTx`: Hash
+  - `feeTx`: Hash
   - `replayData`: Blob/Hash of inputs/outcomes
 - **Leaderboard** (derived from User Profiles):
   - Sorted by `stats.highScore` descending
@@ -866,7 +866,7 @@ and on-chain settlement. Guest mode skips vault interactions entirely.
 | Input forging           | Deterministic replay with seeded RNG                                                          | Implemented (client-side) |
 | Session replay          | Unique sessionId + nonce                                                                      | Partial                   |
 | Front-running           | [Planned] Oracle sig + on-chain claim window                                                  | Planned                   |
-| Fee gate bypass         | [Planned] Server-side deposit verification (ticket #130)                                      | Not implemented           |
+| Fee gate bypass         | [Planned] Server-side fee verification (ticket #130)                                          | Not implemented           |
 | Score manipulation      | [Planned] Server replay validates score matches inputs                                        | Planned                   |
 | Repeat cheating         | [Planned] Escalating bans (24h/72h/168h/permanent)                                            | Planned                   |
 | XSS via leaderboard     | Notification and VaultBalance components use safe DOM APIs. Leaderboard sanitization pending. | Implemented (partial)     |
@@ -881,7 +881,7 @@ sequenceDiagram
     Client->>Client: Pay fee via FeeGate
     Client->>Client: Play game (seeded RNG + record inputs)
     Client->>Juno: claimAuthorize(sessionId, score, addr, payload[inputs+hash+seed])
-    Juno->>Juno: [Planned] Verify deposit, replay inputs, calc amount
+    Juno->>Juno: [Planned] Verify fee, replay inputs, calc amount
     Juno->>Client: (amount, signature)
     Client->>Vault: claim(sessionId, amount, keys, signature)
     Vault->>Client: $TRESR (if valid)
@@ -909,7 +909,7 @@ Entry fee payment modal for authenticated non-guest users:
 1. Displays fee amount (from chain config).
 2. User clicks "Pay & Start Mission".
 3. Checks wallet balance (shows error if insufficient).
-4. Calls `depositForGame(sessionId, feeWei)`.
+4. Calls `payFeeForGame(sessionId, feeWei)`.
 5. Stores txHash + sessionId, marks fee paid in `sessionStorage`.
 6. Session ID secured with HMAC signature to prevent `sessionStorage` spoofing.
 7. `isFeePaid()` is async — performs cryptographic signature verification.

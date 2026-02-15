@@ -65,6 +65,12 @@ export interface UserProfile {
   offence_count?: number; // Cumulative cheat attempts. Escalates ban duration.
 }
 
+export interface GlobalStats {
+  totalFees: number;
+  totalBurned: number;
+  totalRewarded: number;
+}
+
 export type EvmRpcResult = {Ok: string} | {Err: string};
 
 export interface BackendActor {
@@ -83,7 +89,7 @@ export interface BackendActor {
   ) => Promise<void>;
 
   // Blockchain Integration (EVM RPC)
-  depositTokens: (txHash: string) => Promise<EvmRpcResult>;
+  payFee: (txHash: string) => Promise<EvmRpcResult>;
   claimReward: (amount: bigint) => Promise<EvmRpcResult>;
 
   // Admin Functions
