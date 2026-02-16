@@ -191,15 +191,14 @@ in
   claude.code = {
     enable = true;
     mcpServers = {
-      # Breaks Gemini CLI
-      #devenv = {
-      #  type = "stdio";
-      #  command = "devenv";
-      #  args = [ "mcp" ];
-      #  env = {
-      #    DEVENV_ROOT = config.devenv.root;
-      #  };
-      #};
+      devenv = {
+        type = "stdio";
+        command = "devenv";
+        args = [ "mcp" ];
+        env = {
+          DEVENV_ROOT = config.devenv.root;
+        };
+      };
       astroDocs = {
         type = "http";
         url = "https://mcp.docs.astro.build/mcp";

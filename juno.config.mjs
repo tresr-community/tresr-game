@@ -28,7 +28,6 @@ export default defineConfig(({mode}) => ({
     source: "dist",
     // Pass the mode to Astro so import.meta.env.MODE reflects the deployment target.
     //  --mode development => import.meta.env.DEV = true
-    //  --mode staging => import.meta.env.STAGING = true
     //  --mode production => import.meta.env.PROD = true
     predeploy: [`bun run build -- --mode ${mode}`],
     collections: junoConfig.collections,

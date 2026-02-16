@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title TresrFaucet
- * @dev Rate-limited faucet for TresrTestToken.
+ * @dev Rate-limited faucet for RonToken.
  *      Configurable drip amount and cooldown, with a balance cap
  *      to prevent hoarding.
  */

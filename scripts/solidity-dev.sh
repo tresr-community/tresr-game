@@ -251,7 +251,7 @@ function fund_wallet() {
 	fi
 
 	# Detect whether the token has a treasury with balance (real forked tTRESR)
-	# or is a mock token (TresrTestToken deployed via --deploy-token).
+	# or is a mock token (RonToken deployed via --deploy-token).
 	local use_mock_mint=false
 	local treasury_balance="0"
 
@@ -282,7 +282,7 @@ function fund_wallet() {
 
 	if [[ $use_mock_mint == true ]]; then
 		# ——— Mock Token Mint Flow ———
-		# Use deployer (who is owner of TresrTestToken) to mint fresh tokens.
+		# Use deployer (who is owner of RonToken) to mint fresh tokens.
 		log_info "Minting ${GREEN}${fund_human}${NC} $TOKEN_TICKER via deployer..."
 
 		# Calculate splits
@@ -486,7 +486,7 @@ function run_start() {
 }
 
 # =============================================================================
-# Fund — Send more tTRESR to a wallet (Anvil must be running)
+# Fund — Send more tokens to a wallet (Anvil must be running)
 # =============================================================================
 
 function assert_anvil_running() {
@@ -653,13 +653,13 @@ function run_deploy() {
 }
 
 # =============================================================================
-# Deploy Token — Deploy mock TresrTestToken + TresrFaucet to Anvil
+# Deploy Token — Deploy mock RonToken + TresrFaucet to Anvil
 # =============================================================================
 
 function run_deploy_token() {
 	assert_anvil_running
 
-	log_info "Building and deploying TresrTestToken + TresrFaucet to Anvil..."
+	log_info "Building and deploying RonToken + TresrFaucet to Anvil..."
 
 	cd contracts
 	export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
@@ -693,7 +693,7 @@ function run_deploy_token() {
 
 	# Extract addresses
 	local token_address
-	token_address=$(echo "$deploy_output" | grep -oP 'TresrTestToken deployed at: \K0x[0-9a-fA-F]+' || true)
+	token_address=$(echo "$deploy_output" | grep -oP 'RonToken deployed at: \K0x[0-9a-fA-F]+' || true)
 	local faucet_address
 	faucet_address=$(echo "$deploy_output" | grep -oP 'TresrFaucet deployed at: \K0x[0-9a-fA-F]+' || true)
 
@@ -706,22 +706,22 @@ function run_deploy_token() {
 	# Auto-update tresr.yaml with deployed addresses (anvil section only)
 	cd ..
 	sed -i "/anvil:/,/testnet:/ s|tresr_token_contract: \"0x[0-9a-fA-F]*\"|tresr_token_contract: \"${token_address}\"|" "$CONFIG_FILE"
-	sed -i "/anvil:/,/testnet:/ s|tresr_token_ticker: .*|tresr_token_ticker: tTRESRDev|" "$CONFIG_FILE"
+	sed -i "/anvil:/,/testnet:/ s|tresr_token_ticker: .*|tresr_token_ticker: tRON|" "$CONFIG_FILE"
 	sed -i "/anvil:/,/testnet:/ s|faucet_contract: \"0x[0-9a-fA-F]*\"|faucet_contract: \"${faucet_address}\"|" "$CONFIG_FILE"
 	log_info "Updated ${CYAN}${CONFIG_FILE}${NC}:"
 	log_info "  anvil.tresr_token_contract: ${GREEN}${token_address}${NC}"
-	log_info "  anvil.tresr_token_ticker:   ${GREEN}tTRESRDev${NC}"
+	log_info "  anvil.tresr_token_ticker:   ${GREEN}tRON${NC}"
 	log_info "  anvil.faucet_contract:      ${GREEN}${faucet_address}${NC}"
 
 	# Banner
 	cat <<-EOF
 
 		${CYAN}==============================================================================${NC}
-		${GREEN}   TresrTestToken + TresrFaucet deployed successfully!${NC}
+		${GREEN}   RonToken + TresrFaucet deployed successfully!${NC}
 		${CYAN}==============================================================================${NC}
 
 		  Token:      ${GREEN}${token_address}${NC}  ← auto-updated in tresr.yaml
-		  Ticker:     ${GREEN}tTRESRDev${NC}          ← auto-updated in tresr.yaml
+		  Ticker:     ${GREEN}tRON${NC}               ← auto-updated in tresr.yaml
 		  Faucet:     ${GREEN}${faucet_address}${NC}  ← auto-updated in tresr.yaml
 
 		${CYAN}==============================================================================${NC}

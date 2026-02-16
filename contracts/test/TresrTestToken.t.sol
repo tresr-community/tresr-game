@@ -4,15 +4,15 @@ pragma solidity ^0.8.27;
 import "forge-std/Test.sol";
 import "../src/TresrTestToken.sol";
 
-contract TresrTestTokenTest is Test {
-    TresrTestToken token;
+contract RonTokenTest is Test {
+    RonToken token;
 
     address owner = makeAddr("owner");
     address user = makeAddr("user");
 
     function setUp() public {
         vm.prank(owner);
-        token = new TresrTestToken(owner);
+        token = new RonToken(owner);
     }
 
     function testInitialSupply() public view {
@@ -20,8 +20,8 @@ contract TresrTestTokenTest is Test {
     }
 
     function testNameAndSymbol() public view {
-        assertEq(token.name(), "TRESR Test Token");
-        assertEq(token.symbol(), "tTRESRDev");
+        assertEq(token.name(), "Ron Token");
+        assertEq(token.symbol(), "tRON");
     }
 
     function testDecimals() public view {

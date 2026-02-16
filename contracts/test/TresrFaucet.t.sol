@@ -6,7 +6,7 @@ import "../src/TresrTestToken.sol";
 import "../src/TresrFaucet.sol";
 
 contract TresrFaucetTest is Test {
-    TresrTestToken token;
+    RonToken token;
     TresrFaucet faucet;
 
     address owner = makeAddr("owner");
@@ -18,7 +18,7 @@ contract TresrFaucetTest is Test {
 
         vm.startPrank(owner);
 
-        token = new TresrTestToken(owner);
+        token = new RonToken(owner);
         faucet = new TresrFaucet(address(token), owner);
 
         // Fund faucet with 100k tokens

@@ -5,13 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @title TresrTestToken
+ * @title RonToken
  * @dev Mock ERC-20 for local Anvil and Fuji testnet development.
+ *      Named after Ron Jay, the hero of the TRESR game.
  *      No transfer restrictions (unlike real tTRESR bootup caps).
  *      Owner can mint additional supply for faucet funding.
  */
-contract TresrTestToken is ERC20, Ownable {
-    constructor(address initialOwner) ERC20("TRESR Test Token", "tTRESRDev") Ownable(initialOwner) {
+contract RonToken is ERC20, Ownable {
+    constructor(address initialOwner) ERC20("Ron Token", "tRON") Ownable(initialOwner) {
         // Mint 1B tokens to deployer (matches real tTRESR total supply)
         _mint(initialOwner, 1_000_000_000 * 10 ** 18);
     }

@@ -7,7 +7,7 @@ import "../src/TresrFaucet.sol";
 
 /**
  * @title DeployTestToken
- * @dev Deploys TresrTestToken + TresrFaucet and funds the faucet.
+ * @dev Deploys RonToken + TresrFaucet and funds the faucet.
  *
  * Environment variables:
  *   DEPLOYER_PRIVATE_KEY  — EOA hot wallet key
@@ -22,8 +22,8 @@ contract DeployTestToken is Script {
         vm.startBroadcast(deployerKey);
 
         // 1. Deploy token (mints 1B to deployer)
-        TresrTestToken token = new TresrTestToken(deployer);
-        console.log("TresrTestToken deployed at:", address(token));
+        RonToken token = new RonToken(deployer);
+        console.log("RonToken deployed at:", address(token));
 
         // 2. Deploy faucet
         TresrFaucet faucet = new TresrFaucet(address(token), deployer);
