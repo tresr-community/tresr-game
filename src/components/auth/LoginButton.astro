@@ -343,7 +343,7 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
 
       // Show the auth loading overlay — it stays visible during the SIWA
       // handshake that happens after the user selects a wallet and signs.
-      showAuthOverlay("Connecting wallet...");
+      showAuthOverlay("Awaiting wallet connection...");
 
       // This opens the AppKit modal with all wallet options
       // (injected wallets + WalletConnect QR code)

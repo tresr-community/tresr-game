@@ -630,11 +630,20 @@ Singleton music player (`src/lib/game/MusicManager.ts`) using HTML5 Audio.
 Features:
 
 - **Track Loading**: Dynamically loads track list from `config-client.json` (auto-scanned from `public/assets/audio/music/`).
-- **Shuffle**: Fisher-Yates algorithm with repeat prevention (last track of previous queue won't be first in new queue).
+- **Three Playback Modes** (cycled via a dedicated button in the player UI):
+  - **Normal**: Plays one song then the next in fixed order. If the user has a favorite track, it plays first on game start.
+  - **Shuffle** (default): At the end of each track a new one is selected at random. Uses Fisher-Yates algorithm with repeat prevention (crypto RNG, non-gameplay).
+  - **Repeat One**: Repeats the current (favorite) track over and over.
+- **Favorite Track**: When a user manually selects a track from the track list dropdown, that track becomes their "favorite".
+  This is independent of the playback mode — automatic track advances never change the favorite.
+  Only explicit user selection from the list updates it.
 - **Session Persistence**: Shuffle queue state saved to `sessionStorage` and restored on page navigation.
-- **User Preferences**: Volume (music + SFX separate), current track, mute state persisted to Juno Datastore per user (debounced 2 seconds).
-- **Auto-Play**: Next track plays automatically on song end (shuffle or sequential mode).
-- **Controls**: Play/pause, next/prev, seek, volume control.
+- **User Preferences**: `playbackMode`, `favoriteTrack`, volume (music + SFX separate), and pause state persisted to Juno Datastore per user (debounced 2s).
+  Pending writes flushed to `localStorage` on tab close and synced on next load.
+- **Auto-Play**: Next track plays automatically on song end based on current playback mode.
+- **Controls**: Play/pause, next/prev, seek, volume control, playback mode cycle button.
+- **Backward Compatibility**: Legacy profiles with `track: "random"` are migrated to `playbackMode: "shuffle"`. Legacy `track: "<name>"` is migrated to `favoriteTrack: "<name>"` + `playbackMode: "normal"`.
+- **New User / Guest Defaults**: `playbackMode: "shuffle"`, no favorite track. A random track is selected on first play.
 
 ### SFX System
 
@@ -956,12 +965,12 @@ Wallet dropdown component with multiple states:
 Compact music player in bottom-left of HUD:
 
 - Play/Pause, Next/Prev buttons.
+- **Playback mode cycle button**: Cycles through Normal → Shuffle → Repeat One. Icon and highlight update reactively.
 - Track name display.
 - Progress bar with seek.
-- Track selector dropdown with shuffle mode.
+- Track selector dropdown. Selecting a track sets it as the user's **favorite** (highlighted in the list). The favorite is independent of the playback mode.
 - Narration toggle checkbox (visible to logged-in users only, persists to Juno).
 - Volume sliders (music + SFX separate).
-- Shuffle/sequential toggle.
 
 ## UI/UX & Theming
 
@@ -1043,7 +1052,8 @@ User profiles stored in Juno Datastore under "users" collection, keyed by Princi
     "narration": true,
     "has_read_instructions": false,
     "music": {
-      "track": "Neon Grid",
+      "favoriteTrack": "Neon Grid",
+      "playbackMode": "shuffle",
       "volume": 0.75,
       "sfxVolume": 0.5,
       "isPaused": false

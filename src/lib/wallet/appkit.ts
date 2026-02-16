@@ -130,6 +130,14 @@ export function getAppKit(): AppKit {
 
   log.info(COMPONENT_NAME, "Initialized successfully");
 
+  // Remove unused font preload links injected by Reown SDK (suppresses
+  // "preloaded but not used" console warnings for KHTeka-Medium.woff2) // cspell:disable-line
+  if (typeof document !== "undefined") {
+    document
+      .querySelectorAll('link[rel="preload"][href*="fonts.reown.com"]')
+      .forEach((el) => el.remove());
+  }
+
   return appKitInstance;
 }
 

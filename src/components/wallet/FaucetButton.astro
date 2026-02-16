@@ -181,6 +181,28 @@ const isProduction = JUNO_ENVIRONMENT === "production";
         const message = err instanceof Error ? err.message : String(err);
         log.error(COMPONENT_NAME, "Faucet claim failed", err);
         trackError("faucet_claim", message);
+
+        // Show a friendly toast based on the revert reason
+        if (message.includes("Balance too high")) {
+          let ticker = "tTRESR";
+          try {
+            const env = (
+              await import("@/lib/wallet/avalanche")
+            ).getEnvironmentKey();
+            ticker = config.blockchain.avalanche[env].tresr_token_ticker;
+          } catch {
+            // fall back to default ticker
+          }
+          window.showWarningToast?.(
+            `Sorry degen, you already have too many $${ticker} tokens 🤑`
+          );
+        } else if (message.includes("Cooldown active")) {
+          window.showWarningToast?.("Hold up — faucet is on cooldown ⏳");
+        } else if (message.includes("Faucet empty")) {
+          window.showWarningToast?.("Faucet is dry — no tokens left 🏜️");
+        } else {
+          window.showErrorToast?.("Faucet claim failed — try again later");
+        }
       } finally {
         isProcessing = false;
         if (cooldownRemaining <= 0) {

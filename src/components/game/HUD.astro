@@ -29,7 +29,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
           </div>
           <div
             id="hud-hp"
-            class="stat-value text-error font-mono text-sm sm:text-xl"
+            class="stat-value text-error text-center font-mono text-sm sm:text-xl"
           >
             {playerHealth}
           </div>
@@ -42,7 +42,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
           </div>
           <div
             id="hud-score"
-            class="stat-value text-primary font-mono text-sm sm:text-xl"
+            class="stat-value text-primary text-center font-mono text-sm sm:text-xl"
           >
             0
           </div>
@@ -55,7 +55,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
           </div>
           <div
             id="hud-keys"
-            class="stat-value text-secondary font-mono text-sm sm:text-xl"
+            class="stat-value text-secondary text-center font-mono text-sm sm:text-xl"
           >
             0
           </div>
@@ -74,6 +74,48 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
             class="stat-value text-warning font-mono text-sm sm:text-xl"
           >
             1
+          </div>
+        </div>
+        <!-- Super Charge Radial Ring -->
+        <div class="stat border-primary/10 border-l p-1 px-2 sm:p-2 sm:px-3">
+          <div
+            class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
+          >
+            Super
+          </div>
+          <div class="flex items-center justify-center">
+            <div
+              id="hud-super-ring"
+              class="relative flex items-center justify-center"
+              style="width:36px;height:36px"
+            >
+              <svg
+                viewBox="0 0 36 36"
+                class="absolute inset-0 h-full w-full -rotate-90"
+              >
+                <circle
+                  cx="18"
+                  cy="18"
+                  r="15"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  class="text-base-content/10"></circle>
+                <circle
+                  id="hud-super-arc"
+                  cx="18"
+                  cy="18"
+                  r="15"
+                  fill="none"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                  stroke-dasharray="94.25"
+                  stroke-dashoffset="94.25"
+                  class="transition-all duration-200"
+                  style="stroke:#ef4444"></circle>
+              </svg>
+              <span id="hud-super-icon" class="text-xs select-none">⚡</span>
+            </div>
           </div>
         </div>
       </div>
@@ -110,34 +152,13 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
   <div class="grid w-full grid-cols-3 items-end">
     <div class="min-w-0"></div>
 
-    <!-- Center: Phase Alerts, Super Bar & Pause Button -->
+    <!-- Center: Phase Alerts & Pause Button -->
     <div class="flex flex-col items-center gap-1 pb-2 sm:gap-2 sm:pb-4">
       <div
         id="hud-phase-alert"
         class="badge badge-primary sm:badge-lg hidden text-[10px] font-bold tracking-widest uppercase sm:text-xs"
       >
         BOSS INCOMING
-      </div>
-
-      <!-- Super Power Bar -->
-      <div
-        id="hud-super-bar"
-        class="bg-base-300/80 border-warning/30 pointer-events-auto w-24 rounded-lg border p-1 shadow-lg backdrop-blur sm:w-48 sm:p-2 lg:w-56"
-      >
-        <div class="flex items-center justify-between">
-          <span
-            class="text-warning text-[8px] font-bold uppercase opacity-80 sm:text-[10px]"
-            >SUPER</span
-          >
-          <span id="hud-super-text" class="text-warning font-mono text-xs"
-            >0%</span
-          >
-        </div>
-        <progress
-          id="hud-super-progress"
-          class="progress progress-warning mt-1 h-2 w-full"
-          value="0"
-          max="100"></progress>
       </div>
 
       <!-- Centred Pause Button -->
@@ -207,11 +228,10 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
     elLivesStat.classList.remove("hidden");
   }
 
-  // Super attack elements
-  const elSuperProgress = document.getElementById(
-    "hud-super-progress"
-  ) as HTMLProgressElement;
-  const elSuperText = document.getElementById("hud-super-text");
+  // Super charge radial ring
+  const elSuperArc = document.getElementById("hud-super-arc");
+  const elSuperRing = document.getElementById("hud-super-ring");
+  const CIRCUMFERENCE = 2 * Math.PI * 15; // ≈ 94.25
 
   // Boss HP elements
   const elBossBar = document.getElementById("hud-boss-bar");
@@ -246,19 +266,31 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
       }
     }
 
-    // Super power bar update
-    if (elSuperProgress) {
-      elSuperProgress.value = state.superCharge;
+    // Super charge radial ring update
+    if (elSuperArc) {
+      const pct = state.superCharge / maxCharge;
+      const offset = CIRCUMFERENCE * (1 - pct);
+      elSuperArc.setAttribute("stroke-dashoffset", offset.toString());
+
+      // Color gradient: red → orange → yellow → green → neon purple
+      let color: string;
+      if (pct < 0.25) color = "#ef4444";
+      else if (pct < 0.5) color = "#f97316";
+      else if (pct < 0.75) color = "#eab308";
+      else if (pct < 1) color = "#22c55e";
+      else color = "#a855f7"; // neon purple = READY!
+
+      elSuperArc.style.stroke = color;
     }
-    if (elSuperText) {
-      elSuperText.innerText = `${state.superCharge}%`;
-      // Change color when fully charged
+
+    // Pulse glow when super is fully charged
+    if (elSuperRing) {
       if (state.superCharge >= maxCharge) {
-        elSuperText.classList.add("text-success", "animate-pulse");
-        elSuperText.classList.remove("text-warning");
+        elSuperRing.classList.add("animate-pulse");
+        elSuperRing.style.filter = "drop-shadow(0 0 8px #a855f7)";
       } else {
-        elSuperText.classList.remove("text-success", "animate-pulse");
-        elSuperText.classList.add("text-warning");
+        elSuperRing.classList.remove("animate-pulse");
+        elSuperRing.style.filter = "";
       }
     }
 

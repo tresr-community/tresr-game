@@ -78,13 +78,35 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
             </div>
 
             <BurnStats />
+
+            <!-- Mobile scroll indicator (hidden on lg+) -->
+            <div
+              class="text-primary/50 mt-2 animate-bounce text-center lg:hidden"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="mx-auto h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+              </svg>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Bottom Corner Buttons -->
-    <div class="fixed bottom-8 left-8 z-30">
+    <div
+      class="tooltip tooltip-right fixed bottom-8 left-8 z-30"
+      data-tip="Leaderboard"
+    >
       <button
         id="btn-leaderboard"
         class="btn btn-ghost text-primary hover:bg-primary/10 hover:border-primary/50 gap-2 border border-transparent font-mono"
@@ -94,7 +116,10 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
       </button>
     </div>
 
-    <div class="fixed right-8 bottom-8 z-30">
+    <div
+      class="tooltip tooltip-left fixed right-8 bottom-8 z-30"
+      data-tip="Manual"
+    >
       <button
         id="btn-manual"
         class="btn btn-ghost text-primary hover:bg-primary/10 hover:border-primary/50 gap-2 border border-transparent font-mono"

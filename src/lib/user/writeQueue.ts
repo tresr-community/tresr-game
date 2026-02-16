@@ -43,53 +43,76 @@ export function enqueueProfileWrite(
   principal: string,
   mutator: (profile: UserProfile) => UserProfile
 ): Promise<void> {
-  const op = doWrite(principal, mutator);
-  // Chain onto the queue so writes are sequential.
-  // Both resolve and reject arms chain the same operation,
-  // so a failed write doesn't block subsequent ones.
+  // Create a deferred promise so the caller can await the result.
+  let resolve!: () => void;
+  let reject!: (e: unknown) => void;
+  const deferred = new Promise<void>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  // Chain onto the queue — doWrite() only starts when prior writes finish.
+  // Both resolve and reject arms start a fresh operation so a failed write
+  // doesn't block subsequent ones.
   writeQueue = writeQueue.then(
-    () => op,
-    () => op
+    () => doWrite(principal, mutator).then(resolve, reject),
+    () => doWrite(principal, mutator).then(resolve, reject)
   );
-  return op;
+
+  return deferred;
 }
 
 /**
  * Perform a single read-modify-write cycle.
+ * Retries once on version conflict (defense-in-depth for external writes).
  */
 async function doWrite(
   principal: string,
   mutator: (profile: UserProfile) => UserProfile
 ): Promise<void> {
-  const config = getSatelliteConfig();
+  const MAX_ATTEMPTS = 2;
 
-  try {
-    const existingDoc: Doc<UserProfile> | undefined =
-      (await getDoc<UserProfile>({
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const config = getSatelliteConfig();
+
+    try {
+      const existingDoc: Doc<UserProfile> | undefined =
+        (await getDoc<UserProfile>({
+          collection: COLLECTION_USERS,
+          key: principal,
+          ...config,
+        })) ?? undefined;
+
+      const currentProfile: UserProfile =
+        existingDoc?.data ?? createDefaultProfile(principal);
+
+      const updatedProfile = mutator(currentProfile);
+
+      await setDoc<UserProfile>({
         collection: COLLECTION_USERS,
-        key: principal,
+        doc: {
+          key: principal,
+          data: updatedProfile,
+          version: existingDoc?.version,
+        },
         ...config,
-      })) ?? undefined;
+      });
 
-    const currentProfile: UserProfile =
-      existingDoc?.data ?? createDefaultProfile(principal);
-
-    const updatedProfile = mutator(currentProfile);
-
-    await setDoc<UserProfile>({
-      collection: COLLECTION_USERS,
-      doc: {
-        key: principal,
-        data: updatedProfile,
-        version: existingDoc?.version,
-      },
-      ...config,
-    });
-
-    log.debug(COMPONENT_NAME, "Profile write succeeded for", principal);
-  } catch (e) {
-    log.error(COMPONENT_NAME, "Profile write failed for", principal, e);
-    throw e;
+      log.debug(COMPONENT_NAME, "Profile write succeeded for", principal);
+      return;
+    } catch (e) {
+      // Retry once on version conflict (in case of external writes)
+      if (
+        attempt < MAX_ATTEMPTS - 1 &&
+        e instanceof Error &&
+        e.message.includes("version_outdated_or_future")
+      ) {
+        log.warn(COMPONENT_NAME, "Version conflict, retrying...", principal);
+        continue;
+      }
+      log.error(COMPONENT_NAME, "Profile write failed for", principal, e);
+      throw e;
+    }
   }
 }
 

@@ -1,7 +1,8 @@
 # Project
-tresr
 MAHD
 SECRETSPEC
+TRESR
+tresr
 
 # Usernames and paths
 mahdtech
@@ -209,6 +210,7 @@ dencies
 enviro
 ethe
 exte
+ffset
 hain
 henticated
 ipal
@@ -225,6 +227,7 @@ produ
 repe
 rint
 rboard
+rray
 ution
 
 # Code and API names
@@ -256,3 +259,4 @@ consolation
 prereleased
 appinstalled
 brrr
+uncollectible

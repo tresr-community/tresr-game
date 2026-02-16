@@ -40,7 +40,8 @@ export interface UserProfile {
     has_read_instructions: boolean;
     narration?: boolean; // Intro voiceover preference (default: true when absent)
     music?: {
-      track?: string;
+      favoriteTrack?: string;
+      playbackMode?: "normal" | "shuffle" | "repeat-one";
       volume?: number;
       sfxVolume?: number;
       isPaused?: boolean;

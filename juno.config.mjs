@@ -8,7 +8,7 @@ const configContent = fs.readFileSync(configPath, "utf8");
 const fullConfig = yaml.parse(configContent);
 const junoConfig = fullConfig.server.juno;
 
-// Simple variable substitution for placeholders like ${VAR}
+// Variable substitution for placeholders like ${VAR}
 const substitute = (val) => {
   if (typeof val !== "string") return val;
   return val.replace(/\${(\w+)}/g, (_, name) => process.env[name] || "");
@@ -28,6 +28,7 @@ export default defineConfig(({mode}) => ({
     source: "dist",
     // Pass the mode to Astro so import.meta.env.MODE reflects the deployment target.
     //  --mode development => import.meta.env.DEV = true
+    //  --mode staging => import.meta.env.STAGING = true
     //  --mode production => import.meta.env.PROD = true
     predeploy: [`bun run build -- --mode ${mode}`],
     collections: junoConfig.collections,

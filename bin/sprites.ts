@@ -345,10 +345,17 @@ async function runCalc() {
   if (sprites.enemies) {
     for (let i = 1; i <= sprites.enemies.count; i++) {
       const resolvedAnims = sprites.enemies.anims.map(
-        (a: {name: string; frames: number; pathTemplate: string}) => ({
+        (a: {
+          name: string;
+          frames: number;
+          path?: string;
+          pathTemplate?: string;
+        }) => ({
           name: a.name,
           frames: a.frames,
-          path: a.pathTemplate.replace("{i}", String(i)),
+          path: a.pathTemplate
+            ? a.pathTemplate.replace("{i}", String(i))
+            : a.path,
         })
       );
       groups.push(await buildEntityGroup(`Enemy ${i}`, resolvedAnims));

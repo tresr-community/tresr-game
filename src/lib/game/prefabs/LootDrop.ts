@@ -40,7 +40,6 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
    */
   public spawn(x: number, y: number, type: LootType, textureKey: string) {
     this.lootType = type;
-    this.setTexture(textureKey);
     this.setPosition(x, y);
     this.setActive(true);
     this.setVisible(true);
@@ -62,10 +61,21 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
     this.setScale(scale);
     this.healAmount = type === "health" ? lootConfig.health.heal_amount : 0;
 
+    // Play animation FIRST so this.width/height reflect the real texture
+    // dimensions. setTexture(textureKey) must NOT be called with the raw
+    // key (e.g. "health_1") — Phaser registers textures as "health_1_idle".
+    // Calling setTexture with a missing key falls back to __MISSING (32x32),
+    // corrupting the body offset calculation below.
+    const animKey = `${textureKey}_idle`;
+    if (this.scene.anims.exists(animKey)) {
+      this.play(animKey, true);
+    }
+
     // Position physics body at feet level to match player body anchor.
     // Values are in unscaled frame-local coords — Phaser applies _sx/_sy
     // internally to both size and offset. Use a generous body so overlap
     // detection works reliably even during the bob cycle.
+    // IMPORTANT: This must run AFTER play() so this.width/height are correct.
     if (this.body) {
       const body = this.body as Phaser.Physics.Arcade.Body;
       const bw = lootConfig.hitbox.width;
@@ -76,11 +86,6 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
       // stays at the old position until the next physics step, causing
       // overlap detection to fail if checked before then.
       body.updateFromGameObject();
-    }
-
-    const animKey = `${textureKey}_idle`;
-    if (this.scene.anims.exists(animKey)) {
-      this.play(animKey, true);
     }
 
     // Stop previous bob tween if respawned before kill (ticket #253)
@@ -96,6 +101,14 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
       yoyo: true,
       repeat: -1,
       ease: "Sine.easeInOut",
+      onUpdate: () => {
+        // Keep Arcade body in sync with sprite position during bob.
+        // Without this, overlap detection uses the stale body position
+        // from spawn time, making the item uncollectible.
+        if (this.body) {
+          (this.body as Phaser.Physics.Arcade.Body).updateFromGameObject();
+        }
+      },
     });
 
     // Auto-despawn — destroy previous timer if respawned before it fires (ticket #195)

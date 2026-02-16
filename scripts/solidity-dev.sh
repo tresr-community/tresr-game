@@ -399,11 +399,17 @@ function fund_wallet() {
 			--rpc-url "$ANVIL_RPC_URL" >/dev/null
 	fi
 
-	# Fund wallet with native AVAX for gas
-	log_info "Setting wallet gas balance (10 AVAX)..."
+	# Fund wallet with native AVAX for gas (add 10 AVAX to current balance)
+	local current_avax_balance
+	current_avax_balance=$(cast balance "$wallet_address" --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "0")
+	local new_avax_balance
+	new_avax_balance=$(echo "$current_avax_balance + 10000000000000000000" | bc)
+	local new_avax_hex
+	new_avax_hex="0x$(echo "obase=16; $new_avax_balance" | bc)" # cspell:disable-line
+	log_info "Adding 10 AVAX to wallet gas balance..."
 	cast rpc anvil_setBalance \
 		"$wallet_address" \
-		"0x8AC7230489E80000" \
+		"$new_avax_hex" \
 		--rpc-url "$ANVIL_RPC_URL" >/dev/null
 
 	log_info "${GREEN}Funding complete!${NC}"

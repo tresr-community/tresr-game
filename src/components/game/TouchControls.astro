@@ -109,9 +109,10 @@
   const btnSuper = document.getElementById("btn-touch-super");
   const btnJump = document.getElementById("btn-touch-jump");
 
-  // Detect touch device
-  const isTouchDevice =
-    "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  // Detect touch-primary device (phones/tablets, not desktop with mouse).
+  // `pointer: coarse` matches devices whose primary input is imprecise (finger),
+  // avoiding false positives on desktops where Chrome reports maxTouchPoints > 0.
+  const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
 
   if (isTouchDevice && container) {
     container.classList.remove("hidden");

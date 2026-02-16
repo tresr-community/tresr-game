@@ -322,8 +322,6 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
     "header-toggle-btn"
   ) as HTMLElement | null;
   let isExpanded = false;
-  /** true when the user has manually toggled; suppresses matchMedia auto-switch */
-  let userOverride = false;
 
   // Notification-aware toggle glow
   let currentUrgency: "none" | "non-urgent" | "urgent" = "none";
@@ -373,7 +371,6 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
     updateToggleGlow();
   }
   function handleToggle() {
-    userOverride = true;
     if (isExpanded) collapseToolbar();
     else expandToolbar();
   }
@@ -384,7 +381,6 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
   function handleBreakpointChange(e: MediaQueryList | MediaQueryListEvent) {
     // Reset manual override when crossing the breakpoint boundary so the
     // toolbar snaps to the correct default for the new viewport size.
-    userOverride = false;
     if (e.matches) {
       expandToolbar();
     } else {
