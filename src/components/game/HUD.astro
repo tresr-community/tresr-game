@@ -15,7 +15,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
   class="pointer-events-none absolute inset-0 flex flex-col justify-between p-2 sm:p-4"
 >
   <!-- Top Bar -->
-  <div class="grid w-full grid-cols-3 items-start gap-4">
+  <div class="grid w-full grid-cols-3 items-start gap-1 sm:gap-4">
     <!-- Left: Stats -->
     <div class="flex justify-start">
       <div
@@ -92,7 +92,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
           </div>
           <div
             id="hud-timer"
-            class="stat-value text-error font-mono text-lg sm:text-3xl"
+            class="stat-value text-error font-mono text-sm sm:text-lg lg:text-3xl"
           >
             {timerMin}:{timerSec}
           </div>
@@ -111,10 +111,10 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
     <div class="min-w-0"></div>
 
     <!-- Center: Phase Alerts, Super Bar & Pause Button -->
-    <div class="flex flex-col items-center gap-2 pb-4">
+    <div class="flex flex-col items-center gap-1 pb-2 sm:gap-2 sm:pb-4">
       <div
         id="hud-phase-alert"
-        class="badge badge-primary badge-lg hidden font-bold tracking-widest uppercase"
+        class="badge badge-primary sm:badge-lg hidden text-[10px] font-bold tracking-widest uppercase sm:text-xs"
       >
         BOSS INCOMING
       </div>
@@ -122,10 +122,11 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
       <!-- Super Power Bar -->
       <div
         id="hud-super-bar"
-        class="bg-base-300/80 border-warning/30 pointer-events-auto w-32 rounded-lg border p-1.5 shadow-lg backdrop-blur sm:w-48 sm:p-2"
+        class="bg-base-300/80 border-warning/30 pointer-events-auto w-24 rounded-lg border p-1 shadow-lg backdrop-blur sm:w-48 sm:p-2 lg:w-56"
       >
         <div class="flex items-center justify-between">
-          <span class="text-warning text-[10px] font-bold uppercase opacity-80"
+          <span
+            class="text-warning text-[8px] font-bold uppercase opacity-80 sm:text-[10px]"
             >SUPER</span
           >
           <span id="hud-super-text" class="text-warning font-mono text-xs"
@@ -142,7 +143,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
       <!-- Centred Pause Button -->
       <button
         id="btn-hud-pause"
-        class="btn btn-circle btn-primary pointer-events-auto border-2 border-white/10 shadow-xl"
+        class="btn btn-circle btn-primary btn-sm sm:btn-md pointer-events-auto min-h-[40px] min-w-[40px] border-2 border-white/10 shadow-xl"
         title="Pause Mission (ESC)"
       >
         <svg
@@ -162,7 +163,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
     <div class="flex min-w-0 flex-col items-end justify-end gap-2">
       <div
         id="hud-boss-bar"
-        class="bg-base-300/80 border-error/30 pointer-events-auto hidden w-40 rounded-lg border p-1.5 shadow-lg backdrop-blur"
+        class="bg-base-300/80 border-error/30 pointer-events-auto hidden w-28 rounded-lg border p-1 shadow-lg backdrop-blur sm:w-40 sm:p-1.5 lg:w-48"
       >
         <div class="flex items-center justify-between">
           <span class="text-error text-[9px] font-bold uppercase opacity-80"

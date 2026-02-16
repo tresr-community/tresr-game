@@ -4,7 +4,7 @@ import {SpriteManager, type SpritesConfig} from "@/lib/game/SpriteManager";
 
 // Loot can be either health or a powerup.
 // Health is pretty obvious — it heals the player when collected.
-// Powerups are special, they currently spawn the 'Tresr Bot'.
+// Powerups are special, they currently spawn the 'TRESR Bot'.
 export type LootType = "health" | "powerup";
 
 /**
@@ -45,7 +45,13 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
     this.setActive(true);
     this.setVisible(true);
     if (this.body) {
-      (this.body as Phaser.Physics.Arcade.Body).enable = true;
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      body.enable = true;
+      // Prevent Arcade physics from moving/gravity-dragging the body —
+      // position is driven entirely by the bobbing tween.
+      body.setAllowGravity(false);
+      body.setImmovable(true);
+      body.setVelocity(0, 0);
     }
 
     const lootConfig = this.config.gameplay.entities.enemy.loot;
@@ -66,6 +72,10 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
       const bh = lootConfig.hitbox.height;
       body.setSize(bw, bh);
       body.setOffset((this.width - bw) / 2, this.height - bh);
+      // Force-sync body position with sprite — without this the body
+      // stays at the old position until the next physics step, causing
+      // overlap detection to fail if checked before then.
+      body.updateFromGameObject();
     }
 
     const animKey = `${textureKey}_idle`;

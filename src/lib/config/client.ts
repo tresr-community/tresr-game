@@ -45,7 +45,7 @@ export const config: ConfigTypes = {
     }
   },
   "app": {
-    "name": "Tresr Community Game",
+    "name": "TRESR Game",
     "tagline": "Collect Keys. Fight Enemies. Claim the TRESR.",
     "footer_text": "Economy powered by the Avalanche Blockchain.",
     "narration_text": {
@@ -933,7 +933,7 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 6,
           "repeat": -1,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/idle.webp",
+          "path": "/assets/images/sprites/boss/idle.webp",
           "frameWidth": 512,
           "frameHeight": 512
         },
@@ -942,7 +942,7 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 8,
           "repeat": -1,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/walk.webp",
+          "path": "/assets/images/sprites/boss/walk.webp",
           "frameWidth": 512,
           "frameHeight": 512
         },
@@ -951,7 +951,7 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/jump.webp",
+          "path": "/assets/images/sprites/boss/jump.webp",
           "frameWidth": 512,
           "frameHeight": 512
         },
@@ -960,7 +960,7 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/attack.webp",
+          "path": "/assets/images/sprites/boss/attack.webp",
           "frameWidth": 512,
           "frameHeight": 512
         },
@@ -969,7 +969,7 @@ export const config: ConfigTypes = {
           "frames": 4,
           "frameRate": 8,
           "repeat": 0,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/hurt.webp",
+          "path": "/assets/images/sprites/boss/hurt.webp",
           "frameWidth": 512,
           "frameHeight": 512
         }
@@ -1250,7 +1250,7 @@ export const config: ConfigTypes = {
     ]
   },
   "credits": {
-    "description": "This project stands on the shoulders of giants, without whom, none of it would be possible.\n\nA special thank you to the following individuals;\n",
+    "description": "Look here degen, this is just a fun, unofficial game I whipped up for the TRESR community.\n\nIt's kind of like fanfic but with crypto twists and pixels.\n\n_No official ties to the TRESR project_ (you know, the ones slinging those killer t-shirts over at tresr.com).\n\nBugs might creep in, or things could glitch out, maybe even feel like a mini rug pull if the code gets funky (crypto stuff's wild like that, right?).\n\nBut that's all on me – the TRESR folks aren't to blame; they're the pros laying the groundwork we all love.\n\nThis was put together with a ton of heart ❤️, some wild ideas, and mad respect for the TRESR community.\n\nDisclaimer out of the way, let's hit the credits!\n\nThis whole thing's built on the work of some absolute legends; without 'em, we'd be nowhere in this crypto playground.\n\nBig ups to these folks;\n",
     "coders": [
       {
         "name": "MAHDTech",

@@ -146,7 +146,10 @@ Tresr uses a hybrid architecture to ensure responsive gameplay while maintaining
   - **Astro**: Handles the "App" layer (Landing, Auth, Profile, Wallet, HUD, FeeGate, Modals).
   - **Phaser v3**: Handles the "Game" layer (Canvas, Physics, Audio, Input) with Arcade Physics.
   - **TypeScript**: Strict typing enforced across both App and Game layers.
-  - **TailwindCSS v4 + DaisyUI v5**: Styling for all HTML/Astro components (HUD, Modals, Menus).
+  - **DaisyUI v5 + TailwindCSS v4**: DaisyUI-first styling for all HTML/Astro components.
+    DaisyUI prebuilt components are preferred; Tailwind utilities used only for layout
+    and spacing where DaisyUI lacks coverage. Custom CSS is prohibited except for game-specific
+    visual effects with no DaisyUI/Tailwind equivalent.
   - **Nanostores**: Reactive state management (`gameStore`) bridging Phaser and Astro.
   - **2.5D Rendering**: Z-axis physics with gravity, depth sorting via `setDepth(groundY)`, shadow rendering for all entities.
 - **Backend (Juno - Rust Canisters)**: Manages authentication via Internet Identity 2.0, database operations using Juno Collections,
@@ -962,7 +965,14 @@ Compact music player in bottom-left of HUD:
 
 ## UI/UX & Theming
 
-- **Framework**: DaisyUI v5 (Tailwind CSS plugin).
+- **Framework**: DaisyUI v5 (Tailwind CSS plugin). **DaisyUI is the primary styling layer.**
+  All UI components MUST use DaisyUI's prebuilt component classes and modifiers first.
+  Tailwind CSS utility classes are used only when DaisyUI has no equivalent (e.g., layout,
+  spacing, positioning). Plain CSS is a last resort, reserved for game-specific effects
+  (e.g., keyframe animations, scanlines) that have no DaisyUI or Tailwind equivalent.
+- **Dropdown Pattern**: All dropdowns use DaisyUI's `<details>/<summary>` pattern
+  (not the CSS focus `label[tabindex=0]` pattern) for reliable click-to-toggle behavior
+  inside the `pointer-events-none` header overlay.
 - **Default Theme**: `synthwave` (Dark/Cyberpunk).
 - **Customization**: Theme selector in top bar. All DaisyUI themes enabled (25 themes); persisted in Juno user profile.
 - **Vault Display**: Implemented. VaultBalance component shows vault prize pool for authenticated non-guest users. Only polls Avalanche RPC when wallet is connected; shows `--` placeholder otherwise.

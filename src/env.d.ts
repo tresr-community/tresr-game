@@ -480,7 +480,7 @@ declare module "/config-client.json" {
           frames: number;
           frameRate: number;
           repeat: number;
-          pathTemplate: string;
+          path: string;
           frameWidth: number;
           frameHeight: number;
         }>;
@@ -1139,7 +1139,7 @@ declare module "../../../public/config-client.json" {
           frames: number;
           frameRate: number;
           repeat: number;
-          pathTemplate: string;
+          path: string;
           frameWidth: number;
           frameHeight: number;
         }>;

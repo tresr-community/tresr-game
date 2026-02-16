@@ -6,15 +6,14 @@ import BanModal from "@/components/game/BanModal.astro";
 import Loader from "@/components/game/Loader.astro";
 ---
 
-<BaseLayout title="Tresr Game | Active Session">
+<BaseLayout title="TRESR Game | Active Session">
   <Loader minTime={1500} id="game-loader" />
   <FeeGate />
   <BanModal />
 
   <div
     id="game-container"
-    class="hidden h-screen w-full"
-    style="touch-action:none;overflow:hidden;position:fixed;inset:0"
+    class="fixed inset-0 hidden h-screen w-full touch-none overflow-hidden"
   >
     <PhaserGame />
   </div>
@@ -257,9 +256,8 @@ import Loader from "@/components/game/Loader.astro";
       requestFullscreen();
       trackGameStart();
 
-      // Hide header on mobile to reclaim screen space
-      const header = document.getElementById("app-header");
-      if (header) header.classList.add("max-sm:hidden");
+      // Header stays visible during gameplay — the collapsible toggle
+      // keeps it out of the way when not needed.
 
       // Resume audio context on first user interaction (mobile browsers block autoplay)
       document.addEventListener("touchstart", resumeAudioContext, {once: true});
@@ -315,9 +313,7 @@ import Loader from "@/components/game/Loader.astro";
         if (document.fullscreenElement) {
           document.exitFullscreen().catch(() => {});
         }
-        // Restore header visibility
-        const header = document.getElementById("app-header");
-        if (header) header.classList.remove("max-sm:hidden");
+        // (Header no longer hidden during gameplay — no restore needed)
       },
       {once: true}
     );

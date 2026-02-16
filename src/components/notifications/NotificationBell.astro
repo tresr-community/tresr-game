@@ -2,9 +2,8 @@
 
 ---
 
-<div class="dropdown dropdown-end" id="notification-dropdown">
-  <label
-    tabindex="0"
+<details class="dropdown dropdown-end" id="notification-dropdown">
+  <summary
     class="btn btn-ghost btn-circle"
     id="bell-container"
     aria-label="Notifications"
@@ -30,9 +29,8 @@
         id="notification-badge">0</span
       >
     </div>
-  </label>
+  </summary>
   <div
-    tabindex="0"
     class="card card-compact dropdown-content bg-base-100 border-primary/20 z-[1] mt-3 w-80 border shadow-xl"
   >
     <div class="card-body p-0">
@@ -54,7 +52,7 @@
       </div>
     </div>
   </div>
-</div>
+</details>
 
 <style is:global>
   @keyframes breathe-orange {

@@ -122,7 +122,7 @@
 
   <!-- Bottom: Track Selector (hidden on mobile) -->
   <div class="hidden items-center gap-3 sm:flex">
-    <div class="dropdown dropdown-top dropdown-start flex-1">
+    <div class="dropdown dropdown-bottom dropdown-start flex-1">
       <div
         tabindex="0"
         role="button"
@@ -144,7 +144,7 @@
       <ul
         tabindex="0"
         id="music-track-list"
-        class="dropdown-content menu bg-base-200 rounded-box border-primary/20 z-[1] mb-2 max-h-64 w-52 flex-col flex-nowrap overflow-x-hidden overflow-y-auto border p-2 shadow"
+        class="dropdown-content menu bg-base-200 rounded-box border-primary/20 z-[1] mt-2 max-h-64 w-52 flex-col flex-nowrap overflow-x-hidden overflow-y-auto border p-2 shadow"
       >
         <li>
           <a
@@ -241,7 +241,8 @@
   import {gameState} from "@/lib/game/state";
   import {config} from "@/lib/config/client";
   import {getAuthState, subscribeToAuth} from "@/lib/auth";
-  import {getUserProfile, saveUserProfile} from "@/lib/user";
+  import {getUserProfile} from "@/lib/user";
+  import {enqueueProfileWrite} from "@/lib/user";
 
   const manager = MusicManager.getInstance();
 
@@ -410,13 +411,14 @@
     const auth = getAuthState();
     if (!auth.isAuthenticated || auth.isGuest || !auth.user) return;
     try {
-      const doc = await getUserProfile(auth.user.key);
       if (gen !== narrationSaveGen) return; // Superseded by newer toggle
-      if (doc) {
-        const profile = doc.data;
-        profile.preferences.narration = elNarrationToggle.checked;
-        await saveUserProfile(auth.user.key, profile, doc.version);
-      }
+      await enqueueProfileWrite(auth.user.key, (profile) => ({
+        ...profile,
+        preferences: {
+          ...profile.preferences,
+          narration: elNarrationToggle.checked,
+        },
+      }));
     } catch {
       // Save failed — checkbox still reflects user's intent, will retry next time
     }

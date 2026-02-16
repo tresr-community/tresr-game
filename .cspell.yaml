@@ -17,6 +17,7 @@ ignorePaths:
   - devenv.nix
   - docs/agents/**
   - node_modules
+  - public/config-client.json
   - public/workers
   - secrets
   - vendor

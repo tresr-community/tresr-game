@@ -254,7 +254,7 @@ All game parameters are configurable in `public/config-public.json`:
 {
   "app": {
     "version": "0.0.0",
-    "name": "Tresr Community Game",
+    "name": "Tresr Game",
     "tagline": "Collect Keys. Fight Enemies. Claim the Treasure.",
     "footer_text": "Powered by the Internet Computer and Avalanche Blockchains",
     "instructions": "Expanded markdown with super attack, emojis"

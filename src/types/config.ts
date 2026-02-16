@@ -473,7 +473,7 @@ export interface ConfigTypes {  daisyui: {    themes: string[];
         frames: number;
         frameRate: number;
         repeat: number;
-        pathTemplate: string;
+        path: string;
         frameWidth: number;
         frameHeight: number;
       }>;

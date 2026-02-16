@@ -45,7 +45,8 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
   <div class="modal-box border-primary/30 bg-base-200 relative max-w-md border">
     <button
       id="btn-close-auth"
-      class="btn btn-sm btn-circle btn-ghost absolute top-2 right-2">✕</button
+      class="btn btn-circle btn-ghost absolute top-2 right-2 min-h-[44px] min-w-[44px] text-lg"
+      >✕</button
     >
     <h3
       class="text-primary mb-6 text-center text-2xl font-bold tracking-widest uppercase"
@@ -527,11 +528,19 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
     updateButtonState();
   });
 
-  // Pre-warm AppKit so the first click opens the modal instantly
+  // Pre-warm AppKit only for authenticated SIWA users who need an active
+  // wallet connection. For guests/unauthenticated users AppKit initialises
+  // on-demand when they click "Login with Avalanche Wallet", avoiding
+  // unnecessary WalletConnect API calls and balance lookups.
   if (typeof requestIdleCallback === "function") {
-    requestIdleCallback(() => {
-      import("@/lib/wallet/appkit").then((m) => m.getAppKit()).catch(() => {});
-    });
+    const authState = getAuthState();
+    if (authState.isAuthenticated && authState.authMode === "avalanche") {
+      requestIdleCallback(() => {
+        import("@/lib/wallet/appkit")
+          .then((m) => m.getAppKit())
+          .catch(() => {});
+      });
+    }
   }
 
   document.addEventListener(

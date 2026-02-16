@@ -11,6 +11,9 @@ import {log} from "../utils/log";
 
 const COLLECTION_USERS = "users";
 
+// Re-export the centralized write queue so consumers can import from "@/lib/user"
+export {enqueueProfileWrite, flushProfileWrites} from "./writeQueue";
+
 /**
  * Fetch a user profile by their Principal ID (key).
  * Returns null if the profile does not exist.

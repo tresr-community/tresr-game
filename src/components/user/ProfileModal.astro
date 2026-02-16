@@ -8,7 +8,9 @@
       <h2 class="text-primary text-2xl font-black tracking-widest uppercase">
         Player Profile
       </h2>
-      <button id="btn-close-profile" class="btn btn-sm btn-circle btn-ghost"
+      <button
+        id="btn-close-profile"
+        class="btn btn-circle btn-ghost min-h-[44px] min-w-[44px] text-lg"
         >✕</button
       >
     </div>
@@ -93,7 +95,7 @@
         <input
           type="email"
           id="input-email"
-          placeholder="agent@tresr.io"
+          placeholder="spam@tresr.community"
           class="input input-bordered input-primary bg-base-300 w-full font-mono"
         />
       </div>
@@ -503,7 +505,7 @@
       // Verify ownership: sign message
       const sig = await walletClient.signMessage({
         account: address,
-        message: `Link wallet ${address} to Tresr principal ${getAuthState().user?.key.slice(0, 10)}...`,
+        message: `Link wallet ${address} to TRESR principal ${getAuthState().user?.key.slice(0, 10)}...`,
       });
 
       if (currentProfile) {

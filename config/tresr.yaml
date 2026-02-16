@@ -95,7 +95,7 @@ client:
     avalanche:
       enabled: true
   app:
-    name: Tresr Community Game
+    name: TRESR Game
     tagline: Collect Keys. Fight Enemies. Claim the TRESR.
     #footer_text: Powered by the Internet Computer and Avalanche Blockchain.
     footer_text: Economy powered by the Avalanche Blockchain.
@@ -768,35 +768,45 @@ client:
           frames: 6
           frameRate: 6
           repeat: -1
-          pathTemplate: /assets/images/sprites/enemy_{i}_boss/idle.webp
+          # HACK: Using a temporary sprite until we have proper sprites from artist.
+          path: /assets/images/sprites/boss/idle.webp
+          #pathTemplate: /assets/images/sprites/enemy_{i}/idle.webp
           frameWidth: 512
           frameHeight: 512
         - name: walk
           frames: 6
           frameRate: 8
           repeat: -1
-          pathTemplate: /assets/images/sprites/enemy_{i}_boss/walk.webp
+          # HACK: Using a temporary sprite until we have proper sprites from artist.
+          path: /assets/images/sprites/boss/walk.webp
+          #pathTemplate: /assets/images/sprites/enemy_{i}/walk.webp
           frameWidth: 512
           frameHeight: 512
         - name: jump
           frames: 6
           frameRate: 10
           repeat: 0
-          pathTemplate: /assets/images/sprites/enemy_{i}_boss/jump.webp
+          # HACK: Using a temporary sprite until we have proper sprites from artist.
+          path: /assets/images/sprites/boss/jump.webp
+          #pathTemplate: /assets/images/sprites/enemy_{i}/jump.webp
           frameWidth: 512
           frameHeight: 512
         - name: attack
           frames: 6
           frameRate: 10
           repeat: 0
-          pathTemplate: /assets/images/sprites/enemy_{i}_boss/attack.webp
+          # HACK: Using a temporary sprite until we have proper sprites from artist.
+          path: /assets/images/sprites/boss/attack.webp
+          #pathTemplate: /assets/images/sprites/enemy_{i}/attack.webp
           frameWidth: 512
           frameHeight: 512
         - name: hurt
           frames: 4
           frameRate: 8
           repeat: 0
-          pathTemplate: /assets/images/sprites/enemy_{i}_boss/hurt.webp
+          # HACK: Using a temporary sprite until we have proper sprites from artist.
+          path: /assets/images/sprites/boss/hurt.webp
+          #pathTemplate: /assets/images/sprites/enemy_{i}/hurt.webp
           frameWidth: 512
           frameHeight: 512
     # TRESR-BOT companion (AI ally spawned from powerup pickup)

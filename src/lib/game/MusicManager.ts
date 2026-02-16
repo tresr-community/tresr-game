@@ -1,6 +1,6 @@
 import {gameActions, gameState} from "./state";
 import {getAuthState, subscribeToAuth} from "@/lib/auth";
-import {getUserProfile, saveUserProfile} from "@/lib/user";
+import {getUserProfile, enqueueProfileWrite} from "@/lib/user";
 import {config} from "@/lib/config/client";
 import {log} from "@/lib/utils/log";
 
@@ -172,20 +172,21 @@ class MusicManager {
     this.saveTimeout = setTimeout(async () => {
       try {
         const userId = auth.user!.key;
-        const doc = await getUserProfile(userId);
-        if (doc) {
-          const profile = doc.data;
-          profile.preferences.music = {
-            track: this.isRandom
-              ? "random"
-              : gameState.get().music.currentTrack,
-            volume: gameState.get().music.musicVolume,
-            sfxVolume: gameState.get().music.sfxVolume,
-            isPaused: !gameState.get().music.isPlaying,
-          };
-          await saveUserProfile(userId, profile, doc.version);
-          log.debug(COMPONENT_NAME, "Preferences persisted to Juno.");
-        }
+        await enqueueProfileWrite(userId, (profile) => ({
+          ...profile,
+          preferences: {
+            ...profile.preferences,
+            music: {
+              track: this.isRandom
+                ? "random"
+                : gameState.get().music.currentTrack,
+              volume: gameState.get().music.musicVolume,
+              sfxVolume: gameState.get().music.sfxVolume,
+              isPaused: !gameState.get().music.isPlaying,
+            },
+          },
+        }));
+        log.debug(COMPONENT_NAME, "Preferences persisted to Juno.");
       } catch (e) {
         log.warn(COMPONENT_NAME, "Failed to persist preferences:", e);
       }
@@ -503,13 +504,14 @@ class MusicManager {
       if (!raw) return;
       localStorage.removeItem(MusicManager.PENDING_PREFS_KEY);
       const pending = JSON.parse(raw);
-      const doc = await getUserProfile(userId);
-      if (doc) {
-        const profile = doc.data;
-        profile.preferences.music = pending;
-        await saveUserProfile(userId, profile, doc.version);
-        log.info(COMPONENT_NAME, "Synced pending preferences to Juno.");
-      }
+      await enqueueProfileWrite(userId, (profile) => ({
+        ...profile,
+        preferences: {
+          ...profile.preferences,
+          music: pending,
+        },
+      }));
+      log.info(COMPONENT_NAME, "Synced pending preferences to Juno.");
     } catch (e) {
       log.warn(COMPONENT_NAME, "Failed to sync pending preferences:", e);
     }

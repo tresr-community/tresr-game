@@ -41,7 +41,10 @@ export interface EnemyAnimConfig {
   frames: number;
   frameRate: number;
   repeat: number;
-  pathTemplate: string;
+  /** Per-variant path template with {i} placeholder */
+  pathTemplate?: string;
+  /** Shared path — same sprite for all variants */
+  path?: string;
   frameWidth: number;
   frameHeight: number;
 }
@@ -110,7 +113,7 @@ export class SpriteManager {
 
   /**
    * Load per-animation sprite sheets for a templated enemy variant.
-   * Resolves {i} in pathTemplate for each anim.
+   * Supports both `path` (shared sprite) and `pathTemplate` (per-variant {i}).
    */
   private preloadEnemySprites(
     variantIndex: number,
@@ -121,8 +124,24 @@ export class SpriteManager {
     for (let i = 0; i < enemyConfig.anims.length; i++) {
       const anim = enemyConfig.anims[i];
       const textureKey = `${entityKey}_${anim.name}`;
-      const path = anim.pathTemplate.replace("{i}", String(variantIndex));
-      this.scene.load.spritesheet(textureKey, path, {
+
+      // Resolve path: prefer pathTemplate (per-variant), fall back to path (shared)
+      let spritePath: string | undefined;
+      if (anim.pathTemplate) {
+        spritePath = anim.pathTemplate.replace("{i}", String(variantIndex));
+      } else if (anim.path) {
+        spritePath = anim.path;
+      }
+
+      if (!spritePath) {
+        log.warn(
+          COMPONENT_NAME,
+          `Enemy anim "${anim.name}" has no path or pathTemplate — skipping`
+        );
+        continue;
+      }
+
+      this.scene.load.spritesheet(textureKey, spritePath, {
         frameWidth: anim.frameWidth,
         frameHeight: anim.frameHeight,
       });

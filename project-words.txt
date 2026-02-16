@@ -115,6 +115,7 @@ openzep
 prek
 prebuild
 predeploy
+precached
 precaching
 remappings
 rustc
@@ -238,6 +239,7 @@ esac
 
 # Slang and flavour text
 apeing
+fanfic
 Waaaaaaa
 giga
 gify
@@ -247,6 +249,7 @@ retardio
 
 # Dev and game terms
 alltime
+notifs
 bootup
 cheatcode
 consolation
