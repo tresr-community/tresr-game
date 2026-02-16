@@ -51,6 +51,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
+  actions: write
   contents: write
   packages: read
   pull-requests: read
