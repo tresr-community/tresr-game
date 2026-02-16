@@ -231,6 +231,12 @@ fn assert_delete_doc(_context: AssertDeleteDocContext) -> Result<(), String> {
 /// Juno only allows one #[on_set_doc] per module, so we dispatch by collection name
 #[on_set_doc(collections = ["users", "fees", "claims", "game_sessions", "balance_refresh"])]
 async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
+    // Diagnostic: confirm the hook fires (visible in docker logs juno-skylab)
+    ic_cdk::print(format!(
+        "[HOOK] on_set_doc fired for collection='{}' key='{}'",
+        context.data.collection, context.data.key
+    ));
+
     match context.data.collection.as_str() {
         "fees" => on_fee_created(context).await,
         "claims" => on_claim_created(context).await,
@@ -811,7 +817,18 @@ async fn on_balance_refresh(context: OnSetDocContext) -> Result<(), String> {
 
 /// Process game session updates: update leaderboard active score and resolve expired top scores.
 async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> {
+    ic_cdk::print(format!(
+        "[HOOK] on_game_session_update: key='{}' data_len={}",
+        context.data.key,
+        context.data.data.after.data.len()
+    ));
+
     let session: GameSession = decode_doc_data(&context.data.data.after.data)?;
+
+    ic_cdk::print(format!(
+        "[HOOK] on_game_session_update: deserialized OK, ended_at={:?}, score={}",
+        session.ended_at, session.score
+    ));
 
     // Only process completed sessions
     if session.ended_at.is_none() {
