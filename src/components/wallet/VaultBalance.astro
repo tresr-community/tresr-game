@@ -7,11 +7,11 @@
   class="stats bg-base-200/50 border-warning/30 hidden border shadow"
 >
   <div class="stat place-items-center">
-    <div class="stat-title flex items-center gap-2 font-mono text-xs">
+    <div class="stat-title font-mono text-xs whitespace-nowrap">
       VAULT PRIZE POOL
-      <span id="vault-difficulty" class="badge badge-sm badge-ghost hidden"
-      ></span>
     </div>
+    <span id="vault-difficulty" class="badge badge-sm badge-ghost hidden"
+    ></span>
     <div id="vault-balance" class="stat-value text-warning text-3xl">
       <span class="loading loading-dots loading-sm"></span>
     </div>
@@ -39,9 +39,9 @@
   import {
     getEnvironmentKey,
     isVaultDeployed,
-    getPublicClient,
     shortenAddress,
   } from "@/lib/wallet/avalanche";
+  import {getReadClient} from "@/lib/wallet/tx";
   import {getClaimCooldownStatus} from "@/lib/wallet/avalanche";
   import {
     subscribeToConnection,
@@ -73,7 +73,7 @@
 
   // Set ticker from config
   const env = getEnvironmentKey();
-  const ticker = config.blockchain.avalanche[env].tresr_token_ticker;
+  const ticker = config.blockchain.avalanche[env].token_ticker;
   if (tickerEl) tickerEl.textContent = `$${ticker}`;
 
   let interval: ReturnType<typeof setInterval> | null = null;
@@ -186,7 +186,7 @@
     if (!isVaultDeployed(config)) return;
 
     try {
-      const publicClient = await getPublicClient();
+      const publicClient = getReadClient();
       const vaultAddress = config.blockchain.avalanche[env]
         .vault_contract as `0x${string}`;
 

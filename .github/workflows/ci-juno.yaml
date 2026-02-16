@@ -1,17 +1,20 @@
 ---
 ##################################################
 # Name: ci-juno.yaml
-# Description: Lint, type-check, and build (Juno)
+# Description: Lint, type-check, and build Juno satellite
 ##################################################
 
 name: Juno CI
 
-# prettier-ignore
-on:  # yamllint disable-line rule:truthy
+on:
   pull_request:
     branches:
       - main
       - master
+      - trunk
+
+  merge_group:
+    branches:
       - trunk
 
 concurrency:
@@ -25,15 +28,7 @@ permissions:
   statuses: write
 
 env:
-  # GitHub
-  PROJECT: ${{ github.repository }}
-  BRANCH_NAME_CURRENT: ${{ github.head_ref || github.ref_name }}
-  BRANCH_NAME_DEFAULT: ${{ github.event.repository.default_branch }}
-
-  # Nix
   NIXPKGS_ALLOW_UNFREE: 1
-
-  # SecretSpec
   SECRETSPEC_PROVIDER: env
 
 defaults:
@@ -41,31 +36,39 @@ defaults:
     shell: bash
 
 jobs:
-  ci:
+  check:
     name: Lint & Build
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     timeout-minutes: 30
     continue-on-error: false
 
     environment: Testnet
 
-    strategy:
-      fail-fast: true
-      matrix:
-        os:
-          - ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-devenv
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      - uses: ./.github/actions/setup-juno
+      - id: cache_bun
+        name: Cache Bun
+        uses: ./.github/actions/cache-bun
+
+      - id: setup_juno
+        name: Setup Juno
+        uses: ./.github/actions/setup-juno
 
       - id: lint
         name: Lint
@@ -73,30 +76,34 @@ jobs:
         run: |
           bun run lint
 
-      - id: build
-        name: Build
+      - id: build_hosting
+        name: Build Hosting
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           juno-dev build
 
-      - id: build_functions
-        name: Build Rust Functions
+      - id: build_functions_dev
+        name: Build Functions (Development)
         shell: devenv shell --quiet bash -- -e {0}
         run: |
+          cargo generate-lockfile
           juno-dev build-functions
 
       - id: build_functions_prod
         name: Build Functions (Production)
         shell: devenv shell --quiet bash -- -e {0}
         run: |
+          cargo generate-lockfile
           juno functions build
 
-      - if: always()
+      - id: report_status
+        name: Report Status
+        if: always()
         uses: ./.github/actions/report-status
         with:
-          result: ${{ steps.build.outcome }}
-          success-description: "Juno CI passed: lint, type-check, build"
-          failure-description: "Juno CI failed"
+          result: ${{ steps.build_hosting.outcome }}
+          success-message: "Juno CI passed: lint, type-check, build"
+          failure-message: "Juno CI failed"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           workflow-name: ${{ github.workflow }}
           repository: ${{ github.repository }}

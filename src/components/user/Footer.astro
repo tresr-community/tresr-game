@@ -4,11 +4,9 @@ import {config} from "@/lib/config/client.ts";
 const footerText: ConfigTypes["app"]["footer_text"] = config.app.footer_text;
 ---
 
-<footer
-  class="pointer-events-none fixed right-0 bottom-0 left-0 z-40 flex justify-center p-2"
->
+<footer class="flex justify-center p-2">
   <div
-    class="bg-base-300/80 border-primary/20 text-base-content/50 pointer-events-auto rounded-t-lg border-x border-t px-4 py-1 font-mono text-xs backdrop-blur"
+    class="bg-base-300/80 border-primary/20 text-base-content/50 rounded-t-lg border-x border-t px-4 py-1 font-mono text-xs backdrop-blur"
   >
     <span class="opacity-75">{footerText}</span>
     <span class="mx-2">|</span>

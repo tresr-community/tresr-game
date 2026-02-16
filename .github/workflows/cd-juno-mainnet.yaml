@@ -3,21 +3,20 @@
 # Name: cd-juno-mainnet.yaml
 # Description: Deploy Juno to mainnet (hosting + functions + config)
 #
-# Trigger: released event (from cd-release.yaml)
+# Called by: cd-release.yaml (promote job)
 #
-# Steps:
-#   1. Build serverless functions
-#   2. Deploy hosting assets
-#   3. Apply collection configuration
-#   4. Publish serverless functions
 ##################################################
 
 name: Juno Deploy (Mainnet)
 
 on:
-  release:
-    types:
-      - released
+  workflow_call:
+    inputs:
+      version:
+        description: "Release version (e.g. v0.1.0)"
+        type: string
+        required: false
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -30,18 +29,8 @@ permissions:
   statuses: write
 
 env:
-  # GitHub
-  PROJECT: ${{ github.repository }}
-  BRANCH_NAME_CURRENT: ${{ github.head_ref || github.ref_name }}
-  BRANCH_NAME_DEFAULT: ${{ github.event.repository.default_branch }}
-
-  # Nix
   NIXPKGS_ALLOW_UNFREE: 1
-
-  # SecretSpec
   SECRETSPEC_PROVIDER: env
-
-  # Juno
   VITE_SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
   VITE_ASTRO_SITE_URL: ${{ vars.VITE_ASTRO_SITE_URL }}
   VITE_ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
@@ -86,54 +75,77 @@ jobs:
           done
           echo "All required variables are set"
 
-      - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-devenv
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
+      - id: cache_bun
+        name: Cache Bun
+        uses: ./.github/actions/cache-bun
+
       - id: parse_tag
         name: Parse Release Tag
-        if: github.event.release.tag_name != ''
+        if: inputs.version != ''
         run: |
-          TAG="${{ github.event.release.tag_name }}"
-          VERSION="${TAG#v}"
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
-      - uses: ./.github/actions/version
+      - id: set_version_explicit
+        name: Set Version (Explicit)
         if: steps.parse_tag.outputs.version != ''
+        uses: ./.github/actions/version
         with:
           mode: explicit
           version: ${{ steps.parse_tag.outputs.version }}
 
-      - uses: ./.github/actions/version
+      - id: set_version_current
+        name: Set Version (Current)
         if: steps.parse_tag.outputs.version == ''
+        uses: ./.github/actions/version
         with:
           mode: current
 
-      - uses: ./.github/actions/setup-juno
+      - id: setup_juno
+        name: Setup Juno
+        uses: ./.github/actions/setup-juno
 
-      - name: Build Juno Functions
+      - id: build_functions
+        name: Build Juno Functions
         shell: devenv shell --quiet bash -- -e {0}
         run: |
+          cargo generate-lockfile
           juno functions build
 
-      - name: Deploy Hosting (Mainnet)
+      - id: deploy_hosting
+        name: Deploy Hosting
         env:
           JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           juno hosting deploy --mode production
 
-      - name: Apply Configuration (Mainnet)
+      - id: apply_config
+        name: Apply Configuration
         env:
           JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           juno config apply --force --mode production
 
-      - name: Publish Functions (Mainnet)
+      - id: publish_functions
+        name: Publish Functions
         env:
           JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
         shell: devenv shell --quiet bash -- -e {0}

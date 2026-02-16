@@ -38,11 +38,7 @@ import {
 } from "@/lib/wallet/connection";
 import {config} from "@/lib/config/client";
 import {loadProfile, clearProfile, profileStore} from "@/lib/user/store";
-import {
-  getUserProfile,
-  saveUserProfile,
-  createDefaultProfile,
-} from "@/lib/user";
+import {getUserProfile, enqueueProfileWrite} from "@/lib/user";
 
 const COMPONENT_NAME = "Auth";
 
@@ -93,6 +89,24 @@ function getSiwaClient(): SiwaClient {
       canisterId: JUNO_SIWA_PROVIDER,
       host: IC_HOST,
       autoRefresh: true,
+      onRefresh: (refreshedIdentity) => {
+        // Re-bridge the refreshed delegation to IDB so Juno sees it
+        siwaIdentity = refreshedIdentity;
+        bridgeSiwaToIdb(refreshedIdentity)
+          .then(() => {
+            log.info(
+              COMPONENT_NAME,
+              "Re-bridged refreshed SIWA identity to IDB"
+            );
+          })
+          .catch((err) => {
+            log.warn(
+              COMPONENT_NAME,
+              "Failed to re-bridge refreshed identity:",
+              err
+            );
+          });
+      },
     });
   }
   log.debug(COMPONENT_NAME, "Juno SIWA Provider:", JUNO_SIWA_PROVIDER);
@@ -551,38 +565,25 @@ export async function signInWithAvalanche(): Promise<void> {
     };
 
     // Create or update user profile with wallet automatically linked
-    // Juno: getDoc + setDoc on "users" →
-    //   Rust assert: assert_user_profile() — validates EVM wallet format + verify_wallet_signature()
-    //   Rust hook:   on_set_doc("users") → no-op
+    // Uses centralized write queue to prevent version races with concurrent
+    // notification/music writes that fire on the same auth event.
     try {
       log.debug(COMPONENT_NAME, "Creating/updating profile for SIWA user...");
       emitProgress("Loading profile...");
-      const existingDoc = await getUserProfile(principal);
 
-      if (existingDoc) {
-        // Update existing profile with wallet info and login method
-        const profile = existingDoc.data;
-        profile.evmWallet = address;
-        profile.wallet.evmWalletLinked = true;
-        profile.loginMethod = "siwa";
+      await enqueueProfileWrite(principal, (profile) => ({
+        ...profile,
+        evmWallet: address,
+        wallet: {...profile.wallet, evmWalletLinked: true},
+        loginMethod: "siwa" as const,
+      }));
 
-        await saveUserProfile(principal, profile, existingDoc.version);
-        profileStore.set(profile);
-        log.info(
-          COMPONENT_NAME,
-          "Updated existing profile with SIWA wallet link"
-        );
-      } else {
-        // Create new profile with wallet already linked
-        const newProfile = createDefaultProfile(principal, {
-          evmWallet: address,
-          loginMethod: "siwa",
-        });
-
-        await saveUserProfile(principal, newProfile);
-        profileStore.set(newProfile);
-        log.info(COMPONENT_NAME, "Created new profile with SIWA wallet link");
+      // Read back the profile to populate the store
+      const savedDoc = await getUserProfile(principal);
+      if (savedDoc) {
+        profileStore.set(savedDoc.data);
       }
+      log.info(COMPONENT_NAME, "Profile created/updated with SIWA wallet link");
     } catch (profileError) {
       // Log but don't fail auth if profile creation fails
       log.error(
@@ -618,8 +619,16 @@ export async function signInWithAvalanche(): Promise<void> {
       message.includes("chainId") &&
       message.includes("not current network")
     ) {
+      const targetChainId =
+        config.blockchain.avalanche[
+          JUNO_ENVIRONMENT === "development"
+            ? "anvil"
+            : JUNO_ENVIRONMENT === "staging"
+              ? "testnet"
+              : "mainnet"
+        ].chain_id;
       throw new Error(
-        `Network mismatch: Please switch to Avalanche ${chainId === config.blockchain.avalanche.testnet.chain_id ? "Fuji testnet" : "mainnet"} in your wallet.`,
+        `Network mismatch: Please switch to chain ${targetChainId} in your wallet.`,
         {cause: error}
       );
     }

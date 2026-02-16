@@ -1,6 +1,6 @@
 ---
 name: Setup Devenv
-description: Checkout, install Nix + Cachix + devenv, and run secretspec check.
+description: Install Nix + Cachix + devenv, and run secretspec check. Requires checkout first.
 
 inputs:
   github-token:
@@ -18,22 +18,26 @@ inputs:
 runs:
   using: composite
   steps:
-    - id: checkout_repository
-      name: Checkout repository
-      uses: actions/checkout@v6
-      with:
-        lfs: false
-        submodules: recursive
-
     - id: install_nix
-      name: "Install Nix"
+      name: Install Nix
       uses: cachix/install-nix-action@v31
       with:
         github_access_token: ${{ inputs.github-token }}
         enable_kvm: true
 
-    - id: cachix
-      name: "Enable Cachix"
+    - id: nix_cache
+      name: Cache Nix Store
+      uses: nix-community/cache-nix-action@v7
+      with:
+        primary-key: nix-${{ runner.os }}-${{ hashFiles('devenv.lock') }}
+        restore-prefixes-first-match: nix-${{ runner.os }}-
+        gc-max-store-size-linux: 5G
+        purge: true
+        purge-created: P7D
+        token: ${{ inputs.github-token }}
+
+    - id: enable_cachix
+      name: Enable Cachix
       if: inputs.cachix-cache-name != ''
       uses: cachix/cachix-action@v16
       with:
@@ -42,14 +46,14 @@ runs:
         useDaemon: true
         skipPush: false
 
-    - id: devenv_install
-      name: Devenv install
+    - id: install_devenv
+      name: Install Devenv
       shell: bash
       run: |
         nix profile install --accept-flake-config nixpkgs#devenv
 
     - id: secretspec_check
-      name: "Secretspec Check"
+      name: Secretspec Check
       shell: devenv shell --quiet bash -- -e {0}
       run: |
         secretspec check

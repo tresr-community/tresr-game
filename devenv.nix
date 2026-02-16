@@ -163,20 +163,27 @@ in
     ++ lib.optionals (!config.container.isBuilding || config.name == "devenv") devPackages;
 
   enterShell = ''
-    figlet -f starwars -w 180 $PROJECT
+    if [[ "''${CI:-false}" == "true" ]];
+    then
+      echo "devenv running in CI"
+    else
+      figlet -f starwars -w 180 $PROJECT
 
-    hello --greeting="Hello ''${USER:-user}, welcome to the $PROJECT project!"
+      hello --greeting="Hello ''${USER:-user}, welcome to the $PROJECT project!"
 
-    echo ""
-    echo "#########################"
-    echo "#### Helper scripts #####"
-    echo "#########################"
-    echo "🦾"
-    ${pkgs.gnused}/bin/sed -e 's| |••|g' -e 's|=| |' <<EOF | ${pkgs.util-linuxMinimal}/bin/column -t | ${pkgs.gnused}/bin/sed -e 's|^|🦾 |' -e 's|••| |g'
-    ${lib.generators.toKeyValue { } (lib.mapAttrs (_name: value: value.description) config.scripts)}
-    EOF
-    echo "🦾"
-    echo "#########################"
+      echo ""
+      echo "#########################"
+      echo "#### Helper scripts #####"
+      echo "#########################"
+      echo "🦾"
+      ${lib.concatStrings (
+        lib.mapAttrsToList (
+          name: value: "printf '🦾 %-20s  %s\\n' '${name}' '${value.description}'\n"
+        ) config.scripts
+      )}
+      echo "🦾"
+      echo "#########################"
+    fi
   '';
 
   # AI - Claude Code Integration
@@ -184,15 +191,14 @@ in
   claude.code = {
     enable = true;
     mcpServers = {
-      # Breaks Gemini CLI
-      #devenv = {
-      #  type = "stdio";
-      #  command = "devenv";
-      #  args = [ "mcp" ];
-      #  env = {
-      #    DEVENV_ROOT = config.devenv.root;
-      #  };
-      #};
+      devenv = {
+        type = "stdio";
+        command = "devenv";
+        args = [ "mcp" ];
+        env = {
+          DEVENV_ROOT = config.devenv.root;
+        };
+      };
       astroDocs = {
         type = "http";
         url = "https://mcp.docs.astro.build/mcp";
@@ -311,6 +317,13 @@ in
         files = "^config/.*\.yaml$";
         pass_filenames = false;
       };
+      version-reset = {
+        enable = true;
+        name = "version-reset";
+        entry = "bun run version-reset";
+        files = "(^package\\.json$|^public/manifest\\.json$|^src/satellite/Cargo\\.toml$)";
+        pass_filenames = false;
+      };
       commitizen.enable = true;
       deadnix.enable = true;
       editorconfig-checker.enable = true;
@@ -406,7 +419,7 @@ in
       solidity-check = {
         enable = true;
         name = "solidity-check";
-        entry = "solidity-dev --check";
+        entry = "solidity-dev check";
         pass_filenames = false;
       };
     };

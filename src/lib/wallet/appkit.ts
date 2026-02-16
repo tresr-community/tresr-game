@@ -13,6 +13,7 @@ import {defineChain} from "@reown/appkit/networks";
 import type {Config} from "@wagmi/core";
 import {config} from "../config/client";
 import {JUNO_ENVIRONMENT} from "../config/constants";
+import {trackWalletConnect, trackWalletDisconnect} from "../metrics/analytics";
 import {log} from "../utils/log";
 
 const COMPONENT_NAME = "AppKit";
@@ -129,6 +130,14 @@ export function getAppKit(): AppKit {
 
   log.info(COMPONENT_NAME, "Initialized successfully");
 
+  // Remove unused font preload links injected by Reown SDK (suppresses
+  // "preloaded but not used" console warnings for KHTeka-Medium.woff2) // cspell:disable-line
+  if (typeof document !== "undefined") {
+    document
+      .querySelectorAll('link[rel="preload"][href*="fonts.reown.com"]')
+      .forEach((el) => el.remove());
+  }
+
   return appKitInstance;
 }
 
@@ -210,6 +219,7 @@ export async function disconnect(): Promise<void> {
   const appKit = getAppKit();
   log.info(COMPONENT_NAME, "Disconnecting...");
   await appKit.disconnect();
+  trackWalletDisconnect();
 }
 
 /**
@@ -281,6 +291,7 @@ export function connectWallet(): Promise<string> {
         const address = appKit.getAddressByChainNamespace("eip155");
         if (address) {
           log.info(COMPONENT_NAME, `Connected: ${address}`);
+          trackWalletConnect(address);
           resolve(address);
         } else {
           reject(new Error("Connected but no address available"));

@@ -3,6 +3,8 @@ import path from "node:path";
 import {execSync} from "node:child_process";
 import {log} from "../src/lib/utils/log";
 
+const BASE_VERSION = "0.0.0";
+
 const COMPONENT_NAME = "Versioner";
 
 const projectRoot: string = path.resolve(process.cwd());
@@ -72,6 +74,9 @@ if (mode === "--bump") {
     }
     process.exit(1);
   }
+} else if (mode === "--reset") {
+  setVersion(BASE_VERSION);
+  log.info(COMPONENT_NAME, `Version reset to ${BASE_VERSION}`);
 } else if (mode === "--set") {
   const version = args[1];
   if (!version || !/^\d+\.\d+\.\d+/.test(version)) {
@@ -99,7 +104,7 @@ if (mode === "--bump") {
 } else {
   log.error(
     COMPONENT_NAME,
-    "Usage: bun run bin/version.ts --bump | --get | --set <version>"
+    "Usage: bun run bin/version.ts --bump | --reset | --get | --set <version>"
   );
   process.exit(1);
 }

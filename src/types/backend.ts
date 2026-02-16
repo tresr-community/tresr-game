@@ -40,7 +40,8 @@ export interface UserProfile {
     has_read_instructions: boolean;
     narration?: boolean; // Intro voiceover preference (default: true when absent)
     music?: {
-      track?: string;
+      favoriteTrack?: string;
+      playbackMode?: "normal" | "shuffle" | "repeat-one";
       volume?: number;
       sfxVolume?: number;
       isPaused?: boolean;
@@ -65,6 +66,22 @@ export interface UserProfile {
   offence_count?: number; // Cumulative cheat attempts. Escalates ban duration.
 }
 
+export interface LeaderboardEntry {
+  nickname: string;
+  highScore: number;
+  gamesWon: number;
+  activeScore: number;
+  scoredAt?: number;
+  expiresAt?: number;
+  sessionId?: string;
+}
+
+export interface GlobalStats {
+  totalFees: number;
+  totalBurned: number;
+  totalRewarded: number;
+}
+
 export type EvmRpcResult = {Ok: string} | {Err: string};
 
 export interface BackendActor {
@@ -83,7 +100,7 @@ export interface BackendActor {
   ) => Promise<void>;
 
   // Blockchain Integration (EVM RPC)
-  depositTokens: (txHash: string) => Promise<EvmRpcResult>;
+  payFee: (txHash: string) => Promise<EvmRpcResult>;
   claimReward: (amount: bigint) => Promise<EvmRpcResult>;
 
   // Admin Functions

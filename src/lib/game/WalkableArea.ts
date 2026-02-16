@@ -7,19 +7,53 @@ import Phaser from "phaser";
  * that occupies the bottom ~35% of the screen. This class enforces those
  * boundaries for all entities.
  *
- * Coordinate reference (720px screen):
- *   topY  ~468  (65% — top of street, shallowest depth)
- *   bottomY ~695 (closest to camera, near the curb)
- *   leftX   0
- *   rightX  1280 (screen width, extends with level scrolling)
+ * Values are stored as ratios (0.0–1.0) of canvas dimensions so they scale
+ * dynamically with any screen size. Pixel values are computed on construction
+ * and updated via resize().
+ *
+ * Reference ratios (original 1280×720):
+ *   topY   0.833  (600/720)
+ *   bottomY 0.972 (700/720)
+ *   leftX   0.0
+ *   rightX  1.0
  */
 export class WalkableArea {
+  private topYRatio: number;
+  private bottomYRatio: number;
+  private leftXRatio: number;
+  private rightXRatio: number;
+
+  private topY: number;
+  private bottomY: number;
+  private leftX: number;
+  private rightX: number;
+
   constructor(
-    private topY: number,
-    private bottomY: number,
-    private leftX: number,
-    private rightX: number
-  ) {}
+    topYRatio: number,
+    bottomYRatio: number,
+    leftXRatio: number,
+    rightXRatio: number,
+    canvasWidth: number,
+    canvasHeight: number
+  ) {
+    this.topYRatio = topYRatio;
+    this.bottomYRatio = bottomYRatio;
+    this.leftXRatio = leftXRatio;
+    this.rightXRatio = rightXRatio;
+
+    this.topY = Math.round(topYRatio * canvasHeight);
+    this.bottomY = Math.round(bottomYRatio * canvasHeight);
+    this.leftX = Math.round(leftXRatio * canvasWidth);
+    this.rightX = Math.round(rightXRatio * canvasWidth);
+  }
+
+  /** Update pixel boundaries when the canvas resizes */
+  resize(canvasWidth: number, canvasHeight: number) {
+    this.topY = Math.round(this.topYRatio * canvasHeight);
+    this.bottomY = Math.round(this.bottomYRatio * canvasHeight);
+    this.leftX = Math.round(this.leftXRatio * canvasWidth);
+    this.rightX = Math.round(this.rightXRatio * canvasWidth);
+  }
 
   /** Check if a position is within the walkable ground plane */
   isWalkable(x: number, groundY: number): boolean {

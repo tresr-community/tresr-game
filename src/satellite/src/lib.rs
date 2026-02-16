@@ -6,8 +6,9 @@
 //!
 //! Collections:
 //! - `users`: User profiles with wallet linking and game stats
-//! - `deposits`: Deposit requests for EVM transaction verification
+//! - `fees`: Fee requests for EVM transaction verification
 //! - `claims`: Reward claim requests
+//! - `stats`: Aggregate burn/payout statistics
 //!
 //! HTTP Endpoints:
 //! - `game_sessions`: Game session data for anti-cheat validation
@@ -17,6 +18,7 @@ mod evm_rpc;
 mod types;
 
 /// Build-time generated constants from config/tresr.yaml (see build.rs).
+#[allow(dead_code)]
 mod config {
     include!(concat!(env!("OUT_DIR"), "/generated_config.rs"));
 }
@@ -31,15 +33,16 @@ use junobuild_macros::{
 use junobuild_satellite::{
     AssertDeleteDocContext, AssertSetDocContext, OnDeleteAssetContext, OnDeleteDocContext,
     OnDeleteManyAssetsContext, OnDeleteManyDocsContext, OnSetDocContext, OnSetManyDocsContext,
-    OnUploadAssetContext, SetDoc, get_doc_store, include_satellite, set_doc_store,
+    OnUploadAssetContext, SetDoc, get_doc_store, include_satellite, list_docs_store, set_doc_store,
 };
+use junobuild_shared::types::list::ListParams;
 use junobuild_utils::{decode_doc_data, encode_doc_data};
 use libsecp256k1::{Message, RecoveryId, Signature, recover};
 use tiny_keccak::{Hasher, Keccak};
 
 use types::{
-    BalanceRefreshRequest, ClaimRequest, ClaimStatus, DepositRequest, DepositStatus, GameSession,
-    LeaderboardEntry, RefreshStatus, UserProfile,
+    BalanceRefreshRequest, ClaimRequest, ClaimStatus, FeeRequest, FeeStatus, GameSession,
+    GlobalStats, LeaderboardEntry, RefreshStatus, UserProfile,
 };
 
 // =============================================================================
@@ -48,11 +51,11 @@ use types::{
 
 /// Single assertion handler for all collections
 /// Juno only allows one #[assert_set_doc] per module, so we dispatch by collection name
-#[assert_set_doc(collections = ["users", "deposits", "claims", "game_sessions", "balance_refresh"])]
+#[assert_set_doc(collections = ["users", "fees", "claims", "game_sessions", "balance_refresh"])]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     match context.data.collection.as_str() {
         "users" => assert_user_profile(&context),
-        "deposits" => assert_deposit_request(&context),
+        "fees" => assert_fee_request(&context),
         "claims" => assert_claim_request(&context),
         "game_sessions" => assert_game_session(&context),
         "balance_refresh" => Ok(()), // No validation needed for refresh requests
@@ -142,9 +145,9 @@ fn verify_wallet_signature(
     Ok(())
 }
 
-/// Validate deposit requests
-fn assert_deposit_request(context: &AssertSetDocContext) -> Result<(), String> {
-    let data: DepositRequest = decode_doc_data(&context.data.data.proposed.data)?;
+/// Validate fee requests
+fn assert_fee_request(context: &AssertSetDocContext) -> Result<(), String> {
+    let data: FeeRequest = decode_doc_data(&context.data.data.proposed.data)?;
 
     // Validate transaction hash format
     if !data.tx_hash.starts_with("0x") || data.tx_hash.len() != 66 {
@@ -155,17 +158,17 @@ fn assert_deposit_request(context: &AssertSetDocContext) -> Result<(), String> {
     }
 
     // Only allow pending status on creation
-    if data.status != DepositStatus::Pending {
-        return Err("Deposits must be created with 'pending' status.".to_string());
+    if data.status != FeeStatus::Pending {
+        return Err("Fees must be created with 'pending' status.".to_string());
     }
 
-    // Enforce document key == tx_hash to prevent deposit replay (ticket #288).
+    // Enforce document key == tx_hash to prevent fee replay (ticket #288).
     // Juno enforces key uniqueness per user, so the same tx_hash cannot be
     // submitted twice under different keys. Combined with tx.from validation
-    // (ticket #285), this prevents any user from replaying another's deposit.
+    // (ticket #285), this prevents any user from replaying another's fee.
     if context.data.key != data.tx_hash {
         return Err(
-            "Deposit document key must equal the transaction hash.".to_string(),
+            "Fee document key must equal the transaction hash.".to_string(),
         );
     }
 
@@ -214,7 +217,7 @@ fn assert_game_session(context: &AssertSetDocContext) -> Result<(), String> {
 }
 
 /// Prevent deletion of critical data
-#[assert_delete_doc(collections = ["users", "deposits", "claims", "game_sessions"])]
+#[assert_delete_doc(collections = ["users", "fees", "claims", "game_sessions"])]
 fn assert_delete_doc(_context: AssertDeleteDocContext) -> Result<(), String> {
     // For now, allow deletion. In production, you might want to check for pending claims
     Ok(())
@@ -226,10 +229,16 @@ fn assert_delete_doc(_context: AssertDeleteDocContext) -> Result<(), String> {
 
 /// Single hook handler for all collections
 /// Juno only allows one #[on_set_doc] per module, so we dispatch by collection name
-#[on_set_doc(collections = ["users", "deposits", "claims", "game_sessions", "balance_refresh"])]
+#[on_set_doc(collections = ["users", "fees", "claims", "game_sessions", "balance_refresh"])]
 async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
+    // Diagnostic: confirm the hook fires (visible in docker logs juno-skylab)
+    ic_cdk::print(format!(
+        "[HOOK] on_set_doc fired for collection='{}' key='{}'",
+        context.data.collection, context.data.key
+    ));
+
     match context.data.collection.as_str() {
-        "deposits" => on_deposit_created(context).await,
+        "fees" => on_fee_created(context).await,
         "claims" => on_claim_created(context).await,
         "balance_refresh" => on_balance_refresh(context).await,
         "game_sessions" => on_game_session_update(context).await,
@@ -248,17 +257,33 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
         return Ok(());
     }
 
+    // Preserve existing active score fields from the leaderboard entry
+    let existing_doc = get_doc_store(
+        context.caller,
+        "leaderboard".to_string(),
+        context.data.key.clone(),
+    )
+    .ok()
+    .flatten();
+
+    let existing_version = existing_doc.as_ref().and_then(|d| d.version);
+    let existing = existing_doc
+        .and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
+
     let entry = LeaderboardEntry {
         nickname: profile.nickname.clone(),
         high_score: profile.stats.high_score,
         games_won: profile.stats.total_games_won,
+        active_score: existing.as_ref().map_or(0, |e| e.active_score),
+        scored_at: existing.as_ref().and_then(|e| e.scored_at),
+        expires_at: existing.as_ref().and_then(|e| e.expires_at),
+        session_id: existing.as_ref().and_then(|e| e.session_id.clone()),
     };
 
     let leaderboard_doc = SetDoc {
         data: encode_doc_data(&entry)?,
         description: Some("Leaderboard entry".to_string()),
-        // Use None for version to allow upsert (create or update)
-        version: None,
+        version: existing_version,
     };
 
     set_doc_store(
@@ -276,17 +301,17 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
     Ok(())
 }
 
-/// Process deposit requests - verify on EVM chain
-async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
-    let mut deposit: DepositRequest = decode_doc_data(&context.data.data.after.data)?;
+/// Process fee requests - verify on EVM chain
+async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
+    let mut fee: FeeRequest = decode_doc_data(&context.data.data.after.data)?;
 
-    // Only process pending deposits
-    if deposit.status != DepositStatus::Pending {
+    // Only process pending fees
+    if fee.status != FeeStatus::Pending {
         return Ok(());
     }
 
     // Verify the transaction on Avalanche
-    match evm_rpc::verify_avalanche_deposit(&deposit.tx_hash).await {
+    match evm_rpc::verify_avalanche_fee(&fee.tx_hash).await {
         Ok(parsed) => {
             // Validate tx.from matches the caller's linked EVM wallet (ticket #285)
             let user_key = context.caller.to_text();
@@ -296,10 +321,10 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
                 let caller_wallet = match &user_profile_check.evm_wallet {
                     Some(w) if !w.is_empty() => w.clone(),
                     _ => {
-                        deposit.status = DepositStatus::Failed;
-                        deposit.error = Some("No linked EVM wallet to verify deposit sender".to_string());
+                        fee.status = FeeStatus::Failed;
+                        fee.error = Some("No linked EVM wallet to verify fee sender".to_string());
                         let updated_doc = SetDoc {
-                            data: encode_doc_data(&deposit)?,
+                            data: encode_doc_data(&fee)?,
                             description: context.data.data.after.description.clone(),
                             version: context.data.data.after.version,
                         };
@@ -308,19 +333,19 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
                     }
                 };
                 if !parsed.from.eq_ignore_ascii_case(&caller_wallet) {
-                    deposit.status = DepositStatus::Failed;
-                    deposit.error = Some(format!(
-                        "Deposit tx sender {} does not match caller wallet {}",
+                    fee.status = FeeStatus::Failed;
+                    fee.error = Some(format!(
+                        "Fee tx sender {} does not match caller wallet {}",
                         parsed.from, caller_wallet
                     ));
                     let updated_doc = SetDoc {
-                        data: encode_doc_data(&deposit)?,
+                        data: encode_doc_data(&fee)?,
                         description: context.data.data.after.description.clone(),
                         version: context.data.data.after.version,
                     };
                     set_doc_store(context.caller, context.data.collection.clone(), context.data.key.clone(), updated_doc)?;
                     ic_cdk::print(format!(
-                        "Deposit rejected: tx.from {} != caller wallet {}",
+                        "Fee rejected: tx.from {} != caller wallet {}",
                         parsed.from, caller_wallet
                     ));
                     return Ok(());
@@ -329,14 +354,14 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
 
             let verified_amount = parsed.amount;
 
-            // Update deposit status
-            deposit.status = DepositStatus::Verified;
-            deposit.amount = verified_amount;
-            deposit.verified_at = Some(time() / 1_000_000); // Convert ns to ms
+            // Update fee status
+            fee.status = FeeStatus::Verified;
+            fee.amount = verified_amount;
+            fee.verified_at = Some(time() / 1_000_000); // Convert ns to ms
 
-            // Save updated deposit
+            // Save updated fee
             let updated_doc = SetDoc {
-                data: encode_doc_data(&deposit)?,
+                data: encode_doc_data(&fee)?,
                 description: context.data.data.after.description.clone(),
                 version: context.data.data.after.version,
             };
@@ -348,7 +373,7 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
                 updated_doc,
             )?;
 
-            // Credit verified deposit to user's wallet balance
+            // Credit verified fee to user's wallet balance
             if let Some(user_doc_inner) = user_doc {
                 let mut user_profile: UserProfile = decode_doc_data(&user_doc_inner.data)?;
                 user_profile.wallet.balance += verified_amount;
@@ -359,23 +384,30 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
                 };
                 set_doc_store(context.caller, "users".to_string(), user_key.clone(), updated_user)?;
                 ic_cdk::print(format!(
-                    "Deposit verified: {} tokens for user {}. New balance: {}",
+                    "Fee verified: {} tokens for user {}. New balance: {}",
                     verified_amount, user_key, user_profile.wallet.balance
                 ));
             } else {
                 ic_cdk::print(format!(
-                    "Warning: Deposit verified but user profile not found for {}",
+                    "Warning: Fee verified but user profile not found for {}",
                     context.caller.to_text()
                 ));
             }
+
+            // Update global stats: track total fees and burned amount
+            let burn_amount = (verified_amount * config::BURN_RATE_BPS) / 10000;
+            update_global_stats(|stats| {
+                stats.total_fees += verified_amount;
+                stats.total_burned += burn_amount;
+            })?;
         }
         Err(e) => {
-            // Mark deposit as failed
-            deposit.status = DepositStatus::Failed;
-            deposit.error = Some(e.clone());
+            // Mark fee as failed
+            fee.status = FeeStatus::Failed;
+            fee.error = Some(e.clone());
 
             let updated_doc = SetDoc {
-                data: encode_doc_data(&deposit)?,
+                data: encode_doc_data(&fee)?,
                 description: context.data.data.after.description.clone(),
                 version: context.data.data.after.version,
             };
@@ -387,10 +419,35 @@ async fn on_deposit_created(context: OnSetDocContext) -> Result<(), String> {
                 updated_doc,
             )?;
 
-            ic_cdk::print(format!("Deposit verification failed: {}", e));
+            ic_cdk::print(format!("Fee verification failed: {}", e));
         }
     }
 
+    Ok(())
+}
+
+/// Update global stats atomically (read-modify-write).
+/// Uses `ic_cdk::id()` as caller for the `write: "managed"` stats collection.
+fn update_global_stats<F: FnOnce(&mut GlobalStats)>(updater: F) -> Result<(), String> {
+    let canister_id = ic_cdk::id();
+    let key = "global".to_string();
+
+    let existing_doc = get_doc_store(canister_id, "stats".to_string(), key.clone()).ok().flatten();
+    let existing_version = existing_doc.as_ref().and_then(|d| d.version);
+
+    let mut stats = existing_doc
+        .and_then(|doc| decode_doc_data::<GlobalStats>(&doc.data).ok())
+        .unwrap_or_default();
+
+    updater(&mut stats);
+
+    let doc = SetDoc {
+        data: encode_doc_data(&stats)?,
+        description: Some("Global burn/payout stats".to_string()),
+        version: existing_version,
+    };
+
+    set_doc_store(canister_id, "stats".to_string(), key, doc)?;
     Ok(())
 }
 
@@ -505,92 +562,134 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
 
     // Handle initial claim creation: generate signature
     if claim.status == ClaimStatus::Pending && claim.signature.is_none() {
-        // 1. Fetch Game Session
-        let session_doc = get_doc_store(
-            context.caller,
-            "game_sessions".to_string(),
-            claim.game_session_id.clone(),
-        )?;
+        if claim.claim_type == "consolation" {
+            // --- Consolation claim: skip game session validation ---
+            let user_doc = get_doc_store(
+                context.caller,
+                "users".to_string(),
+                context.caller.to_text(),
+            )?;
 
-        let session: GameSession = match session_doc {
-            Some(ref doc) => decode_doc_data(&doc.data)?,
-            None => {
-                return update_claim_error(context, &mut claim, "Game session not found").await;
-            }
-        };
+            let user_profile: UserProfile = match user_doc {
+                Some(doc) => decode_doc_data(&doc.data)?,
+                None => {
+                    return update_claim_error(context, &mut claim, "User profile not found").await;
+                }
+            };
 
-        // 2. Validate session
-        if !session.boss_defeated {
-            return update_claim_error(context, &mut claim, "Boss not defeated").await;
-        }
+            let wallet_addr = match &user_profile.evm_wallet {
+                Some(w) if !w.is_empty() => w.clone(),
+                _ => {
+                    return update_claim_error(context, &mut claim, "No linked EVM wallet").await;
+                }
+            };
 
-        if session.reward_claimed {
-            return update_claim_error(context, &mut claim, "Reward already claimed").await;
-        }
+            // Generate signature for consolation claim (keys_collected = 0)
+            let signature = generate_claim_signature(
+                &claim.game_session_id,
+                &wallet_addr,
+                claim.amount,
+                0,
+            ).await?;
+            claim.signature = Some(signature);
+            claim.status = ClaimStatus::ReadyForChain;
 
-        // 3. Fetch User Profile for EVM wallet
-        let user_doc = get_doc_store(
-            context.caller,
-            "users".to_string(),
-            context.caller.to_text(),
-        )?;
+            update_claim_doc(&context, &claim).await?;
 
-        let user_profile: UserProfile = match user_doc {
-            Some(doc) => decode_doc_data(&doc.data)?,
-            None => {
-                return update_claim_error(context, &mut claim, "User profile not found").await;
-            }
-        };
-
-        let wallet_addr = match &user_profile.evm_wallet {
-            Some(w) if !w.is_empty() => w.clone(),
-            _ => {
-                return update_claim_error(context, &mut claim, "No linked EVM wallet").await;
-            }
-        };
-
-        // 4. Generate signature (include keys_collected for Vault.sol verification)
-        claim.keys_collected = session.keys_collected;
-        let signature = generate_claim_signature(
-            &claim.game_session_id,
-            &wallet_addr,
-            claim.amount,
-            session.keys_collected,
-        ).await?;
-        claim.signature = Some(signature);
-        claim.status = ClaimStatus::ReadyForChain;
-
-        // 5. Mark session as claimed IMMEDIATELY after signature generation (ticket #286).
-        // This prevents a race where a second claim could generate another valid
-        // signature before the first claim's on-chain tx is verified.
-        {
-            let mut claimed_session = session.clone();
-            claimed_session.reward_claimed = true;
-            let sd = session_doc.as_ref().unwrap(); // Safe: matched Some above
-            let description = sd
-                .description
-                .clone()
-                .ok_or_else(|| "session description missing".to_string())?;
-            let version = sd
-                .version
-                .ok_or_else(|| "session version missing".to_string())?;
-            update_session_doc(
-                &context,
-                &claimed_session,
+            ic_cdk::print(format!(
+                "Consolation claim signature generated for user {} amount {}",
+                context.caller.to_text(),
+                claim.amount
+            ));
+        } else {
+            // --- Boss kill claim: full game session validation ---
+            // 1. Fetch Game Session
+            let session_doc = get_doc_store(
+                context.caller,
+                "game_sessions".to_string(),
                 claim.game_session_id.clone(),
-                description,
-                version,
-            )
-            .await?;
+            )?;
+
+            let session: GameSession = match session_doc {
+                Some(ref doc) => decode_doc_data(&doc.data)?,
+                None => {
+                    return update_claim_error(context, &mut claim, "Game session not found").await;
+                }
+            };
+
+            // 2. Validate session
+            if !session.boss_defeated {
+                return update_claim_error(context, &mut claim, "Boss not defeated").await;
+            }
+
+            if session.reward_claimed {
+                return update_claim_error(context, &mut claim, "Reward already claimed").await;
+            }
+
+            // 3. Fetch User Profile for EVM wallet
+            let user_doc = get_doc_store(
+                context.caller,
+                "users".to_string(),
+                context.caller.to_text(),
+            )?;
+
+            let user_profile: UserProfile = match user_doc {
+                Some(doc) => decode_doc_data(&doc.data)?,
+                None => {
+                    return update_claim_error(context, &mut claim, "User profile not found").await;
+                }
+            };
+
+            let wallet_addr = match &user_profile.evm_wallet {
+                Some(w) if !w.is_empty() => w.clone(),
+                _ => {
+                    return update_claim_error(context, &mut claim, "No linked EVM wallet").await;
+                }
+            };
+
+            // 4. Generate signature (include keys_collected for Vault.sol verification)
+            claim.keys_collected = session.keys_collected;
+            let signature = generate_claim_signature(
+                &claim.game_session_id,
+                &wallet_addr,
+                claim.amount,
+                session.keys_collected,
+            ).await?;
+            claim.signature = Some(signature);
+            claim.status = ClaimStatus::ReadyForChain;
+
+            // 5. Mark session as claimed IMMEDIATELY after signature generation (ticket #286).
+            // This prevents a race where a second claim could generate another valid
+            // signature before the first claim's on-chain tx is verified.
+            {
+                let mut claimed_session = session.clone();
+                claimed_session.reward_claimed = true;
+                let sd = session_doc.as_ref().unwrap(); // Safe: matched Some above
+                let description = sd
+                    .description
+                    .clone()
+                    .ok_or_else(|| "session description missing".to_string())?;
+                let version = sd
+                    .version
+                    .ok_or_else(|| "session version missing".to_string())?;
+                update_session_doc(
+                    &context,
+                    &claimed_session,
+                    claim.game_session_id.clone(),
+                    description,
+                    version,
+                )
+                .await?;
+            }
+
+            update_claim_doc(&context, &claim).await?;
+
+            ic_cdk::print(format!(
+                "Claim signature generated for user {} session {}",
+                context.caller.to_text(),
+                claim.game_session_id
+            ));
         }
-
-        update_claim_doc(&context, &claim).await?;
-
-        ic_cdk::print(format!(
-            "Claim signature generated for user {} session {}",
-            context.caller.to_text(),
-            claim.game_session_id
-        ));
 
     // Handle claim completion: verify transaction
     } else if claim.status == ClaimStatus::ReadyForChain && claim.tx_hash.is_some() {
@@ -604,6 +703,11 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
         claim.status = ClaimStatus::Completed;
 
         update_claim_doc(&context, &claim).await?;
+
+        // Update global stats: track total rewards paid out
+        update_global_stats(|stats| {
+            stats.total_rewarded += claim.amount;
+        })?;
 
         ic_cdk::print(format!(
             "Claim completed for user {} session {}",
@@ -715,19 +819,286 @@ async fn on_balance_refresh(context: OnSetDocContext) -> Result<(), String> {
     Ok(())
 }
 
-/// Log game session completion for analytics
+/// Process game session updates: update leaderboard active score and resolve expired top scores.
 async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> {
+    ic_cdk::print(format!(
+        "[HOOK] on_game_session_update: key='{}' data_len={}",
+        context.data.key,
+        context.data.data.after.data.len()
+    ));
+
     let session: GameSession = decode_doc_data(&context.data.data.after.data)?;
 
-    // Log when a session ends with boss defeated
-    if session.ended_at.is_some() && session.boss_defeated {
-        ic_cdk::print(format!(
-            "Game won! User {} defeated boss with score {} and {} keys",
-            context.caller.to_text(),
-            session.score,
-            session.keys_collected
-        ));
+    ic_cdk::print(format!(
+        "[HOOK] on_game_session_update: deserialized OK, ended_at={:?}, score={}",
+        session.ended_at, session.score
+    ));
+
+    // Only process completed sessions
+    if session.ended_at.is_none() {
+        return Ok(());
     }
+
+    let caller_key = context.caller.to_text();
+    let now_ms = time() / 1_000_000;
+
+    // Read caller's user profile for nickname
+    let user_doc = get_doc_store(
+        context.caller,
+        "users".to_string(),
+        caller_key.clone(),
+    )?;
+    let nickname = match user_doc {
+        Some(ref doc) => {
+            let profile: UserProfile = decode_doc_data(&doc.data)?;
+            profile.nickname
+        }
+        None => "Unknown".to_string(),
+    };
+
+    // Read existing leaderboard entry (keep raw Doc for version)
+    let existing_lb_doc = get_doc_store(
+        context.caller,
+        "leaderboard".to_string(),
+        caller_key.clone(),
+    )?
+    .map(|doc| doc);
+
+    let existing_lb_version = existing_lb_doc.as_ref().and_then(|d| d.version);
+    let existing = existing_lb_doc
+        .and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
+
+    let prev_high = existing.as_ref().map_or(0, |e| e.high_score);
+    let prev_won = existing.as_ref().map_or(0, |e| e.games_won);
+
+    // Update leaderboard entry with active score
+    let entry = LeaderboardEntry {
+        nickname,
+        high_score: prev_high.max(session.score),
+        games_won: if session.boss_defeated { prev_won + 1 } else { prev_won },
+        active_score: session.score,
+        scored_at: Some(now_ms),
+        expires_at: Some(now_ms + config::SCORE_TTL_HOURS * 3_600_000),
+        session_id: Some(context.data.key.clone()),
+    };
+
+    let leaderboard_doc = SetDoc {
+        data: encode_doc_data(&entry)?,
+        description: Some("Leaderboard entry with active score".to_string()),
+        version: existing_lb_version,
+    };
+
+    set_doc_store(
+        context.caller,
+        "leaderboard".to_string(),
+        caller_key.clone(),
+        leaderboard_doc,
+    )?;
+
+    ic_cdk::print(format!(
+        "Active score updated for user {}: score={}, expires_at={}",
+        caller_key,
+        session.score,
+        now_ms + config::SCORE_TTL_HOURS * 3_600_000
+    ));
+
+    // Resolve any expired top scores (consolation prize)
+    resolve_expired_top_score().await?;
+
+    Ok(())
+}
+
+/// Check if the top active score has expired and award a consolation prize if so.
+/// Called lazily on every game session update.
+async fn resolve_expired_top_score() -> Result<(), String> {
+    let canister_id = ic_cdk::id();
+    let now_ms = time() / 1_000_000;
+
+    // List all leaderboard entries
+    let result = list_docs_store(
+        canister_id,
+        "leaderboard".to_string(),
+        &ListParams {
+            matcher: None,
+            paginate: None,
+            order: None,
+            owner: None,
+        },
+    )?;
+
+    // Find the entry with the highest active_score that has an expires_at set
+    let mut top_entry: Option<(String, LeaderboardEntry, candid::Principal)> = None;
+
+    for (key, doc) in &result.items {
+        let entry: LeaderboardEntry = match decode_doc_data(&doc.data) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        // Only consider entries with an active expiry
+        if entry.expires_at.is_none() || entry.active_score == 0 {
+            continue;
+        }
+
+        let owner = doc.owner;
+
+        match &top_entry {
+            None => {
+                top_entry = Some((key.clone(), entry, owner));
+            }
+            Some((_, current_top, _)) => {
+                if entry.active_score > current_top.active_score
+                    || (entry.active_score == current_top.active_score
+                        && entry.scored_at < current_top.scored_at)
+                {
+                    top_entry = Some((key.clone(), entry, owner));
+                }
+            }
+        }
+    }
+
+    let (winner_key, winner_entry, winner_principal) = match top_entry {
+        Some(t) => t,
+        None => return Ok(()), // No active scores
+    };
+
+    // Check if the top entry has expired
+    let expires_at = match winner_entry.expires_at {
+        Some(ts) => ts,
+        None => return Ok(()),
+    };
+
+    if expires_at >= now_ms {
+        return Ok(()); // Not expired yet
+    }
+
+    // Check if winner is banned
+    let winner_profile_doc = get_doc_store(
+        winner_principal,
+        "users".to_string(),
+        winner_key.clone(),
+    )?;
+
+    let mut winner_profile: UserProfile = match winner_profile_doc {
+        Some(ref doc) => decode_doc_data(&doc.data)?,
+        None => return Ok(()), // No profile found
+    };
+    let winner_profile_version = winner_profile_doc.as_ref().and_then(|d| d.version);
+
+    if check_ban(&winner_profile).is_err() {
+        // Banned user — clear their expires_at and skip
+        clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
+        ic_cdk::print(format!(
+            "Skipped consolation for banned user {}",
+            winner_key
+        ));
+        return Ok(());
+    }
+
+    // Calculate consolation amount (use fixed max for simplicity, avoiding expensive vault query)
+    let consolation_amount = config::CONSOLATION_PRIZE_MAX;
+
+    // Create consolation claim
+    let claim_key = format!("consolation_{}_{}", winner_key, now_ms);
+    let session_id = winner_entry.session_id.clone().unwrap_or_default();
+
+    let claim = ClaimRequest {
+        amount: consolation_amount,
+        status: ClaimStatus::Pending,
+        signature: None,
+        tx_hash: None,
+        game_session_id: session_id,
+        keys_collected: 0,
+        error: None,
+        claim_type: "consolation".to_string(),
+    };
+
+    let claim_doc = SetDoc {
+        data: encode_doc_data(&claim)?,
+        description: Some("Consolation prize for expired #1 active score".to_string()),
+        version: None,
+    };
+
+    set_doc_store(
+        winner_principal,
+        "claims".to_string(),
+        claim_key.clone(),
+        claim_doc,
+    )?;
+
+    // Clear winner's expires_at to prevent double-award
+    clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
+
+    // Add notification to winner's profile
+    let notification = serde_json::json!({
+        "key": format!("consolation_{}", now_ms),
+        "data": {
+            "type": "consolation_prize",
+            "message": format!("You earned a {} TRESR consolation prize! Your #1 active score expired.", consolation_amount),
+            "urgency": "urgent",
+            "timestamp": now_ms,
+        }
+    });
+
+    // Append to existing notifications array
+    let notifications = match &winner_profile.notifications {
+        Some(serde_json::Value::Array(arr)) => {
+            let mut new_arr = arr.clone();
+            new_arr.push(notification);
+            serde_json::Value::Array(new_arr)
+        }
+        _ => serde_json::Value::Array(vec![notification]),
+    };
+    winner_profile.notifications = Some(notifications);
+
+    let profile_doc = SetDoc {
+        data: encode_doc_data(&winner_profile)?,
+        description: Some("Consolation prize notification added".to_string()),
+        version: winner_profile_version,
+    };
+
+    set_doc_store(
+        winner_principal,
+        "users".to_string(),
+        winner_key.clone(),
+        profile_doc,
+    )?;
+
+    ic_cdk::print(format!(
+        "Consolation prize of {} awarded to user {} (claim: {})",
+        consolation_amount, winner_key, claim_key
+    ));
+
+    Ok(())
+}
+
+/// Clear the expires_at on a leaderboard entry to prevent re-processing.
+fn clear_leaderboard_expiry(
+    key: &str,
+    entry: &LeaderboardEntry,
+    owner: candid::Principal,
+) -> Result<(), String> {
+    // Fetch existing doc version for optimistic concurrency
+    let existing_version = get_doc_store(owner, "leaderboard".to_string(), key.to_string())
+        .ok()
+        .flatten()
+        .and_then(|d| d.version);
+
+    let mut cleared = entry.clone();
+    cleared.expires_at = None;
+
+    let doc = SetDoc {
+        data: encode_doc_data(&cleared)?,
+        description: Some("Active score expired — cleared".to_string()),
+        version: existing_version,
+    };
+
+    set_doc_store(
+        owner,
+        "leaderboard".to_string(),
+        key.to_string(),
+        doc,
+    )?;
 
     Ok(())
 }
@@ -831,7 +1202,7 @@ fn apply_ban(profile: &mut UserProfile) {
 async fn claim_authorize(
     session_id: String,
     reported_keys: u64,
-    deposit_tx_hash: String,
+    fee_tx_hash: String,
     replay_inputs: Vec<u8>,
 ) -> Result<(u128, Vec<u8>), String> {
     let caller = ic_cdk::caller();
@@ -850,7 +1221,7 @@ async fn claim_authorize(
     // Reject if currently banned
     check_ban(&user_profile)?;
 
-    // Get user's linked EVM wallet for deposit sender validation
+    // Get user's linked EVM wallet for fee sender validation
     let wallet_addr = match &user_profile.evm_wallet {
         Some(w) if !w.is_empty() => w.clone(),
         _ => return Err("No linked EVM wallet".to_string()),
@@ -874,19 +1245,19 @@ async fn claim_authorize(
         return Err("Reward already claimed".to_string());
     }
 
-    // 2. Verify deposit transaction on-chain and get actual deposit amount
-    let parsed_deposit = evm_rpc::verify_avalanche_deposit(&deposit_tx_hash).await?;
+    // 2. Verify fee transaction on-chain and get actual fee amount
+    let parsed_fee = evm_rpc::verify_avalanche_fee(&fee_tx_hash).await?;
 
-    // Validate that the deposit sender matches the caller's linked wallet
-    if !parsed_deposit.from.eq_ignore_ascii_case(&wallet_addr) {
+    // Validate that the fee sender matches the caller's linked wallet
+    if !parsed_fee.from.eq_ignore_ascii_case(&wallet_addr) {
         return Err(format!(
-            "Deposit sender {} does not match linked wallet {}",
-            parsed_deposit.from, wallet_addr
+            "Fee sender {} does not match linked wallet {}",
+            parsed_fee.from, wallet_addr
         ));
     }
 
-    // Convert deposit amount from tokens (u64) to wei (u128) for reward calculation
-    let deposit_amount: u128 = (parsed_deposit.amount as u128) * 1_000_000_000_000_000_000u128;
+    // Convert fee amount from tokens (u64) to wei (u128) for reward calculation
+    let fee_amount: u128 = (parsed_fee.amount as u128) * 1_000_000_000_000_000_000u128;
 
     // 3. Query vault balance via EVM RPC
     let vault_balance_tokens = evm_rpc::get_token_balance(
@@ -949,7 +1320,7 @@ async fn claim_authorize(
     // 5. Calc amount
     let perf_mult = (reported_keys as f64 / config::MAX_KEYS_COLLECTED as f64) * 0.5;
     let max_perf = ((vault_balance as f64 * perf_mult) as u128).min(vault_balance / 2);
-    let guaranteed = deposit_amount * 11 / 10;
+    let guaranteed = fee_amount * 11 / 10;
     let amount = max_perf.max(guaranteed).min(vault_balance);
 
     // 6. Sign with IC threshold ECDSA

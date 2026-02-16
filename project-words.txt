@@ -1,7 +1,8 @@
 # Project
-tresr
 MAHD
 SECRETSPEC
+TRESR
+tresr
 
 # Usernames and paths
 mahdtech
@@ -49,6 +50,7 @@ midground
 powerup
 Powerups
 mult
+regen
 rdist
 scanlines
 Scanline
@@ -76,6 +78,8 @@ Lambos
 libsecp
 normie
 normies
+retardio
+retardios
 recid
 Secp
 SIWA
@@ -112,6 +116,7 @@ openzep
 prek
 prebuild
 predeploy
+precached
 precaching
 remappings
 rustc
@@ -123,6 +128,12 @@ versionrc
 VITE
 webp
 webps
+
+# Security
+misconfig
+sarif
+SARIF
+trivy
 
 # Art and design
 Lizardcube
@@ -144,6 +155,8 @@ Pickel
 
 # Technical terms
 alnum
+upserted
+verif
 Graphviz
 mgmt
 reentrancy
@@ -169,6 +182,7 @@ wakatime
 yzhang
 
 # External services
+amannn
 giphy
 Giphy
 GIPHY
@@ -179,6 +193,10 @@ oxalica
 
 # Word fragments from hyphenated compounds
 # cspell splits on hyphens and suffixes, producing these fragments
+atal
+cript
+ility
+ontal
 ator
 backg
 cano
@@ -192,6 +210,7 @@ dencies
 enviro
 ethe
 exte
+ffset
 hain
 henticated
 ipal
@@ -208,6 +227,8 @@ produ
 repe
 rint
 rboard
+rray
+ution
 
 # Code and API names
 camerafadeoutcomplete
@@ -221,6 +242,7 @@ esac
 
 # Slang and flavour text
 apeing
+fanfic
 Waaaaaaa
 giga
 gify
@@ -229,6 +251,12 @@ gify
 retardio
 
 # Dev and game terms
+alltime
+notifs
 bootup
 cheatcode
+consolation
 prereleased
+appinstalled
+brrr
+uncollectible

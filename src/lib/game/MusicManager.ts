@@ -1,6 +1,7 @@
 import {gameActions, gameState} from "./state";
+import type {PlaybackMode} from "./state";
 import {getAuthState, subscribeToAuth} from "@/lib/auth";
-import {getUserProfile, saveUserProfile} from "@/lib/user";
+import {getUserProfile, enqueueProfileWrite} from "@/lib/user";
 import {config} from "@/lib/config/client";
 import {log} from "@/lib/utils/log";
 
@@ -13,7 +14,6 @@ class MusicManager {
   private fadeInterval: ReturnType<typeof setInterval> | null = null;
   private fadeInInterval: ReturnType<typeof setInterval> | null = null;
   private tracks: string[] = [];
-  private isRandom: boolean = false;
   private saveTimeout: ReturnType<typeof setTimeout> | null = null;
   private shuffledQueue: string[] = [];
   private queueIndex: number = 0;
@@ -35,11 +35,20 @@ class MusicManager {
       });
     }
   };
+
   private handleEnded = () => {
-    if (this.isRandom) {
-      this.playRandom();
-    } else {
-      this.next();
+    const mode = gameState.get().music.playbackMode;
+    switch (mode) {
+      case "repeat-one":
+        this.replayCurrent();
+        break;
+      case "shuffle":
+        this.playRandom();
+        break;
+      case "normal":
+      default:
+        this.next();
+        break;
     }
   };
 
@@ -91,9 +100,9 @@ class MusicManager {
         if (state.isAuthenticated && !state.isGuest && state.user) {
           await this.loadPreferences(state.user.key);
         } else if (!this.initialPlayStarted && this.tracks.length > 0) {
-          // Guest or unauthenticated — start random playback
+          // Guest or unauthenticated — default to shuffle playback
           this.initialPlayStarted = true;
-          this.isRandom = true;
+          gameActions.updateMusic({playbackMode: "shuffle"});
           this.playRandomAfterNarration();
         }
       });
@@ -114,6 +123,52 @@ class MusicManager {
 
   private playRandomAfterNarration() {
     this.playAfterNarration(() => this.playRandom());
+  }
+
+  /**
+   * Start initial playback based on the current playback mode and favorite track.
+   * Called after preferences are loaded or for guests.
+   */
+  private startInitialPlayback(isPaused: boolean) {
+    const mode = gameState.get().music.playbackMode;
+    const favorite = gameState.get().music.favoriteTrack;
+
+    if (isPaused) {
+      // If the user left the player paused, set the track but don't play
+      if (favorite && this.tracks.includes(favorite)) {
+        this.setTrack(favorite, false, false);
+      } else if (mode === "shuffle") {
+        // Queue up a random track silently (so the UI shows something)
+        this.playAfterNarration(() => this.playRandom());
+      }
+      return;
+    }
+
+    switch (mode) {
+      case "repeat-one":
+        if (favorite && this.tracks.includes(favorite)) {
+          this.playAfterNarration(() => this.setTrack(favorite, true, false));
+        } else {
+          // No favorite — fall back to shuffle for the first track
+          this.playAfterNarration(() => this.playRandom());
+        }
+        break;
+      case "normal":
+        if (favorite && this.tracks.includes(favorite)) {
+          // Favorite plays first, then sequential from there
+          this.playAfterNarration(() => this.setTrack(favorite, true, false));
+        } else {
+          // No favorite — start from the first track
+          this.playAfterNarration(() =>
+            this.setTrack(this.tracks[0], true, false)
+          );
+        }
+        break;
+      case "shuffle":
+      default:
+        this.playRandomAfterNarration();
+        break;
+    }
   }
 
   private async loadPreferences(userId: string) {
@@ -137,21 +192,38 @@ class MusicManager {
           this.setSfxVolume(prefs.sfxVolume, false);
         }
 
-        if (prefs.track && prefs.track !== "random") {
-          this.playAfterNarration(() =>
-            this.setTrack(prefs.track!, !prefs.isPaused)
-          );
-        } else {
-          this.isRandom = true;
-          this.playRandomAfterNarration();
+        // Load playback mode (with backward compatibility for legacy `track` field)
+        let mode: PlaybackMode = "shuffle";
+        let favorite = "";
+
+        if (prefs.playbackMode) {
+          // New format — use directly
+          mode = prefs.playbackMode;
+          favorite = prefs.favoriteTrack || "";
+        } else if ("track" in prefs) {
+          // Legacy format: track was "random" or a track name
+          const legacyTrack = (prefs as {track?: string}).track;
+          if (legacyTrack && legacyTrack !== "random") {
+            mode = "normal";
+            favorite = legacyTrack;
+          } else {
+            mode = "shuffle";
+          }
         }
+
+        gameActions.updateMusic({
+          playbackMode: mode,
+          favoriteTrack: favorite,
+        });
+
+        this.startInitialPlayback(!!prefs.isPaused);
       } else {
         // Defaults from config
         const audioConfig = config.gameplay.audio;
         const defaultMusicVol = audioConfig.default_music_volume;
         const defaultSfxVol = audioConfig.default_sfx_volume;
 
-        this.isRandom = true;
+        gameActions.updateMusic({playbackMode: "shuffle"});
         this.setVolume(defaultMusicVol, false);
         this.setSfxVolume(defaultSfxVol, false);
         this.playRandomAfterNarration();
@@ -172,20 +244,21 @@ class MusicManager {
     this.saveTimeout = setTimeout(async () => {
       try {
         const userId = auth.user!.key;
-        const doc = await getUserProfile(userId);
-        if (doc) {
-          const profile = doc.data;
-          profile.preferences.music = {
-            track: this.isRandom
-              ? "random"
-              : gameState.get().music.currentTrack,
-            volume: gameState.get().music.musicVolume,
-            sfxVolume: gameState.get().music.sfxVolume,
-            isPaused: !gameState.get().music.isPlaying,
-          };
-          await saveUserProfile(userId, profile, doc.version);
-          log.debug(COMPONENT_NAME, "Preferences persisted to Juno.");
-        }
+        const musicState = gameState.get().music;
+        await enqueueProfileWrite(userId, (profile) => ({
+          ...profile,
+          preferences: {
+            ...profile.preferences,
+            music: {
+              favoriteTrack: musicState.favoriteTrack || undefined,
+              playbackMode: musicState.playbackMode,
+              volume: musicState.musicVolume,
+              sfxVolume: musicState.sfxVolume,
+              isPaused: !musicState.isPlaying,
+            },
+          },
+        }));
+        log.debug(COMPONENT_NAME, "Preferences persisted to Juno.");
       } catch (e) {
         log.warn(COMPONENT_NAME, "Failed to persist preferences:", e);
       }
@@ -203,7 +276,17 @@ class MusicManager {
     this.tracks = config.assets.music;
   }
 
-  public setTrack(track: string, forcePlay: boolean = false) {
+  /**
+   * Set and play a track.
+   * @param track The track name to play.
+   * @param forcePlay If true, start playback even if currently paused.
+   * @param isFavorite If true, this was a manual user selection — persist as favorite.
+   */
+  public setTrack(
+    track: string,
+    forcePlay: boolean = false,
+    isFavorite: boolean = false
+  ) {
     if (!this.audio) return;
     const isPlaying = forcePlay || !this.audio.paused;
     const targetVolume = gameState.get().music.musicVolume;
@@ -214,9 +297,15 @@ class MusicManager {
     }
 
     this.audio.src = `/assets/audio/music/${track}.webm`;
-    gameActions.updateMusic({
+
+    const stateUpdate: Partial<ReturnType<typeof gameState.get>["music"]> = {
       currentTrack: track,
-    });
+    };
+    if (isFavorite) {
+      stateUpdate.favoriteTrack = track;
+    }
+    gameActions.updateMusic(stateUpdate);
+
     if (isPlaying) {
       this.audio.volume = 0;
       this.safePlay().then(() => this.fadeIn(targetVolume));
@@ -384,12 +473,34 @@ class MusicManager {
     }
   }
 
-  public setRandom(enabled: boolean) {
-    this.isRandom = enabled;
-    if (enabled && !gameState.get().music.currentTrack) {
-      this.playRandom();
-    }
+  /**
+   * Set the playback mode directly.
+   */
+  public setPlaybackMode(mode: PlaybackMode) {
+    gameActions.updateMusic({playbackMode: mode});
     this.persistPreferences();
+  }
+
+  /**
+   * Cycle through playback modes: normal → shuffle → repeat-one → normal.
+   */
+  public cyclePlaybackMode(): PlaybackMode {
+    const current = gameState.get().music.playbackMode;
+    const order: PlaybackMode[] = ["normal", "shuffle", "repeat-one"];
+    const idx = order.indexOf(current);
+    const next = order[(idx + 1) % order.length];
+    this.setPlaybackMode(next);
+    return next;
+  }
+
+  /**
+   * Replay the current track from the beginning (for repeat-one mode).
+   */
+  private replayCurrent() {
+    if (!this.audio) return;
+    this.audio.currentTime = 0;
+    this.safePlay();
+    gameActions.updateMusic({isPlaying: true});
   }
 
   public stop() {
@@ -478,11 +589,13 @@ class MusicManager {
     clearTimeout(this.saveTimeout);
     this.saveTimeout = null;
     try {
+      const musicState = gameState.get().music;
       const prefs = {
-        track: this.isRandom ? "random" : gameState.get().music.currentTrack,
-        volume: gameState.get().music.musicVolume,
-        sfxVolume: gameState.get().music.sfxVolume,
-        isPaused: !gameState.get().music.isPlaying,
+        favoriteTrack: musicState.favoriteTrack || undefined,
+        playbackMode: musicState.playbackMode,
+        volume: musicState.musicVolume,
+        sfxVolume: musicState.sfxVolume,
+        isPaused: !musicState.isPlaying,
       };
       localStorage.setItem(
         MusicManager.PENDING_PREFS_KEY,
@@ -503,13 +616,14 @@ class MusicManager {
       if (!raw) return;
       localStorage.removeItem(MusicManager.PENDING_PREFS_KEY);
       const pending = JSON.parse(raw);
-      const doc = await getUserProfile(userId);
-      if (doc) {
-        const profile = doc.data;
-        profile.preferences.music = pending;
-        await saveUserProfile(userId, profile, doc.version);
-        log.info(COMPONENT_NAME, "Synced pending preferences to Juno.");
-      }
+      await enqueueProfileWrite(userId, (profile) => ({
+        ...profile,
+        preferences: {
+          ...profile.preferences,
+          music: pending,
+        },
+      }));
+      log.info(COMPONENT_NAME, "Synced pending preferences to Juno.");
     } catch (e) {
       log.warn(COMPONENT_NAME, "Failed to sync pending preferences:", e);
     }
@@ -517,8 +631,13 @@ class MusicManager {
 
   public next() {
     if (this.tracks.length === 0) return;
-    if (this.isRandom) {
+    const mode = gameState.get().music.playbackMode;
+    if (mode === "shuffle") {
       this.playRandom();
+      return;
+    }
+    if (mode === "repeat-one") {
+      this.replayCurrent();
       return;
     }
     const current = gameState.get().music.currentTrack;

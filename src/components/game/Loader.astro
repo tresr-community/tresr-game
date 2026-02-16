@@ -6,7 +6,7 @@ interface Props {
   id?: string;
 }
 
-const {minTime = 3000, id = "loader"} = Astro.props;
+const {minTime = 1500, id = "loader"} = Astro.props;
 
 const messages = config.app.loader_messages;
 const message =

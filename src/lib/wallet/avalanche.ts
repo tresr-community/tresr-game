@@ -1,25 +1,34 @@
-/**
- * Avalanche Wallet Utilities
- *
- * Read-only client creation and contract interactions for Avalanche C-Chain.
- * Connection handling is done via connection.ts (uses Wagmi/AppKit).
- */
-
-import {createPublicClient, http, type PublicClient, type Chain} from "viem";
-import {avalanche, avalancheFuji} from "viem/chains";
+import {encodeFunctionData, type Chain} from "viem";
+import {avalanche} from "viem/chains";
 import {loadConfigAsync} from "../config";
 import {JUNO_ENVIRONMENT} from "../config/constants";
 import {log} from "../utils/log";
 import {VaultAbi, ERC20Abi} from "./VaultAbi";
 import {getWalletClient} from "./connection";
+import {confirmReceipt, getReadClient} from "./tx";
+import {config} from "../config/client";
 
 const COMPONENT_NAME = "Avalanche";
 
 /**
  * Get the target chain based on environment.
+ *
+ * Builds the chain definition from config values (chain_id, rpc_url)
+ * so each environment gets exactly the right chain ID and RPC.
  */
-export function getTargetChain(): Chain {
-  return JUNO_ENVIRONMENT === "production" ? avalanche : avalancheFuji;
+export function getTargetChain(rpcUrl?: string): Chain {
+  if (JUNO_ENVIRONMENT === "production") return avalanche;
+
+  // Build chain from config — no more spreading avalancheFuji which
+  // hardcodes chain ID 43113 and the public Fuji RPC URL.
+  const env = JUNO_ENVIRONMENT === "development" ? "anvil" : "testnet";
+  const cc = config.blockchain.avalanche[env];
+  return {
+    id: cc.chain_id,
+    name: env === "anvil" ? "Anvil (Local)" : "Avalanche Fuji",
+    nativeCurrency: {decimals: 18, name: "Avalanche", symbol: "AVAX"},
+    rpcUrls: {default: {http: [rpcUrl ?? cc.rpc_url]}},
+  } as Chain;
 }
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -50,27 +59,23 @@ export function getEnvironmentKey(): "anvil" | "testnet" | "mainnet" {
 /**
  * Create a public client for read-only operations.
  *
+ * @deprecated Use `getReadClient()` from `./tx` instead. This wrapper exists
+ * for backward compatibility with callers that haven't been migrated yet.
+ *
  * @returns PublicClient configured for the target chain
  */
-export async function getPublicClient(): Promise<PublicClient> {
-  const config = await loadConfigAsync();
-  const env = getEnvironmentKey();
-  const chainConfig = config.blockchain.avalanche[env];
-
-  return createPublicClient({
-    chain: getTargetChain(),
-    transport: http(chainConfig.rpc_url),
-  });
+export async function getPublicClient() {
+  return getReadClient();
 }
 
 /**
- * Deposit tokens to start a game session.
+ * Pay fee to start a game session.
  *
  * @param sessionId - Game session identifier
- * @param amount - Amount to deposit in wei
+ * @param amount - Fee amount in wei
  * @returns Transaction hash
  */
-export async function depositForGame(
+export async function payFeeForGame(
   sessionId: string,
   amount: bigint
 ): Promise<`0x${string}`> {
@@ -79,27 +84,63 @@ export async function depositForGame(
   const config = await loadConfigAsync();
   const env = getEnvironmentKey();
   const chainConfig = config.blockchain.avalanche[env];
+  const chain = getTargetChain(chainConfig.rpc_url);
 
-  // Approve the Vault to spend TRESR tokens
-  log.info(COMPONENT_NAME, "Approving TRESR spend for vault deposit...");
-  await walletClient.writeContract({
+  // Use wagmi's managed public client for gas estimation
+  const publicClient = getReadClient();
+
+  // --- Approve the Vault to spend TRESR tokens ---
+  log.info(COMPONENT_NAME, "Approving TRESR spend for vault fee...");
+
+  const approveData = encodeFunctionData({
+    abi: ERC20Abi,
+    functionName: "approve",
+    args: [chainConfig.vault_contract as `0x${string}`, amount],
+  });
+
+  const approveGas = await publicClient.estimateGas({
+    account: accounts[0],
+    to: chainConfig.tresr_token_contract as `0x${string}`,
+    data: approveData,
+  });
+
+  const approveHash = await walletClient.writeContract({
     account: accounts[0],
     address: chainConfig.tresr_token_contract as `0x${string}`,
     abi: ERC20Abi,
     functionName: "approve",
     args: [chainConfig.vault_contract as `0x${string}`, amount],
-    chain: null,
+    chain,
+    gas: approveGas,
   });
 
-  // Deposit into the Vault
-  log.info(COMPONENT_NAME, "Depositing to vault for session:", sessionId);
+  // Wait for approval to be mined before proceeding — otherwise the vault
+  // will see allowance=0 and revert with ERC20InsufficientAllowance.
+  await confirmReceipt(approveHash, {component: COMPONENT_NAME});
+
+  // --- Pay fee to the Vault ---
+  log.info(COMPONENT_NAME, "Paying fee to vault for session:", sessionId);
+
+  const payFeeData = encodeFunctionData({
+    abi: VaultAbi,
+    functionName: "payFee",
+    args: [amount, sessionId as `0x${string}`],
+  });
+
+  const payFeeGas = await publicClient.estimateGas({
+    account: accounts[0],
+    to: chainConfig.vault_contract as `0x${string}`,
+    data: payFeeData,
+  });
+
   const hash = await walletClient.writeContract({
     account: accounts[0],
     address: chainConfig.vault_contract as `0x${string}`,
     abi: VaultAbi,
-    functionName: "deposit",
+    functionName: "payFee",
     args: [amount, sessionId as `0x${string}`],
-    chain: null,
+    chain,
+    gas: payFeeGas,
   });
 
   return hash;
@@ -132,7 +173,7 @@ export async function claimWin(
     abi: VaultAbi,
     functionName: "claim",
     args: [sessionId as `0x${string}`, amount, BigInt(keys), signature],
-    chain: null, // Chain is already configured in the wallet client
+    chain: getTargetChain(), // Chain is already configured in the wallet client
   });
 
   return hash;
@@ -147,7 +188,7 @@ export async function getVaultBalance(): Promise<bigint> {
   const config = await loadConfigAsync();
   const env = getEnvironmentKey();
   const chainConfig = config.blockchain.avalanche[env];
-  const publicClient = await getPublicClient();
+  const publicClient = getReadClient();
 
   // Query the token contract for vault's balance
   return await publicClient.readContract({
@@ -170,7 +211,7 @@ export async function getClaimCooldownStatus(
   const cfg = await loadConfigAsync();
   const env = getEnvironmentKey();
   const chainConfig = cfg.blockchain.avalanche[env];
-  const publicClient = await getPublicClient();
+  const publicClient = getReadClient();
 
   const lastClaimTime = await publicClient.readContract({
     address: chainConfig.vault_contract as `0x${string}`,

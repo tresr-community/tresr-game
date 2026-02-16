@@ -55,9 +55,9 @@ Directives:
 - Use `devenv up` to start backing services or processes if configured.
 - Any changes to dotenv `.env` will required a `direnv reload` or `devenv shell` to take effect.
 - **Secret Management**: For non-secret variables, the dotenv `.env` file is acceptable however always use `secretspec` for managing secrets values like keys.
-- **1Password Integration**: Due to the enablement of `secretspec`, and 1Password
-  being unavailable in the AI Agent sandbox, you may not have access to run devenv shell commands, try this method:
-  - `op signin && devenv shell --quiet -- <command>`
+- **IMPORTANT:** **1Password Integration** Due to the enablement of `secretspec`, and 1Password being unavailable in the AI Agent sandbox,
+  to run devenv shell commands, use this method:
+  - `SECRETSPEC_PROVIDER=env devenv shell --quiet -- <command>`
   - As a fallback, ask the user to execute and paste the result.
 
 Devenv has it's own MCP server available at: <https://mcp.devenv.sh/> which can be started locally with `devenv mcp`. This can be used for additional knowledge about `devenv.nix` syntax.
@@ -255,8 +255,9 @@ Directives for AI Agents:
   - **Immutable Contracts**: Prefer one-time deployable contracts over upgradeable ones. If upgrades are needed (rare), use OpenZeppelin's UUPS proxy with timelock.
   - **RPC and Chains**: For Avalanche, use official/testnet RPCs (e.g., `https://api.avax.network` for mainnet). Handle rate limits and finality checks (12+ blocks).
   - **Error Handling**: Use descriptive revert messages. Log events for off-chain monitoring.
-- **Workflow Integration**: Solidity contracts are separate from Juno Rust/Astro. Update `docs/solidity.md` for all changes. Deploy Fuji first for testing; mainnet requires human approval via GH Actions.
-- **Common Pitfalls to Avoid**: No selfdestruct in main contracts, no tx.origin for auth, no unbounded loops. Always burn-test on local Anvil before Fuji.
+- **Workflow Integration**: Solidity contracts are separate from Juno Rust/Astro. Update `docs/solidity.md` for all changes.
+  Deploy to testnet first for testing; mainnet requires human approval via GH Actions.
+- **Common Pitfalls to Avoid**: No selfdestruct in main contracts, no tx.origin for auth, no unbounded loops. Always burn-test on local Anvil before testnet.
 - **Documentation**: Update `docs/solidity.md` with setup/deploy guides. Use Mermaid diagrams for contract flows if complex.
 
 Foundry LLM documentation is available locally at `docs/agents/foundry.txt` (run `juno-dev agent-docs` to download).

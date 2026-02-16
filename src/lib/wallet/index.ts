@@ -21,7 +21,7 @@ export {
   getTargetChain,
   getEnvironmentKey,
   getPublicClient,
-  depositForGame,
+  payFeeForGame,
   claimWin,
   getVaultBalance,
   shortenAddress,
@@ -38,5 +38,14 @@ export {
   clearCachedBalance,
 } from "./balance";
 
+// Faucet utilities
+export {
+  claimFaucet,
+  getFaucetCooldownStatus,
+  getFaucetDripAmount,
+  isFaucetDeployed,
+} from "./faucet";
+
 // ABI definitions
 export {VaultAbi, ERC20Abi} from "./VaultAbi";
+export {FaucetAbi} from "./FaucetAbi";
