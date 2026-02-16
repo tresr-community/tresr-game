@@ -48,9 +48,10 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
+  actions: write
   contents: write
   packages: read
   pull-requests: read

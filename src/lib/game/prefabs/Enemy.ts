@@ -114,6 +114,11 @@ export class Enemy extends BaseEntity {
       ["retardio", weights.retardio],
     ];
     const totalWeight = entries.reduce((sum, [, w]) => sum + w, 0);
+    if (totalWeight <= 0) {
+      this.aiType = "direct";
+      this.flankDirection = this.rng.frac() < 0.5 ? 1 : -1;
+      return;
+    }
     let roll = this.rng.frac() * totalWeight;
     this.aiType = "direct"; // fallback
     for (const [type, w] of entries) {
