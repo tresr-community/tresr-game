@@ -11,7 +11,17 @@ crate-type = ["cdylib"]
 [dependencies]
 
 # Juno SDK
-junobuild-satellite = { version = "0.4.0", default-features = false }
+junobuild-satellite = { version = "0.4.0", default-features = false, features = [
+    "assert_set_doc",
+    "assert_delete_doc",
+    "on_set_doc",
+    "on_set_many_docs",
+    "on_delete_doc",
+    "on_delete_many_docs",
+    "on_upload_asset",
+    "on_delete_asset",
+    "on_delete_many_assets",
+] }
 junobuild-shared = "0.6.0"
 junobuild-macros = "0.2.0"
 junobuild-storage = { version = "0.5.0", default-features = false }

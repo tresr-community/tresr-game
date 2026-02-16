@@ -258,14 +258,17 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
     }
 
     // Preserve existing active score fields from the leaderboard entry
-    let existing = get_doc_store(
+    let existing_doc = get_doc_store(
         context.caller,
         "leaderboard".to_string(),
         context.data.key.clone(),
     )
     .ok()
-    .flatten()
-    .and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
+    .flatten();
+
+    let existing_version = existing_doc.as_ref().and_then(|d| d.version);
+    let existing = existing_doc
+        .and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
 
     let entry = LeaderboardEntry {
         nickname: profile.nickname.clone(),
@@ -280,8 +283,7 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
     let leaderboard_doc = SetDoc {
         data: encode_doc_data(&entry)?,
         description: Some("Leaderboard entry".to_string()),
-        // Use None for version to allow upsert (create or update)
-        version: None,
+        version: existing_version,
     };
 
     set_doc_store(
@@ -430,17 +432,19 @@ fn update_global_stats<F: FnOnce(&mut GlobalStats)>(updater: F) -> Result<(), St
     let canister_id = ic_cdk::id();
     let key = "global".to_string();
 
-    let mut stats = match get_doc_store(canister_id, "stats".to_string(), key.clone()) {
-        Ok(Some(doc)) => decode_doc_data::<GlobalStats>(&doc.data).unwrap_or_default(),
-        _ => GlobalStats::default(),
-    };
+    let existing_doc = get_doc_store(canister_id, "stats".to_string(), key.clone()).ok().flatten();
+    let existing_version = existing_doc.as_ref().and_then(|d| d.version);
+
+    let mut stats = existing_doc
+        .and_then(|doc| decode_doc_data::<GlobalStats>(&doc.data).ok())
+        .unwrap_or_default();
 
     updater(&mut stats);
 
     let doc = SetDoc {
         data: encode_doc_data(&stats)?,
         description: Some("Global burn/payout stats".to_string()),
-        version: None, // Allow upsert
+        version: existing_version,
     };
 
     set_doc_store(canister_id, "stats".to_string(), key, doc)?;
@@ -852,13 +856,17 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
         None => "Unknown".to_string(),
     };
 
-    // Read existing leaderboard entry
-    let existing = get_doc_store(
+    // Read existing leaderboard entry (keep raw Doc for version)
+    let existing_lb_doc = get_doc_store(
         context.caller,
         "leaderboard".to_string(),
         caller_key.clone(),
     )?
-    .and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
+    .map(|doc| doc);
+
+    let existing_lb_version = existing_lb_doc.as_ref().and_then(|d| d.version);
+    let existing = existing_lb_doc
+        .and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
 
     let prev_high = existing.as_ref().map_or(0, |e| e.high_score);
     let prev_won = existing.as_ref().map_or(0, |e| e.games_won);
@@ -877,7 +885,7 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
     let leaderboard_doc = SetDoc {
         data: encode_doc_data(&entry)?,
         description: Some("Leaderboard entry with active score".to_string()),
-        version: None,
+        version: existing_lb_version,
     };
 
     set_doc_store(
@@ -975,6 +983,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         Some(ref doc) => decode_doc_data(&doc.data)?,
         None => return Ok(()), // No profile found
     };
+    let winner_profile_version = winner_profile_doc.as_ref().and_then(|d| d.version);
 
     if check_ban(&winner_profile).is_err() {
         // Banned user — clear their expires_at and skip
@@ -1045,7 +1054,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     let profile_doc = SetDoc {
         data: encode_doc_data(&winner_profile)?,
         description: Some("Consolation prize notification added".to_string()),
-        version: None, // Upsert — avoids stale version from hook chain
+        version: winner_profile_version,
     };
 
     set_doc_store(
@@ -1069,13 +1078,19 @@ fn clear_leaderboard_expiry(
     entry: &LeaderboardEntry,
     owner: candid::Principal,
 ) -> Result<(), String> {
+    // Fetch existing doc version for optimistic concurrency
+    let existing_version = get_doc_store(owner, "leaderboard".to_string(), key.to_string())
+        .ok()
+        .flatten()
+        .and_then(|d| d.version);
+
     let mut cleared = entry.clone();
     cleared.expires_at = None;
 
     let doc = SetDoc {
         data: encode_doc_data(&cleared)?,
         description: Some("Active score expired — cleared".to_string()),
-        version: None,
+        version: existing_version,
     };
 
     set_doc_store(
