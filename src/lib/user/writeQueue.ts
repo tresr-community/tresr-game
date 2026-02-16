@@ -62,15 +62,23 @@ export function enqueueProfileWrite(
   return deferred;
 }
 
+/** Small async delay helper. */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Perform a single read-modify-write cycle.
- * Retries once on version conflict (defense-in-depth for external writes).
+ * Retries up to MAX_ATTEMPTS on version conflicts with exponential backoff.
+ * This handles both "outdated" (concurrent frontend writes) and "future"
+ * (stale cache after satellite redeploy) version errors.
  */
 async function doWrite(
   principal: string,
   mutator: (profile: UserProfile) => UserProfile
 ): Promise<void> {
-  const MAX_ATTEMPTS = 2;
+  const MAX_ATTEMPTS = 4;
+  const BASE_DELAY_MS = 100;
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const config = getSatelliteConfig();
@@ -101,13 +109,19 @@ async function doWrite(
       log.debug(COMPONENT_NAME, "Profile write succeeded for", principal);
       return;
     } catch (e) {
-      // Retry once on version conflict (in case of external writes)
-      if (
-        attempt < MAX_ATTEMPTS - 1 &&
-        e instanceof Error &&
-        e.message.includes("version_outdated_or_future")
-      ) {
-        log.warn(COMPONENT_NAME, "Version conflict, retrying...", principal);
+      const isVersionConflict =
+        e instanceof Error && e.message.includes("version_outdated_or_future");
+
+      if (isVersionConflict && attempt < MAX_ATTEMPTS - 1) {
+        const backoff = BASE_DELAY_MS * Math.pow(2, attempt);
+        log.warn(
+          COMPONENT_NAME,
+          `Version conflict (attempt ${attempt + 1}/${MAX_ATTEMPTS}), ` +
+            `retrying in ${backoff}ms...`,
+          principal,
+          e instanceof Error ? e.message : ""
+        );
+        await delay(backoff);
         continue;
       }
       log.error(COMPONENT_NAME, "Profile write failed for", principal, e);

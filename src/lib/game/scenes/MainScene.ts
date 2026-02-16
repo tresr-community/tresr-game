@@ -2165,39 +2165,65 @@ export class MainScene extends Phaser.Scene {
         }
 
         // Save game session for leaderboard active score tracking
-        if (this.sessionId && !this.sessionId.startsWith("guest-")) {
-          try {
-            await setDoc({
-              collection: "game_sessions",
-              doc: {
-                key: this.sessionId,
-                data: {
-                  startedAt:
-                    Date.now() -
-                    (this.gameplayConfig.time_limit_seconds -
-                      this.survivalTimer) *
-                      1000,
-                  endedAt: Date.now(),
-                  keysCollected: this.collectedKeys,
-                  bossDefeated: true,
-                  score: this.score,
-                  rewardClaimed: false,
-                },
-              },
-            });
-            log.info(
-              COMPONENT_NAME,
-              "Game session saved for active score tracking."
-            );
-          } catch (err) {
-            log.error(COMPONENT_NAME, "Failed to save game session:", err);
-          }
-        }
+        await this.saveGameSession(true);
       } else {
         log.error(COMPONENT_NAME, "Claim authorization failed:", result.Err);
       }
     } catch {
       log.error(COMPONENT_NAME, "Failed to authorize claim");
+    }
+  }
+
+  /**
+   * Save a game session document to trigger the satellite's on_game_session_update
+   * hook, which writes to the leaderboard. Retries on version conflict.
+   */
+  private async saveGameSession(bossDefeated: boolean) {
+    if (!this.sessionId || this.sessionId.startsWith("guest-")) return;
+
+    const MAX_ATTEMPTS = 3;
+    const BASE_DELAY_MS = 100;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        await setDoc({
+          collection: "game_sessions",
+          doc: {
+            key: this.sessionId,
+            data: {
+              startedAt:
+                Date.now() -
+                (this.gameplayConfig.time_limit_seconds - this.survivalTimer) *
+                  1000,
+              endedAt: Date.now(),
+              keysCollected: this.collectedKeys,
+              bossDefeated,
+              score: this.score,
+              rewardClaimed: false,
+            },
+          },
+        });
+        log.info(
+          COMPONENT_NAME,
+          "Game session saved for active score tracking."
+        );
+        return;
+      } catch (err) {
+        const isVersionConflict =
+          err instanceof Error &&
+          err.message.includes("version_outdated_or_future");
+
+        if (isVersionConflict && attempt < MAX_ATTEMPTS - 1) {
+          const backoff = BASE_DELAY_MS * Math.pow(2, attempt);
+          log.warn(
+            COMPONENT_NAME,
+            `Game session version conflict (attempt ${attempt + 1}/${MAX_ATTEMPTS}), retrying in ${backoff}ms...`
+          );
+          await new Promise((r) => setTimeout(r, backoff));
+          continue;
+        }
+        log.error(COMPONENT_NAME, "Failed to save game session:", err);
+      }
     }
   }
 
@@ -2253,34 +2279,7 @@ export class MainScene extends Phaser.Scene {
       }
 
       // Save game session for leaderboard active score tracking
-      if (this.sessionId && !this.sessionId.startsWith("guest-")) {
-        try {
-          await setDoc({
-            collection: "game_sessions",
-            doc: {
-              key: this.sessionId,
-              data: {
-                startedAt:
-                  Date.now() -
-                  (this.gameplayConfig.time_limit_seconds -
-                    this.survivalTimer) *
-                    1000,
-                endedAt: Date.now(),
-                keysCollected: this.collectedKeys,
-                bossDefeated: false,
-                score: this.score,
-                rewardClaimed: false,
-              },
-            },
-          });
-          log.info(
-            COMPONENT_NAME,
-            "Game session saved for active score tracking."
-          );
-        } catch (err) {
-          log.error(COMPONENT_NAME, "Failed to save game session:", err);
-        }
-      }
+      await this.saveGameSession(false);
     }
   }
 
