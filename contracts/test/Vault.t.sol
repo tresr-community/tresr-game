@@ -48,7 +48,7 @@ contract VaultTest is Test {
         vm.stopPrank();
     }
 
-    function testDeposit() public {
+    function testPayFee() public {
         vm.startPrank(user);
 
         uint256 amount = 1000 * 10 ** 18;
@@ -56,7 +56,7 @@ contract VaultTest is Test {
 
         bytes32 sessionId = keccak256("session1");
 
-        vault.deposit(amount, sessionId);
+        vault.payFee(amount, sessionId);
 
         // Check vault balance (90% remains, 10% burned)
         uint256 vaultBal = token.balanceOf(address(vault));
@@ -69,8 +69,8 @@ contract VaultTest is Test {
     }
 
     function testClaim() public {
-        // 1. User deposits
-        testDeposit();
+        // 1. User pays fee
+        testPayFee();
 
         // Advance time past cooldown (1 hour + 1 second)
         vm.warp(block.timestamp + 3601);
@@ -99,7 +99,7 @@ contract VaultTest is Test {
     }
 
     function testClaimMinAmount() public {
-        testDeposit();
+        testPayFee();
         vm.warp(block.timestamp + 3601);
 
         bytes32 sessionId = keccak256("session1");
@@ -119,7 +119,7 @@ contract VaultTest is Test {
     }
 
     function testClaimCap() public {
-        testDeposit();
+        testPayFee();
         vm.warp(block.timestamp + 3601);
 
         bytes32 sessionId = keccak256("session1");
@@ -160,7 +160,7 @@ contract VaultTest is Test {
     }
 
     function testClaimWithKeys() public {
-        testDeposit();
+        testPayFee();
         vm.warp(block.timestamp + 3601);
 
         bytes32 sessionId = keccak256("session1");
@@ -208,7 +208,7 @@ contract VaultTest is Test {
         vault.setClaimCooldown(1800);
 
         // First claim
-        testDeposit();
+        testPayFee();
         vm.warp(block.timestamp + 1801);
         _signAndClaim(keccak256("session1"), 100 * 10 ** 18, 75);
 

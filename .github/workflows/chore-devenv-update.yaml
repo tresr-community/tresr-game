@@ -1,0 +1,89 @@
+---
+##################################################
+# Name: chore-devenv-update.yaml
+# Description: Update devenv dependencies and create PR
+##################################################
+
+name: Devenv Update
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+  statuses: read
+
+env:
+  NIXPKGS_ALLOW_UNFREE: 1
+  SECRETSPEC_PROVIDER: env
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  update:
+    name: Update
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+    continue-on-error: false
+
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: devenv_update
+        name: Update Devenv
+        run: |
+          devenv update
+
+      - id: install_deps
+        name: Install Dependencies
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          bun install
+
+      - id: devenv_test
+        name: Run Devenv Test
+        run: |
+          devenv test
+
+      - id: create_pull_request
+        name: Create Pull Request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: Update devenv.lock"
+          title: "chore: Update devenv.lock"
+          body: "This PR updates the devenv input dependencies"
+          branch: "update-devenv-lock"
+          base: ${{ github.event.repository.default_branch }}
+          labels: "dependencies"
+          assignees: "MAHDTech"
+          reviewers: "MAHDTech"
+          draft: false
+          signoff: true
+          delete-branch: true
+          sign-commits: true

@@ -6,27 +6,16 @@ import BanModal from "@/components/game/BanModal.astro";
 import Loader from "@/components/game/Loader.astro";
 ---
 
-<BaseLayout title="Tresr Game | Active Session">
+<BaseLayout title="TRESR Game | Active Session">
   <Loader minTime={1500} id="game-loader" />
   <FeeGate />
   <BanModal />
 
-  <div id="game-container" class="hidden h-screen w-full">
-    <PhaserGame />
-  </div>
-
-  <!-- Portrait orientation warning (ticket #190) -->
   <div
-    id="portrait-warning"
-    class="bg-base-300/95 fixed inset-0 z-[9999] hidden flex-col items-center justify-center gap-4 text-center"
+    id="game-container"
+    class="fixed inset-0 hidden h-screen w-full touch-none overflow-hidden"
   >
-    <span class="text-6xl">&#x1F4F1;</span>
-    <p class="text-primary font-display text-2xl font-bold">
-      ROTATE YOUR DEVICE
-    </p>
-    <p class="max-w-xs opacity-70">
-      This game is best played in landscape mode.
-    </p>
+    <PhaserGame />
   </div>
 
   <script>
@@ -177,13 +166,102 @@ import Loader from "@/components/game/Loader.astro";
       }
     }
 
+    // Wake Lock — prevent screen dimming during gameplay
+    let wakeLock: WakeLockSentinel | null = null;
+
+    async function requestWakeLock() {
+      try {
+        if ("wakeLock" in navigator) {
+          wakeLock = await navigator.wakeLock.request("screen");
+          log.info(COMPONENT_NAME, "Wake lock acquired");
+          // Re-acquire on visibility change (lost when tabbing away)
+          document.addEventListener("visibilitychange", reacquireWakeLock);
+        }
+      } catch {
+        log.debug(COMPONENT_NAME, "Wake lock not available");
+      }
+    }
+
+    async function reacquireWakeLock() {
+      if (document.visibilityState === "visible" && !wakeLock) {
+        try {
+          wakeLock = await navigator.wakeLock.request("screen");
+          log.debug(COMPONENT_NAME, "Wake lock re-acquired");
+        } catch {
+          // Ignore
+        }
+      }
+    }
+
+    async function releaseWakeLock() {
+      document.removeEventListener("visibilitychange", reacquireWakeLock);
+      if (wakeLock) {
+        try {
+          await wakeLock.release();
+          wakeLock = null;
+          log.debug(COMPONENT_NAME, "Wake lock released");
+        } catch {
+          // Ignore
+        }
+      }
+    }
+
+    // Fullscreen — request on mobile to maximize canvas and enable orientation lock
+    async function requestFullscreen() {
+      const isTouchDevice =
+        "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      if (!isTouchDevice) return;
+
+      const container = document.getElementById("game-container");
+      if (!container) return;
+
+      try {
+        if (container.requestFullscreen) {
+          await container.requestFullscreen();
+          log.info(COMPONENT_NAME, "Fullscreen activated");
+          // Orientation lock works reliably in fullscreen
+          requestLandscapeLock();
+        }
+      } catch {
+        log.debug(COMPONENT_NAME, "Fullscreen not available");
+      }
+    }
+
+    // Audio context resume — mobile browsers block AudioContext until user interaction
+    function resumeAudioContext() {
+      const game = (window as any).__phaserGame;
+      if (game?.sound?.context?.state === "suspended") {
+        game.sound.context.resume().then(() => {
+          log.info(COMPONENT_NAME, "AudioContext resumed on touch");
+        });
+      }
+      // Remove after first successful resume
+      document.removeEventListener("touchstart", resumeAudioContext);
+      document.removeEventListener("click", resumeAudioContext);
+    }
+
     function startGame() {
       const container = document.getElementById("game-container");
       if (container) {
         container.classList.remove("hidden");
       }
+
+      // Lock body overflow during gameplay to prevent any scroll bounce
+      document.body.style.overflow = "hidden";
+      document.body.style.position = "fixed";
+      document.body.style.inset = "0";
+
       requestLandscapeLock();
+      requestWakeLock();
+      requestFullscreen();
       trackGameStart();
+
+      // Header stays visible during gameplay — the collapsible toggle
+      // keeps it out of the way when not needed.
+
+      // Resume audio context on first user interaction (mobile browsers block autoplay)
+      document.addEventListener("touchstart", resumeAudioContext, {once: true});
+      document.addEventListener("click", resumeAudioContext, {once: true});
 
       // Signal PhaserGame component to initialize the engine.
       // This ensures narration/music/game don't start until fee is resolved.
@@ -191,26 +269,26 @@ import Loader from "@/components/game/Loader.astro";
       document.dispatchEvent(new CustomEvent("tresr:start-game-engine"));
     }
 
-    // Portrait detection — show warning overlay on mobile portrait (ticket #190)
-    function checkOrientation() {
-      const warning = document.getElementById("portrait-warning");
-      if (!warning) return;
-      const isPortrait =
-        window.matchMedia("(orientation: portrait)").matches &&
-        "ontouchstart" in window;
-      if (isPortrait) {
-        warning.classList.remove("hidden");
-        warning.classList.add("flex");
+    // Portrait detection — pause/resume game when orientation changes
+    // (portrait overlay is handled globally by BaseLayout)
+    function handlePortraitChange(e: Event) {
+      const {portrait} = (e as CustomEvent).detail;
+      const game = (window as any).__phaserGame;
+      if (!game) return;
+
+      if (portrait) {
+        log.info(COMPONENT_NAME, "Portrait detected, pausing game scenes");
+        game.scene.scenes.forEach((s: any) => {
+          if (s.scene.isActive()) s.scene.pause();
+        });
       } else {
-        warning.classList.add("hidden");
-        warning.classList.remove("flex");
+        log.info(COMPONENT_NAME, "Landscape detected, resuming game scenes");
+        game.scene.scenes.forEach((s: any) => {
+          if (s.scene.isPaused()) s.scene.resume();
+        });
       }
     }
-
-    const portraitMql = window.matchMedia("(orientation: portrait)");
-    window.addEventListener("orientationchange", checkOrientation);
-    portraitMql.addEventListener("change", checkOrientation);
-    checkOrientation();
+    document.addEventListener("tresr:portrait-change", handlePortraitChange);
 
     // Release lock when leaving game page
     window.addEventListener("beforeunload", releaseLandscapeLock);
@@ -218,10 +296,24 @@ import Loader from "@/components/game/Loader.astro";
     document.addEventListener(
       "astro:before-preparation",
       () => {
-        window.removeEventListener("orientationchange", checkOrientation);
-        portraitMql.removeEventListener("change", checkOrientation);
+        document.removeEventListener(
+          "tresr:portrait-change",
+          handlePortraitChange
+        );
+        document.removeEventListener("touchstart", resumeAudioContext);
+        document.removeEventListener("click", resumeAudioContext);
         window.removeEventListener("beforeunload", releaseLandscapeLock);
         releaseLandscapeLock();
+        releaseWakeLock();
+        // Restore body overflow
+        document.body.style.overflow = "";
+        document.body.style.position = "";
+        document.body.style.inset = "";
+        // Exit fullscreen if active
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+        // (Header no longer hidden during gameplay — no restore needed)
       },
       {once: true}
     );

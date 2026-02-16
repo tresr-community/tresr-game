@@ -10,7 +10,7 @@ The game uses DFINITY's EVM RPC canister to interact with Avalanche C-Chain:
 
 ## Token Flow
 
-1. **Deposit**: User sends tokens to game contract on Avalanche
+1. **Fee**: User sends tokens to game contract on Avalanche
 2. **Verification**: Backend verifies transaction via EVM RPC
 3. **Credit**: Balance updated in user profile
 4. **Gameplay**: Player earns additional tokens through gameplay

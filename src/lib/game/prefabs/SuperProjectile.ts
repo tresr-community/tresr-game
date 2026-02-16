@@ -28,7 +28,7 @@ export class SuperProjectile extends Phaser.Physics.Arcade.Sprite {
   private bossRef?: Boss;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, "super");
+    super(scene, x, y, "super_spin");
 
     scene.add.existing(this);
     scene.physics.add.existing(this);

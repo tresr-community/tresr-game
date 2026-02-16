@@ -9,9 +9,13 @@
 
 import {map} from "nanostores";
 
+export type PlaybackMode = "normal" | "shuffle" | "repeat-one";
+
 export interface MusicState {
   isPlaying: boolean;
   currentTrack: string;
+  favoriteTrack: string;
+  playbackMode: PlaybackMode;
   musicVolume: number;
   sfxVolume: number;
   currentTime: number;
@@ -50,6 +54,8 @@ const INITIAL_STATE: GameState = {
   music: {
     isPlaying: false,
     currentTrack: "",
+    favoriteTrack: "",
+    playbackMode: "shuffle",
     musicVolume: 0,
     sfxVolume: 0,
     currentTime: 0,

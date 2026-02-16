@@ -27,28 +27,22 @@ function log_error() {
 }
 
 # =============================================================================
-# Constants — Network-dependent values are set in configure_network()
+# Constants
 # =============================================================================
 
 CONFIG_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/config/tresr.yaml"
 
-# Anvil
+# Anvil — standalone, no fork
 ANVIL_PORT="8545"
 ANVIL_PID=""
 ANVIL_RPC_URL="http://127.0.0.1:${ANVIL_PORT}"
+ANVIL_CHAIN_ID="31337"
 
 # Addresses — loaded from config/tresr.yaml by load_config()
 ANVIL_ADMIN_ADDRESS=""
 ANVIL_TOKEN_ADDRESS=""
-ANVIL_TOKEN_TREASURY=""
 PLAYER_WALLET=""
 TOKEN_TICKER=""
-
-# Network defaults (overridden by configure_network)
-NETWORK=""
-CHAIN_ID=""
-FORK_URL=""
-ANVIL_EXTRA_ARGS=()
 
 # Zero address (vault not deployed)
 ZERO_ADDRESS="0x0000000000000000000000000000000000000000"
@@ -70,9 +64,8 @@ function load_config() {
 
 	ANVIL_ADMIN_ADDRESS=$(yq -r '.client.blockchain.avalanche.anvil.deployer_address' "$CONFIG_FILE")
 	ANVIL_TOKEN_ADDRESS=$(yq -r '.client.blockchain.avalanche.anvil.tresr_token_contract' "$CONFIG_FILE")
-	ANVIL_TOKEN_TREASURY=$(yq -r '.client.blockchain.avalanche.anvil.tresr_token_treasury' "$CONFIG_FILE")
 	PLAYER_WALLET=$(yq -r '.client.blockchain.avalanche.anvil.player_wallet' "$CONFIG_FILE")
-	TOKEN_TICKER=$(yq -r '.client.blockchain.avalanche.anvil.tresr_token_ticker' "$CONFIG_FILE")
+	TOKEN_TICKER=$(yq -r '.client.blockchain.avalanche.anvil.token_ticker' "$CONFIG_FILE")
 
 	# Private key from env (managed by secretspec), NOT hardcoded
 	if [[ -z ${DEPLOYER_PRIVATE_KEY:-} ]]; then
@@ -90,7 +83,6 @@ function verify_config() {
 	local -A required=(
 		[ANVIL_ADMIN_ADDRESS]="$ANVIL_ADMIN_ADDRESS"
 		[ANVIL_TOKEN_ADDRESS]="$ANVIL_TOKEN_ADDRESS"
-		[ANVIL_TOKEN_TREASURY]="$ANVIL_TOKEN_TREASURY"
 		[PLAYER_WALLET]="$PLAYER_WALLET"
 		[TOKEN_TICKER]="$TOKEN_TICKER"
 		[DEPLOYER_PRIVATE_KEY]="$DEPLOYER_PRIVATE_KEY"
@@ -113,34 +105,26 @@ function verify_config() {
 }
 
 # =============================================================================
-# Network Configuration
+# YAML helpers — sed for writes (preserves formatting), yq for verification
 # =============================================================================
 
-function configure_network() {
-	local network="${1:-fuji}"
+# yaml_set KEY VALUE — update the anvil section of tresr.yaml, then verify.
+# Uses sed to preserve multiline fields; verifies with yq to catch silent failures.
+function yaml_set() {
+	local key="$1"
+	local value="$2"
 
-	case "$network" in
-	fuji)
-		NETWORK="fuji"
-		CHAIN_ID="43113"
-		FORK_URL="https://api.avax-test.network/ext/bc/C/rpc"
-		ANVIL_EXTRA_ARGS=("--fork-url" "$FORK_URL" "--chain-id" "$CHAIN_ID")
-		;;
-	local)
-		NETWORK="local"
-		CHAIN_ID="31337"
-		FORK_URL=""
-		ANVIL_EXTRA_ARGS=("--chain-id" "$CHAIN_ID")
-		;;
-	*)
-		log_error "Unknown network: $network (expected 'fuji' or 'local')"
+	# Targeted sed: only match within the /anvil:/,/testnet:/ range
+	# Handles both quoted ("0x...") and unquoted (tRON) values
+	sed -i "/anvil:/,/testnet:/ s|${key}: .*|${key}: \"${value}\"|" "$CONFIG_FILE"
+
+	# Read back via yq to verify the write landed
+	local actual
+	actual=$(yq -r ".client.blockchain.avalanche.anvil.${key}" "$CONFIG_FILE" 2>/dev/null || echo "")
+	if [[ $actual != "$value" ]]; then
+		log_error "YAML update failed: ${key} is '${actual}' but expected '${value}'"
+		log_error "  File: ${CONFIG_FILE}"
 		exit 1
-		;;
-	esac
-
-	log_info "Network: ${CYAN}${NETWORK}${NC} (chain ${CHAIN_ID})"
-	if [[ -n $FORK_URL ]]; then
-		log_info "Fork URL: ${FORK_URL}"
 	fi
 }
 
@@ -154,17 +138,19 @@ function show_help() {
 	echo "Usage: solidity-dev <command> [options]"
 	echo ""
 	echo "Commands:"
-	echo "  --check                                Run all Solidity checks (fmt, slither, build, test)"
-	echo "  --start [--network N] [--wallet ADDR]  Start Anvil, fund wallet, tail logs"
-	echo "  --stop                                 Stop any running Anvil instance"
-	echo "  --fund  [--wallet ADDR]                Fund a wallet with tTRESR (Anvil must be running)"
-	echo "  --balance [--wallet ADDR]              Show tTRESR + AVAX balance for an address"
-	echo "  --deploy                               Deploy Vault contract to Anvil and print address"
-	echo "  --help                                 Show this help message"
+	echo "  check                     Run all Solidity checks (fmt, slither, build, test)"
+	echo "  start   [--wallet ADDR]   Start standalone Anvil (chain 31337), fund wallet, tail logs"
+	echo "  stop                      Stop any running Anvil instance"
+	echo "  loop    [--wallet ADDR]   One-shot: deploy-token → deploy-vault → fund → health"
+	echo "  fund    [--wallet ADDR]   Mint tokens to vault + wallet (Anvil must be running)"
+	echo "  health                    Smoke-test Anvil: RPC, chain ID, send tx, confirm receipt"
+	echo "  balance [--wallet ADDR]   Show token + AVAX balance for an address"
+	echo "  deploy-token              Deploy RonToken + TresrFaucet to Anvil (run FIRST)"
+	echo "  deploy-vault              Deploy Vault contract to Anvil (run AFTER deploy-token)"
+	echo "  help                      Show this help message"
 	echo ""
-	echo "Start options:"
-	echo "  --network fuji|local   Fork Fuji testnet (default) or run standalone"
-	echo "  --wallet  0x...        Player wallet for funding (default: from tresr.yaml)"
+	echo "Options:"
+	echo "  --wallet  0x...   Player wallet for funding (default: from tresr.yaml)"
 }
 
 # =============================================================================
@@ -237,11 +223,6 @@ function fund_wallet() {
 
 	log_info "Funding wallet: ${CYAN}${wallet_address}${NC}"
 
-	if [[ $NETWORK == "local" ]]; then
-		log_warn "Skipping treasury impersonation on local network (no fork state)."
-		return 0
-	fi
-
 	# Read vault address from config (anvil environment)
 	local vault_address
 	vault_address=$(yq -r '.client.blockchain.avalanche.anvil.vault_contract // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
@@ -253,114 +234,72 @@ function fund_wallet() {
 		log_warn "Vault contract not deployed — all funds go to browser wallet."
 	fi
 
-	# Check treasury balance
-	log_info "Checking treasury balance..."
-	local treasury_raw
-	treasury_raw=$(
-		cast call \
-			"$ANVIL_TOKEN_ADDRESS" \
-			"balanceOf(address)(uint256)" \
-			"$ANVIL_TOKEN_TREASURY" \
-			--rpc-url "$ANVIL_RPC_URL"
-	)
-	# Strip any foundry formatting like [1e22] suffix
-	local treasury_balance
-	treasury_balance=$(echo "$treasury_raw" | awk '{print $1}')
-	local treasury_human
-	treasury_human=$(cast from-wei "$treasury_balance" 2>/dev/null || echo "$treasury_balance")
-	treasury_human=$(printf "%'.2f" "$treasury_human")
-	log_info "Treasury balance: ${GREEN}${treasury_human}${NC} $TOKEN_TICKER"
+	# Amount to fund per call (10,000 tokens)
+	local fund_amount="10000000000000000000000" # 10,000e18
+	local fund_human="10,000.00"
 
-	if [[ $treasury_balance == "0" ]]; then
-		log_error "Treasury is empty, nothing to fund."
-		return 1
-	fi
+	# Use deployer (who is owner of RonToken) to mint fresh tokens.
+	log_info "Minting ${GREEN}${fund_human}${NC} $TOKEN_TICKER via deployer..."
 
-	# Cap at ~0.9% of treasury (contract enforces strict < 1% bootup transfer limit)
-	local pillage_amount
-	pillage_amount=$(echo "$treasury_balance * 9 / 1000" | bc)
-	local pillage_human
-	pillage_human=$(cast from-wei "$pillage_amount" 2>/dev/null || echo "$pillage_amount")
-	pillage_human=$(printf "%'.2f" "$pillage_human")
-	log_info "Pillaging ~0.9%: ${GREEN}${pillage_human}${NC} $TOKEN_TICKER (under bootup transfer limit)"
-
-	# Calculate splits from pillaged amount
+	# Calculate splits
 	local vault_amount="0"
-	local wallet_amount="$pillage_amount"
+	local wallet_amount="$fund_amount"
 	if [[ $vault_deployed == true ]]; then
-		# 50/50 split — vault gets half, wallet gets half
-		vault_amount=$(echo "$pillage_amount / 2" | bc)
-		wallet_amount=$(echo "$pillage_amount - $vault_amount" | bc)
-		local vault_human wallet_human_split
-		vault_human=$(cast from-wei "$vault_amount" 2>/dev/null || echo "$vault_amount")
-		vault_human=$(printf "%'.2f" "$vault_human")
+		vault_amount=$(echo "$fund_amount / 2" | bc)
+		wallet_amount=$(echo "$fund_amount - $vault_amount" | bc)
+		local vault_human_split wallet_human_split
+		vault_human_split=$(cast from-wei "$vault_amount" 2>/dev/null || echo "$vault_amount")
+		vault_human_split=$(printf "%'.2f" "$vault_human_split")
 		wallet_human_split=$(cast from-wei "$wallet_amount" 2>/dev/null || echo "$wallet_amount")
 		wallet_human_split=$(printf "%'.2f" "$wallet_human_split")
-		log_info "Splitting: ${GREEN}${vault_human}${NC} → vault, ${GREEN}${wallet_human_split}${NC} → wallet"
+		log_info "Splitting: ${GREEN}${vault_human_split}${NC} → vault, ${GREEN}${wallet_human_split}${NC} → wallet"
 	fi
 
-	# Fund treasury with native AVAX for gas (it has 0 on the fork).
-	# Treasury is a contract with no receive(), so use anvil_setBalance cheatcode.
-	log_info "Setting treasury gas balance (1 AVAX)..."
-	cast rpc anvil_setBalance \
-		"$ANVIL_TOKEN_TREASURY" \
-		"0xDE0B6B3A7640000" \
-		--rpc-url "$ANVIL_RPC_URL" >/dev/null
-
-	# Impersonate the Treasury
-	log_info "Impersonating treasury..."
-	cast rpc \
-		anvil_impersonateAccount "$ANVIL_TOKEN_TREASURY" \
-		--rpc-url "$ANVIL_RPC_URL" >/dev/null
-
-	# Send directly from treasury to destinations (avoids admin hop which
-	# would trigger the bootup 1% transfer limit a second time).
-
-	# Fund vault (if deployed)
+	# Mint to vault
 	if [[ $vault_deployed == true && $vault_amount != "0" ]]; then
-		log_info "Treasury → vault (${vault_amount} wei)..."
+		log_info "Minting → vault (${vault_amount} wei)..."
 		cast send \
 			"$ANVIL_TOKEN_ADDRESS" \
-			"transfer(address,uint256)" \
+			"mint(address,uint256)" \
 			"$vault_address" \
 			"$vault_amount" \
-			--from "$ANVIL_TOKEN_TREASURY" \
-			--rpc-url "$ANVIL_RPC_URL" \
-			--unlocked >/dev/null
+			--private-key "$DEPLOYER_PRIVATE_KEY" \
+			--rpc-url "$ANVIL_RPC_URL" >/dev/null
 	fi
 
-	# Fund wallet
-	log_info "Treasury → wallet (${wallet_amount} wei)..."
+	# Mint to wallet
+	log_info "Minting → wallet (${wallet_amount} wei)..."
 	cast send \
 		"$ANVIL_TOKEN_ADDRESS" \
-		"transfer(address,uint256)" \
+		"mint(address,uint256)" \
 		"$wallet_address" \
 		"$wallet_amount" \
-		--from "$ANVIL_TOKEN_TREASURY" \
-		--rpc-url "$ANVIL_RPC_URL" \
-		--unlocked >/dev/null
-
-	# Stop impersonating the Treasury
-	cast rpc \
-		anvil_stopImpersonatingAccount "$ANVIL_TOKEN_TREASURY" \
+		--private-key "$DEPLOYER_PRIVATE_KEY" \
 		--rpc-url "$ANVIL_RPC_URL" >/dev/null
 
-	# Summary
+	# Fund wallet with native AVAX for gas (add 10 AVAX to current balance)
+	local current_avax_balance
+	current_avax_balance=$(cast balance "$wallet_address" --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "0")
+	local new_avax_balance
+	new_avax_balance=$(echo "$current_avax_balance + 10000000000000000000" | bc)
+	local new_avax_hex
+	new_avax_hex="0x$(echo "obase=16; $new_avax_balance" | bc)" # cspell:disable-line
+	log_info "Adding 10 AVAX to wallet gas balance..."
+	cast rpc anvil_setBalance \
+		"$wallet_address" \
+		"$new_avax_hex" \
+		--rpc-url "$ANVIL_RPC_URL" >/dev/null
+
 	log_info "${GREEN}Funding complete!${NC}"
 }
 
 function run_start() {
-	local network="fuji"
 	local wallet="$PLAYER_WALLET"
 
 	# Parse start sub-options
 	shift || true
 	while [[ $# -gt 0 ]]; do
 		case "$1" in
-		--network)
-			network="${2:?'--network requires a value (fuji|local)'}"
-			shift 2
-			;;
 		--wallet)
 			wallet="${2:?'--wallet requires an address'}"
 			shift 2
@@ -373,20 +312,18 @@ function run_start() {
 		esac
 	done
 
-	configure_network "$network"
-
 	# Ensure no existing anvil on this port
 	if lsof -i ":${ANVIL_PORT}" -sTCP:LISTEN >/dev/null 2>&1; then
-		log_error "Port ${ANVIL_PORT} is already in use. Run --stop first."
+		log_error "Port ${ANVIL_PORT} is already in use. Run 'stop' first."
 		exit 1
 	fi
 
 	# Trap signals for cleanup
 	trap cleanup_anvil EXIT INT TERM
 
-	# Start Anvil in background
-	log_info "Starting Anvil on port ${ANVIL_PORT}..."
-	anvil --port "$ANVIL_PORT" "${ANVIL_EXTRA_ARGS[@]}" &
+	# Start standalone Anvil (no fork)
+	log_info "Starting Anvil on port ${ANVIL_PORT} (chain ${ANVIL_CHAIN_ID})..."
+	anvil --port "$ANVIL_PORT" --chain-id "$ANVIL_CHAIN_ID" &
 	ANVIL_PID=$!
 
 	# Wait for RPC to be ready
@@ -402,11 +339,11 @@ function run_start() {
 	cat <<-EOF
 
 		${CYAN}==============================================================================${NC}
-		${CYAN}   Anvil is running (${NETWORK})${NC}
+		${CYAN}   Anvil is running (standalone, chain ${ANVIL_CHAIN_ID})${NC}
 		${CYAN}==============================================================================${NC}
 
 		  RPC URL:    ${GREEN}${ANVIL_RPC_URL}${NC}
-		  Chain ID:   ${GREEN}${CHAIN_ID}${NC}
+		  Chain ID:   ${GREEN}${ANVIL_CHAIN_ID}${NC}
 		  Wallet:     ${GREEN}${wallet}${NC}
 
 		  Press ${YELLOW}CTRL+C${NC} to stop Anvil.
@@ -420,7 +357,7 @@ function run_start() {
 }
 
 # =============================================================================
-# Fund — Send more tTRESR to a wallet (Anvil must be running)
+# Fund — Send more tokens to a wallet (Anvil must be running)
 # =============================================================================
 
 function assert_anvil_running() {
@@ -452,26 +389,35 @@ function run_fund() {
 	done
 
 	assert_anvil_running
-
-	# Detect network from chain ID
-	local chain_id
-	chain_id=$(cast chain-id --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "")
-	case "$chain_id" in
-	43113) configure_network "fuji" ;;
-	31337) configure_network "local" ;;
-	*)
-		log_warn "Unknown chain ID: ${chain_id}, assuming fuji fork."
-		configure_network "fuji"
-		;;
-	esac
-
 	fund_wallet "$wallet"
 
 	log_info "Done! Wallet ${CYAN}${wallet}${NC} has been funded."
 }
 
 # =============================================================================
-# Deploy — Deploy Vault contract to Anvil
+# Regenerate client config — keep frontend in sync with tresr.yaml
+# =============================================================================
+
+function regen_client_config() {
+	local project_root
+	project_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+	local config_script="${project_root}/bin/client-config.ts"
+
+	if [[ ! -f $config_script ]]; then
+		log_warn "client-config.ts not found — skipping frontend config regeneration."
+		return 0
+	fi
+
+	log_info "Regenerating ${CYAN}src/lib/config/client.ts${NC} from tresr.yaml..."
+	(cd "$project_root" && bunx tsx "$config_script") || {
+		log_warn "Failed to regenerate client config (non-fatal)."
+		return 0
+	}
+	log_info "Frontend config regenerated ${GREEN}successfully${NC}."
+}
+
+# =============================================================================
+# Deploy Vault — Deploy Vault contract to Anvil
 # =============================================================================
 
 # Burn address for testing
@@ -538,7 +484,7 @@ function run_deploy() {
 
 	# Auto-update tresr.yaml with the new proxy address (anvil section only)
 	cd ..
-	sed -i "/anvil:/,/testnet:/ s|vault_contract: \"0x[0-9a-fA-F]*\"|vault_contract: \"${proxy_address}\"|" "$CONFIG_FILE"
+	yaml_set "vault_contract" "$proxy_address"
 	log_info "Updated ${CYAN}${CONFIG_FILE}${NC} → anvil.vault_contract: ${GREEN}${proxy_address}${NC}"
 
 	# Banner
@@ -559,6 +505,91 @@ function run_deploy() {
 	EOF
 
 	log_info "Done!"
+
+	# Regenerate frontend config
+	regen_client_config
+}
+
+# =============================================================================
+# Deploy Token — Deploy mock RonToken + TresrFaucet to Anvil
+# =============================================================================
+
+function run_deploy_token() {
+	assert_anvil_running
+
+	log_info "Building and deploying RonToken + TresrFaucet to Anvil..."
+
+	cd contracts
+	export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
+
+	# Build first to catch compile errors
+	forge build --force || {
+		log_error "Forge build failed!"
+		exit 1
+	}
+
+	# Deploy via script
+	local deploy_output
+	local deploy_exit
+	set +e
+	deploy_output=$(
+		DEPLOYER_PRIVATE_KEY="$DEPLOYER_PRIVATE_KEY" \
+			FAUCET_FUND_AMOUNT="100000000000000000000000" \
+			forge script script/DeployTestToken.s.sol:DeployTestToken \
+			--rpc-url "$ANVIL_RPC_URL" \
+			--broadcast \
+			2>&1
+	)
+	deploy_exit=$?
+	set -e
+
+	if [[ $deploy_exit -ne 0 ]]; then
+		log_error "Forge script failed (exit code ${deploy_exit}):"
+		echo "$deploy_output"
+		exit 1
+	fi
+
+	# Extract addresses
+	local token_address
+	token_address=$(echo "$deploy_output" | grep -oP 'RonToken deployed at: \K0x[0-9a-fA-F]+' || true)
+	local faucet_address
+	faucet_address=$(echo "$deploy_output" | grep -oP 'TresrFaucet deployed at: \K0x[0-9a-fA-F]+' || true)
+
+	if [[ -z $token_address || -z $faucet_address ]]; then
+		log_error "Failed to extract deployed contract addresses."
+		echo "$deploy_output"
+		exit 1
+	fi
+
+	# Auto-update tresr.yaml with deployed addresses (anvil section only)
+	cd ..
+	yaml_set "tresr_token_contract" "$token_address"
+	yaml_set "token_ticker" "tRON"
+	yaml_set "faucet_contract" "$faucet_address"
+	log_info "Updated ${CYAN}${CONFIG_FILE}${NC}:"
+	log_info "  anvil.tresr_token_contract: ${GREEN}${token_address}${NC}"
+	log_info "  anvil.token_ticker:         ${GREEN}tRON${NC}"
+	log_info "  anvil.faucet_contract:      ${GREEN}${faucet_address}${NC}"
+
+	# Banner
+	cat <<-EOF
+
+		${CYAN}==============================================================================${NC}
+		${GREEN}   RonToken + TresrFaucet deployed successfully!${NC}
+		${CYAN}==============================================================================${NC}
+
+		  Token:      ${GREEN}${token_address}${NC}  ← auto-updated in tresr.yaml
+		  Ticker:     ${GREEN}tRON${NC}               ← auto-updated in tresr.yaml
+		  Faucet:     ${GREEN}${faucet_address}${NC}  ← auto-updated in tresr.yaml
+
+		${CYAN}==============================================================================${NC}
+
+	EOF
+
+	log_info "Done!"
+
+	# Regenerate frontend config
+	regen_client_config
 }
 
 # =============================================================================
@@ -587,7 +618,7 @@ function run_stop() {
 }
 
 # =============================================================================
-# Balance — Show balances for player, admin, vault, and treasury
+# Balance — Show balances for player, admin, and vault
 # =============================================================================
 
 function query_token_balance() {
@@ -640,18 +671,6 @@ function run_balance() {
 
 	assert_anvil_running
 
-	# Detect network from chain ID
-	local chain_id
-	chain_id=$(cast chain-id --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "")
-	case "$chain_id" in
-	43113) configure_network "fuji" ;;
-	31337) configure_network "local" ;;
-	*)
-		log_warn "Unknown chain ID: ${chain_id}, assuming fuji fork."
-		configure_network "fuji"
-		;;
-	esac
-
 	# Read vault address from config
 	local vault_address
 	vault_address=$(yq -r '.client.blockchain.avalanche.anvil.vault_contract // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
@@ -660,18 +679,25 @@ function run_balance() {
 		vault_label=$(query_token_balance "$vault_address")
 	fi
 
+	# Read faucet address
+	local faucet_address
+	faucet_address=$(yq -r '.client.blockchain.avalanche.anvil.faucet_contract // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
+	local faucet_label="not deployed"
+	if [[ -n $faucet_address && $faucet_address != "$ZERO_ADDRESS" ]]; then
+		faucet_label=$(query_token_balance "$faucet_address")
+	fi
+
 	# Query all balances
-	local player_tresr player_avax admin_avax treasury_tresr
+	local player_tresr player_avax admin_avax
 	player_tresr=$(query_token_balance "$wallet")
 	player_avax=$(query_avax_balance "$wallet")
 	admin_avax=$(query_avax_balance "$ANVIL_ADMIN_ADDRESS")
-	treasury_tresr=$(query_token_balance "$ANVIL_TOKEN_TREASURY")
 
 	# Display
 	cat <<-EOF
 
 		${CYAN}==============================================================================${NC}
-		${CYAN}   Balances (${NETWORK})${NC}
+		${CYAN}   Balances (Anvil, chain ${ANVIL_CHAIN_ID})${NC}
 		${CYAN}==============================================================================${NC}
 
 		  ${YELLOW}Player${NC}     ${wallet}
@@ -684,8 +710,8 @@ function run_balance() {
 		  ${YELLOW}Vault${NC}      ${vault_address:-$ZERO_ADDRESS}
 		    ${TOKEN_TICKER}:  ${GREEN}${vault_label}${NC}
 
-		  ${YELLOW}Treasury${NC}   ${ANVIL_TOKEN_TREASURY}
-		    ${TOKEN_TICKER}:  ${GREEN}${treasury_tresr}${NC}
+		  ${YELLOW}Faucet${NC}     ${faucet_address:-$ZERO_ADDRESS}
+		    ${TOKEN_TICKER}:  ${GREEN}${faucet_label}${NC}
 
 		${CYAN}==============================================================================${NC}
 
@@ -693,36 +719,185 @@ function run_balance() {
 }
 
 # =============================================================================
+# Health Check
+# =============================================================================
+
+function run_health() {
+	log_info "Running Anvil health checks..."
+	assert_anvil_running
+
+	local pass=0
+	local fail=0
+
+	# ─── 1. RPC connectivity ────────────────────────────────────────────
+	log_info "[1/6] Testing RPC connectivity..."
+	if cast client --rpc-url "$ANVIL_RPC_URL" >/dev/null 2>&1; then
+		log_info "  ${GREEN}✓${NC} RPC is reachable at ${ANVIL_RPC_URL}"
+		((pass++)) || true
+	else
+		log_error "  ✗ RPC is NOT reachable at ${ANVIL_RPC_URL}"
+		((fail++)) || true
+	fi
+
+	# ─── 2. Chain ID ────────────────────────────────────────────────────
+	log_info "[2/6] Verifying chain ID..."
+	local chain_id
+	chain_id=$(cast chain-id --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "0")
+	if [[ $chain_id == "$ANVIL_CHAIN_ID" ]]; then
+		log_info "  ${GREEN}✓${NC} Chain ID: ${chain_id} (expected ${ANVIL_CHAIN_ID})"
+		((pass++)) || true
+	else
+		log_error "  ✗ Chain ID: ${chain_id} (expected ${ANVIL_CHAIN_ID})"
+		((fail++)) || true
+	fi
+
+	# ─── 3. Block number advancing ─────────────────────────────────────
+	log_info "[3/6] Checking current block number..."
+	local block_number
+	block_number=$(cast block-number --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "0")
+	if [[ $block_number -gt 0 ]]; then
+		log_info "  ${GREEN}✓${NC} Current block: ${block_number}"
+		((pass++)) || true
+	else
+		log_warn "  ⚠ Block number is 0 — no transactions mined yet"
+		((pass++)) || true
+	fi
+
+	# ─── 4. Test tx: self-transfer + receipt confirmation ──────────────
+	log_info "[4/6] Sending test transaction (self-transfer 0 ETH)..."
+	local tx_hash
+	tx_hash=$(
+		cast send \
+			"$ANVIL_ADMIN_ADDRESS" \
+			--value 0 \
+			--private-key "$DEPLOYER_PRIVATE_KEY" \
+			--rpc-url "$ANVIL_RPC_URL" \
+			--json 2>/dev/null | jq -r '.transactionHash'
+	)
+
+	if [[ -z $tx_hash || $tx_hash == "null" ]]; then
+		log_error "  ✗ Failed to send test transaction"
+		((fail++)) || true
+	else
+		# Confirm receipt
+		local receipt_status
+		receipt_status=$(
+			cast receipt \
+				"$tx_hash" \
+				--rpc-url "$ANVIL_RPC_URL" \
+				--json 2>/dev/null | jq -r '.status'
+		)
+		if [[ $receipt_status == "0x1" ]]; then
+			log_info "  ${GREEN}✓${NC} Tx sent and receipt confirmed: ${tx_hash:0:18}..."
+			((pass++)) || true
+		else
+			log_error "  ✗ Tx sent but receipt status: ${receipt_status:-missing}"
+			((fail++)) || true
+		fi
+	fi
+
+	# ─── 5. Deployed contracts callable (if deployed) ──────────────────
+	log_info "[5/6] Testing deployed contracts..."
+	local token_address
+	token_address=$(yq -r '.client.blockchain.avalanche.anvil.tresr_token_contract // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
+
+	if [[ -n $token_address && $token_address != "$ZERO_ADDRESS" ]]; then
+		local token_name
+		token_name=$(cast call "$token_address" "name()(string)" --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "")
+		if [[ -n $token_name ]]; then
+			log_info "  ${GREEN}✓${NC} Token contract responds: ${token_name}"
+			((pass++)) || true
+		else
+			log_error "  ✗ Token contract at ${token_address} is not responding"
+			((fail++)) || true
+		fi
+	else
+		log_info "  ${YELLOW}—${NC} Token not deployed (skipped)"
+	fi
+
+	# ─── 6. Vault ↔ Token cross-check ──────────────────────────────────
+	log_info "[6/6] Verifying vault references correct token..."
+	local vault_address
+	vault_address=$(yq -r '.client.blockchain.avalanche.anvil.vault_contract // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
+
+	if [[ -n $vault_address && $vault_address != "$ZERO_ADDRESS" && -n $token_address && $token_address != "$ZERO_ADDRESS" ]]; then
+		local vault_token
+		vault_token=$(cast call "$vault_address" "token()(address)" --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "")
+		# Normalize to lowercase for comparison
+		local vault_token_lower token_lower
+		vault_token_lower=$(echo "$vault_token" | tr '[:upper:]' '[:lower:]')
+		token_lower=$(echo "$token_address" | tr '[:upper:]' '[:lower:]')
+		if [[ $vault_token_lower == "$token_lower" ]]; then
+			log_info "  ${GREEN}✓${NC} Vault's token() matches config: ${vault_token}"
+			((pass++)) || true
+		else
+			log_error "  ✗ Vault's token() is ${vault_token} but config has ${token_address}"
+			log_error "    Run: solidity-dev stop && solidity-dev start && solidity-dev loop"
+			((fail++)) || true
+		fi
+	else
+		log_info "  ${YELLOW}—${NC} Vault or token not deployed (skipped)"
+	fi
+
+	# ─── Summary ───────────────────────────────────────────────────────
+	echo ""
+	if [[ $fail -eq 0 ]]; then
+		log_info "${GREEN}Health check passed: ${pass}/${pass} checks OK${NC}"
+	else
+		log_error "Health check: ${pass} passed, ${fail} failed"
+		exit 1
+	fi
+}
+
+# =============================================================================
 # Main
 # =============================================================================
 
-# Load config for all commands except --help and --stop
+# Load config for all commands except help and stop
 case "${1:-}" in
---help | -h | "") ;;
---stop) ;;
+help | -h | "") ;;
+stop) ;;
 *) load_config && verify_config ;;
 esac
 
 case "${1:-}" in
---check)
+check)
 	run_check
 	;;
---start)
+start)
 	run_start "$@"
 	;;
---stop)
+stop)
 	run_stop
 	;;
---fund)
+fund)
 	run_fund "$@"
 	;;
---balance)
+health)
+	run_health
+	;;
+balance)
 	run_balance "$@"
 	;;
---deploy)
+deploy-vault)
 	run_deploy
 	;;
---help | -h | "")
+deploy-token)
+	run_deploy_token
+	;;
+loop)
+	# One-shot: deploy-token → deploy-vault → fund → health
+	assert_anvil_running
+	run_deploy_token
+	# Reload config after deploy-token updated tresr.yaml
+	load_config && verify_config
+	run_deploy
+	# Reload config after deploy updated tresr.yaml
+	load_config && verify_config
+	run_fund "$@"
+	run_health
+	;;
+help | -h | "")
 	show_help
 	;;
 *)

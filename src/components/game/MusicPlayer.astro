@@ -4,16 +4,17 @@
 
 <div
   id="music-player"
-  class="bg-base-300/80 border-primary/20 pointer-events-auto flex w-64 flex-col gap-2 rounded-lg border p-3 shadow-lg backdrop-blur select-none"
+  class="bg-base-300/90 border-primary/20 flex w-48 flex-col gap-1 rounded-lg border p-2 shadow-xl backdrop-blur select-none sm:w-64 sm:gap-2 sm:p-3"
 >
   <!-- Track Info & Controls -->
   <div class="flex items-center justify-between gap-2">
     <div class="flex flex-col overflow-hidden">
-      <span class="text-[10px] font-bold uppercase opacity-50">Now Playing</span
+      <span class="hidden text-[10px] font-bold uppercase opacity-50 sm:inline"
+        >Now Playing</span
       >
       <span
         id="current-track-name"
-        class="text-primary truncate font-mono text-xs font-bold"
+        class="text-primary truncate font-mono text-[10px] font-bold sm:text-xs"
         >Loading...</span
       >
     </div>
@@ -100,11 +101,93 @@
             y2="19"></line></svg
         >
       </button>
+      <!-- Playback mode cycle button -->
+      <button
+        id="btn-playback-mode"
+        class="btn btn-xs btn-circle btn-ghost"
+        aria-label="Playback mode"
+        title="Shuffle"
+      >
+        <!-- Normal (sequential) icon -->
+        <svg
+          id="svg-mode-normal"
+          class="hidden"
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><line x1="17" y1="10" x2="3" y2="10"></line><line
+            x1="21"
+            y1="6"
+            x2="3"
+            y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line
+            x1="17"
+            y1="18"
+            x2="3"
+            y2="18"></line></svg
+        >
+        <!-- Shuffle icon (default) -->
+        <svg
+          id="svg-mode-shuffle"
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><polyline points="16 3 21 3 21 8"></polyline><line
+            x1="4"
+            y1="20"
+            x2="21"
+            y2="3"></line><polyline points="21 16 21 21 16 21"></polyline><line
+            x1="15"
+            y1="15"
+            x2="21"
+            y2="21"></line><line x1="4" y1="4" x2="9" y2="9"></line></svg
+        >
+        <!-- Repeat-one icon -->
+        <svg
+          id="svg-mode-repeat-one"
+          class="hidden"
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          ><polyline points="17 1 21 5 17 9"></polyline><path
+            d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline
+            points="7 23 3 19 7 15"></polyline><path
+            d="M21 13v2a4 4 0 0 1-4 4H3"></path><line
+            x1="11"
+            y1="10"
+            x2="11"
+            y2="18"></line><text
+            x="11"
+            y="16"
+            text-anchor="middle"
+            font-size="8"
+            fill="currentColor"
+            stroke="none">1</text
+          ></svg
+        >
+      </button>
     </div>
   </div>
 
-  <!-- Progress Bar -->
-  <div class="flex flex-col gap-1">
+  <!-- Progress Bar (hidden on mobile) -->
+  <div class="hidden flex-col gap-1 sm:flex">
     <input
       id="music-seek"
       type="range"
@@ -119,9 +202,9 @@
     </div>
   </div>
 
-  <!-- Bottom: Track Selector -->
-  <div class="flex items-center gap-3">
-    <div class="dropdown dropdown-top dropdown-start flex-1">
+  <!-- Bottom: Track Selector (hidden on mobile) -->
+  <div class="hidden items-center gap-3 sm:flex">
+    <div class="dropdown dropdown-bottom dropdown-start flex-1">
       <div
         tabindex="0"
         role="button"
@@ -143,23 +226,18 @@
       <ul
         tabindex="0"
         id="music-track-list"
-        class="dropdown-content menu bg-base-200 rounded-box border-primary/20 z-[1] mb-2 max-h-64 w-52 flex-col flex-nowrap overflow-x-hidden overflow-y-auto border p-2 shadow"
+        class="dropdown-content menu bg-base-200 rounded-box border-primary/20 z-[1] mt-2 max-h-64 w-52 flex-col flex-nowrap overflow-x-hidden overflow-y-auto border p-2 shadow"
       >
-        <li>
-          <a
-            id="item-random-track"
-            class="text-secondary py-1 font-mono text-[10px] font-bold italic"
-            >SHUFFLE MODE</a
-          >
-        </li>
-        <div class="divider my-0 h-0.5 opacity-20"></div>
         <!-- Tracks injected here -->
       </ul>
     </div>
   </div>
 
-  <!-- Narration Toggle (logged-in users only) -->
-  <div id="narration-toggle-row" class="flex hidden items-center gap-2">
+  <!-- Narration Toggle (logged-in users only, hidden on mobile) -->
+  <div
+    id="narration-toggle-row"
+    class="hidden items-center gap-2 max-sm:!hidden"
+  >
     <label class="label cursor-pointer gap-2 p-0">
       <span class="font-mono text-[10px] opacity-50">Narration</span>
       <input
@@ -171,8 +249,8 @@
     </label>
   </div>
 
-  <!-- Volume Controls: Music & SFX -->
-  <div class="flex items-center gap-4">
+  <!-- Volume Controls: Music & SFX (hidden on mobile) -->
+  <div class="hidden items-center gap-4 sm:flex">
     <!-- Music Volume -->
     <div class="flex flex-1 items-center gap-2">
       <svg
@@ -235,9 +313,11 @@
 <script>
   import MusicManager from "@/lib/game/MusicManager";
   import {gameState} from "@/lib/game/state";
+  import type {PlaybackMode} from "@/lib/game/state";
   import {config} from "@/lib/config/client";
   import {getAuthState, subscribeToAuth} from "@/lib/auth";
-  import {getUserProfile, saveUserProfile} from "@/lib/user";
+  import {getUserProfile} from "@/lib/user";
+  import {enqueueProfileWrite} from "@/lib/user";
 
   const manager = MusicManager.getInstance();
 
@@ -245,22 +325,72 @@
   const elBtnToggle = document.getElementById("btn-music-toggle");
   const elBtnPrev = document.getElementById("btn-music-prev");
   const elBtnNext = document.getElementById("btn-music-next");
+  const elBtnPlaybackMode = document.getElementById("btn-playback-mode");
   const elSeek = document.getElementById("music-seek") as HTMLInputElement;
   const elVolume = document.getElementById("music-volume") as HTMLInputElement;
   const elSfxVolume = document.getElementById("sfx-volume") as HTMLInputElement;
   const elTimeCurr = document.getElementById("music-time-curr");
   const elTimeTotal = document.getElementById("music-time-total");
   const elTrackList = document.getElementById("music-track-list");
-  const elRandomTrack = document.getElementById("item-random-track");
   const svgPlay = document.getElementById("svg-play");
   const svgPause = document.getElementById("svg-pause");
 
-  let isShuffle = false;
+  // Playback mode SVG icons
+  const svgModeNormal = document.getElementById("svg-mode-normal");
+  const svgModeShuffle = document.getElementById("svg-mode-shuffle");
+  const svgModeRepeatOne = document.getElementById("svg-mode-repeat-one");
 
   function formatTime(seconds: number) {
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  /** Update the playback mode button icon and title */
+  function updateModeButton(mode: PlaybackMode) {
+    const icons = {
+      normal: svgModeNormal,
+      shuffle: svgModeShuffle,
+      "repeat-one": svgModeRepeatOne,
+    };
+    const titles = {
+      normal: "Normal",
+      shuffle: "Shuffle",
+      "repeat-one": "Repeat One",
+    };
+
+    // Hide all icons
+    for (const icon of Object.values(icons)) {
+      icon?.classList.add("hidden");
+    }
+    // Show the active icon
+    icons[mode]?.classList.remove("hidden");
+
+    if (elBtnPlaybackMode) {
+      elBtnPlaybackMode.title = titles[mode];
+      // Highlight button when in shuffle or repeat-one mode
+      if (mode !== "normal") {
+        elBtnPlaybackMode.classList.add("btn-active", "text-primary");
+      } else {
+        elBtnPlaybackMode.classList.remove("btn-active", "text-primary");
+      }
+    }
+  }
+
+  /** Update the track list to highlight the favorite track */
+  function updateFavoriteHighlight(favoriteTrack: string) {
+    if (!elTrackList) return;
+    const items = Array.from(
+      elTrackList.querySelectorAll<HTMLElement>("[data-track]")
+    );
+    for (const item of items) {
+      const track = item.getAttribute("data-track");
+      if (track === favoriteTrack) {
+        item.classList.add("bg-primary/20", "font-bold");
+      } else {
+        item.classList.remove("bg-primary/20", "font-bold");
+      }
+    }
   }
 
   // Load track list from static config
@@ -271,12 +401,10 @@
       const a = document.createElement("a");
       a.innerText = track;
       a.className = "text-[10px] py-1 font-mono truncate";
+      a.setAttribute("data-track", track);
       a.onclick = () => {
-        isShuffle = false;
-        manager.setRandom(false);
-        manager.setTrack(track, true);
-        if (elRandomTrack)
-          elRandomTrack.classList.remove("active", "bg-primary/20");
+        // Manual track selection — set as favorite, start playback
+        manager.setTrack(track, true, true);
         // Close dropdown by blurring
         (document.activeElement as HTMLElement)?.blur();
       };
@@ -286,16 +414,8 @@
   }
 
   // Named handlers for cleanup (ticket #220)
-  function handleRandomClick() {
-    isShuffle = !isShuffle;
-    manager.setRandom(isShuffle);
-    if (isShuffle) {
-      elRandomTrack?.classList.add("active", "bg-primary/20");
-      manager.playRandom();
-    } else {
-      elRandomTrack?.classList.remove("active", "bg-primary/20");
-    }
-    (document.activeElement as HTMLElement)?.blur();
+  function handlePlaybackModeClick() {
+    manager.cyclePlaybackMode();
   }
   function handleToggle() {
     manager.toggle();
@@ -321,7 +441,7 @@
     manager.seek(val);
   }
 
-  elRandomTrack?.addEventListener("click", handleRandomClick);
+  elBtnPlaybackMode?.addEventListener("click", handlePlaybackModeClick);
   elBtnToggle?.addEventListener("click", handleToggle);
   elBtnPrev?.addEventListener("click", handlePrev);
   elBtnNext?.addEventListener("click", handleNext);
@@ -355,6 +475,12 @@
     if (elVolume) elVolume.value = (state.music.musicVolume * 100).toString();
     if (elSfxVolume)
       elSfxVolume.value = (state.music.sfxVolume * 100).toString();
+
+    // Update playback mode button
+    updateModeButton(state.music.playbackMode);
+
+    // Update favorite track highlight in dropdown
+    updateFavoriteHighlight(state.music.favoriteTrack);
   });
   // Combined cleanup (ticket #220): subscriptions + DOM listeners
   document.addEventListener(
@@ -362,7 +488,7 @@
     () => {
       unsub();
       unsubNarration();
-      elRandomTrack?.removeEventListener("click", handleRandomClick);
+      elBtnPlaybackMode?.removeEventListener("click", handlePlaybackModeClick);
       elBtnToggle?.removeEventListener("click", handleToggle);
       elBtnPrev?.removeEventListener("click", handlePrev);
       elBtnNext?.removeEventListener("click", handleNext);
@@ -406,13 +532,14 @@
     const auth = getAuthState();
     if (!auth.isAuthenticated || auth.isGuest || !auth.user) return;
     try {
-      const doc = await getUserProfile(auth.user.key);
       if (gen !== narrationSaveGen) return; // Superseded by newer toggle
-      if (doc) {
-        const profile = doc.data;
-        profile.preferences.narration = elNarrationToggle.checked;
-        await saveUserProfile(auth.user.key, profile, doc.version);
-      }
+      await enqueueProfileWrite(auth.user.key, (profile) => ({
+        ...profile,
+        preferences: {
+          ...profile.preferences,
+          narration: elNarrationToggle.checked,
+        },
+      }));
     } catch {
       // Save failed — checkbox still reflects user's intent, will retry next time
     }

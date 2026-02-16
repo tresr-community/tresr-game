@@ -87,7 +87,7 @@ falling bombs (environmental hazards that damage both enemies and the player).
 
 Upon timer expiration, all basic enemies are cleared and the final boss Gary Gensler descends from above. If the boss is defeated, a treasure chest appears and the Degen can claim $TRESR rewards.
 
-When logged in, Degens deposit $TRESR to join the vault pot; otherwise, guest mode provides a demo without tokens.
+When logged in, Degens pay a $TRESR fee to join the vault pot; otherwise, guest mode provides a demo without tokens.
 
 ## Win Mechanics
 
@@ -102,7 +102,7 @@ When logged in, Degens deposit $TRESR to join the vault pot; otherwise, guest mo
   (`entities.boss.descent.threshold`), boss enters fighting state and pursues the player.
 - **Win Condition**: Defeat the boss, then punch-open the central treasure chest to claim reward. The chest plays an open animation and emits `game_win` to trigger the claim flow.
 - **Reward Formula**: [Planned] Claim percentage of vault = `(keys_collected / 150) * 50%`, capped at 50% vault. Oracle-enforced.
-- **Loss Condition**: Player dies (HP reaches 0) during survival or boss phase. Lose deposit (if logged in), vault pot grows; end session.
+- **Loss Condition**: Player dies (HP reaches 0) during survival or boss phase. Lose fee (if logged in), vault pot grows; end session.
 - **On Loss**: Display themed DaisyUI Game Over modal with stats and auto-save high score. Stats are saved to Juno Collection storage.
 - **Scoring**: Config-driven scoring system:
   - Key collection: 100 points (config: `scoring.key_collection`)
@@ -146,7 +146,10 @@ Tresr uses a hybrid architecture to ensure responsive gameplay while maintaining
   - **Astro**: Handles the "App" layer (Landing, Auth, Profile, Wallet, HUD, FeeGate, Modals).
   - **Phaser v3**: Handles the "Game" layer (Canvas, Physics, Audio, Input) with Arcade Physics.
   - **TypeScript**: Strict typing enforced across both App and Game layers.
-  - **TailwindCSS v4 + DaisyUI v5**: Styling for all HTML/Astro components (HUD, Modals, Menus).
+  - **DaisyUI v5 + TailwindCSS v4**: DaisyUI-first styling for all HTML/Astro components.
+    DaisyUI prebuilt components are preferred; Tailwind utilities used only for layout
+    and spacing where DaisyUI lacks coverage. Custom CSS is prohibited except for game-specific
+    visual effects with no DaisyUI/Tailwind equivalent.
   - **Nanostores**: Reactive state management (`gameStore`) bridging Phaser and Astro.
   - **2.5D Rendering**: Z-axis physics with gravity, depth sorting via `setDepth(groundY)`, shadow rendering for all entities.
 - **Backend (Juno - Rust Canisters)**: Manages authentication via Internet Identity 2.0, database operations using Juno Collections,
@@ -192,25 +195,25 @@ src/
 
 ### Economy Flow
 
-#### Deposit Flow (Entry Fee)
+#### Fee Flow (Entry Fee)
 
 1. **User Link**: User connects EVM wallet and signs a message to link it to their Juno Principal ID.
-2. **User Action**: User clicks "Start Game" when logged in. The FeeGate component prompts for a deposit.
-3. **Avalanche Tx**: User signs a deposit transaction. [Planned: `deposit(amount, sessionId)` on `Vault.sol`]. Currently uses message signing as placeholder.
+2. **User Action**: User clicks "Start Game" when logged in. The FeeGate component prompts for a fee payment.
+3. **Avalanche Tx**: User signs a fee transaction. [Planned: `payFee(amount, sessionId)` on `Vault.sol`]. Currently uses message signing as placeholder.
    - `sessionId` is generated client-side via `crypto.randomUUID()`. [Planned: deterministic hash `SHA256(clientGeneratedSeed + timestamp + principal)`].
-   - [Planned] A percentage (10%) of the deposit is burned as an anti-inflation measure.
+   - [Planned] A percentage (10%) of the fee is burned as an anti-inflation measure.
 4. **Session Start**: Fee paid status stored in `sessionStorage`. Game session begins.
    - [Planned] Juno verifies txHash via Avalanche RPC and creates a "Game Session" record.
 
 #### Gameplay Mechanics
 
-1. **Session Start**: If logged in, FeeGate prompts EVM wallet deposit (fee configured per chain in `blockchain.avalanche.[env].fee`). Guest mode: Start directly without fee.
+1. **Session Start**: If logged in, FeeGate prompts EVM wallet fee payment (fee configured per chain in `blockchain.avalanche.[env].fee`). Guest mode: Start directly without fee.
 2. **Bear Market (survival phase)**: 5-minute countdown. Enemies spawn from screen edges (5 variants, 4 AI types). Keys airdrop with parachute physics.
    Bombs fall and explode on impact. Player moves/jumps/attacks. Inputs recorded via `Recorder`.
 3. **Bull Market (boss phase)**: Timer expires, all enemies cleared, boss descends from above. Fight boss while dodging bombs.
 4. **Claim Phase**: Defeat boss -> Treasure chest airdrops center -> Punch to open -> Triggers claim authorization.
 5. **Win/Loss**:
-   - **Loss**: Player dies (no HP left). If logged in: Lose deposit, vault pot grows.
+   - **Loss**: Player dies (no HP left). If logged in: Lose fee, vault pot grows.
    - **Win**: Defeat boss and open chest. If logged in: Claim $TRESR via vault.
 
 #### Claim Flow (Reward)
@@ -219,7 +222,7 @@ Only if logged in and player defeats the boss does claim unlock.
 
 1. **Submission**: Frontend submits `sessionId`, `score`, `userAddr`, and a binary payload to Juno `claimAuthorize`.
    Payload format: `[4B input len][inputs][config hash][4B seed len][seed]`.
-2. **Verification**: [Planned] Juno fetches vault balance, verifies deposit, replays inputs to confirm survival, boss defeat, and chest open. Calculates amount per key multiplier formula.
+2. **Verification**: [Planned] Juno fetches vault balance, verifies fee, replays inputs to confirm survival, boss defeat, and chest open. Calculates amount per key multiplier formula.
 3. **Oracle Sig**: Juno signs and returns `(amount, signature)`.
 4. **Avalanche Tx**: Frontend calls `Vault.claim(sessionId, amount, keys, signature)` via the victory modal.
 5. **Settlement**: [Planned] Vault verifies sig and transfers $TRESR. Cooldown enforced.
@@ -239,7 +242,7 @@ Only if logged in and player defeats the boss does claim unlock.
   - `key`: Session ID
   - `user`: Principal ID
   - `status`: 'active' | 'completed' | 'claimed'
-  - `depositTx`: Hash
+  - `feeTx`: Hash
   - `replayData`: Blob/Hash of inputs/outcomes
 - **Leaderboard** (derived from User Profiles):
   - Sorted by `stats.highScore` descending
@@ -627,11 +630,20 @@ Singleton music player (`src/lib/game/MusicManager.ts`) using HTML5 Audio.
 Features:
 
 - **Track Loading**: Dynamically loads track list from `config-client.json` (auto-scanned from `public/assets/audio/music/`).
-- **Shuffle**: Fisher-Yates algorithm with repeat prevention (last track of previous queue won't be first in new queue).
+- **Three Playback Modes** (cycled via a dedicated button in the player UI):
+  - **Normal**: Plays one song then the next in fixed order. If the user has a favorite track, it plays first on game start.
+  - **Shuffle** (default): At the end of each track a new one is selected at random. Uses Fisher-Yates algorithm with repeat prevention (crypto RNG, non-gameplay).
+  - **Repeat One**: Repeats the current (favorite) track over and over.
+- **Favorite Track**: When a user manually selects a track from the track list dropdown, that track becomes their "favorite".
+  This is independent of the playback mode — automatic track advances never change the favorite.
+  Only explicit user selection from the list updates it.
 - **Session Persistence**: Shuffle queue state saved to `sessionStorage` and restored on page navigation.
-- **User Preferences**: Volume (music + SFX separate), current track, mute state persisted to Juno Datastore per user (debounced 2 seconds).
-- **Auto-Play**: Next track plays automatically on song end (shuffle or sequential mode).
-- **Controls**: Play/pause, next/prev, seek, volume control.
+- **User Preferences**: `playbackMode`, `favoriteTrack`, volume (music + SFX separate), and pause state persisted to Juno Datastore per user (debounced 2s).
+  Pending writes flushed to `localStorage` on tab close and synced on next load.
+- **Auto-Play**: Next track plays automatically on song end based on current playback mode.
+- **Controls**: Play/pause, next/prev, seek, volume control, playback mode cycle button.
+- **Backward Compatibility**: Legacy profiles with `track: "random"` are migrated to `playbackMode: "shuffle"`. Legacy `track: "<name>"` is migrated to `favoriteTrack: "<name>"` + `playbackMode: "normal"`.
+- **New User / Guest Defaults**: `playbackMode: "shuffle"`, no favorite track. A random track is selected on first play.
 
 ### SFX System
 
@@ -866,7 +878,7 @@ and on-chain settlement. Guest mode skips vault interactions entirely.
 | Input forging           | Deterministic replay with seeded RNG                                                          | Implemented (client-side) |
 | Session replay          | Unique sessionId + nonce                                                                      | Partial                   |
 | Front-running           | [Planned] Oracle sig + on-chain claim window                                                  | Planned                   |
-| Fee gate bypass         | [Planned] Server-side deposit verification (ticket #130)                                      | Not implemented           |
+| Fee gate bypass         | [Planned] Server-side fee verification (ticket #130)                                          | Not implemented           |
 | Score manipulation      | [Planned] Server replay validates score matches inputs                                        | Planned                   |
 | Repeat cheating         | [Planned] Escalating bans (24h/72h/168h/permanent)                                            | Planned                   |
 | XSS via leaderboard     | Notification and VaultBalance components use safe DOM APIs. Leaderboard sanitization pending. | Implemented (partial)     |
@@ -881,7 +893,7 @@ sequenceDiagram
     Client->>Client: Pay fee via FeeGate
     Client->>Client: Play game (seeded RNG + record inputs)
     Client->>Juno: claimAuthorize(sessionId, score, addr, payload[inputs+hash+seed])
-    Juno->>Juno: [Planned] Verify deposit, replay inputs, calc amount
+    Juno->>Juno: [Planned] Verify fee, replay inputs, calc amount
     Juno->>Client: (amount, signature)
     Client->>Vault: claim(sessionId, amount, keys, signature)
     Vault->>Client: $TRESR (if valid)
@@ -909,7 +921,7 @@ Entry fee payment modal for authenticated non-guest users:
 1. Displays fee amount (from chain config).
 2. User clicks "Pay & Start Mission".
 3. Checks wallet balance (shows error if insufficient).
-4. Calls `depositForGame(sessionId, feeWei)`.
+4. Calls `payFeeForGame(sessionId, feeWei)`.
 5. Stores txHash + sessionId, marks fee paid in `sessionStorage`.
 6. Session ID secured with HMAC signature to prevent `sessionStorage` spoofing.
 7. `isFeePaid()` is async — performs cryptographic signature verification.
@@ -953,16 +965,23 @@ Wallet dropdown component with multiple states:
 Compact music player in bottom-left of HUD:
 
 - Play/Pause, Next/Prev buttons.
+- **Playback mode cycle button**: Cycles through Normal → Shuffle → Repeat One. Icon and highlight update reactively.
 - Track name display.
 - Progress bar with seek.
-- Track selector dropdown with shuffle mode.
+- Track selector dropdown. Selecting a track sets it as the user's **favorite** (highlighted in the list). The favorite is independent of the playback mode.
 - Narration toggle checkbox (visible to logged-in users only, persists to Juno).
 - Volume sliders (music + SFX separate).
-- Shuffle/sequential toggle.
 
 ## UI/UX & Theming
 
-- **Framework**: DaisyUI v5 (Tailwind CSS plugin).
+- **Framework**: DaisyUI v5 (Tailwind CSS plugin). **DaisyUI is the primary styling layer.**
+  All UI components MUST use DaisyUI's prebuilt component classes and modifiers first.
+  Tailwind CSS utility classes are used only when DaisyUI has no equivalent (e.g., layout,
+  spacing, positioning). Plain CSS is a last resort, reserved for game-specific effects
+  (e.g., keyframe animations, scanlines) that have no DaisyUI or Tailwind equivalent.
+- **Dropdown Pattern**: All dropdowns use DaisyUI's `<details>/<summary>` pattern
+  (not the CSS focus `label[tabindex=0]` pattern) for reliable click-to-toggle behavior
+  inside the `pointer-events-none` header overlay.
 - **Default Theme**: `synthwave` (Dark/Cyberpunk).
 - **Customization**: Theme selector in top bar. All DaisyUI themes enabled (25 themes); persisted in Juno user profile.
 - **Vault Display**: Implemented. VaultBalance component shows vault prize pool for authenticated non-guest users. Only polls Avalanche RPC when wallet is connected; shows `--` placeholder otherwise.
@@ -1033,7 +1052,8 @@ User profiles stored in Juno Datastore under "users" collection, keyed by Princi
     "narration": true,
     "has_read_instructions": false,
     "music": {
-      "track": "Neon Grid",
+      "favoriteTrack": "Neon Grid",
+      "playbackMode": "shuffle",
       "volume": 0.75,
       "sfxVolume": 0.5,
       "isPaused": false

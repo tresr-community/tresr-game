@@ -26,4 +26,4 @@ didc bind src/satellite/satellite.did -t ts > src/declarations/satellite/index.t
 
 - Check canister ID: `7hfb6-caaaa-aaaar-qadga-cai`
 - Verify sufficient cycles
-- Test with Avalanche Fuji testnet first
+- Test with Avalanche testnet first

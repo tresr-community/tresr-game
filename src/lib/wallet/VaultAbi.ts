@@ -6,13 +6,13 @@
  */
 
 export const VaultAbi = [
-  // Deposit function - used when starting a game session
+  // Entry fee function - used when starting a game session
   {
     inputs: [
       {internalType: "uint256", name: "amount", type: "uint256"},
       {internalType: "bytes32", name: "sessionId", type: "bytes32"},
     ],
-    name: "deposit",
+    name: "payFee",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",

@@ -16,6 +16,9 @@ const avalancheEnabled: ConfigTypes["auth"]["avalanche"]["enabled"] =
   (config.auth?.avalanche?.enabled ?? true) && isVaultDeployed(config);
 const webauthnEnabled: ConfigTypes["auth"]["webauthn"]["enabled"] =
   config.auth?.webauthn?.enabled ?? true;
+
+// Normie mode feature flag — when disabled, hide the normie tab entirely
+const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
 ---
 
 <div class="flex flex-col items-center gap-2">
@@ -42,7 +45,8 @@ const webauthnEnabled: ConfigTypes["auth"]["webauthn"]["enabled"] =
   <div class="modal-box border-primary/30 bg-base-200 relative max-w-md border">
     <button
       id="btn-close-auth"
-      class="btn btn-sm btn-circle btn-ghost absolute top-2 right-2">✕</button
+      class="btn btn-circle btn-ghost absolute top-2 right-2 min-h-[44px] min-w-[44px] text-lg"
+      >✕</button
     >
     <h3
       class="text-primary mb-6 text-center text-2xl font-bold tracking-widest uppercase"
@@ -51,28 +55,41 @@ const webauthnEnabled: ConfigTypes["auth"]["webauthn"]["enabled"] =
     </h3>
 
     <div class="tabs tabs-lift">
-      <!-- Normie Tab -->
+      <!-- Normie Tab (only rendered when guest mode is enabled) -->
+      {
+        guestEnabled && (
+          <>
+            <input
+              type="radio"
+              name="auth_tabs"
+              class="tab"
+              aria-label="Normie"
+              checked
+            />
+            <div class="tab-content border-base-300 bg-base-100 p-6">
+              <p class="mb-6 text-center text-sm italic opacity-70">
+                "Fight some bankers without spending tokens. No risk, no
+                reward."
+              </p>
+              <button
+                id="btn-login-normie"
+                class="btn btn-secondary w-full font-bold tracking-widest uppercase"
+              >
+                Login as a Normie
+              </button>
+            </div>
+          </>
+        )
+      }
+
+      <!-- Degen Tab -->
       <input
         type="radio"
         name="auth_tabs"
         class="tab"
-        aria-label="Normie"
-        checked="checked"
+        aria-label="Degen"
+        checked={!guestEnabled}
       />
-      <div class="tab-content border-base-300 bg-base-100 p-6">
-        <p class="mb-6 text-center text-sm italic opacity-70">
-          "Fight some bankers without spending tokens. No risk, no reward."
-        </p>
-        <button
-          id="btn-login-normie"
-          class="btn btn-secondary w-full font-bold tracking-widest uppercase"
-        >
-          Login as a Normie
-        </button>
-      </div>
-
-      <!-- Degen Tab -->
-      <input type="radio" name="auth_tabs" class="tab" aria-label="Degen" />
       <div class="tab-content border-base-300 bg-base-100 p-6">
         <p class="mb-6 text-center text-sm italic opacity-70">
           "Join the decentralized elite. High risk, high reward."
@@ -326,7 +343,7 @@ const webauthnEnabled: ConfigTypes["auth"]["webauthn"]["enabled"] =
 
       // Show the auth loading overlay — it stays visible during the SIWA
       // handshake that happens after the user selects a wallet and signs.
-      showAuthOverlay("Connecting wallet...");
+      showAuthOverlay("Awaiting wallet connection...");
 
       // This opens the AppKit modal with all wallet options
       // (injected wallets + WalletConnect QR code)
@@ -511,11 +528,19 @@ const webauthnEnabled: ConfigTypes["auth"]["webauthn"]["enabled"] =
     updateButtonState();
   });
 
-  // Pre-warm AppKit so the first click opens the modal instantly
+  // Pre-warm AppKit only for authenticated SIWA users who need an active
+  // wallet connection. For guests/unauthenticated users AppKit initialises
+  // on-demand when they click "Login with Avalanche Wallet", avoiding
+  // unnecessary WalletConnect API calls and balance lookups.
   if (typeof requestIdleCallback === "function") {
-    requestIdleCallback(() => {
-      import("@/lib/wallet/appkit").then((m) => m.getAppKit()).catch(() => {});
-    });
+    const authState = getAuthState();
+    if (authState.isAuthenticated && authState.authMode === "avalanche") {
+      requestIdleCallback(() => {
+        import("@/lib/wallet/appkit")
+          .then((m) => m.getAppKit())
+          .catch(() => {});
+      });
+    }
   }
 
   document.addEventListener(

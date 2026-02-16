@@ -10,6 +10,6 @@ This project follows **Juno's "One Repo, One App"** architecture, where the fron
 | **Functions**       | Rust (Juno Serverless Functions)       | Game logic, user management, blockchain integration |
 | **Authentication**  | Juno + Internet Identity               | Decentralized user authentication                   |
 | **Blockchain**      | Internet Computer (ICP)                | Host platform                                       |
-| **EVM Integration** | Avalanche C-Chain via EVM RPC Canister | Token deposits and withdrawals                      |
+| **EVM Integration** | Avalanche C-Chain via EVM RPC Canister | Token fees and withdrawals                          |
 | **Development**     | devenv (Nix)                           | Hermetic development environment                    |
 | **Game Engine**     | Phaser                                 | Game logic, physics, rendering                      |

@@ -1,6 +1,7 @@
 // PWA Utilities: Service Worker Registration and Version Update Handling
 
 import {log, JUNO_ENVIRONMENT} from "../utils/log";
+import {trackPwaInstall} from "../metrics/analytics";
 
 const COMPONENT_NAME = "PWA";
 
@@ -18,6 +19,7 @@ class PWA {
   private updatePending: boolean = false; // true while waiting to notify
   private updateCheckInterval: ReturnType<typeof setInterval> | null = null;
   private updateNotifyTimeout: ReturnType<typeof setTimeout> | null = null;
+  private awaitingControllerChange: boolean = false;
 
   private constructor() {}
 
@@ -76,9 +78,26 @@ class PWA {
       } catch (error) {
         log.error(COMPONENT_NAME, "SW registration failed:", error);
       }
+
+      // When a new service worker takes control (after skipWaiting),
+      // reload the page cleanly. Without this, skipWaiting fires but
+      // the old SW might still serve stale assets during navigation.
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (this.awaitingControllerChange) {
+          log.info(COMPONENT_NAME, "New SW controller active — reloading page");
+          this.awaitingControllerChange = false;
+          window.location.href = "/";
+        }
+      });
     } else {
       log.warn(COMPONENT_NAME, "SW not supported");
     }
+
+    // Track PWA install prompt
+    window.addEventListener("appinstalled", () => {
+      log.info(COMPONENT_NAME, "PWA installed");
+      trackPwaInstall();
+    });
 
     // Start periodic checks — version poll works even without SW support
     this.startPeriodicUpdateCheck();
@@ -279,7 +298,29 @@ class PWA {
     }
 
     this.updatePending = false;
-    log.info(COMPONENT_NAME, "Applying update — clearing auth session...");
+    log.info(
+      COMPONENT_NAME,
+      "Applying update — clearing update notifications..."
+    );
+
+    // Dismiss all app_update notifications and wait for Juno persistence
+    // before signing out.  Without this the notification reappears after reload.
+    try {
+      const {notificationManager} = await import("../notifications");
+      const {flushProfileWrites} = await import("../user/writeQueue");
+      const updateNotifs = notificationManager
+        .getNotifications()
+        .filter((n) => n.data.type === "app_update");
+      for (const n of updateNotifs) {
+        notificationManager.dismiss(n.key);
+      }
+      // Wait for the enqueued write(s) to flush to Juno
+      await flushProfileWrites();
+    } catch (err) {
+      log.warn(COMPONENT_NAME, "Failed to clear update notifications", err);
+    }
+
+    log.info(COMPONENT_NAME, "Clearing auth session...");
 
     // Clear auth session storage to force clean re-authentication
     // after the upgrade. Stale Juno delegation identities in IndexedDB
@@ -298,11 +339,25 @@ class PWA {
 
     if (this.registration?.waiting) {
       log.info(COMPONENT_NAME, "Sending skipWaiting to waiting worker");
+      this.awaitingControllerChange = true;
       this.registration.waiting.postMessage({action: "skipWaiting"});
-    }
 
-    // Navigate to home instead of reloading — forces clean auth flow
-    window.location.href = "/";
+      // Safety timeout: if controllerchange never fires within 5s,
+      // force a reload so the user isn't stuck.
+      setTimeout(() => {
+        if (this.awaitingControllerChange) {
+          log.warn(
+            COMPONENT_NAME,
+            "controllerchange did not fire within 5s — forcing reload"
+          );
+          this.awaitingControllerChange = false;
+          window.location.href = "/";
+        }
+      }, 5_000);
+    } else {
+      // No waiting worker — just navigate
+      window.location.href = "/";
+    }
   }
 
   // Manual check for testing (console: PWA.getInstance().checkForUpdates())
