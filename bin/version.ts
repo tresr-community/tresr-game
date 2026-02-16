@@ -56,26 +56,6 @@ function setVersion(targetVersion: string): void {
   log.info(COMPONENT_NAME, `Version set to ${targetVersion}`);
 }
 
-function getCurrentVersionFromFile(): string {
-  const pkgPath = path.join(projectRoot, "package.json");
-  const content = fs.readFileSync(pkgPath, "utf8");
-  const match = content.match(/"version": "([^"]+)"/);
-  return match?.[1] ?? BASE_VERSION;
-}
-
-function devBump(): void {
-  const current = getCurrentVersionFromFile();
-  const devMatch = current.match(/^(.+)-dev\.(\d+)$/);
-  let nextNum: number;
-  if (devMatch) {
-    nextNum = parseInt(devMatch[2], 10) + 1;
-  } else {
-    nextNum = 1;
-  }
-  const devVersion = `${BASE_VERSION}-dev.${nextNum}`;
-  setVersion(devVersion);
-}
-
 const args: string[] = process.argv.slice(2);
 const mode: string | undefined = args[0];
 
@@ -94,8 +74,6 @@ if (mode === "--bump") {
     }
     process.exit(1);
   }
-} else if (mode === "--dev-bump") {
-  devBump();
 } else if (mode === "--reset") {
   setVersion(BASE_VERSION);
   log.info(COMPONENT_NAME, `Version reset to ${BASE_VERSION}`);
@@ -126,7 +104,7 @@ if (mode === "--bump") {
 } else {
   log.error(
     COMPONENT_NAME,
-    "Usage: bun run bin/version.ts --bump | --dev-bump | --reset | --get | --set <version>"
+    "Usage: bun run bin/version.ts --bump | --reset | --get | --set <version>"
   );
   process.exit(1);
 }
