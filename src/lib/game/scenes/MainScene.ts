@@ -12,10 +12,22 @@ import {TresrBot} from "@/lib/game/prefabs/TresrBot";
 import {gameActions, gameState} from "@/lib/game/state";
 import {Recorder} from "@/lib/game/Recorder";
 import {SpriteManager, type SpritesConfig} from "@/lib/game/SpriteManager";
+import {Preloader} from "@/lib/game/scenes/Preloader";
+import {config as clientConfig} from "@/lib/config/client";
+import {setDoc} from "@junobuild/core";
 import {claimAuthorize} from "@/declarations/satellite/satellite.api";
-import {getUserProfile, saveUserProfile} from "@/lib/user";
+import {enqueueProfileWrite} from "@/lib/user";
 import {getAuthState} from "@/lib/auth";
-import {trackGameLoss, trackGameWin} from "@/lib/metrics/analytics";
+import {
+  trackGameLoss,
+  trackGameWin,
+  trackBossSpawned,
+  trackBossDefeated,
+  trackPlayerDeath,
+  trackLevelComplete,
+  trackGamePause,
+  trackGameResume,
+} from "@/lib/metrics/analytics";
 import MusicManager from "@/lib/game/MusicManager";
 import {WalkableArea} from "@/lib/game/WalkableArea";
 import {log} from "@/lib/utils/log";
@@ -80,7 +92,7 @@ interface GameplayConfig {
         attack_shake_intensity: number;
         victory_flash_duration: number;
       };
-      spawn: {x: number; y: number};
+      spawn: {x_ratio: number; y_ratio: number};
       lives: number;
       respawn: {
         invincibility_ms: number;
@@ -126,7 +138,7 @@ interface GameplayConfig {
       knockback: {force: number; stun_ms: number};
       hitbox: {radius: number; offsetX: number; offsetY: number};
       combat: {attack_range: number; contact_depth_threshold: number};
-      descent: {speed: number; start_y: number; threshold: number};
+      descent: {speed: number; start_y: number; threshold_ratio: number};
       phases: {
         enrage_threshold: number;
         phase2_speed_mult: number;
@@ -181,8 +193,8 @@ interface GameplayConfig {
         delay_ms: number;
         start_z: number;
         x_margin: number;
-        y_margin_top: number;
-        y_margin_bottom: number;
+        y_margin_top_ratio: number;
+        y_margin_bottom_ratio: number;
       };
     };
     bomb: {
@@ -195,8 +207,8 @@ interface GameplayConfig {
         delay_ms: number;
         start_z: number;
         x_margin: number;
-        y_margin_top: number;
-        y_margin_bottom: number;
+        y_margin_top_ratio: number;
+        y_margin_bottom_ratio: number;
       };
     };
     chest: {
@@ -248,10 +260,10 @@ interface GameplayConfig {
     };
   };
   walkable_area: {
-    top_y: number;
-    bottom_y: number;
-    left_x: number;
-    right_x: number;
+    top_y_ratio: number;
+    bottom_y_ratio: number;
+    left_x_ratio: number;
+    right_x_ratio: number;
   };
   combat: {
     enemy_damage_cooldown_ms: number;
@@ -454,6 +466,7 @@ export class MainScene extends Phaser.Scene {
 
   private setPause(isPaused: boolean) {
     if (isPaused) {
+      trackGamePause();
       // Cancel active hit-stop before pausing (ticket #230)
       if (this.hitStopActive) {
         if (this.hitStopTimer) {
@@ -467,6 +480,7 @@ export class MainScene extends Phaser.Scene {
       this.anims.pauseAll();
       this.time.paused = true;
     } else {
+      trackGameResume();
       this.physics.world.resume();
       this.anims.resumeAll();
       this.time.paused = false;
@@ -515,19 +529,25 @@ export class MainScene extends Phaser.Scene {
     // Initialize survival timer from config
     this.survivalTimer = this.gameplayConfig.time_limit_seconds;
 
-    // Initialize walkable area from config
+    // Initialize walkable area from config ratios × canvas dimensions
     const wa = this.gameplayConfig.walkable_area;
     this.walkableArea = new WalkableArea(
-      wa.top_y,
-      wa.bottom_y,
-      wa.left_x,
-      wa.right_x
+      wa.top_y_ratio,
+      wa.bottom_y_ratio,
+      wa.left_x_ratio,
+      wa.right_x_ratio,
+      width,
+      height
     );
     // Store in registry so entities can access it
     this.registry.set("walkable_area", this.walkableArea);
 
     // CRITICAL: Create animations FIRST before any sprites try to use them
     this.createAnimations();
+
+    // Load deferred SFX (OOM fix: not loaded during Preloader)
+    // Non-blocking — queues load while countdown plays
+    this.loadDeferredSfx();
 
     // Input: ESC for Pause
     if (this.input.keyboard) {
@@ -554,6 +574,9 @@ export class MainScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, width, height);
     this.cameras.main.setBounds(0, 0, width, height);
 
+    // Listen for canvas resize events
+    this.scale.on("resize", this.handleResize, this);
+
     // Get entity configs
     const entities = this.gameplayConfig.entities;
 
@@ -577,11 +600,11 @@ export class MainScene extends Phaser.Scene {
       runChildUpdate: true,
     });
 
-    // Instantiate Player at spawn position from config
+    // Instantiate Player at spawn position from config ratios
     this.player = new Player(
       this,
-      entities.player.spawn.x,
-      entities.player.spawn.y
+      Math.round(entities.player.spawn.x_ratio * width),
+      Math.round(entities.player.spawn.y_ratio * height)
     );
     const spritesConfig = this.registry.get("sprites_config") as SpritesConfig;
     const heroScale = SpriteManager.getScaleFactor(spritesConfig, "hero");
@@ -603,7 +626,7 @@ export class MainScene extends Phaser.Scene {
     // Setup Groups
     this.enemies = this.physics.add.group({
       classType: Enemy,
-      defaultKey: "enemy_1",
+      defaultKey: "enemy_1_idle",
       maxSize: entities.enemy.spawner.pool_size,
       runChildUpdate: true,
     });
@@ -662,7 +685,6 @@ export class MainScene extends Phaser.Scene {
     this.events.on("player_death", this.onPlayerDeath, this);
     this.events.on("entity_death", this.onEntityDeath, this);
     this.events.on("bomb_explosion", this.handleBombExplosion, this);
-    this.events.on("enemy_projectile_fire", this.handleEnemyProjectile, this);
     this.events.on("boss_ground_pound", this.handleBossGroundPound, this);
     this.events.on("boss_summon", this.handleBossSummon, this);
     this.events.on("bot_attack", this.handleBotAttack, this);
@@ -693,12 +715,19 @@ export class MainScene extends Phaser.Scene {
         return;
       }
 
+      // Responsive font: match showPhaseAnnouncement scaling
+      const fontSize = Math.min(80, Math.floor(width / 8));
+      const strokeThickness = Math.max(
+        2,
+        Math.round(ann.stroke_thickness * (fontSize / 80))
+      );
+
       const numText = this.add
         .text(width / 2, height / 2, numbers[index], {
-          font: ann.font,
+          font: `${fontSize}px Orbitron`,
           color: ann.color,
           stroke: ann.stroke_color,
-          strokeThickness: ann.stroke_thickness,
+          strokeThickness,
         })
         .setOrigin(0.5)
         .setDepth(1000)
@@ -812,6 +841,7 @@ export class MainScene extends Phaser.Scene {
     log.info(COMPONENT_NAME, "Shutting down, cleaning up...");
 
     // Clean up event listeners
+    this.scale.off("resize", this.handleResize, this);
     this.events.off("boss_defeated", this.spawnChest, this);
     this.events.off("game_win", this.onVictory, this);
     this.events.off("player_attack", this.handlePlayerAttack, this);
@@ -821,7 +851,6 @@ export class MainScene extends Phaser.Scene {
     this.events.off("player_death", this.onPlayerDeath, this);
     this.events.off("entity_death", this.onEntityDeath, this);
     this.events.off("bomb_explosion", this.handleBombExplosion, this);
-    this.events.off("enemy_projectile_fire", this.handleEnemyProjectile, this);
     this.events.off("boss_ground_pound", this.handleBossGroundPound, this);
     this.events.off("boss_summon", this.handleBossSummon, this);
     this.events.off("bot_attack", this.handleBotAttack, this);
@@ -872,6 +901,50 @@ export class MainScene extends Phaser.Scene {
     this.player = null as unknown as Player;
     this.boss = undefined;
     this.tresrBot = undefined;
+
+    // Clean up textures to prevent GPU memory accumulation across sessions (OOM fix)
+    // Remove wallpaper texture
+    const wallpaperKey = this.registry.get("selected_wallpaper") as string;
+    if (wallpaperKey && this.textures.exists(wallpaperKey)) {
+      this.textures.remove(wallpaperKey);
+    }
+
+    // Remove entity textures (hero, boss, super, tresr_bot, items, lazy-loaded enemies)
+    const spritesConfig = this.registry.get("sprites_config") as
+      | SpritesConfig
+      | undefined;
+    if (spritesConfig) {
+      const removeEntityTextures = (
+        entityKey: string,
+        config: {anims: {name: string}[]}
+      ) => {
+        for (const anim of config.anims) {
+          const texKey = `${entityKey}_${anim.name}`;
+          if (this.textures.exists(texKey)) this.textures.remove(texKey);
+        }
+      };
+
+      if (spritesConfig.hero) removeEntityTextures("hero", spritesConfig.hero);
+      if (spritesConfig.boss) removeEntityTextures("boss", spritesConfig.boss);
+      if (spritesConfig.super)
+        removeEntityTextures("super", spritesConfig.super);
+      if (spritesConfig.tresr_bot)
+        removeEntityTextures("tresr_bot", spritesConfig.tresr_bot);
+
+      // Enemy variants that were lazy-loaded
+      if (spritesConfig.enemies) {
+        for (let i = 1; i <= spritesConfig.enemies.count; i++) {
+          removeEntityTextures(`enemy_${i}`, spritesConfig.enemies);
+        }
+      }
+
+      // Items
+      if (spritesConfig.items) {
+        for (const [key, itemConfig] of Object.entries(spritesConfig.items)) {
+          removeEntityTextures(key, itemConfig);
+        }
+      }
+    }
 
     log.info(COMPONENT_NAME, "Cleanup complete");
   }
@@ -932,12 +1005,20 @@ export class MainScene extends Phaser.Scene {
   private showPhaseAnnouncement(text: string) {
     const {width, height} = this.cameras.main;
     const ann = this.gameplayConfig.announcements;
+
+    // Responsive font: cap at config size but scale down for smaller screens
+    const fontSize = Math.min(80, Math.floor(width / 8));
+    const strokeThickness = Math.max(
+      2,
+      Math.round(ann.stroke_thickness * (fontSize / 80))
+    );
+
     const overlay = this.add
       .text(width / 2, height / 2, text, {
-        font: ann.font,
+        font: `${fontSize}px Orbitron`,
         color: ann.color,
         stroke: ann.stroke_color,
-        strokeThickness: ann.stroke_thickness,
+        strokeThickness,
       })
       .setOrigin(0.5)
       .setDepth(1000)
@@ -972,6 +1053,33 @@ export class MainScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * Load deferred SFX that were skipped during Preloader (OOM fix).
+   * These are contextual sounds (victory, game_over, bot, chest) that
+   * won't trigger for minutes into a session. Loading during the countdown
+   * gives them plenty of time to load before they're needed.
+   */
+  private loadDeferredSfx() {
+    const allSfx = clientConfig.assets.sfx as string[];
+    const deferredPrefixes = Preloader.DEFERRED_SFX_TYPES;
+    let queued = 0;
+
+    for (const sfx of allSfx) {
+      const isDeferred = deferredPrefixes.some((prefix) =>
+        sfx.startsWith(prefix)
+      );
+      if (isDeferred) {
+        this.load.audio(sfx, `/assets/audio/sfx/${sfx}.webm`);
+        queued++;
+      }
+    }
+
+    if (queued > 0) {
+      this.load.start();
+      log.info(COMPONENT_NAME, `Queued ${queued} deferred SFX for loading`);
+    }
+  }
+
   private playSound(type: string) {
     const sfxVariants = this.gameplayConfig.audio.sfx_variants;
     const count = sfxVariants[type];
@@ -983,6 +1091,8 @@ export class MainScene extends Phaser.Scene {
     const key = `${type}_${variant}`;
 
     try {
+      // Guard: deferred SFX may not be loaded yet (OOM fix)
+      if (!this.cache.audio.exists(key)) return;
       this.sound.play(key, {volume: gameState.get().music.sfxVolume});
     } catch {
       log.warn(COMPONENT_NAME, `Failed to play sound: ${key}`);
@@ -1093,6 +1203,35 @@ export class MainScene extends Phaser.Scene {
     gameActions.setTimer(this.survivalTimer);
   }
 
+  /**
+   * Handle dynamic canvas resize — recompute world bounds, walkable area,
+   * and background cover-scale so the game fills any viewport.
+   */
+  private handleResize(gameSize: Phaser.Structs.Size) {
+    const width = gameSize.width;
+    const height = gameSize.height;
+
+    // Update world and camera bounds
+    this.physics.world.setBounds(0, 0, width, height);
+    this.cameras.main.setBounds(0, 0, width, height);
+
+    // Update walkable area pixel values from ratios
+    if (this.walkableArea) {
+      this.walkableArea.resize(width, height);
+    }
+
+    // Re-scale background to cover the new canvas
+    if (this.background) {
+      this.background.setPosition(width / 2, height / 2);
+      const tex = this.textures
+        .get(this.registry.get("selected_wallpaper") as string)
+        .getSourceImage();
+      const scaleX = width / tex.width;
+      const scaleY = height / tex.height;
+      this.background.setScale(Math.max(scaleX, scaleY));
+    }
+  }
+
   private spawnEnemy() {
     if (this.phase !== "survival" || !this.enemies || !this.player) return;
 
@@ -1112,18 +1251,23 @@ export class MainScene extends Phaser.Scene {
     const spritesConfig = this.registry.get("sprites_config") as SpritesConfig;
     const enemyCount = spritesConfig.enemies.count;
     const enemyVariant = this.rng.integerInRange(1, enemyCount);
-    const textureKey = `enemy_${enemyVariant}`;
-    const enemy = this.enemies.get(spawnX, groundY, textureKey) as Enemy;
-    if (enemy) {
-      enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
-      enemy.setTarget(this.player);
-      const enemyScale = SpriteManager.getScaleFactor(
-        spritesConfig,
-        textureKey
-      );
-      enemy.setScale(enemyScale);
-      this.scaleCircleBody(enemy, this.gameplayConfig.entities.enemy.hitbox);
-    }
+    const textureKey = `enemy_${enemyVariant}_idle`;
+
+    // Lazy-load enemy variant sprites on first spawn
+    this.spriteManager.ensureEnemyLoaded(enemyVariant).then(() => {
+      if (!this.enemies || !this.player) return;
+      const enemy = this.enemies.get(spawnX, groundY, textureKey) as Enemy;
+      if (enemy) {
+        enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
+        enemy.setTarget(this.player);
+        const enemyScale = SpriteManager.getScaleFactor(
+          spritesConfig,
+          textureKey
+        );
+        enemy.setScale(enemyScale);
+        this.scaleCircleBody(enemy, this.gameplayConfig.entities.enemy.hitbox);
+      }
+    });
   }
 
   private spawnKey() {
@@ -1131,8 +1275,8 @@ export class MainScene extends Phaser.Scene {
     const {width, height} = this.cameras.main;
     const keySpawner = this.gameplayConfig.entities.key.spawner;
     const xMargin = keySpawner.x_margin;
-    const yMarginTop = keySpawner.y_margin_top;
-    const yMarginBottom = keySpawner.y_margin_bottom;
+    const yMarginTop = Math.round(keySpawner.y_margin_top_ratio * height);
+    const yMarginBottom = Math.round(keySpawner.y_margin_bottom_ratio * height);
 
     const x = this.rng.integerInRange(xMargin, width - xMargin);
     const groundY = this.rng.integerInRange(yMarginTop, height - yMarginBottom);
@@ -1151,8 +1295,10 @@ export class MainScene extends Phaser.Scene {
     const {width, height} = this.cameras.main;
     const bombSpawner = this.gameplayConfig.entities.bomb.spawner;
     const xMargin = bombSpawner.x_margin;
-    const yMarginTop = bombSpawner.y_margin_top;
-    const yMarginBottom = bombSpawner.y_margin_bottom;
+    const yMarginTop = Math.round(bombSpawner.y_margin_top_ratio * height);
+    const yMarginBottom = Math.round(
+      bombSpawner.y_margin_bottom_ratio * height
+    );
     const startZ = bombSpawner.start_z;
 
     const x = this.rng.integerInRange(xMargin, width - xMargin);
@@ -1241,70 +1387,6 @@ export class MainScene extends Phaser.Scene {
   }
 
   /**
-   * Handle ranged enemy projectile fire — simple tweened circle toward player
-   */
-  private handleEnemyProjectile(data: {
-    x: number;
-    y: number;
-    groundY: number;
-    dirX: number;
-    dirY: number;
-    speed: number;
-    damage: number;
-  }) {
-    if (!this.player || !this.player.active || this.player.hp <= 0) return;
-
-    // Create a gold coin projectile at enemy position
-    const proj = this.add.circle(data.x, data.y, 6, 0xffd700, 1);
-    proj.setStrokeStyle(1.5, 0xb8860b);
-    proj.setDepth(data.groundY + 1);
-
-    // Target the player's current position
-    const targetX = this.player.x;
-    const targetY = this.player.groundY;
-    const dist = Phaser.Math.Distance.Between(
-      data.x,
-      data.groundY,
-      targetX,
-      targetY
-    );
-    const duration = (dist / data.speed) * 1000; // ms
-
-    const damage = data.damage;
-    const playerRef = this.player;
-
-    this.tweens.add({
-      targets: proj,
-      x: targetX,
-      y: targetY,
-      duration: Math.max(duration, 200),
-      onComplete: () => {
-        // Check if player is still near the impact point
-        if (playerRef && playerRef.active && playerRef.hp > 0) {
-          const hitDist = Phaser.Math.Distance.Between(
-            proj.x,
-            proj.y,
-            playerRef.x,
-            playerRef.groundY
-          );
-          if (hitDist < this.gameplayConfig.combat.projectile_hit_radius) {
-            playerRef.takeDamage(damage);
-            this.playSound("hurt");
-          }
-        }
-        proj.destroy();
-      },
-    });
-
-    // Failsafe auto-destroy after 3 seconds
-    this.adHocTimers.push(
-      this.time.delayedCall(3000, () => {
-        if (proj && proj.active) proj.destroy();
-      })
-    );
-  }
-
-  /**
    * Handle boss ground pound AoE — damage player if in radius, VFX + camera shake
    */
   private handleBossGroundPound(data: {
@@ -1371,18 +1453,26 @@ export class MainScene extends Phaser.Scene {
       );
 
       const enemyVariant = this.rng.integerInRange(1, enemyCount);
-      const textureKey = `enemy_${enemyVariant}`;
-      const enemy = this.enemies.get(spawnX, groundY, textureKey) as Enemy;
-      if (enemy) {
-        enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
-        enemy.setTarget(this.player);
-        const enemyScale = SpriteManager.getScaleFactor(
-          spritesConfig,
-          textureKey
-        );
-        enemy.setScale(enemyScale);
-        this.scaleCircleBody(enemy, this.gameplayConfig.entities.enemy.hitbox);
-      }
+      const textureKey = `enemy_${enemyVariant}_idle`;
+
+      // Lazy-load enemy variant sprites on first spawn
+      this.spriteManager.ensureEnemyLoaded(enemyVariant).then(() => {
+        if (!this.enemies || !this.player) return;
+        const enemy = this.enemies.get(spawnX, groundY, textureKey) as Enemy;
+        if (enemy) {
+          enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
+          enemy.setTarget(this.player);
+          const enemyScale = SpriteManager.getScaleFactor(
+            spritesConfig,
+            textureKey
+          );
+          enemy.setScale(enemyScale);
+          this.scaleCircleBody(
+            enemy,
+            this.gameplayConfig.entities.enemy.hitbox
+          );
+        }
+      });
     }
   }
 
@@ -1768,6 +1858,7 @@ export class MainScene extends Phaser.Scene {
       const maxCharge = playerSuper.max_charge;
       gameActions.addSuperCharge(chargePerKill, maxCharge);
     } else if (data.type === "boss") {
+      trackBossDefeated();
       this.playSound("explosion");
       MusicManager.getInstance().stop();
 
@@ -1903,6 +1994,7 @@ export class MainScene extends Phaser.Scene {
     this.triggerFlash();
     this.playSound("explosion"); // Arrival sound
     this.showPhaseAnnouncement("BOSS PHASE");
+    trackBossSpawned();
   }
 
   /**
@@ -1911,6 +2003,7 @@ export class MainScene extends Phaser.Scene {
    */
   private spawnChest() {
     if (this.chest) return; // Prevent double spawn
+    trackLevelComplete(this.score, this.collectedKeys);
 
     // Kill all remaining enemies when boss is defeated
     if (this.enemies) {
@@ -1978,7 +2071,13 @@ export class MainScene extends Phaser.Scene {
 
     this.playSound("victory");
     this.showPhaseAnnouncement("VICTORY");
-    trackGameWin(this.score);
+    const winDuration = Math.round(
+      this.gameplayConfig.time_limit_seconds - this.survivalTimer
+    );
+    trackGameWin(this.score, {
+      keysCollected: this.collectedKeys,
+      duration: winDuration,
+    });
 
     const auth = getAuthState();
     if (auth.isGuest) {
@@ -2042,31 +2141,89 @@ export class MainScene extends Phaser.Scene {
           new CustomEvent("tresr:claim-auth", {detail: result.Ok})
         );
 
-        // Update stats for win
-        // Juno: getDoc + setDoc on "users" collection →
-        //   Rust assert: assert_user_profile() — validates EVM wallet format + signature
-        //   Rust hook:   on_set_doc("users") → no-op
+        // Update stats for win — uses centralized write queue
         const auth = getAuthState();
         if (auth.isAuthenticated && auth.user) {
-          const profileDoc = await getUserProfile(auth.user.key);
-          if (profileDoc) {
-            const profile = profileDoc.data;
-            profile.stats.totalGamesPlayed =
-              (profile.stats.totalGamesPlayed || 0n) + 1n;
-            profile.stats.totalGamesWon =
-              (profile.stats.totalGamesWon || 0n) + 1n;
-            if (BigInt(this.score) > profile.stats.highScore) {
-              profile.stats.highScore = BigInt(this.score);
-            }
-            await saveUserProfile(auth.user.key, profile, profileDoc.version);
+          try {
+            const score = BigInt(this.score);
+            await enqueueProfileWrite(auth.user.key, (profile) => ({
+              ...profile,
+              stats: {
+                ...profile.stats,
+                totalGamesPlayed: (profile.stats.totalGamesPlayed || 0n) + 1n,
+                totalGamesWon: (profile.stats.totalGamesWon || 0n) + 1n,
+                highScore:
+                  score > profile.stats.highScore
+                    ? score
+                    : profile.stats.highScore,
+              },
+            }));
             log.info(COMPONENT_NAME, "Win stats saved to Juno.");
+          } catch (err) {
+            log.error(COMPONENT_NAME, "Failed to save win stats:", err);
           }
         }
+
+        // Save game session for leaderboard active score tracking
+        await this.saveGameSession(true);
       } else {
         log.error(COMPONENT_NAME, "Claim authorization failed:", result.Err);
       }
     } catch {
       log.error(COMPONENT_NAME, "Failed to authorize claim");
+    }
+  }
+
+  /**
+   * Save a game session document to trigger the satellite's on_game_session_update
+   * hook, which writes to the leaderboard. Retries on version conflict.
+   */
+  private async saveGameSession(bossDefeated: boolean) {
+    if (!this.sessionId || this.sessionId.startsWith("guest-")) return;
+
+    const MAX_ATTEMPTS = 3;
+    const BASE_DELAY_MS = 100;
+
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      try {
+        await setDoc({
+          collection: "game_sessions",
+          doc: {
+            key: this.sessionId,
+            data: {
+              startedAt:
+                Date.now() -
+                (this.gameplayConfig.time_limit_seconds - this.survivalTimer) *
+                  1000,
+              endedAt: Date.now(),
+              keysCollected: this.collectedKeys,
+              bossDefeated,
+              score: this.score,
+              rewardClaimed: false,
+            },
+          },
+        });
+        log.info(
+          COMPONENT_NAME,
+          "Game session saved for active score tracking."
+        );
+        return;
+      } catch (err) {
+        const isVersionConflict =
+          err instanceof Error &&
+          err.message.includes("version_outdated_or_future");
+
+        if (isVersionConflict && attempt < MAX_ATTEMPTS - 1) {
+          const backoff = BASE_DELAY_MS * Math.pow(2, attempt);
+          log.warn(
+            COMPONENT_NAME,
+            `Game session version conflict (attempt ${attempt + 1}/${MAX_ATTEMPTS}), retrying in ${backoff}ms...`
+          );
+          await new Promise((r) => setTimeout(r, backoff));
+          continue;
+        }
+        log.error(COMPONENT_NAME, "Failed to save game session:", err);
+      }
     }
   }
 
@@ -2085,7 +2242,16 @@ export class MainScene extends Phaser.Scene {
     this.playSound("game_over");
     MusicManager.getInstance().stop();
     this.showPhaseAnnouncement("DEFEAT");
-    trackGameLoss("player_died");
+    const deathDuration = Math.round(
+      this.gameplayConfig.time_limit_seconds - this.survivalTimer
+    );
+    trackPlayerDeath(this.score, this.phase, this.collectedKeys);
+    trackGameLoss("player_died", {
+      score: this.score,
+      phase: this.phase,
+      keysCollected: this.collectedKeys,
+      duration: deathDuration,
+    });
 
     // Increment guest session counter after game completes
     const auth = getAuthState();
@@ -2093,28 +2259,27 @@ export class MainScene extends Phaser.Scene {
       incrementGuestSession();
     }
 
-    // Save stats
-    // Juno: getDoc + setDoc on "users" collection →
-    //   Rust assert: assert_user_profile() — validates EVM wallet format + signature
-    //   Rust hook:   on_set_doc("users") → no-op
+    // Save stats — uses centralized write queue
     if (auth.isAuthenticated && auth.user) {
       try {
-        const profileDoc = await getUserProfile(auth.user.key);
-        if (profileDoc) {
-          const profile = profileDoc.data;
-          profile.stats.totalGamesPlayed =
-            (profile.stats.totalGamesPlayed || 0n) + 1n;
-          profile.stats.totalGamesLost =
-            (profile.stats.totalGamesLost || 0n) + 1n;
-          if (BigInt(this.score) > profile.stats.highScore) {
-            profile.stats.highScore = BigInt(this.score);
-          }
-          await saveUserProfile(auth.user.key, profile, profileDoc.version);
-          log.info(COMPONENT_NAME, "High score saved to Juno.");
-        }
-      } catch {
-        log.error(COMPONENT_NAME, "Failed to save high score");
+        const score = BigInt(this.score);
+        await enqueueProfileWrite(auth.user.key, (profile) => ({
+          ...profile,
+          stats: {
+            ...profile.stats,
+            totalGamesPlayed: (profile.stats.totalGamesPlayed || 0n) + 1n,
+            totalGamesLost: (profile.stats.totalGamesLost || 0n) + 1n,
+            highScore:
+              score > profile.stats.highScore ? score : profile.stats.highScore,
+          },
+        }));
+        log.info(COMPONENT_NAME, "Loss stats saved to Juno.");
+      } catch (err) {
+        log.error(COMPONENT_NAME, "Failed to save loss stats:", err);
       }
+
+      // Save game session for leaderboard active score tracking
+      await this.saveGameSession(false);
     }
   }
 

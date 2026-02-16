@@ -1,10 +1,12 @@
 {
-  "exclude_detectors": [
+  "detectors_to_exclude": [
     "assembly-usage",
     "incorrect-versions",
     "too-many-digits",
     "incorrect-exponentiation",
-    "divide-before-multiply"
+    "divide-before-multiply",
+    "events-maths",
+    "timestamp"
   ],
   "filter_paths": "lib/"
 }

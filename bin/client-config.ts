@@ -407,50 +407,95 @@ interface PendingWrite {
     writeOrCollect(publicConfigPath, JSON.stringify(clientConfig, null, 2));
 
     // Generate precache manifest for PWA service worker (ticket #169)
+    // Config-driven: only include assets the game actually loads (OOM fix)
     const precacheAssets: string[] = [
       "/",
       "/manifest.json",
       "/config-client.json",
     ];
 
-    // Sprite sheets
-    const spritesDir = path.join(projectRoot, "public/assets/images/sprites");
-    if (fs.existsSync(spritesDir)) {
-      const entities = fs
-        .readdirSync(spritesDir, {withFileTypes: true})
-        .filter((e) => e.isDirectory())
-        .sort((a, b) => a.name.localeCompare(b.name));
-      for (const entity of entities) {
-        const entityDir = path.join(spritesDir, entity.name);
-        const sheets = fs
-          .readdirSync(entityDir)
-          .filter((f) => f.endsWith(".webp"))
-          .sort();
-        for (const sheet of sheets) {
-          precacheAssets.push(`/assets/images/sprites/${entity.name}/${sheet}`);
+    // Sprite sheets — extract paths from config instead of globbing filesystem
+    // This avoids precaching stale/unused sprite directories
+    const sprites = clientConfig.sprites as Record<string, unknown> | undefined;
+    if (sprites) {
+      const precachePaths = new Set<string>();
+
+      // Helper: collect anim paths from a standard entity config
+      const collectEntityPaths = (entity: Record<string, unknown>) => {
+        const anims = entity.anims as
+          | Array<Record<string, unknown>>
+          | undefined;
+        if (!anims) return;
+        for (const anim of anims) {
+          if (typeof anim.path === "string") {
+            precachePaths.add(anim.path);
+          }
         }
+      };
+
+      // Hero, boss, super, tresr_bot
+      for (const key of ["hero", "boss", "super", "tresr_bot"]) {
+        const entity = sprites[key] as Record<string, unknown> | undefined;
+        if (entity) collectEntityPaths(entity);
+      }
+
+      // Enemies — support both `path` (shared sprite) and `pathTemplate` (per-variant)
+      const enemies = sprites.enemies as Record<string, unknown> | undefined;
+      if (enemies) {
+        const count = (enemies.count as number) || 0;
+        const anims = enemies.anims as
+          | Array<Record<string, unknown>>
+          | undefined;
+        if (anims) {
+          for (const anim of anims) {
+            if (typeof anim.path === "string") {
+              // Shared path (same sprite for all variants)
+              precachePaths.add(anim.path);
+            } else if (typeof anim.pathTemplate === "string") {
+              // Per-variant path — expand {i} for 1..count
+              for (let i = 1; i <= count; i++) {
+                precachePaths.add(anim.pathTemplate.replace("{i}", String(i)));
+              }
+            }
+          }
+        }
+      }
+
+      // Items (keyed by item name)
+      const items = sprites.items as
+        | Record<string, Record<string, unknown>>
+        | undefined;
+      if (items) {
+        for (const item of Object.values(items)) {
+          collectEntityPaths(item);
+        }
+      }
+
+      // Static images
+      const statics = sprites.statics as
+        | Array<Record<string, string>>
+        | undefined;
+      if (statics) {
+        for (const s of statics) {
+          if (typeof s.path === "string") precachePaths.add(s.path);
+        }
+      }
+
+      // Add sorted unique paths to precache
+      for (const p of [...precachePaths].sort()) {
+        precacheAssets.push(p);
       }
     }
 
-    // Audio: music + SFX (already scanned above)
-    if (assets.music) {
-      for (const m of assets.music) {
-        precacheAssets.push(`/assets/audio/music/${m}.webm`);
-      }
-    }
+    // Audio: SFX only — music is streamed via HTMLAudioElement, not SW cache (OOM fix)
     if (assets.sfx) {
       for (const s of assets.sfx) {
         precacheAssets.push(`/assets/audio/sfx/${s}.webm`);
       }
     }
 
-    // Wallpapers — only precache a small subset (first 5) to avoid bloating install
-    if (assets.wallpapers) {
-      const sorted = [...assets.wallpapers].sort();
-      for (const w of sorted.slice(0, 5)) {
-        precacheAssets.push(`/assets/images/wallpapers/${w}.webp`);
-      }
-    }
+    // Wallpapers are NOT precached — Preloader loads a single random wallpaper
+    // JIT during the loading screen, so precaching adds unnecessary SW bloat.
 
     writeOrCollect(
       path.join(projectRoot, "public", "precache-manifest.json"),

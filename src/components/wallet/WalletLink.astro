@@ -8,20 +8,18 @@ const envKey =
     : JUNO_ENVIRONMENT === "staging"
       ? ("testnet" as const)
       : ("mainnet" as const);
-const tokenSymbol = `$${config.blockchain.avalanche[envKey].tresr_token_ticker}`;
+const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
 ---
 
-<div class="dropdown dropdown-end">
-  <label
-    tabindex="0"
+<details class="dropdown dropdown-end">
+  <summary
     class="btn btn-ghost btn-circle text-xl"
     title="Wallet"
     id="wallet-bell"
   >
     💰
-  </label>
+  </summary>
   <div
-    tabindex="0"
     class="card card-compact dropdown-content bg-base-100 border-primary/20 z-[1] mt-3 w-72 border shadow-xl"
   >
     <div class="card-body">
@@ -137,7 +135,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].tresr_token_ticker}`
       </div>
     </div>
   </div>
-</div>
+</details>
 
 <script>
   import {getAuthState, subscribeToAuth, type AuthState} from "@/lib/auth";
@@ -203,7 +201,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].tresr_token_ticker}`
       : JUNO_ENVIRONMENT === "staging"
         ? "testnet"
         : "mainnet";
-  const tokenSymbol = `$${config.blockchain.avalanche[envKey].tresr_token_ticker}`;
+  const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
 
   function hideAllStates() {
     stateUnauthenticated.classList.add("hidden");
@@ -347,11 +345,9 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].tresr_token_ticker}`
   // Named handlers for cleanup (ticket #241)
   function handleOpenProfile() {
     document.dispatchEvent(new CustomEvent("tresr:open-profile"));
-    const label = openProfileBtn
-      .closest(".card")
-      ?.closest(".dropdown")
-      ?.querySelector('label[tabindex="0"]') as HTMLElement | null;
-    label?.blur();
+    // Close dropdown (details/summary pattern)
+    const details = openProfileBtn.closest("details.dropdown");
+    details?.removeAttribute("open");
   }
   async function handleConnect() {
     try {

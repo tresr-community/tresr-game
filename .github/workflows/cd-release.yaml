@@ -8,12 +8,12 @@
 #   - Manual dispatch → Create pre-release (Testnet) or promote to release (Mainnet)
 #
 # Flow:
-#   1. Compute next version via convco (conventional commits)
+#   1. Compute next version via convco (or use version_override if provided)
 #   2. Bump version in package.json, manifest.json, Cargo.toml
 #   3. Testnet: Tag as v{version}, create pre-release
-#      → triggers cd-juno-testnet.yaml (on: prereleased)
+#      → calls cd-juno-testnet.yaml (workflow_call)
 #   4. Mainnet: Promote existing pre-release tag to release
-#      → triggers cd-juno-mainnet.yaml (on: released)
+#      → calls cd-juno-mainnet.yaml (workflow_call)
 ##################################################
 
 name: Release
@@ -40,6 +40,11 @@ on:
         required: false
         type: string
         default: ""
+      version_override:
+        description: "Force a specific version (Testnet only, e.g. 0.3.0 or v0.3.0)"
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -47,15 +52,12 @@ concurrency:
 
 permissions:
   contents: write
+  packages: read
+  pull-requests: read
+  statuses: write
 
 env:
-  # GitHub
-  PROJECT: ${{ github.repository }}
-  BRANCH_NAME_CURRENT: ${{ github.head_ref || github.ref_name }}
-  BRANCH_NAME_DEFAULT: ${{ github.event.repository.default_branch }}
-  # Nix
   NIXPKGS_ALLOW_UNFREE: 1
-  # Secretspec
   SECRETSPEC_PROVIDER: env
 
 defaults:
@@ -81,30 +83,49 @@ jobs:
     timeout-minutes: 15
     continue-on-error: false
 
+    outputs:
+      version: ${{ steps.compute_version.outputs.version }}
+      tag: ${{ steps.compute_version.outputs.tag }}
+      skip: ${{ steps.compute_version.outputs.skip }}
+
     steps:
       - id: checkout_repository
-        name: Checkout repository
+        name: Checkout Repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          submodules: recursive
 
       - id: setup_devenv
-        name: Setup devenv
+        name: Setup Devenv
         uses: ./.github/actions/setup-devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - id: compute_version
-        name: Compute version
+        name: Compute Version
         shell: devenv shell --quiet bash -- -e {0}
         run: |
-          # Get next version from conventional commits
-          NEXT_VERSION=$(convco version --bump 2>/dev/null || echo "")
+          OVERRIDE="${{ github.event.inputs.version_override }}"
 
-          if [[ -z "${NEXT_VERSION}" ]]; then
-            echo "No conventional commits found to bump version"
-            # Fall back to current version
-            NEXT_VERSION=$(convco version)
+          if [[ -n "${OVERRIDE}" ]]; then
+            # Strip leading 'v' if present and validate
+            NEXT_VERSION="${OVERRIDE#v}"
+
+            if ! [[ "${NEXT_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+              echo "::error::Invalid version format: '${OVERRIDE}'. Expected semver (e.g. 0.3.0 or v0.3.0)"
+              exit 1
+            fi
+
+            echo "Using manual version override: ${NEXT_VERSION}"
+          else
+            # Get next version from conventional commits
+            NEXT_VERSION=$(convco version --bump 2>/dev/null || echo "")
+
+            if [[ -z "${NEXT_VERSION}" ]]; then
+              echo "No conventional commits found to bump version"
+              NEXT_VERSION=$(convco version)
+            fi
           fi
 
           TAG="v${NEXT_VERSION}"
@@ -122,22 +143,39 @@ jobs:
           echo "Version: ${NEXT_VERSION}, Tag: ${TAG}"
 
       - id: bump_version
-        name: Bump version files
+        name: Bump Version Files
         if: steps.compute_version.outputs.skip != 'true'
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           bun run version-set ${{ steps.compute_version.outputs.version }}
 
       - id: generate_changelog
-        name: Generate changelog
+        name: Generate Changelog
         if: steps.compute_version.outputs.skip != 'true'
         shell: devenv shell --quiet bash -- -e {0}
+        env:
+          SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
+          ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
         run: |
-          # Generate changelog for unreleased commits
-          CHANGELOG=$(convco changelog --unreleased 2>/dev/null || echo "No changelog available")
-          # Write to file for the release step (multiline output)
-          echo "${CHANGELOG}" > /tmp/changelog.md
-          echo "Generated changelog for release"
+          TAG="${{ steps.compute_version.outputs.tag }}"
+          CHANGELOG=$(convco changelog "${TAG}" --max-versions 1 2>/dev/null || echo "Release ${TAG}")
+
+          {
+            echo "${CHANGELOG}"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## :rocket: Testnet Deployment"
+            echo ""
+            echo "| Resource | ID |"
+            echo "|----------|-----|"
+            echo "| Satellite | ${SATELLITE_ID} |"
+            echo "| Orbiter | ${ORBITER_ID} |"
+            echo ""
+            echo ":link: [Juno Console](https://console.juno.build/)"
+          } > /tmp/changelog.md
+
+          echo "Generated changelog with testnet deployment for ${TAG}"
 
       - id: create_release
         name: Create Pre-Release
@@ -150,6 +188,20 @@ jobs:
             --notes-file /tmp/changelog.md \
             --prerelease \
             --target "${{ github.sha }}"
+
+  ##################################################
+  # Deploy to Testnet (Juno)
+  # Calls cd-juno-testnet.yaml via workflow_call
+  ##################################################
+
+  deploy-juno-testnet:
+    name: Deploy Juno (Testnet)
+    needs: pre-release
+    if: needs.pre-release.outputs.skip != 'true'
+    uses: ./.github/workflows/cd-juno-testnet.yaml
+    with:
+      version: ${{ needs.pre-release.outputs.tag }}
+    secrets: inherit
 
   ##################################################
   # Promote a pre-release to release (mainnet)
@@ -169,40 +221,108 @@ jobs:
     timeout-minutes: 5
     continue-on-error: false
 
+    outputs:
+      tag: ${{ steps.validate_tag.outputs.tag }}
+
     steps:
-      - id: validate
-        name: Validate release tag
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: validate_tag
+        name: Validate Release Tag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.event.inputs.release_tag }}
         run: |
-          if [[ -z "${RELEASE_TAG}" ]]; then
-            echo "::error::release_tag is required for Mainnet promotion"
-            exit 1
+          if [[ -n "${RELEASE_TAG}" ]]; then
+            # User specified a tag — use it directly
+            TAG="${RELEASE_TAG}"
+            echo "Using provided release tag: ${TAG}"
+          else
+            # Auto-discover the latest pre-release
+            TAG=$(gh release list --json tagName,isPrerelease \
+              --jq '[.[] | select(.isPrerelease==true)] | first | .tagName' 2>/dev/null || echo "")
+
+            if [[ -z "${TAG}" || "${TAG}" == "null" ]]; then
+              echo "::error::No pre-releases found. Create one first via a Testnet deployment."
+              exit 1
+            fi
+            echo "Auto-discovered latest pre-release: ${TAG}"
           fi
 
-          # Verify the release exists and is a pre-release
-          RELEASE_INFO=$(gh release view "${RELEASE_TAG}" --json isPrerelease,tagName 2>&1) || {
-            echo "::error::Release '${RELEASE_TAG}' not found"
+          # Verify the release exists and IS a pre-release
+          RELEASE_INFO=$(gh release view "${TAG}" --json isPrerelease,tagName 2>&1) || {
+            echo "::error::Release '${TAG}' not found"
             exit 1
           }
 
           IS_PRERELEASE=$(echo "${RELEASE_INFO}" | jq -r '.isPrerelease')
           if [[ "${IS_PRERELEASE}" != "true" ]]; then
-            echo "::error::Release '${RELEASE_TAG}' is not a pre-release (already promoted?)"
+            echo "::error::Release '${TAG}' has already been promoted to a full release."
+            echo "::error::If you want to promote a specific pre-release, enter the tag (e.g. v0.2.3)."
             exit 1
           fi
 
-          echo "tag=${RELEASE_TAG}" >> "${GITHUB_OUTPUT}"
-          echo "Validated: ${RELEASE_TAG} is a pre-release, ready to promote"
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "Validated: ${TAG} is a pre-release, ready to promote"
 
-      - id: promote
-        name: Promote pre-release to release
+      - id: generate_changelog
+        name: Generate Release Changelog
+        shell: devenv shell --quiet bash -- -e {0}
+        env:
+          SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
+          ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
+        run: |
+          TAG="${{ steps.validate_tag.outputs.tag }}"
+          CHANGELOG=$(convco changelog "${TAG}" --max-versions 1 2>/dev/null || echo "Release ${TAG}")
+
+          {
+            echo "${CHANGELOG}"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## :globe_with_meridians: Mainnet Deployment"
+            echo ""
+            echo "| Resource | ID |"
+            echo "|----------|-----|"
+            echo "| Satellite | ${SATELLITE_ID} |"
+            echo "| Orbiter | ${ORBITER_ID} |"
+            echo ""
+            echo ":link: [Juno Console](https://console.juno.build/)"
+          } > /tmp/changelog.md
+
+          echo "Generated release changelog with mainnet deployment for ${TAG}"
+
+      - id: promote_release
+        name: Promote Pre-Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release edit "${{ steps.validate.outputs.tag }}" \
+          gh release edit "${{ steps.validate_tag.outputs.tag }}" \
             --prerelease=false \
-            --title "Release ${{ steps.validate.outputs.tag }}"
+            --title "Release ${{ steps.validate_tag.outputs.tag }}" \
+            --notes-file /tmp/changelog.md
 
-          echo "Promoted ${{ steps.validate.outputs.tag }} to release"
+          echo "Promoted ${{ steps.validate_tag.outputs.tag }} to release"
+
+  ##################################################
+  # Deploy to Mainnet (Juno)
+  # Calls cd-juno-mainnet.yaml via workflow_call
+  ##################################################
+
+  deploy-juno-mainnet:
+    name: Deploy Juno (Mainnet)
+    needs: promote
+    uses: ./.github/workflows/cd-juno-mainnet.yaml
+    with:
+      version: ${{ needs.promote.outputs.tag }}
+    secrets: inherit

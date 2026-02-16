@@ -11,7 +11,7 @@ runs:
       run: |
         bun install
 
-    - id: config_check
+    - id: verify_config
       name: Verify Config
       shell: devenv shell --quiet bash -- -e {0}
       run: |

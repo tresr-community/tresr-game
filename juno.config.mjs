@@ -8,7 +8,7 @@ const configContent = fs.readFileSync(configPath, "utf8");
 const fullConfig = yaml.parse(configContent);
 const junoConfig = fullConfig.server.juno;
 
-// Simple variable substitution for placeholders like ${VAR}
+// Variable substitution for placeholders like ${VAR}
 const substitute = (val) => {
   if (typeof val !== "string") return val;
   return val.replace(/\${(\w+)}/g, (_, name) => process.env[name] || "");

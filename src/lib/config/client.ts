@@ -45,7 +45,7 @@ export const config: ConfigTypes = {
     }
   },
   "app": {
-    "name": "Tresr Community Game",
+    "name": "TRESR Game",
     "tagline": "Collect Keys. Fight Enemies. Claim the TRESR.",
     "footer_text": "Economy powered by the Avalanche Blockchain.",
     "narration_text": {
@@ -88,33 +88,37 @@ export const config: ConfigTypes = {
     "avalanche": {
       "anvil": {
         "fee": 10,
-        "chain_id": 43113,
+        "burn_rate": 1000,
+        "chain_id": 31337,
         "rpc_url": "http://localhost:8545",
-        "tresr_token_ticker": "tTRESR",
-        "tresr_token_contract": "0x6EB523A381e725F115b7454BaA3cb199E4770970",
-        "tresr_token_treasury": "0x533d95Fa7D5CEd8f09e38aa359E406A3809Bc0e0",
+        "token_ticker": "tRON",
+        "tresr_token_contract": "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0x24AF790c2A3095FE2200E4EC466eaF83094cd08A",
+        "vault_contract": "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
+        "faucet_contract": "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       },
       "testnet": {
         "fee": 10,
+        "burn_rate": 1000,
         "chain_id": 43113,
         "rpc_url": "https://api.avax-test.network/ext/bc/C/rpc",
-        "tresr_token_ticker": "tTRESR",
+        "token_ticker": "tRON",
+        "tresr_token_contract": "0x0000000000000000000000000000000000000000",
         "oracle_address": "0x0000000000000000000000000000000000000000",
         "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
-        "tresr_token_contract": "0x6EB523A381e725F115b7454BaA3cb199E4770970",
-        "vault_contract": "0x0000000000000000000000000000000000000000"
+        "vault_contract": "0x0000000000000000000000000000000000000000",
+        "faucet_contract": "0x0000000000000000000000000000000000000000"
       },
       "mainnet": {
         "fee": 10,
+        "burn_rate": 1000,
         "chain_id": 43114,
         "rpc_url": "https://api.avax.network/ext/bc/C/rpc",
-        "tresr_token_ticker": "TRESR",
+        "token_ticker": "TRESR",
+        "tresr_token_contract": "0x9913BA363073Ca3e9eA0cD296E36B75aF9E40bef",
         "oracle_address": "0x0000000000000000000000000000000000000000",
         "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
-        "tresr_token_contract": "0x9913BA363073Ca3e9eA0cD296E36B75aF9E40bef",
         "vault_contract": "0x0000000000000000000000000000000000000000"
       }
     },
@@ -138,7 +142,6 @@ export const config: ConfigTypes = {
       "Neon Overdrive",
       "Neural Knot",
       "Riot in Sector 4",
-      "Silicon Soul",
       "Terminal Velocity",
       "VHS Violence",
       "Velvet Static"
@@ -348,6 +351,7 @@ export const config: ConfigTypes = {
     "time_limit_seconds": 300,
     "max_keys": 150,
     "guest": {
+      "enabled": true,
       "max_sessions_per_day": 24,
       "storage_key": "tresr_guest_sessions"
     },
@@ -406,10 +410,10 @@ export const config: ConfigTypes = {
       }
     },
     "walkable_area": {
-      "top_y": 600,
-      "bottom_y": 700,
-      "left_x": 0,
-      "right_x": 1280
+      "top_y_ratio": 0.833,
+      "bottom_y_ratio": 0.972,
+      "left_x_ratio": 0,
+      "right_x_ratio": 1
     },
     "entities": {
       "player": {
@@ -422,9 +426,9 @@ export const config: ConfigTypes = {
           "stun_ms": 300
         },
         "hitbox": {
-          "radius": 40,
-          "offsetX": 460,
-          "offsetY": 920
+          "radius": 20,
+          "offsetX": 236,
+          "offsetY": 472
         },
         "combat": {
           "reach": 80,
@@ -461,8 +465,8 @@ export const config: ConfigTypes = {
           "victory_flash_duration": 500
         },
         "spawn": {
-          "x": 50,
-          "y": 650
+          "x_ratio": 0.039,
+          "y_ratio": 0.903
         },
         "lives": 1,
         "respawn": {
@@ -487,9 +491,9 @@ export const config: ConfigTypes = {
           "stun_ms": 200
         },
         "hitbox": {
-          "radius": 35,
-          "offsetX": 465,
-          "offsetY": 930
+          "radius": 18,
+          "offsetX": 238,
+          "offsetY": 476
         },
         "combat": {
           "attack_range": 80,
@@ -497,49 +501,57 @@ export const config: ConfigTypes = {
           "attack_check_ms": 500
         },
         "ai": {
+          "direct": {},
+          "flanker": {
+            "speed_mult": 1.1,
+            "offset": 120,
+            "switch_time": 3,
+            "orbit_time": 2,
+            "lunge_speed_mult": 2.5,
+            "lunge_duration": 0.3,
+            "recovery_time": 0.8
+          },
           "cautious": {
             "speed_mult": 0.7,
-            "range_mult": 1.5
+            "preferred_distance": 180,
+            "group_radius": 200,
+            "pack_threshold": 2,
+            "charge_speed_mult": 1.3,
+            "strafe_speed_mult": 0.9,
+            "strafe_switch_time": 2
           },
           "erratic": {
             "speed_mult": 1.2,
-            "update_time": 0.5,
-            "jitter_x": 150,
-            "jitter_y": 100
-          },
-          "flanker": {
-            "speed_mult": 1.1,
-            "offset": 100,
-            "switch_time": 3
-          },
-          "direct": {},
-          "ranged": {
-            "speed_mult": 0.6,
-            "preferred_distance": 200,
-            "retreat_speed_mult": 1,
-            "fire_rate": 2,
-            "projectile_speed": 300,
-            "projectile_damage": 5
+            "zigzag_frequency": 3,
+            "zigzag_amplitude": 80
           },
           "swarm": {
             "speed_mult": 1,
             "group_radius": 150,
             "speed_bonus_per_ally": 0.15,
-            "max_speed_mult": 2
+            "max_speed_mult": 2,
+            "rush_threshold": 3,
+            "rush_tint": 65416
           },
-          "burrower": {
-            "speed_mult": 1.8,
-            "trigger_radius": 200,
-            "offscreen_distance": 80
+          "passive": {
+            "speed_mult": 0.5,
+            "provoked_speed_mult": 1.3,
+            "hp_mult": 1.5
+          },
+          "retardio": {
+            "speed_mult": 1.1,
+            "jitter_time": 0.3,
+            "retarget_time": 4,
+            "attack_damage": 10
           },
           "weights": {
-            "direct": 20,
+            "direct": 25,
             "flanker": 20,
             "cautious": 15,
-            "erratic": 15,
-            "ranged": 10,
-            "swarm": 10,
-            "burrower": 10
+            "swarm": 15,
+            "erratic": 10,
+            "passive": 10,
+            "retardio": 5
           }
         },
         "animations": {
@@ -547,7 +559,7 @@ export const config: ConfigTypes = {
         },
         "spawner": {
           "pool_size": 50,
-          "delay_ms": 3000,
+          "delay_ms": 2500,
           "buffer_distance": 50
         },
         "loot": {
@@ -579,9 +591,9 @@ export const config: ConfigTypes = {
           "stun_ms": 100
         },
         "hitbox": {
-          "radius": 40,
-          "offsetX": 460,
-          "offsetY": 920
+          "radius": 20,
+          "offsetX": 236,
+          "offsetY": 472
         },
         "combat": {
           "attack_range": 60,
@@ -590,7 +602,7 @@ export const config: ConfigTypes = {
         "descent": {
           "speed": 3,
           "start_y": -100,
-          "threshold": 650
+          "threshold_ratio": 0.903
         },
         "phases": {
           "enrage_threshold": 0.5,
@@ -657,16 +669,16 @@ export const config: ConfigTypes = {
           "delay_ms": 2000,
           "start_z": 500,
           "x_margin": 100,
-          "y_margin_top": 680,
-          "y_margin_bottom": 25
+          "y_margin_top_ratio": 0.833,
+          "y_margin_bottom_ratio": 0.035
         }
       },
       "bomb": {
         "damage": 50,
         "explosion_radius": 250,
         "hitbox": {
-          "width": 50,
-          "height": 50
+          "width": 25,
+          "height": 25
         },
         "effects": {
           "shake_duration": 150,
@@ -677,8 +689,8 @@ export const config: ConfigTypes = {
           "delay_ms": 5000,
           "start_z": 400,
           "x_margin": 100,
-          "y_margin_top": 680,
-          "y_margin_bottom": 25
+          "y_margin_top_ratio": 0.833,
+          "y_margin_bottom_ratio": 0.035
         }
       },
       "chest": {
@@ -714,9 +726,9 @@ export const config: ConfigTypes = {
           "stun_ms": 200
         },
         "hitbox": {
-          "radius": 25,
-          "offsetX": 377,
-          "offsetY": 705
+          "radius": 13,
+          "offsetX": 193,
+          "offsetY": 361
         },
         "combat": {
           "attack_range": 80,
@@ -789,7 +801,7 @@ export const config: ConfigTypes = {
       "frameHeight": 512
     },
     "hero": {
-      "scaleFactor": 0.3,
+      "scaleFactor": 0.586,
       "anims": [
         {
           "name": "idle",
@@ -797,8 +809,8 @@ export const config: ConfigTypes = {
           "frameRate": 6,
           "repeat": -1,
           "path": "/assets/images/sprites/hero/idle.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "walk",
@@ -806,8 +818,8 @@ export const config: ConfigTypes = {
           "frameRate": 8,
           "repeat": -1,
           "path": "/assets/images/sprites/hero/walk.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "jump",
@@ -815,8 +827,8 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/hero/jump.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "attack",
@@ -824,8 +836,8 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/hero/attack.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "hurt",
@@ -833,8 +845,8 @@ export const config: ConfigTypes = {
           "frameRate": 8,
           "repeat": 0,
           "path": "/assets/images/sprites/hero/hurt.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "super",
@@ -842,8 +854,8 @@ export const config: ConfigTypes = {
           "frameRate": 12,
           "repeat": 0,
           "path": "/assets/images/sprites/hero/super.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         }
       ]
     },
@@ -862,7 +874,7 @@ export const config: ConfigTypes = {
       ]
     },
     "boss": {
-      "scaleFactor": 0.6,
+      "scaleFactor": 1.172,
       "anims": [
         {
           "name": "idle",
@@ -870,8 +882,8 @@ export const config: ConfigTypes = {
           "frameRate": 6,
           "repeat": -1,
           "path": "/assets/images/sprites/boss/idle.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "walk",
@@ -879,8 +891,8 @@ export const config: ConfigTypes = {
           "frameRate": 8,
           "repeat": -1,
           "path": "/assets/images/sprites/boss/walk.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "jump",
@@ -888,8 +900,8 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/jump.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "attack",
@@ -897,8 +909,8 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/attack.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "hurt",
@@ -906,13 +918,13 @@ export const config: ConfigTypes = {
           "frameRate": 8,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/hurt.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         }
       ]
     },
     "enemies": {
-      "scaleFactor": 0.3,
+      "scaleFactor": 0.586,
       "count": 5,
       "anims": [
         {
@@ -920,50 +932,50 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 6,
           "repeat": -1,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/idle.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "path": "/assets/images/sprites/boss/idle.webp",
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "walk",
           "frames": 6,
           "frameRate": 8,
           "repeat": -1,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/walk.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "path": "/assets/images/sprites/boss/walk.webp",
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "jump",
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/jump.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "path": "/assets/images/sprites/boss/jump.webp",
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "attack",
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/attack.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "path": "/assets/images/sprites/boss/attack.webp",
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "hurt",
           "frames": 4,
           "frameRate": 8,
           "repeat": 0,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}_boss/hurt.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "path": "/assets/images/sprites/boss/hurt.webp",
+          "frameWidth": 512,
+          "frameHeight": 512
         }
       ]
     },
     "tresr_bot": {
-      "scaleFactor": 0.3,
+      "scaleFactor": 0.586,
       "anims": [
         {
           "name": "idle",
@@ -971,8 +983,8 @@ export const config: ConfigTypes = {
           "frameRate": 6,
           "repeat": -1,
           "path": "/assets/images/sprites/tresr_bot/idle.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "walk",
@@ -980,8 +992,8 @@ export const config: ConfigTypes = {
           "frameRate": 8,
           "repeat": -1,
           "path": "/assets/images/sprites/tresr_bot/walk.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "attack",
@@ -989,8 +1001,8 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/tresr_bot/attack.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         },
         {
           "name": "special",
@@ -998,14 +1010,14 @@ export const config: ConfigTypes = {
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/tresr_bot/special.webp",
-          "frameWidth": 1000,
-          "frameHeight": 1000
+          "frameWidth": 512,
+          "frameHeight": 512
         }
       ]
     },
     "items": {
       "key": {
-        "scaleFactor": 0.1,
+        "scaleFactor": 0.2,
         "anims": [
           {
             "name": "idle",
@@ -1013,13 +1025,13 @@ export const config: ConfigTypes = {
             "frameRate": 4,
             "repeat": -1,
             "path": "/assets/images/sprites/key/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 1024
+            "frameWidth": 256,
+            "frameHeight": 512
           }
         ]
       },
       "bomb": {
-        "scaleFactor": 0.1,
+        "scaleFactor": 0.2,
         "anims": [
           {
             "name": "idle",
@@ -1027,13 +1039,13 @@ export const config: ConfigTypes = {
             "frameRate": 10,
             "repeat": -1,
             "path": "/assets/images/sprites/bomb/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 1024
+            "frameWidth": 256,
+            "frameHeight": 512
           }
         ]
       },
       "loader": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1041,8 +1053,8 @@ export const config: ConfigTypes = {
             "frameRate": 8,
             "repeat": -1,
             "path": "/assets/images/sprites/loader/idle.webp",
-            "frameWidth": 1024,
-            "frameHeight": 1024
+            "frameWidth": 512,
+            "frameHeight": 512
           }
         ]
       },
@@ -1237,7 +1249,7 @@ export const config: ConfigTypes = {
     ]
   },
   "credits": {
-    "description": "This project stands on the shoulders of giants, without whom, none of it would be possible.\n\nA special thank you to the following individuals;\n",
+    "description": "Look here degen, this is just a fun, unofficial game whipped up for the TRESR community.\n\nIt's kind of like fanfic but with crypto twists and pixels.\n\nNo official ties to the TRESR project (you know, the ones slinging those killer t-shirts over at tresr.com).\n\nBugs might creep in, or things could glitch out.\n\nBut that's all on me – the TRESR folks aren't to blame; they're the pros laying the groundwork we all love.\n\nThis was put together with a ton of love ❤️, some wild ideas, and mad respect for the TRESR community.\n\nDisclaimer out of the way, let's hit the credits!\n\nThis whole thing's built on the work of some absolute legends; without 'em, we'd be nowhere in this crypto playground.\n\nBig ups to these folks;\n",
     "coders": [
       {
         "name": "MAHDTech",
@@ -1252,7 +1264,7 @@ export const config: ConfigTypes = {
       {
         "name": "Remminator",
         "role": "Consumer of Snacks",
-        "description": "MAHDTech's youngest son and master of eating snacks."
+        "description": "MAHDTech's youngest son and master of eating snacks while testing."
       }
     ],
     "components": [
@@ -1306,12 +1318,30 @@ export const config: ConfigTypes = {
   "changelog": {
     "versions": [
       {
+        "version": "0.3.0",
+        "date": "2026-02-15",
+        "title": "Decaying High Score & Consolation Prize",
+        "notes": [
+          "Active score leaderboard with 24h TTL decay — your high score rugs itself",
+          "Consolation prize for expired #1 active score — a participation trophy for degens",
+          "Two-tab leaderboard UI (ACTIVE + ALL TIME) — so you can cope in two dimensions",
+          "Game session tracking on victory and defeat — receipts for your bags and your L's",
+          "Countdown timers on active leaderboard entries — watch your clout evaporate in real time",
+          "5 new enemy AI types — the bankers brought reinforcements from TradFi",
+          "Mobile support so you can beat-up bankers from the toilet",
+          "PWA Mobile support for that poor-man native app feel",
+          "Portrait mode blocked — forced landscape, no vertical charts allowed",
+          "Screen wake lock — your phone won't paper-hand and go to sleep mid-boss",
+          "CI pipeline caching — builds go brrr 🚀"
+        ]
+      },
+      {
         "version": "0.2.0",
         "date": "2026-02-14",
         "title": "Leaderboard",
         "notes": [
-          "Add Leaderboard",
-          "Add CI Pipelines"
+          "Leaderboard — finally some on-chain clout to flex",
+          "CI Pipelines — because yolo-pushing to main was getting old (it wasn't)"
         ]
       },
       {
@@ -1326,7 +1356,7 @@ export const config: ConfigTypes = {
           "Boss encounters with ground pound and charge attacks",
           "Key and loot drop system",
           "Bear Market of endless retardio bankers",
-          "Avalanche blockchain integration for deposits and claims",
+          "Avalanche blockchain integration for fees and claims",
           "Guest and authenticated play modes",
           "AI generated Art, SFX and Music",
           "Mobile touch controls and Game Pad support",
@@ -1336,5 +1366,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "e2ef21b109e33c423497c0ccec4d1abe54b32a7a36f6571a9b5bf038778ed497"
+  "configHash": "df6727eab4d7101d2fd49510a0d389684b8501e60ea6fbe2471148325df553cd"
 };

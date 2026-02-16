@@ -24,7 +24,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 /**
  * @title TresrVault
  * @dev Holds the $TRESR liquidity pool (UUPS upgradeable).
- *      - Users deposit to play (with a burn fee).
+ *      - Users pay a fee to play (with a burn portion).
  *      - Users claim rewards with a signature from the IC canister oracle.
  *
  * @custom:oz-upgrades-from TresrVault
@@ -46,12 +46,12 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
     uint256 public claimCooldown; // seconds
 
     // State
-    mapping(bytes32 => bool) public depositedSessions; // sessionId -> deposited
+    mapping(bytes32 => bool) public paidSessions; // sessionId -> fee paid
     mapping(bytes32 => bool) public claimedSessions; // sessionId -> claimed
     mapping(address => uint256) public lastClaimTime; // user -> last claim timestamp
 
     // Events
-    event Deposit(bytes32 indexed sessionId, address indexed user, uint256 amount, uint256 burned, uint256 poolAmount);
+    event FeePaid(bytes32 indexed sessionId, address indexed user, uint256 amount, uint256 burned, uint256 poolAmount);
     event Claim(bytes32 indexed sessionId, address indexed user, uint256 amount);
     event BurnRateUpdated(uint256 newRate);
     event ClaimCooldownUpdated(uint256 newCooldown);
@@ -66,7 +66,7 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
      * @param tokenAddr The ERC-20 token address ($TRESR).
      * @param admin The admin address (Gnosis Safe or EOA).
      * @param oracle The oracle address (IC canister's Ethereum address).
-     * @param burnAddr The burn address for deposit fees.
+     * @param burnAddr The burn address for entry fees.
      */
     function initialize(address tokenAddr, address admin, address oracle, address burnAddr) public initializer {
         require(tokenAddr != address(0), "Token cannot be zero");
@@ -79,7 +79,7 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
 
         token = IERC20(tokenAddr);
         burnAddress = burnAddr;
-        burnRate = 1000; // 10.00%
+        burnRate = 1000; // 10.00% — keep in sync with config/tresr.yaml burn_rate
         claimCooldown = 3600; // 1 hour
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -90,12 +90,12 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
     // --- Core ---
 
     /**
-     * @notice Deposit funds to start a game session.
-     * @param amount The amount of tokens to deposit.
+     * @notice Pay the entry fee to start a game session.
+     * @param amount The amount of tokens for the fee.
      * @param sessionId The unique session ID (hash from frontend).
      */
-    function deposit(uint256 amount, bytes32 sessionId) external nonReentrant {
-        require(!depositedSessions[sessionId], "Session already deposited");
+    function payFee(uint256 amount, bytes32 sessionId) external nonReentrant {
+        require(!paidSessions[sessionId], "Fee already paid");
         require(amount > 0, "Amount must be > 0");
 
         // Transfer from user
@@ -109,9 +109,9 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
             token.safeTransfer(burnAddress, burnAmount);
         }
 
-        depositedSessions[sessionId] = true;
+        paidSessions[sessionId] = true;
 
-        emit Deposit(sessionId, msg.sender, amount, burnAmount, poolAmount);
+        emit FeePaid(sessionId, msg.sender, amount, burnAmount, poolAmount);
     }
 
     /**

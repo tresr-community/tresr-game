@@ -48,7 +48,7 @@ function cmd_astro_build() {
 	log_info "🚀 Clean Astro build..."
 	rm -rf dist node_modules/.vite .astro # Vite/Astro caches
 	bun install
-	bun run prebuild # version-bump + client-config (non-CI)
+	bun run prebuild # client-config (non-CI)
 	bun run build    # astro build → NEW dist/_astro/sw-[HASH].js!
 	log_success "✅ Build done. NEW SW: $(find dist/_astro -name 'sw*' -print -quit 2>/dev/null || echo 'None')"
 }
@@ -59,7 +59,13 @@ function cmd_astro_build() {
 
 function cmd_functions_build() {
 	log_info "🔧 Building Juno serverless functions..."
-	juno functions build || {
+
+	# Regenerate Cargo.lock so it matches current Cargo.toml (version bumps etc.)
+	# Juno CLI builds with --locked, so the lockfile must be up-to-date.
+	cargo generate-lockfile 2>/dev/null || log_warn "cargo generate-lockfile failed (continuing)"
+
+	# Set network so build.rs bakes the correct contract addresses from tresr.yaml
+	SATELLITE_NETWORK="${SATELLITE_NETWORK:-anvil}" juno functions build || {
 		log_error "Functions build failed!"
 		return 1
 	}
@@ -67,17 +73,22 @@ function cmd_functions_build() {
 }
 
 # =============================================================================
-# Deploy: Juno Serverless Functions (Publish to CDN)
+# Deploy: Build + Upgrade Juno Serverless Functions (Direct Deploy)
 # =============================================================================
 
 function cmd_functions_deploy() {
 	local mode="${1:-development}"
-	log_info "📤 Publishing Juno serverless functions (mode=$mode)..."
-	juno functions publish --mode "$mode" || {
-		log_error "Functions publish failed!"
+
+	# Build Rust → WASM (version stays at 0.0.0 locally; CI sets real version via convco)
+	cmd_functions_build || return 1
+
+	# Upgrade (direct deploy, skips CDN — use 'publish' for CI/CD)
+	log_info "📤 Upgrading Juno serverless functions (mode=$mode)..."
+	juno functions upgrade --mode "$mode" || {
+		log_error "Functions upgrade failed!"
 		return 1
 	}
-	log_success "✅ Functions published (mode=$mode)."
+	log_success "✅ Functions upgraded (mode=$mode)."
 }
 
 # =============================================================================
