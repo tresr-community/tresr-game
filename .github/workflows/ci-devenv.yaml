@@ -1,24 +1,27 @@
 ---
 ##################################################
 # Name: ci-devenv.yaml
-# Description: Workflow for Developer Environment Testing
+# Description: Validate developer environment builds and tests correctly
 ##################################################
 
 name: Devenv CI
 
-# prettier-ignore
-on:  # yamllint disable-line rule:truthy
+on:
   pull_request:
     branches:
-      - "main"
-      - "master"
-      - "trunk"
+      - main
+      - master
+      - trunk
     paths:
       - .github/workflows/ci-devenv.yaml
       - devenv.nix
       - devenv.yaml
       - devenv.lock
       - src/**
+
+  merge_group:
+    branches:
+      - trunk
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -31,15 +34,7 @@ permissions:
   statuses: write
 
 env:
-  # GitHub
-  PROJECT: ${{ github.repository }}
-  BRANCH_NAME_CURRENT: ${{ github.head_ref || github.ref_name }}
-  BRANCH_NAME_DEFAULT: ${{ github.event.repository.default_branch }}
-
-  # Nix
   NIXPKGS_ALLOW_UNFREE: 1
-
-  # SecretSpec
   SECRETSPEC_PROVIDER: env
 
 defaults:
@@ -50,44 +45,48 @@ jobs:
   test:
     name: Test
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     timeout-minutes: 60
     continue-on-error: false
 
     environment: Testnet
 
-    strategy:
-      fail-fast: true
-      matrix:
-        os:
-          - ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-devenv
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       - id: install_deps
-        name: Install dependencies
+        name: Install Dependencies
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           bun install
 
       - id: devenv_test
-        name: Devenv test
+        name: Run Devenv Test
         run: |
           devenv test
 
-      - if: always()
+      - id: report_status
+        name: Report Status
+        if: always()
         uses: ./.github/actions/report-status
         with:
           result: ${{ steps.devenv_test.outcome }}
-          success-description: "Devenv test passed!"
-          failure-description: "Devenv test failed!"
+          success-message: "Devenv test passed!"
+          failure-message: "Devenv test failed!"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           workflow-name: ${{ github.workflow }}
           repository: ${{ github.repository }}

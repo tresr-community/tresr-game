@@ -28,7 +28,9 @@ const instructions: ConfigTypes["app"]["instructions"] = processor
       <h2 class="text-primary text-2xl font-black tracking-widest">
         HOW TO PLAY
       </h2>
-      <button id="btn-close-how-to-play" class="btn btn-sm btn-circle btn-ghost"
+      <button
+        id="btn-close-how-to-play"
+        class="btn btn-circle btn-ghost min-h-[44px] min-w-[44px] text-lg"
         >✕</button
       >
     </div>
@@ -47,7 +49,8 @@ const instructions: ConfigTypes["app"]["instructions"] = processor
 <script>
   import PWA from "@/lib/pwa";
   import {getAuthState} from "@/lib/auth";
-  import {getUserProfile, saveUserProfile} from "@/lib/user";
+  import {enqueueProfileWrite} from "@/lib/user";
+  import {trackModalOpen} from "@/lib/metrics/analytics";
 
   const modal = document.getElementById(
     "how-to-play-modal"
@@ -55,17 +58,17 @@ const instructions: ConfigTypes["app"]["instructions"] = processor
 
   async function openHowToPlayModal() {
     modal?.showModal();
+    trackModalOpen("how_to_play");
     PWA.getInstance().checkForUpdates();
 
     // Mark instructions as read
     try {
       const auth = getAuthState();
       if (auth.isAuthenticated && !auth.isGuest && auth.user) {
-        const doc = await getUserProfile(auth.user.key);
-        if (doc && !doc.data.preferences.has_read_instructions) {
-          doc.data.preferences.has_read_instructions = true;
-          await saveUserProfile(auth.user.key, doc.data, doc.version);
-        }
+        await enqueueProfileWrite(auth.user.key, (profile) => ({
+          ...profile,
+          preferences: {...profile.preferences, has_read_instructions: true},
+        }));
       }
     } catch {
       // Non-critical — modal still works if profile update fails

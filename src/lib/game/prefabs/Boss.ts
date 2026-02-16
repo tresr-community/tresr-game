@@ -48,10 +48,12 @@ export class Boss extends BaseEntity {
     const preConfig = scene.registry.get("full_config");
     const bossConfig = preConfig.gameplay.entities.boss;
     const startY = bossConfig.descent.start_y;
-    super(scene, x, startY, "boss"); // Start above screen
+    super(scene, x, startY, "boss_idle"); // Start above screen
     this.rng = rng;
     this.groundY = startY; // Initialize groundY for 2.5D
-    this.descendThreshold = bossConfig.descent.threshold;
+    this.descendThreshold = Math.round(
+      bossConfig.descent.threshold_ratio * scene.cameras.main.height
+    );
 
     // Use cached config from BaseEntity - NO hardcoding
     this.hp = bossConfig.health;

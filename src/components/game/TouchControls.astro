@@ -10,15 +10,15 @@
   <!-- Virtual Joystick (left side) -->
   <div
     id="joystick-zone"
-    class="pointer-events-auto absolute bottom-8 left-8 touch-none"
+    class="pointer-events-auto absolute bottom-4 left-4 touch-none sm:bottom-8 sm:left-8"
   >
     <div
       id="joystick-base"
-      class="border-primary/30 bg-base-300/40 relative flex h-32 w-32 items-center justify-center rounded-full border backdrop-blur-sm"
+      class="border-primary/30 bg-base-300/40 relative flex h-24 w-24 items-center justify-center rounded-full border backdrop-blur-sm sm:h-32 sm:w-32"
     >
       <div
         id="joystick-thumb"
-        class="bg-primary/60 border-primary/80 absolute h-12 w-12 rounded-full border-2 shadow-lg"
+        class="bg-primary/60 border-primary/80 absolute h-9 w-9 rounded-full border-2 shadow-lg sm:h-12 sm:w-12"
       >
       </div>
     </div>
@@ -26,12 +26,12 @@
 
   <!-- Action Buttons (right side) -->
   <div
-    class="pointer-events-auto absolute right-8 bottom-8 flex touch-none flex-col items-center gap-3"
+    class="pointer-events-auto absolute right-2 bottom-2 flex touch-none flex-col items-center gap-2 sm:right-8 sm:bottom-8 sm:gap-3"
   >
     <!-- Jump button (top) -->
     <button
       id="btn-touch-jump"
-      class="btn btn-circle bg-info/40 border-info/60 h-14 w-14 border text-xs font-bold text-white backdrop-blur-sm active:scale-90"
+      class="btn btn-circle bg-info/40 border-info/60 h-11 w-11 border text-xs font-bold text-white backdrop-blur-sm active:scale-90 sm:h-14 sm:w-14"
       aria-label="Jump"
     >
       <svg
@@ -54,7 +54,7 @@
       <!-- Super button (left of attack) -->
       <button
         id="btn-touch-super"
-        class="btn btn-circle bg-warning/40 border-warning/60 h-16 w-16 border text-xs font-bold text-white opacity-50 backdrop-blur-sm active:scale-90"
+        class="btn btn-circle bg-warning/40 border-warning/60 h-12 w-12 border text-xs font-bold text-white opacity-50 backdrop-blur-sm active:scale-90 sm:h-16 sm:w-16"
         aria-label="Super attack"
       >
         <svg
@@ -73,7 +73,7 @@
       <!-- Attack button (main) -->
       <button
         id="btn-touch-attack"
-        class="btn btn-circle bg-error/50 border-error/70 h-16 w-16 border text-xs font-bold text-white backdrop-blur-sm active:scale-90"
+        class="btn btn-circle bg-error/50 border-error/70 h-12 w-12 border text-xs font-bold text-white backdrop-blur-sm active:scale-90 sm:h-16 sm:w-16"
         aria-label="Attack"
       >
         <svg
@@ -109,9 +109,10 @@
   const btnSuper = document.getElementById("btn-touch-super");
   const btnJump = document.getElementById("btn-touch-jump");
 
-  // Detect touch device
-  const isTouchDevice =
-    "ontouchstart" in window || navigator.maxTouchPoints > 0;
+  // Detect touch-primary device (phones/tablets, not desktop with mouse).
+  // `pointer: coarse` matches devices whose primary input is imprecise (finger),
+  // avoiding false positives on desktops where Chrome reports maxTouchPoints > 0.
+  const isTouchDevice = window.matchMedia("(pointer: coarse)").matches;
 
   if (isTouchDevice && container) {
     container.classList.remove("hidden");

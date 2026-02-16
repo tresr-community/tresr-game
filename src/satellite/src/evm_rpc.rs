@@ -21,20 +21,20 @@ const ECDSA_KEY_NAME: &str = crate::config::ECDSA_KEY_NAME;
 const DEFAULT_GAS_LIMIT: u64 = 21000;
 const DEFAULT_GAS_PRICE: u64 = 25_000_000_000; // 25 Gwei
 
-// Vault.deposit(uint256,bytes32) function selector
-const DEPOSIT_SELECTOR: &str = "47e7ef24";
+// Vault.payFee(uint256,bytes32) function selector
+const PAY_FEE_SELECTOR: &str = "c6bbdafb";
 // Vault.claim(bytes32,uint256,uint256,bytes) function selector
 const CLAIM_SELECTOR: &str = "95ace4b3";
 // ERC-20 transfer(address,uint256) function selector
 const TRANSFER_SELECTOR: [u8; 4] = [0xa9, 0x05, 0x9c, 0xbb];
 
-/// Verify a deposit transaction on Avalanche.
-/// Returns the parsed deposit data including amount and sender address.
-pub async fn verify_avalanche_deposit(tx_hash: &str) -> Result<ParsedDeposit, String> {
+/// Verify a fee transaction on Avalanche.
+/// Returns the parsed fee data including amount and sender address.
+pub async fn verify_avalanche_fee(tx_hash: &str) -> Result<ParsedFee, String> {
     // Anvil mock: skip real RPC verification in local dev
     if crate::config::NETWORK_NAME == "anvil" {
-        ic_cdk::print(format!("ANVIL_MOCK: verify_avalanche_deposit for {}", tx_hash));
-        return Ok(ParsedDeposit {
+        ic_cdk::print(format!("ANVIL_MOCK: verify_avalanche_fee for {}", tx_hash));
+        return Ok(ParsedFee {
             amount: 10,
             from: "0x0000000000000000000000000000000000000000".to_string(),
         });
@@ -62,7 +62,7 @@ pub async fn verify_avalanche_deposit(tx_hash: &str) -> Result<ParsedDeposit, St
     if let Some(result_str) = response.result {
         let result_json: serde_json::Value = serde_json::from_str(&result_str)
             .map_err(|e| format!("Failed to parse JSON result: {}", e))?;
-        let parsed = parse_deposit_input(&result_json)?;
+        let parsed = parse_fee_input(&result_json)?;
 
         // Verify the transaction actually succeeded on-chain
         verify_transaction_receipt(tx_hash).await?;
@@ -247,16 +247,16 @@ fn parse_claim_input(tx_data: &serde_json::Value) -> Result<ParsedClaim, String>
     })
 }
 
-/// Parsed deposit transaction data returned by `parse_deposit_input`.
-pub struct ParsedDeposit {
+/// Parsed fee transaction data returned by `parse_fee_input`.
+pub struct ParsedFee {
     pub amount: u64,
     pub from: String,
 }
 
-/// Parse a Vault.deposit(uint256,bytes32) transaction's input data.
+/// Parse a Vault.payFee(uint256,bytes32) transaction's input data.
 /// Verifies the tx targets the Vault contract, checks the function selector,
 /// decodes the ABI-encoded amount parameter, and extracts the sender address.
-fn parse_deposit_input(tx_data: &serde_json::Value) -> Result<ParsedDeposit, String> {
+fn parse_fee_input(tx_data: &serde_json::Value) -> Result<ParsedFee, String> {
     // 0. Extract tx.from (sender address) for caller validation
     let from_address = tx_data
         .get("from")
@@ -272,7 +272,7 @@ fn parse_deposit_input(tx_data: &serde_json::Value) -> Result<ParsedDeposit, Str
 
     if !to_address.eq_ignore_ascii_case(crate::config::VAULT_CONTRACT_ADDRESS) {
         return Err(format!(
-            "Deposit tx 'to' {} does not match vault {}",
+            "Fee tx 'to' {} does not match vault {}",
             to_address, crate::config::VAULT_CONTRACT_ADDRESS
         ));
     }
@@ -288,24 +288,24 @@ fn parse_deposit_input(tx_data: &serde_json::Value) -> Result<ParsedDeposit, Str
     // Minimum length: 4-byte selector + 32-byte amount + 32-byte sessionId = 68 bytes = 136 hex chars
     if input_clean.len() < 136 {
         return Err(format!(
-            "Input data too short for deposit call: {} chars",
+            "Input data too short for fee call: {} chars",
             input_clean.len()
         ));
     }
 
-    // 3. Verify function selector: deposit(uint256,bytes32) = 0x47e7ef24
+    // 3. Verify function selector: payFee(uint256,bytes32) = 0xc6bbdafb
     let selector = &input_clean[0..8];
-    if selector != DEPOSIT_SELECTOR {
+    if selector != PAY_FEE_SELECTOR {
         return Err(format!(
-            "Wrong function selector: expected {} (deposit), got {}",
-            DEPOSIT_SELECTOR, selector
+            "Wrong function selector: expected {} (payFee), got {}",
+            PAY_FEE_SELECTOR, selector
         ));
     }
 
     // 4. Decode amount from bytes 4..36 (first ABI parameter, uint256)
     let amount_hex = &input_clean[8..72]; // 64 hex chars = 32 bytes
     let wei_amount = BigUint::parse_bytes(amount_hex.as_bytes(), 16)
-        .ok_or_else(|| format!("Failed to parse deposit amount: {}", amount_hex))?;
+        .ok_or_else(|| format!("Failed to parse fee amount: {}", amount_hex))?;
 
     // 5. Convert from wei to tokens (1 token = 10^18 wei)
     let one_token = BigUint::from(10u64).pow(18);
@@ -313,9 +313,9 @@ fn parse_deposit_input(tx_data: &serde_json::Value) -> Result<ParsedDeposit, Str
 
     let amount = tokens
         .to_u64()
-        .ok_or_else(|| format!("Deposit amount too large for u64: {} wei", wei_amount))?;
+        .ok_or_else(|| format!("Fee amount too large for u64: {} wei", wei_amount))?;
 
-    Ok(ParsedDeposit {
+    Ok(ParsedFee {
         amount,
         from: from_address,
     })

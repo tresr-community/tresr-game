@@ -6,7 +6,8 @@
 
 import {loadConfigAsync} from "../config";
 import {log} from "../utils/log";
-import {getPublicClient, getEnvironmentKey} from "./avalanche";
+import {getEnvironmentKey} from "./avalanche";
+import {getReadClient} from "./tx";
 import {ERC20Abi} from "./VaultAbi";
 
 const COMPONENT_NAME = "Balance";
@@ -81,7 +82,7 @@ export async function getTokenBalance(
 
   // Fetch fresh balance
   try {
-    const publicClient = await getPublicClient();
+    const publicClient = getReadClient();
     const balance = await publicClient.readContract({
       address: tokenAddress as `0x${string}`,
       abi: ERC20Abi,

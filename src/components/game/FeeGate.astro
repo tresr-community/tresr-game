@@ -3,41 +3,46 @@
 ---
 
 <dialog id="modal-fee-gate" class="modal modal-middle">
-  <div class="modal-box border-primary/30 bg-base-300 border text-center">
+  <div
+    class="modal-box border-primary/30 bg-base-300 max-h-[90vh] overflow-y-auto border p-4 text-center sm:p-6"
+  >
     <h3
-      class="text-primary font-display text-3xl font-black tracking-widest uppercase"
+      class="text-primary font-display text-xl font-black tracking-widest uppercase sm:text-3xl"
     >
       Entry Fee Required
     </h3>
-    <p class="py-4 opacity-70">
-      Pay the entry fee to start your mission. Your deposit enters the vault as
+    <p class="py-2 text-sm opacity-70 sm:py-4 sm:text-base">
+      Pay the entry fee to start your mission. Your fee enters the vault as
       potential loot.
     </p>
 
-    <div class="stats stats-vertical bg-base-200/50 my-4 w-full shadow">
+    <div class="stats stats-vertical bg-base-200/50 my-2 w-full shadow sm:my-4">
       <div class="stat">
         <div class="stat-title text-xs uppercase">Fee Amount</div>
-        <div id="fee-amount-display" class="stat-value text-warning font-mono">
+        <div
+          id="fee-amount-display"
+          class="stat-value text-warning font-mono text-lg sm:text-2xl"
+        >
           10 $tTRESR
         </div>
       </div>
     </div>
 
     <!-- Transaction progress steps (hidden until payment starts) -->
-    <div id="fee-progress" class="my-4 hidden">
-      <ul class="steps steps-vertical w-full text-left text-sm">
+    <div id="fee-progress" class="my-2 hidden sm:my-4">
+      <ul class="steps steps-vertical w-full text-left text-xs sm:text-sm">
         <li id="step-wallet" class="step">Connect wallet</li>
         <li id="step-balance" class="step">Check balance</li>
         <li id="step-approve" class="step">Approve token spend</li>
-        <li id="step-deposit" class="step">Deposit to vault</li>
+        <li id="step-fee" class="step">Pay fee to vault</li>
         <li id="step-confirm" class="step">Confirm on-chain</li>
       </ul>
     </div>
 
     <!-- Status messages -->
-    <div id="fee-status" class="my-2 hidden text-sm"></div>
+    <div id="fee-status" class="my-1 hidden text-xs sm:my-2 sm:text-sm"></div>
 
-    <div class="modal-action flex-col gap-2">
+    <div class="modal-action flex-col gap-1 sm:gap-2">
       <button id="btn-pay-fee" class="btn btn-primary btn-block gap-2">
         <span id="pay-spinner" class="loading loading-spinner loading-sm hidden"
         ></span>
@@ -54,7 +59,8 @@
   import {config} from "@/lib/config/client";
   import {getEnvironmentKey} from "@/lib/wallet/avalanche";
   import {connectWallet, isConnected} from "@/lib/wallet/connection";
-  import {depositForGame, getPublicClient} from "@/lib/wallet/avalanche";
+  import {payFeeForGame} from "@/lib/wallet/avalanche";
+  import {confirmReceipt} from "@/lib/wallet/tx";
   import {getTresrBalance, formatBalance} from "@/lib/wallet/balance";
   import {parseBalance} from "@/lib/wallet/balance";
   import {
@@ -63,6 +69,7 @@
     rejectFeeGate,
   } from "@/lib/game/fee-gate";
   import {log} from "@/lib/utils/log";
+  import {trackFeePaid, trackError} from "@/lib/metrics/analytics";
 
   const COMPONENT_NAME = "FeeGate";
 
@@ -80,7 +87,7 @@
   const env = getEnvironmentKey();
   const chainConfig = config.blockchain.avalanche[env];
   const feeAmount = chainConfig.fee;
-  const ticker = chainConfig.tresr_token_ticker;
+  const ticker = chainConfig.token_ticker;
 
   // Display fee amount
   feeAmountDisplay.textContent = `${feeAmount} $${ticker}`;
@@ -117,7 +124,7 @@
     wallet: document.getElementById("step-wallet")!,
     balance: document.getElementById("step-balance")!,
     approve: document.getElementById("step-approve")!,
-    deposit: document.getElementById("step-deposit")!,
+    fee: document.getElementById("step-fee")!,
     confirm: document.getElementById("step-confirm")!,
   };
 
@@ -211,39 +218,27 @@
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("")}`;
 
-      // Step 3 & 4: Approve + Deposit (depositForGame does both)
+      // Step 3 & 4: Approve + Pay Fee (payFeeForGame does both)
       markStep("approve", "active");
       showStatus("Approve the token spend in your wallet...");
 
-      // depositForGame calls approve() then deposit() — both prompt the wallet.
+      // payFeeForGame calls approve() then payFee() — both prompt the wallet.
       // We can't hook into the middle, so we mark approve as active,
-      // then update to deposit after a short delay (approve is fast on local).
-      const txHash = await depositForGame(sessionId, feeWei);
+      // then update to fee after a short delay (approve is fast on local).
+      const txHash = await payFeeForGame(sessionId, feeWei);
       markStep("approve", "done");
-      markStep("deposit", "done");
+      markStep("fee", "done");
 
       // Step 5: Wait for on-chain confirmation (ticket #198)
       markStep("confirm", "active");
       showStatus("Confirming transaction on-chain...");
-      const publicClient = await getPublicClient();
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-      });
-      if (receipt.status !== "success") {
-        markStep("confirm", "error");
-        showStatus("Transaction reverted on-chain. Try again.", true);
-        paymentInProgress = false;
-        btnPay.disabled = false;
-        paySpinner.classList.add("hidden");
-        payLabel.textContent = "Pay & Start Mission";
-        btnAbort.classList.remove("hidden");
-        return;
-      }
+      await confirmReceipt(txHash, {component: "FeeGate"});
       markStep("confirm", "done");
 
       // Store session info in the fee-gate module (async — generates HMAC signature)
       await markFeePaid(txHash, sessionId);
 
+      trackFeePaid(txHash);
       log.info(COMPONENT_NAME, `Fee paid: ${txHash}, session: ${sessionId}`);
       showStatus("Payment confirmed! Starting mission...");
 
@@ -255,6 +250,7 @@
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       log.error(COMPONENT_NAME, "Fee payment failed:", error);
+      trackError("fee_paid", message);
 
       // Ensure modal is visible for error display
       if (!modal.open) modal.showModal();

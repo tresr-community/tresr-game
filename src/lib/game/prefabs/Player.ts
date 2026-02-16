@@ -36,7 +36,7 @@ export class Player extends BaseEntity {
   private isDying: boolean = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, "hero");
+    super(scene, x, y, "hero_idle");
 
     // Use cached config from BaseEntity (set by Preloader in registry) - NO hardcoding
     const gp = this.config.gameplay;
@@ -315,8 +315,9 @@ export class Player extends BaseEntity {
    */
   public respawn() {
     const playerConfig = this.config.gameplay.entities.player;
-    const spawnX = playerConfig.spawn.x;
-    const spawnY = playerConfig.spawn.y;
+    const {width, height} = this.scene.cameras.main;
+    const spawnX = Math.round(playerConfig.spawn.x_ratio * width);
+    const spawnY = Math.round(playerConfig.spawn.y_ratio * height);
     const respawnConfig = playerConfig.respawn;
 
     // Reset death guard and HP

@@ -1,8 +1,22 @@
 ---
 description: |
-  This project stands on the shoulders of giants, without whom, none of it would be possible.
+  Look here degen, this is just a fun, unofficial game whipped up for the TRESR community.
 
-  A special thank you to the following individuals;
+  It's kind of like fanfic but with crypto twists and pixels.
+
+  No official ties to the TRESR project (you know, the ones slinging those killer t-shirts over at tresr.com).
+
+  Bugs might creep in, or things could glitch out.
+
+  But that's all on me – the TRESR folks aren't to blame; they're the pros laying the groundwork we all love.
+
+  This was put together with a ton of love ❤️, some wild ideas, and mad respect for the TRESR community.
+
+  Disclaimer out of the way, let's hit the credits!
+
+  This whole thing's built on the work of some absolute legends; without 'em, we'd be nowhere in this crypto playground.
+
+  Big ups to these folks;
 coders:
   - name: MAHDTech
     role: Degenerate Programmer
@@ -12,7 +26,7 @@ coders:
     description: MAHDTech's eldest son, giver of opinions and selector of AI Art/Music.
   - name: Remminator
     role: Consumer of Snacks
-    description: MAHDTech's youngest son and master of eating snacks.
+    description: MAHDTech's youngest son and master of eating snacks while testing.
 components:
   - name: Astro
   - name: Avalanche Network

@@ -3,7 +3,7 @@
   "short_name": "Tresr",
   "description": "Collect Keys. Fight Enemies. Claim the TRESR.",
   "start_url": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#0d0a14",
   "theme_color": "#8a2be2",
   "icons": [

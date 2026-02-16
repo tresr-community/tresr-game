@@ -14,12 +14,12 @@ inputs:
 outputs:
   version:
     description: "The resolved version string."
-    value: ${{ steps.resolve.outputs.version }}
+    value: ${{ steps.resolve_version.outputs.version }}
 
 runs:
   using: composite
   steps:
-    - id: resolve
+    - id: resolve_version
       name: Resolve Version
       shell: devenv shell --quiet bash -- -e {0}
       run: |
@@ -52,4 +52,4 @@ runs:
       name: Set Version
       shell: devenv shell --quiet bash -- -e {0}
       run: |
-        bun run version-set ${{ steps.resolve.outputs.version }}
+        bun run version-set ${{ steps.resolve_version.outputs.version }}

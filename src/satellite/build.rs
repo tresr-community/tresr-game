@@ -19,12 +19,21 @@ struct Config {
 #[derive(Deserialize)]
 struct Server {
     anti_cheat: AntiCheat,
+    highscore: Highscore,
 }
 
 #[derive(Deserialize)]
 struct AntiCheat {
     ban_durations_hours: Vec<u64>,
     permanent_after_offence: u64,
+}
+
+#[derive(Deserialize)]
+struct Highscore {
+    score_ttl_hours: u64,
+    consolation_prize_percent: u64,
+    consolation_prize_max: u64,
+    consolation_prize_min_games: u64,
 }
 
 #[derive(Deserialize)]
@@ -53,9 +62,12 @@ struct AvalancheNetworks {
 
 #[derive(Deserialize)]
 struct AvalancheNetwork {
+    fee: u64,
+    burn_rate: u64,
     chain_id: u64,
     vault_contract: String,
     tresr_token_contract: String,
+    token_ticker: String,
 }
 
 #[derive(Deserialize)]
@@ -132,11 +144,32 @@ pub const VAULT_CONTRACT_ADDRESS: &str = "{vault_contract}";
 /// TRESR token contract address on Avalanche (from client.blockchain.avalanche.{network}.tresr_token_contract)
 pub const TRESR_TOKEN_CONTRACT: &str = "{token_contract}";
 
+/// TRESR token ticker symbol (from client.blockchain.avalanche.{network}.token_ticker)
+pub const TRESR_TOKEN_TICKER: &str = "{token_ticker}";
+
+/// Entry fee in tokens (from client.blockchain.avalanche.{network}.fee)
+pub const FEE: u64 = {fee};
+
+/// Burn rate in basis points, 1000 = 10% (from client.blockchain.avalanche.{network}.burn_rate)
+pub const BURN_RATE_BPS: u64 = {burn_rate};
+
 /// Network name for conditional logic (anvil/testnet/mainnet)
 pub const NETWORK_NAME: &str = "{network}";
 
 /// ECDSA key name for IC threshold signing (test_key_1 for dev/staging, key_1 for production)
 pub const ECDSA_KEY_NAME: &str = "{ecdsa_key_name}";
+
+/// Active score TTL in hours (from server.highscore.score_ttl_hours)
+pub const SCORE_TTL_HOURS: u64 = {score_ttl_hours};
+
+/// Consolation prize percentage of vault balance (from server.highscore.consolation_prize_percent)
+pub const CONSOLATION_PRIZE_PERCENT: u64 = {consolation_prize_percent};
+
+/// Maximum consolation prize in tokens (from server.highscore.consolation_prize_max)
+pub const CONSOLATION_PRIZE_MAX: u64 = {consolation_prize_max};
+
+/// Minimum games played to qualify for consolation prize (from server.highscore.consolation_prize_min_games)
+pub const CONSOLATION_PRIZE_MIN_GAMES: u64 = {consolation_prize_min_games};
 "#,
         network = network,
         ban_durations = ban_durations,
@@ -146,7 +179,14 @@ pub const ECDSA_KEY_NAME: &str = "{ecdsa_key_name}";
         chain_id = chain.chain_id,
         vault_contract = chain.vault_contract,
         token_contract = chain.tresr_token_contract,
+        token_ticker = chain.token_ticker,
+        fee = chain.fee,
+        burn_rate = chain.burn_rate,
         ecdsa_key_name = ecdsa_key_name,
+        score_ttl_hours = config.server.highscore.score_ttl_hours,
+        consolation_prize_percent = config.server.highscore.consolation_prize_percent,
+        consolation_prize_max = config.server.highscore.consolation_prize_max,
+        consolation_prize_min_games = config.server.highscore.consolation_prize_min_games,
     );
 
     // Write to OUT_DIR

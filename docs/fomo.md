@@ -4,7 +4,7 @@
 
 The goal for the TresrVault is to create a self-sustaining economic flywheel where;
 
-- players deposit $TRESR to play
+- players pay a $TRESR fee to play
 - winners drain a portion of the vault
 - and the cycle repeats.
 
@@ -14,9 +14,9 @@ No manual refilling should be required after the initial seed.
 
 ```mermaid
 graph LR
-    A[Players deposit 10 TRESR fee] --> B[Vault gets fatter]
+    A[Players pay 10 TRESR fee] --> B[Vault gets fatter]
     B --> C[Difficulty scales UP]
-    C --> D[More attempts needed = more deposits]
+    C --> D[More attempts needed = more fees]
     D --> B
     B --> E[Someone wins 50%]
     E --> F[Vault halves, difficulty drops]
@@ -47,8 +47,8 @@ The multiplier adjusts (future implementation in satellite):
 
 | Parameter         | Value                 | Rationale                              |
 | ----------------- | --------------------- | -------------------------------------- |
-| Deposit fee       | 10 TRESR              | Low barrier, steady inflow             |
-| Burn rate         | 10% of deposit        | Deflationary — 1 TRESR burned per play |
+| Entry fee         | 10 TRESR              | Low barrier, steady inflow             |
+| Burn rate         | 10% of fee            | Deflationary — 1 TRESR burned per play |
 | Max claim         | 50% of vault          | Vault never fully drains               |
 | Minimum claim     | 50 TRESR              | Prevents dust claims                   |
 | Claim cooldown    | 1 hour (configurable) | Per-user limit, daily race mechanic    |
@@ -64,10 +64,10 @@ Round 2: Player B wins → claims 25,000 → vault: 25,000
 Round 3: Player C wins → claims 12,500 → vault: 12,500
 Round 4: Player D wins → claims  6,250 → vault:  6,250
 Round 5: Player E wins → claims  3,125 → vault:  3,125
-Round 6+: Deposits accumulate, vault refills...
+Round 6+: Fees accumulate, vault refills...
 ```
 
-Meanwhile, every losing player deposited 10 TRESR (9 to vault + 1 burned).
+Meanwhile, every losing player paid 10 TRESR (9 to vault + 1 burned).
 
 At 100 losing plays between wins, that's +900 TRESR back to the vault.
 

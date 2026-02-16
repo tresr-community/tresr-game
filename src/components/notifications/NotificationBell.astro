@@ -2,9 +2,8 @@
 
 ---
 
-<div class="dropdown dropdown-end" id="notification-dropdown">
-  <label
-    tabindex="0"
+<details class="dropdown dropdown-end" id="notification-dropdown">
+  <summary
     class="btn btn-ghost btn-circle"
     id="bell-container"
     aria-label="Notifications"
@@ -30,9 +29,8 @@
         id="notification-badge">0</span
       >
     </div>
-  </label>
+  </summary>
   <div
-    tabindex="0"
     class="card card-compact dropdown-content bg-base-100 border-primary/20 z-[1] mt-3 w-80 border shadow-xl"
   >
     <div class="card-body p-0">
@@ -54,7 +52,7 @@
       </div>
     </div>
   </div>
-</div>
+</details>
 
 <style is:global>
   @keyframes breathe-orange {
@@ -166,7 +164,7 @@
       headerRow.className = "flex justify-between items-start gap-2";
 
       const msgSpan = document.createElement("span");
-      msgSpan.className = "font-bold text-xs uppercase tracking-tighter";
+      msgSpan.className = "font-bold text-xs tracking-tighter";
       msgSpan.textContent = n.data.message + (isSnoozed ? " \u{1F4A4}" : "");
       headerRow.appendChild(msgSpan);
 
@@ -205,9 +203,10 @@
         const upgradeBtn = document.createElement("button");
         upgradeBtn.className = "btn btn-xs btn-primary mt-2 w-full";
         upgradeBtn.textContent = "Upgrade Now";
-        upgradeBtn.addEventListener("click", () =>
-          PWA.getInstance().applyUpdate()
-        );
+        upgradeBtn.addEventListener("click", () => {
+          notificationManager.dismiss(n.key);
+          PWA.getInstance().applyUpdate();
+        });
         card.appendChild(upgradeBtn);
       }
 
