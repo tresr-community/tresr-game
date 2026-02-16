@@ -5,15 +5,15 @@
 <dialog id="modal-victory" class="modal modal-middle">
   <div class="modal-box border-success/30 bg-base-300 border text-center">
     <h3
-      class="text-success font-display text-4xl font-black tracking-widest uppercase"
+      class="text-success font-display text-2xl font-black tracking-widest uppercase sm:text-4xl"
     >
       Mission Complete
     </h3>
-    <p class="py-4 opacity-70">
+    <p class="py-2 text-sm opacity-70 sm:py-4 sm:text-base">
       The Banker has been regulated. The vault is yours.
     </p>
 
-    <div class="stats stats-vertical bg-base-200/50 my-4 w-full shadow">
+    <div class="stats stats-vertical bg-base-200/50 my-2 w-full shadow sm:my-4">
       <div class="stat">
         <div class="stat-title text-xs uppercase">Reward</div>
         <div
@@ -27,7 +27,7 @@
 
     <div
       id="victory-stats"
-      class="my-2 grid grid-cols-2 gap-2 font-mono text-sm"
+      class="my-1 grid grid-cols-2 gap-1 font-mono text-xs sm:my-2 sm:gap-2 sm:text-sm"
     >
       <div class="bg-base-200/50 rounded p-2">
         <div class="text-xs uppercase opacity-50">Score</div>
@@ -53,7 +53,7 @@
       New High Score!
     </div>
 
-    <div class="modal-action flex-col gap-2">
+    <div class="modal-action flex-col gap-1 sm:gap-2">
       <button id="btn-claim" class="btn btn-primary btn-block"
         >Claim $TRESR</button
       >
@@ -67,16 +67,19 @@
 <dialog id="modal-lost" class="modal modal-middle">
   <div class="modal-box border-error/30 bg-base-300 border text-center">
     <h3
-      class="text-error font-display text-4xl font-black tracking-widest uppercase"
+      class="text-error font-display text-2xl font-black tracking-widest uppercase sm:text-4xl"
     >
       System Critical
     </h3>
-    <p class="py-4 opacity-70">
+    <p class="py-2 text-sm opacity-70 sm:py-4 sm:text-base">
       Biological markers terminated. Sorry degen, the Bankers have won this
       round.
     </p>
 
-    <div id="lost-stats" class="my-2 grid grid-cols-2 gap-2 font-mono text-sm">
+    <div
+      id="lost-stats"
+      class="my-1 grid grid-cols-2 gap-1 font-mono text-xs sm:my-2 sm:gap-2 sm:text-sm"
+    >
       <div class="bg-base-200/50 rounded p-2">
         <div class="text-xs uppercase opacity-50">Score</div>
         <div id="lost-stat-score" class="text-primary font-bold">0</div>
@@ -101,7 +104,7 @@
       New High Score!
     </div>
 
-    <div class="modal-action flex-col gap-2">
+    <div class="modal-action flex-col gap-1 sm:gap-2">
       <button id="btn-retry-mission" class="btn btn-error btn-block"
         >Retry Mission</button
       >

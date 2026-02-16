@@ -6,7 +6,7 @@ const {credits} = config;
 const currentDate = new Date().toLocaleDateString();
 ---
 
-<BaseLayout title="Credits | Tresr">
+<BaseLayout title="Credits | TRESR">
   <div class="min-h-screen pt-20 pb-10">
     <div class="container mx-auto max-w-2xl px-4 text-center">
       <h1
@@ -15,14 +15,29 @@ const currentDate = new Date().toLocaleDateString();
         CREDITS
       </h1>
 
-      <div class="flex flex-col gap-16">
-        <!-- Description Section -->
-        <section class="text-center">
-          <p class="text-lg whitespace-pre-line opacity-80">
+      <!-- Ron Jay Briefing -->
+      <div
+        class="mb-12 flex flex-col items-center gap-4 sm:flex-row sm:items-end"
+      >
+        <img
+          src="/assets/images/ron_jay_speech_bubble.webp"
+          class="mask mask-squircle w-24 shrink-0 shadow-lg"
+          alt="Ron Jay"
+        />
+        <div class="chat chat-start w-full">
+          <div class="chat-header">
+            Ron Jay
+            <time class="text-xs opacity-50">Credits</time>
+          </div>
+          <div
+            class="chat-bubble chat-bubble-primary text-sm whitespace-pre-line sm:text-base"
+          >
             {credits?.description}
-          </p>
-        </section>
+          </div>
+        </div>
+      </div>
 
+      <div class="flex flex-col gap-16">
         <!-- Team Section -->
         <section>
           <h2

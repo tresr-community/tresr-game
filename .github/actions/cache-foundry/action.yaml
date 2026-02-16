@@ -1,0 +1,17 @@
+---
+name: Cache Foundry
+description: Cache Foundry's Solidity compilation artifacts.
+
+runs:
+  using: composite
+  steps:
+    - id: cache_foundry
+      name: Cache Foundry
+      uses: actions/cache@v4
+      with:
+        path: |
+          contracts/cache
+          contracts/out
+        key: foundry-${{ runner.os }}-${{ hashFiles('contracts/foundry.toml', 'contracts/src/**/*.sol') }}
+        restore-keys: |
+          foundry-${{ runner.os }}-

@@ -41,6 +41,7 @@ const {gameSessionId, amount, vaultAddress} = Astro.props;
   import {VaultAbi} from "@/lib/wallet/VaultAbi";
   import {loadConfigAsync} from "@/lib/config";
   import {trackClaim} from "@/lib/metrics/analytics";
+  import {confirmReceipt} from "@/lib/wallet/tx";
 
   const claimDiv = document.querySelector(".claim-reward") as HTMLElement;
   const gameSessionId = claimDiv.dataset.gameSessionId!;
@@ -100,6 +101,10 @@ const {gameSessionId, amount, vaultAddress} = Astro.props;
 
       statusEl.textContent = `Transaction sent: ${hash}`;
       statusEl.classList.add("text-success");
+
+      // Wait for on-chain confirmation before recording the claim
+      statusEl.textContent = "Confirming on-chain...";
+      await confirmReceipt(hash, {component: "ClaimReward"});
 
       // Juno: setDoc on "claims" collection →
       //   Rust assert: assert_claim_request() — validates session link, status, amount > 0

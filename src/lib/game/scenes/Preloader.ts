@@ -290,15 +290,38 @@ export class Preloader extends Phaser.Scene {
     });
   }
 
+  // Core SFX types — always preloaded (used every session within first seconds)
+  private static readonly CORE_SFX_TYPES = [
+    "punch",
+    "hurt",
+    "explosion",
+    "key_collect",
+    "countdown",
+    "death",
+    "powerup_collect",
+  ];
+
+  // Deferred SFX types — loaded by MainScene during countdown (OOM fix)
+  static readonly DEFERRED_SFX_TYPES = [
+    "victory",
+    "game_over",
+    "bot_attack",
+    "bot_special",
+    "bot_spawn",
+    "open_treasure_chest",
+  ];
+
   private loadConfigAssets() {
     const assets = clientConfig.assets;
 
-    // Load audio assets
-    assets.music.forEach((track: string) => {
-      this.load.audio(track, `/assets/audio/music/${track}.webm`);
-    });
+    // Load only core SFX during preload (OOM fix: defer contextual SFX)
+    // Music is NOT loaded here — MusicManager streams via HTMLAudioElement
+    const corePrefixes = Preloader.CORE_SFX_TYPES;
     assets.sfx.forEach((sfx: string) => {
-      this.load.audio(sfx, `/assets/audio/sfx/${sfx}.webm`);
+      const isCore = corePrefixes.some((prefix) => sfx.startsWith(prefix));
+      if (isCore) {
+        this.load.audio(sfx, `/assets/audio/sfx/${sfx}.webm`);
+      }
     });
 
     // Handle Wallpapers
@@ -377,6 +400,12 @@ export class Preloader extends Phaser.Scene {
       this
     );
     this.cameras.main.off("camerafadeoutcomplete");
+
+    // Clean up textures no longer needed after Preloader (OOM fix)
+    // Loader spinner is only used in Preloader — free its GPU texture
+    if (this.textures.exists("loader")) {
+      this.textures.remove("loader");
+    }
   }
 
   private startTransition() {

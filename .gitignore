@@ -64,7 +64,7 @@ TEMP/
 assets-source/
 
 # Solidity/Foundry
-cache/
-out/
-broadcasts/
-.snap
+contracts/cache/
+contracts/out/
+contracts/broadcast/
+contracts/.snap

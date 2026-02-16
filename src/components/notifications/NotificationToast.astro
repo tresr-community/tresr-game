@@ -118,6 +118,10 @@
 
     if (isUpdate) {
       toast.querySelector(".update-btn")!.addEventListener("click", () => {
+        clearTimeout(timeout);
+        activeTimers.delete(toast);
+        notificationManager.dismiss(doc.key);
+        removeToast(toast);
         PWA.getInstance().applyUpdate();
       });
     }

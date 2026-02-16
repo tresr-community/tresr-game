@@ -1,81 +1,140 @@
 ---
 import NotificationBell from "@/components/notifications/NotificationBell.astro";
 import WalletLink from "@/components/wallet/WalletLink.astro";
+import FaucetButton from "@/components/wallet/FaucetButton.astro";
 import NotificationToast from "@/components/notifications/NotificationToast.astro";
+import MusicPlayer from "@/components/game/MusicPlayer.astro";
 ---
 
 <header
+  id="app-header"
   class="pointer-events-none fixed top-0 right-0 left-0 z-[50] flex justify-end p-4"
 >
   <div
     class="bg-base-100/50 border-primary/20 pointer-events-auto flex items-center gap-2 rounded-full border p-1 shadow-lg backdrop-blur-md"
   >
-    <NotificationBell />
+    <!-- Icon group: animated slide via max-width + opacity transition -->
+    <div
+      id="header-icons"
+      class="flex items-center gap-2 overflow-hidden transition-all duration-300 ease-in-out"
+      style="max-width: 0; opacity: 0;"
+    >
+      <!-- Music Player Toggle -->
+      <details class="dropdown dropdown-end" id="music-dropdown">
+        <summary
+          class="btn btn-ghost btn-circle text-xl"
+          title="Music Player"
+          aria-label="Toggle music player"
+          id="btn-music-dropdown"
+        >
+          🎵
+        </summary>
+        <div class="dropdown-content z-[1] mt-3">
+          <MusicPlayer />
+        </div>
+      </details>
 
-    <!-- Theme Selector -->
-    <div class="dropdown dropdown-end">
-      <label
-        tabindex="0"
-        class="btn btn-ghost btn-circle text-xl"
-        title="Theme"
-        aria-label="Theme selector"
-      >
-        🎨
-      </label>
-      <ul
-        id="theme-list"
-        tabindex="0"
-        class="dropdown-content menu bg-base-100 rounded-box z-[1] w-52 p-2 shadow"
-      >
-      </ul>
-    </div>
+      <NotificationBell />
 
-    <WalletLink />
+      <!-- Theme Selector -->
+      <details class="dropdown dropdown-end">
+        <summary
+          class="btn btn-ghost btn-circle text-xl"
+          title="Theme"
+          aria-label="Theme selector"
+        >
+          🎨
+        </summary>
+        <ul
+          id="theme-list"
+          class="dropdown-content menu bg-base-100 rounded-box z-[1] max-h-[60vh] w-64 overflow-y-auto p-2 shadow"
+        >
+        </ul>
+      </details>
 
-    <!-- Profile: Guest (Dropdown) -->
-    <div class="dropdown dropdown-end" id="profile-guest-container">
-      <label
-        tabindex="0"
-        class="btn btn-ghost btn-circle text-xl"
-        title="Profile (Guest)"
-        aria-label="Guest profile"
+      <WalletLink />
+      <FaucetButton />
+
+      <!-- Profile: Guest (Dropdown) -->
+      <details class="dropdown dropdown-end" id="profile-guest-container">
+        <summary
+          class="btn btn-ghost btn-circle text-xl"
+          title="Profile (Guest)"
+          aria-label="Guest profile"
+        >
+          👤
+        </summary>
+        <div
+          class="card card-compact dropdown-content bg-base-100 border-primary/20 z-[1] mt-3 w-72 border shadow-xl"
+        >
+          <div class="card-body">
+            <h3 class="text-lg font-bold">Profile</h3>
+            <div class="mb-2 text-xs opacity-70">Unavailable</div>
+            <p>Please log in as a degen to access your profile.</p>
+          </div>
+        </div>
+      </details>
+
+      <!-- Profile: Authenticated (Button) -->
+      <button
+        id="profile-auth-btn"
+        class="btn btn-ghost btn-circle hidden text-xl"
+        title="My Profile"
+        aria-label="My profile"
       >
         👤
-      </label>
-      <div
-        tabindex="0"
-        class="card card-compact dropdown-content bg-base-100 border-primary/20 z-[1] mt-3 w-72 border shadow-xl"
-      >
-        <div class="card-body">
-          <h3 class="text-lg font-bold">Profile</h3>
-          <div class="mb-2 text-xs opacity-70">Unavailable</div>
-          <p>Please log in as a degen to access your profile.</p>
-        </div>
-      </div>
+      </button>
     </div>
 
-    <!-- Profile: Authenticated (Button) -->
+    <!-- Toggle button: always visible, rotates based on state -->
     <button
-      id="profile-auth-btn"
-      class="btn btn-ghost btn-circle hidden text-xl"
-      title="My Profile"
-      aria-label="My profile"
+      id="header-toggle-btn"
+      class="btn btn-ghost btn-circle text-lg transition-transform duration-300"
+      title="Toggle toolbar"
+      aria-label="Toggle toolbar"
     >
-      👤
+      «
     </button>
   </div>
 </header>
 
 <NotificationToast />
 
+<style is:global>
+  @keyframes toggle-breathe-orange {
+    0%,
+    100% {
+      box-shadow: 0 0 4px rgba(255, 165, 0, 0.3);
+    }
+    50% {
+      box-shadow:
+        0 0 14px rgba(255, 165, 0, 0.8),
+        0 0 28px rgba(255, 165, 0, 0.3);
+    }
+  }
+  @keyframes toggle-breathe-red {
+    0%,
+    100% {
+      box-shadow: 0 0 4px rgba(255, 0, 0, 0.3);
+    }
+    50% {
+      box-shadow:
+        0 0 14px rgba(255, 0, 0, 0.9),
+        0 0 28px rgba(255, 0, 0, 0.4);
+    }
+  }
+  .toggle-glow-orange {
+    animation: toggle-breathe-orange 3s ease-in-out infinite;
+  }
+  .toggle-glow-red {
+    animation: toggle-breathe-red 2s ease-in-out infinite;
+  }
+</style>
+
 <script>
   import {initAuth, getAuthState, subscribeToAuth} from "@/lib/auth";
   import {notificationManager} from "@/lib/notifications";
-  import {
-    getUserProfile,
-    saveUserProfile,
-    createDefaultProfile,
-  } from "@/lib/user";
+  import {enqueueProfileWrite} from "@/lib/user";
   import {log} from "@/lib/utils/log";
   import {config} from "@/lib/config/client";
 
@@ -113,11 +172,9 @@ import NotificationToast from "@/components/notifications/NotificationToast.astr
         e.preventDefault();
         e.stopPropagation();
         setTheme(theme);
-        // Close dropdown
-        const label = ul
-          .closest(".dropdown")
-          ?.querySelector('label[tabindex="0"]') as HTMLElement | null;
-        label?.blur();
+        // Close dropdown (details/summary pattern)
+        const details = ul.closest("details.dropdown");
+        details?.removeAttribute("open");
       });
       if (theme === currentTheme) {
         a.classList.add("active");
@@ -200,16 +257,10 @@ import NotificationToast from "@/components/notifications/NotificationToast.astr
     const auth = getAuthState();
     if (auth.isAuthenticated && auth.user && !auth.isGuest) {
       try {
-        const doc = await getUserProfile(auth.user.key);
-        if (doc) {
-          const profile = doc.data;
-          profile.preferences.theme = theme;
-          await saveUserProfile(auth.user.key, profile, doc.version);
-        } else {
-          const newProfile = createDefaultProfile(auth.user.key);
-          newProfile.preferences.theme = theme;
-          await saveUserProfile(auth.user.key, newProfile);
-        }
+        await enqueueProfileWrite(auth.user.key, (profile) => ({
+          ...profile,
+          preferences: {...profile.preferences, theme},
+        }));
       } catch (e) {
         log.error(COMPONENT_NAME, "Failed to persist theme", e);
       }
@@ -219,9 +270,189 @@ import NotificationToast from "@/components/notifications/NotificationToast.astr
     populateThemes();
   }
 
-  // Load saved theme (populate will handle active)
-  const savedTheme = localStorage.getItem("theme") || "synthwave"; // default
-  setTheme(savedTheme);
+  // Apply saved theme to DOM synchronously (no async – avoids TDZ issues).
+  // The full setTheme (with Juno persistence) runs after startup().
+  const savedTheme = localStorage.getItem("theme") || "synthwave";
+  document.documentElement.setAttribute("data-theme", savedTheme);
+  log.debug(COMPONENT_NAME, `Updating user theme to ${savedTheme}`);
+  populateThemes();
 
   startup();
+
+  // Mutual-exclusion for all header dropdowns (details/summary pattern).
+  // Opening one closes the others; clicking outside closes all.
+  const headerEl = document.getElementById("app-header");
+  const allDropdowns = headerEl
+    ? (Array.from(
+        headerEl.querySelectorAll("details.dropdown")
+      ) as HTMLDetailsElement[])
+    : [];
+
+  // Close siblings when a dropdown opens
+  for (const dd of allDropdowns) {
+    dd.addEventListener("toggle", () => {
+      if (dd.open) {
+        for (const other of allDropdowns) {
+          if (other !== dd && other.open) other.removeAttribute("open");
+        }
+      }
+    });
+  }
+
+  // Close all on click-outside
+  function handleDropdownClickOutside(e: MouseEvent) {
+    for (const dd of allDropdowns) {
+      if (dd.open && !dd.contains(e.target as Node)) {
+        dd.removeAttribute("open");
+      }
+    }
+  }
+  document.addEventListener("click", handleDropdownClickOutside);
+
+  // Toolbar expand / collapse toggle (animated slide)
+  // Uses Tailwind's lg breakpoint (1024px) to match responsive utility classes.
+  // Phones and small tablets (< 1024px) → collapse (fold).
+  // Large tablets ≥ 10″ and desktops (≥ 1024px) → expand.
+  const MOBILE_BREAKPOINT = 1024;
+  const desktopMql = window.matchMedia(`(min-width: ${MOBILE_BREAKPOINT}px)`);
+  const headerIcons = document.getElementById(
+    "header-icons"
+  ) as HTMLElement | null;
+  const toggleBtn = document.getElementById(
+    "header-toggle-btn"
+  ) as HTMLElement | null;
+  let isExpanded = false;
+
+  // Notification-aware toggle glow
+  let currentUrgency: "none" | "non-urgent" | "urgent" = "none";
+
+  function updateToggleGlow() {
+    if (!toggleBtn) return;
+    toggleBtn.classList.remove("toggle-glow-orange", "toggle-glow-red");
+    if (!isExpanded && currentUrgency !== "none") {
+      toggleBtn.classList.add(
+        currentUrgency === "urgent" ? "toggle-glow-red" : "toggle-glow-orange"
+      );
+    }
+  }
+
+  function expandToolbar() {
+    isExpanded = true;
+    if (headerIcons) {
+      headerIcons.style.maxWidth = "500px";
+      headerIcons.style.opacity = "1";
+      // Allow dropdown content to overflow after expand transition
+      headerIcons.addEventListener(
+        "transitionend",
+        () => {
+          if (isExpanded) headerIcons.classList.remove("overflow-hidden");
+        },
+        {once: true}
+      );
+    }
+    if (toggleBtn) {
+      toggleBtn.textContent = "»";
+      toggleBtn.style.transform = "rotate(180deg)";
+    }
+    updateToggleGlow();
+  }
+  function collapseToolbar() {
+    isExpanded = false;
+    if (headerIcons) {
+      // Re-enable overflow clipping before collapse animation
+      headerIcons.classList.add("overflow-hidden");
+      headerIcons.style.maxWidth = "0";
+      headerIcons.style.opacity = "0";
+    }
+    if (toggleBtn) {
+      toggleBtn.textContent = "«";
+      toggleBtn.style.transform = "rotate(0deg)";
+    }
+    updateToggleGlow();
+  }
+  function handleToggle() {
+    if (isExpanded) collapseToolbar();
+    else expandToolbar();
+  }
+  toggleBtn?.addEventListener("click", handleToggle);
+
+  // Respond to viewport changes (orientation flip, resize, DevTools toggle).
+  // Uses matchMedia so we match the same breakpoint as Tailwind's lg: prefix.
+  function handleBreakpointChange(e: MediaQueryList | MediaQueryListEvent) {
+    // Reset manual override when crossing the breakpoint boundary so the
+    // toolbar snaps to the correct default for the new viewport size.
+    if (e.matches) {
+      expandToolbar();
+    } else {
+      collapseToolbar();
+    }
+    log.debug(
+      COMPONENT_NAME,
+      `Toolbar breakpoint change: matches=${e.matches} → ${e.matches ? "EXPAND" : "COLLAPSE"}`
+    );
+  }
+  desktopMql.addEventListener("change", handleBreakpointChange);
+
+  // Initial state: open on desktop, closed on mobile (no transition on load)
+  if (headerIcons) {
+    headerIcons.style.transition = "none";
+    log.debug(
+      COMPONENT_NAME,
+      `Toolbar init: innerWidth=${window.innerWidth} breakpoint=${MOBILE_BREAKPOINT} → ${desktopMql.matches ? "EXPAND" : "COLLAPSE"}`
+    );
+    if (desktopMql.matches) {
+      expandToolbar();
+    } else {
+      collapseToolbar();
+    }
+    // Re-enable transition after initial state is set
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (headerIcons) headerIcons.style.transition = "";
+      });
+    });
+  } else {
+    console.warn("[Header] Toolbar init: headerIcons element NOT FOUND");
+  }
+
+  // Auto-collapse when clicking outside (mobile/tablet only)
+  function handleToolbarClickOutside(e: MouseEvent) {
+    const header = document.getElementById("app-header");
+    if (
+      header &&
+      !header.contains(e.target as Node) &&
+      isExpanded &&
+      !desktopMql.matches
+    ) {
+      collapseToolbar();
+    }
+  }
+  document.addEventListener("click", handleToolbarClickOutside);
+
+  const unsubToggleNotifications = notificationManager.subscribe((notifs) => {
+    const now = Date.now();
+    const active = notifs.filter(
+      (n) => !n.data.snoozeUntil || n.data.snoozeUntil < now
+    );
+    if (active.some((n) => n.data.urgency === "urgent")) {
+      currentUrgency = "urgent";
+    } else if (active.length > 0) {
+      currentUrgency = "non-urgent";
+    } else {
+      currentUrgency = "none";
+    }
+    updateToggleGlow();
+  });
+
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      document.removeEventListener("click", handleDropdownClickOutside);
+      document.removeEventListener("click", handleToolbarClickOutside);
+      toggleBtn?.removeEventListener("click", handleToggle);
+      desktopMql.removeEventListener("change", handleBreakpointChange);
+      unsubToggleNotifications();
+    },
+    {once: true}
+  );
 </script>

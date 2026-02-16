@@ -8,7 +8,9 @@
       <h2 class="text-primary text-2xl font-black tracking-widest uppercase">
         Player Profile
       </h2>
-      <button id="btn-close-profile" class="btn btn-sm btn-circle btn-ghost"
+      <button
+        id="btn-close-profile"
+        class="btn btn-circle btn-ghost min-h-[44px] min-w-[44px] text-lg"
         >✕</button
       >
     </div>
@@ -21,6 +23,49 @@
     </div>
 
     <div id="profile-content" class="hidden space-y-6">
+      <!-- Avatar Upload -->
+      <div class="flex justify-center">
+        <div class="group relative cursor-pointer" id="avatar-wrapper">
+          <!-- Avatar circle -->
+          <div id="avatar-display" class="avatar placeholder">
+            <div
+              id="avatar-inner"
+              class="bg-primary/20 text-primary border-primary/30 ring-primary/10 ring-offset-base-200 w-16 overflow-hidden rounded-full border-2 ring ring-offset-2"
+            >
+              <img
+                id="avatar-img"
+                class="hidden h-full w-full object-cover"
+                alt="Avatar"
+              />
+              <span id="avatar-letter" class="text-xl font-black">?</span>
+            </div>
+          </div>
+          <!-- Hover overlay -->
+          <div
+            class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 transition-opacity group-hover:opacity-100"
+          >
+            <span
+              class="text-[10px] font-bold tracking-wider text-white uppercase"
+              >Change</span
+            >
+          </div>
+          <!-- Upload spinner -->
+          <div
+            id="avatar-uploading"
+            class="absolute inset-0 flex hidden items-center justify-center rounded-full bg-black/70"
+          >
+            <span class="loading loading-spinner loading-sm text-primary"
+            ></span>
+          </div>
+        </div>
+        <input
+          type="file"
+          id="avatar-file-input"
+          accept="image/jpeg,image/png,image/webp"
+          class="hidden"
+        />
+      </div>
+
       <!-- Nickname (Editable) -->
       <div class="form-control w-full">
         <label class="label">
@@ -50,7 +95,7 @@
         <input
           type="email"
           id="input-email"
-          placeholder="agent@tresr.io"
+          placeholder="spam@tresr.community"
           class="input input-bordered input-primary bg-base-300 w-full font-mono"
         />
       </div>
@@ -194,6 +239,7 @@
     createDefaultProfile,
     genNickName,
   } from "@/lib/user";
+  import {uploadAvatar} from "@/lib/user/avatar";
   import {
     connectWallet,
     getWalletClient,
@@ -203,6 +249,13 @@
   import type {UserProfile} from "@/types/backend";
   import {log} from "@/lib/utils/log";
   import {profileStore} from "@/lib/user/store";
+  import {
+    trackModalOpen,
+    trackProfileUpdate,
+    trackAvatarUpload,
+    trackWalletLink,
+    trackWalletUnlink,
+  } from "@/lib/metrics/analytics";
 
   const COMPONENT_NAME = "ProfileModal";
 
@@ -228,6 +281,15 @@
   const saveBtn = document.getElementById(
     "btn-save-profile"
   ) as HTMLButtonElement;
+  const avatarWrapper = document.getElementById("avatar-wrapper");
+  const avatarImg = document.getElementById("avatar-img") as HTMLImageElement;
+  const avatarLetter = document.getElementById(
+    "avatar-letter"
+  ) as HTMLSpanElement;
+  const avatarFileInput = document.getElementById(
+    "avatar-file-input"
+  ) as HTMLInputElement;
+  const avatarUploading = document.getElementById("avatar-uploading");
 
   let currentProfile: UserProfile | null = null;
   let currentVersion: bigint | undefined;
@@ -235,6 +297,7 @@
   async function openProfileModal() {
     log.info(COMPONENT_NAME, "Opening modal");
     modal?.showModal();
+    trackModalOpen("profile");
     await loadProfile();
   }
 
@@ -327,6 +390,9 @@
     statHighscore.innerText = currentProfile.stats.highScore.toString();
     statBalance.innerText = currentProfile.wallet.balance.toString();
 
+    // Avatar
+    renderAvatar(currentProfile);
+
     updateWalletUI();
   }
 
@@ -388,6 +454,16 @@
 
     saveBtn.classList.add("loading");
     try {
+      // Re-fetch latest doc to get authoritative version.
+      // Prevents version_outdated_or_future errors when avatar upload
+      // or other operations have bumped the version since we loaded.
+      const latestDoc = await getUserProfile(auth.user.key);
+      if (latestDoc) {
+        currentVersion = latestDoc.version;
+        // Merge server-side data we don't control (e.g. avatar set by upload)
+        currentProfile = {...latestDoc.data};
+      }
+
       currentProfile.nickname = newNickname;
       currentProfile.email = emailInput.value.trim();
 
@@ -405,6 +481,7 @@
       );
       // Update the profile store so LoginButton's subscription picks up the new nickname
       profileStore.set({...currentProfile});
+      trackProfileUpdate("nickname");
       window.showInfoToast("Profile updated successfully");
       log.info(COMPONENT_NAME, "Profile saved successfully.", currentProfile);
     } catch (error) {
@@ -428,7 +505,7 @@
       // Verify ownership: sign message
       const sig = await walletClient.signMessage({
         account: address,
-        message: `Link wallet ${address} to Tresr principal ${getAuthState().user?.key.slice(0, 10)}...`,
+        message: `Link wallet ${address} to TRESR principal ${getAuthState().user?.key.slice(0, 10)}...`,
       });
 
       if (currentProfile) {
@@ -445,6 +522,7 @@
           currentVersion = savedDoc.version;
         }
         updateWalletUI();
+        trackWalletLink();
         window.showInfoToast("Neural link established");
       }
     } catch (err: unknown) {
@@ -485,6 +563,7 @@
             currentVersion = savedDoc.version;
           }
           updateWalletUI();
+          trackWalletUnlink();
           window.showInfoToast("Neural link severed");
         }
       } catch (err) {
@@ -543,6 +622,72 @@
     note.innerText = "Login to access full profile and link wallet.";
     content?.prepend(note);
   }
+
+  // --- Avatar ---
+
+  function renderAvatar(profile: UserProfile) {
+    const url = profile.preferences?.avatarUrl;
+    if (url) {
+      avatarImg.src = url;
+      avatarImg.classList.remove("hidden");
+      avatarLetter.classList.add("hidden");
+    } else {
+      avatarImg.classList.add("hidden");
+      avatarLetter.classList.remove("hidden");
+      avatarLetter.textContent =
+        (profile.nickname || "?")[0]?.toUpperCase() || "?";
+    }
+  }
+
+  // Click the avatar wrapper → open file picker
+  avatarWrapper?.addEventListener("click", () => {
+    avatarFileInput?.click();
+  });
+
+  // File selected → upload
+  avatarFileInput?.addEventListener("change", async () => {
+    const file = avatarFileInput.files?.[0];
+    if (!file) return;
+
+    const auth = getAuthState();
+    if (!auth.user || !currentProfile) return;
+
+    // Show spinner
+    avatarUploading?.classList.remove("hidden");
+
+    try {
+      const url = await uploadAvatar(file, auth.user.key);
+
+      // Update profile with new avatar URL
+      currentProfile.preferences = currentProfile.preferences || {
+        theme: "synthwave",
+        has_read_instructions: false,
+      };
+      currentProfile.preferences.avatarUrl = url;
+
+      // Save profile
+      const savedDoc = await saveUserProfile(
+        auth.user.key,
+        currentProfile,
+        currentVersion
+      );
+      currentVersion = savedDoc.version;
+
+      // Update display
+      renderAvatar(currentProfile);
+      profileStore.set({...currentProfile});
+      trackAvatarUpload();
+      window.showInfoToast("Avatar updated!");
+      log.info(COMPONENT_NAME, "Avatar uploaded successfully:", url);
+    } catch (err) {
+      log.error(COMPONENT_NAME, "Avatar upload failed:", err);
+      window.showErrorToast("Avatar upload failed", (err as Error).message);
+    } finally {
+      avatarUploading?.classList.add("hidden");
+      // Reset input so the same file can be re-selected
+      avatarFileInput.value = "";
+    }
+  });
 
   // Listen for custom event instead of window global (ticket #263)
   function handleOpenProfile() {

@@ -8,7 +8,7 @@
  * Juno satellite (see satellite/src/lib.rs).
  */
 
-import {getUserProfile, saveUserProfile} from "@/lib/user";
+import {getUserProfile, enqueueProfileWrite} from "@/lib/user";
 import {config} from "@/lib/config/client";
 import {log} from "@/lib/utils/log";
 
@@ -39,6 +39,7 @@ function getBanDurationMs(offenceCount: number): number {
 
 /**
  * Record an offense on the user's profile and apply an escalating ban.
+ * Uses the centralized write queue to prevent version races.
  *
  * @param principal The user's Principal ID (Juno document key)
  * @param reason One of the configured ban_reasons from tresr.yaml
@@ -50,41 +51,31 @@ export async function recordOffense(
   sessionId?: string
 ): Promise<void> {
   try {
-    const userDoc = await getUserProfile(principal);
-    if (!userDoc) {
+    await enqueueProfileWrite(principal, (profile) => {
+      const newCount = (profile.offence_count ?? 0) + 1;
+      const banDurationMs = getBanDurationMs(newCount);
+
+      const bannedUntil =
+        banDurationMs === PERMANENT_BAN_MS
+          ? PERMANENT_BAN_MS
+          : Date.now() + banDurationMs;
+
+      // Also set device-level ban so guests can't bypass (ticket #203)
+      setDeviceBan(bannedUntil, newCount);
+
       log.warn(
         COMPONENT_NAME,
-        "Cannot record offense: user profile not found for",
-        principal
+        `Offense recorded: principal=${principal.substring(0, 8)}..., ` +
+          `reason=${reason}, offence_count=${newCount}, ` +
+          `banned_until=${bannedUntil}, sessionId=${sessionId ?? "N/A"}`
       );
-      return;
-    }
 
-    const profile = userDoc.data;
-    const newCount = (profile.offence_count ?? 0) + 1;
-    const banDurationMs = getBanDurationMs(newCount);
-
-    const bannedUntil =
-      banDurationMs === PERMANENT_BAN_MS
-        ? PERMANENT_BAN_MS
-        : Date.now() + banDurationMs;
-
-    profile.offence_count = newCount;
-    profile.banned_until = bannedUntil;
-
-    // Juno: setDoc on "users" → Rust assert_user_profile() then on_set_doc (no-op).
-    // NOTE: Server-side enforcement also exists in Rust claim_authorize() → apply_ban().
-    await saveUserProfile(principal, profile, userDoc.version);
-
-    // Also set device-level ban so guests can't bypass (ticket #203)
-    setDeviceBan(bannedUntil, newCount);
-
-    log.warn(
-      COMPONENT_NAME,
-      `Offense recorded: principal=${principal.substring(0, 8)}..., ` +
-        `reason=${reason}, offence_count=${newCount}, ` +
-        `banned_until=${bannedUntil}, sessionId=${sessionId ?? "N/A"}`
-    );
+      return {
+        ...profile,
+        offence_count: newCount,
+        banned_until: bannedUntil,
+      };
+    });
   } catch (err) {
     // Don't crash the game on ban write failure
     log.error(

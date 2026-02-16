@@ -1,4 +1,4 @@
-import {setDoc, getDoc, type Doc} from "@junobuild/core";
+import {getDoc, type Doc} from "@junobuild/core";
 import {
   subscribeToAuth,
   getAuthState,
@@ -7,7 +7,7 @@ import {
 } from "@/lib/auth";
 import {log, showToast} from "@/lib/utils/log";
 import type {UserProfile, NotificationItem} from "@/types/backend";
-import {createDefaultProfile} from "@/lib/user/index";
+import {enqueueProfileWrite} from "@/lib/user/writeQueue";
 
 const COMPONENT_NAME = "NotificationManager";
 const MAX_NOTIFICATIONS = 50;
@@ -30,28 +30,11 @@ class NotificationManager {
   private listeners: Set<NotificationListener> = new Set();
   private initialized = false;
   private datastoreErrorShown = false;
-  private writeQueue: Promise<void> = Promise.resolve();
+  private authSubscribed = false;
 
-  constructor() {
-    subscribeToAuth((state: AuthState) => {
-      if (state.user) {
-        this.init();
-      } else {
-        this.notifications = [];
-        this.initialized = false;
-        this.notify();
-      }
-    });
-  }
-
-  /**
-   * Enqueue a Juno write operation. Writes are serialized so each getDoc
-   * always reads the latest version, preventing version_outdated_or_future
-   * race conditions.
-   */
-  private enqueueWrite(fn: () => Promise<void>): void {
-    this.writeQueue = this.writeQueue.then(fn, fn);
-  }
+  // Constructor intentionally empty — subscribeToAuth moved to init()
+  // to avoid TDZ errors from circular imports (notifications → auth → user/store)
+  constructor() {}
 
   private async getUserDoc(principalText: string): Promise<UserProfile | null> {
     try {
@@ -83,6 +66,20 @@ class NotificationManager {
   }
 
   async init() {
+    // Subscribe to auth changes (once) — deferred from constructor to avoid TDZ
+    if (!this.authSubscribed) {
+      this.authSubscribed = true;
+      subscribeToAuth((state: AuthState) => {
+        if (state.user) {
+          this.init();
+        } else {
+          this.notifications = [];
+          this.initialized = false;
+          this.notify();
+        }
+      });
+    }
+
     if (this.initialized) return;
     try {
       const state = getAuthState();
@@ -141,69 +138,25 @@ class NotificationManager {
     // Guest — in-memory only, no persistence
     if (!user) return;
 
-    // Logged-in — enqueue persistence to Juno
-    this.enqueueWrite(() =>
-      this.persistNotification(user.key, doc, notificationKey, !!existing)
-    );
-  }
+    // Logged-in — persist via centralized write queue
+    const notificationItem: NotificationItem = {
+      key: doc.key,
+      data: doc.data,
+    };
+    const isUpdate = !!existing;
 
-  // Juno: getDoc + setDoc on "users" collection →
-  //   Rust assert: assert_user_profile() — validates EVM wallet format + signature
-  //   Rust hook:   on_set_doc("users") → no-op
-  private async persistNotification(
-    principalText: string,
-    doc: NotificationDoc,
-    notificationKey: string,
-    isUpdate: boolean
-  ): Promise<void> {
-    const config = getSatelliteConfig();
-    try {
-      const userDocFull = await getDoc<UserProfile>({
-        collection: "users",
-        key: principalText,
-        ...config,
-      });
-
-      const notificationItem: NotificationItem = {
-        key: doc.key,
-        data: doc.data,
-      };
-
-      let newNotifications: NotificationItem[];
-      let updatedUserDoc: UserProfile;
-      if (!userDocFull) {
-        const defaultProfile = createDefaultProfile(principalText);
-        newNotifications = [notificationItem];
-        updatedUserDoc = {
-          ...defaultProfile,
-          notifications: newNotifications,
-        };
-      } else {
-        const existingNotifications = userDocFull.data.notifications || [];
-        newNotifications = isUpdate
-          ? existingNotifications.map((n) =>
-              n.key === notificationKey ? notificationItem : n
-            )
-          : [notificationItem, ...existingNotifications].slice(
-              0,
-              MAX_NOTIFICATIONS
-            );
-        updatedUserDoc = {
-          ...userDocFull.data,
-          notifications: newNotifications,
-        };
-      }
-
-      await setDoc<UserProfile>({
-        collection: "users",
-        doc: {
-          key: principalText,
-          data: updatedUserDoc,
-          version: userDocFull?.version ?? 0n,
-        },
-        ...config,
-      });
-    } catch (e) {
+    enqueueProfileWrite(user.key, (profile) => {
+      const existingNotifications = profile.notifications || [];
+      const newNotifications = isUpdate
+        ? existingNotifications.map((n) =>
+            n.key === notificationKey ? notificationItem : n
+          )
+        : [notificationItem, ...existingNotifications].slice(
+            0,
+            MAX_NOTIFICATIONS
+          );
+      return {...profile, notifications: newNotifications};
+    }).catch((e) => {
       if (e instanceof Error && e.message.includes("cannot_write")) {
         if (!this.datastoreErrorShown) {
           this.datastoreErrorShown = true;
@@ -215,14 +168,14 @@ class NotificationManager {
           );
         }
       } else {
-        // Use log.info to avoid recursive loop: log.error -> showErrorToast -> addNotification -> persist -> fail
+        // Use log.info to avoid recursive loop
         log.info(
           COMPONENT_NAME,
           "Failed to persist notification",
           e instanceof Error ? e.message : String(e)
         );
       }
-    }
+    });
   }
 
   async dismiss(key: string) {
@@ -234,45 +187,20 @@ class NotificationManager {
     const principalText = getAuthState().user?.key;
     if (!principalText) return;
 
-    // Logged-in — enqueue persistence to Juno
-    this.enqueueWrite(() => this.persistDismiss(principalText, key));
-  }
-
-  // Juno: setDoc on "users" → Rust assert_user_profile() then on_set_doc (no-op)
-  private async persistDismiss(
-    principalText: string,
-    key: string
-  ): Promise<void> {
-    const config = getSatelliteConfig();
-    try {
-      const userDocFull = await getDoc<UserProfile>({
-        collection: "users",
-        key: principalText,
-        ...config,
-      });
-      if (!userDocFull) return;
-
-      const newNotifications = (userDocFull.data.notifications || []).filter(
+    // Logged-in — persist via centralized write queue
+    enqueueProfileWrite(principalText, (profile) => {
+      const newNotifications = (profile.notifications || []).filter(
         (n) => n.key !== key
       );
-
-      await setDoc<UserProfile>({
-        collection: "users",
-        doc: {
-          key: principalText,
-          data: {...userDocFull.data, notifications: newNotifications},
-          version: userDocFull.version,
-        },
-        ...config,
-      });
-    } catch (e) {
+      return {...profile, notifications: newNotifications};
+    }).catch((e) => {
       // Use log.info to avoid recursive loop
       log.info(
         COMPONENT_NAME,
         "Failed to persist dismiss",
         e instanceof Error ? e.message : String(e)
       );
-    }
+    });
   }
 
   async snooze(key: string) {
@@ -287,51 +215,22 @@ class NotificationManager {
     const principalText = getAuthState().user?.key;
     if (!principalText) return;
 
-    // Logged-in — enqueue persistence to Juno
-    this.enqueueWrite(() =>
-      this.persistSnooze(principalText, key, snoozeUntil)
-    );
-  }
-
-  // Juno: setDoc on "users" → Rust assert_user_profile() then on_set_doc (no-op)
-  private async persistSnooze(
-    principalText: string,
-    key: string,
-    snoozeUntil: number
-  ): Promise<void> {
-    const config = getSatelliteConfig();
-    try {
-      const userDocFull = await getDoc<UserProfile>({
-        collection: "users",
-        key: principalText,
-        ...config,
-      });
-      if (!userDocFull) return;
-
-      const newNotifications = (userDocFull.data.notifications || []).map(
-        (n) =>
-          n.key === key
-            ? {...n, data: {...(n.data as NotificationData), snoozeUntil}}
-            : n
+    // Logged-in — persist via centralized write queue
+    enqueueProfileWrite(principalText, (profile) => {
+      const newNotifications = (profile.notifications || []).map((n) =>
+        n.key === key
+          ? {...n, data: {...(n.data as NotificationData), snoozeUntil}}
+          : n
       );
-
-      await setDoc<UserProfile>({
-        collection: "users",
-        doc: {
-          key: principalText,
-          data: {...userDocFull.data, notifications: newNotifications},
-          version: userDocFull.version,
-        },
-        ...config,
-      });
-    } catch (e) {
+      return {...profile, notifications: newNotifications};
+    }).catch((e) => {
       // Use log.info to avoid recursive loop
       log.info(
         COMPONENT_NAME,
         "Failed to persist snooze",
         e instanceof Error ? e.message : String(e)
       );
-    }
+    });
   }
 
   async clearAll() {
@@ -348,38 +247,18 @@ class NotificationManager {
     this.notifications = [];
     this.notify();
 
-    // Logged-in — enqueue persistence to Juno
-    this.enqueueWrite(() => this.persistClearAll(principalText));
-  }
-
-  // Juno: setDoc on "users" → Rust assert_user_profile() then on_set_doc (no-op)
-  private async persistClearAll(principalText: string): Promise<void> {
-    const config = getSatelliteConfig();
-    try {
-      const userDocFull = await getDoc<UserProfile>({
-        collection: "users",
-        key: principalText,
-        ...config,
-      });
-      if (!userDocFull) return;
-
-      await setDoc<UserProfile>({
-        collection: "users",
-        doc: {
-          key: principalText,
-          data: {...userDocFull.data, notifications: []},
-          version: userDocFull.version,
-        },
-        ...config,
-      });
-    } catch (e) {
+    // Logged-in — persist via centralized write queue
+    enqueueProfileWrite(principalText, (profile) => ({
+      ...profile,
+      notifications: [],
+    })).catch((e) => {
       // Use log.info to avoid recursive loop
       log.info(
         COMPONENT_NAME,
         "Failed to clear notifications",
         e instanceof Error ? e.message : String(e)
       );
-    }
+    });
   }
 
   public triggerToast(doc: NotificationDoc) {

@@ -1,0 +1,85 @@
+---
+// BurnStats.astro — Global burn and reward statistics (public, no auth required)
+---
+
+<div
+  id="burn-stats-card"
+  class="stats stats-horizontal bg-base-200/50 border-error/20 mt-6 hidden w-full max-w-4xl border shadow"
+>
+  <div class="stat place-items-center">
+    <div class="stat-title font-mono text-xs">BURNED</div>
+    <div id="burn-stat-burned" class="stat-value text-error text-2xl">
+      <span class="loading loading-dots loading-sm"></span>
+    </div>
+    <div id="burn-stat-burned-ticker" class="stat-desc font-mono">$TRESR</div>
+  </div>
+  <div class="stat place-items-center">
+    <div class="stat-title font-mono text-xs">REWARDED</div>
+    <div id="burn-stat-rewarded" class="stat-value text-success text-2xl">
+      <span class="loading loading-dots loading-sm"></span>
+    </div>
+    <div id="burn-stat-rewarded-ticker" class="stat-desc font-mono">$TRESR</div>
+  </div>
+</div>
+
+<script>
+  import {getDoc} from "@junobuild/core";
+  import {getEnvironmentKey} from "@/lib/wallet/avalanche";
+  import {config} from "@/lib/config/client";
+  import {log} from "@/lib/utils/log";
+  import type {GlobalStats} from "@/types/backend";
+
+  const COMPONENT_NAME = "BurnStats";
+
+  const cardEl = document.getElementById("burn-stats-card");
+  const burnedEl = document.getElementById("burn-stat-burned");
+  const rewardedEl = document.getElementById("burn-stat-rewarded");
+  const burnedTickerEl = document.getElementById("burn-stat-burned-ticker");
+  const rewardedTickerEl = document.getElementById("burn-stat-rewarded-ticker");
+
+  // Set ticker from config
+  const env = getEnvironmentKey();
+  const ticker = config.blockchain.avalanche[env].token_ticker;
+  if (burnedTickerEl) burnedTickerEl.textContent = `$${ticker}`;
+  if (rewardedTickerEl) rewardedTickerEl.textContent = `$${ticker}`;
+
+  function formatAmount(amount: number): string {
+    if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`;
+    if (amount >= 1_000) return `${(amount / 1_000).toFixed(1)}K`;
+    return amount.toLocaleString();
+  }
+
+  async function loadStats() {
+    try {
+      const doc = await getDoc<GlobalStats>({
+        collection: "stats",
+        key: "global",
+      });
+
+      if (doc?.data) {
+        const stats = doc.data;
+        if (burnedEl) burnedEl.textContent = formatAmount(stats.totalBurned);
+        if (rewardedEl)
+          rewardedEl.textContent = formatAmount(stats.totalRewarded);
+      } else {
+        if (burnedEl) burnedEl.textContent = "0";
+        if (rewardedEl) rewardedEl.textContent = "0";
+      }
+
+      if (cardEl) cardEl.classList.remove("hidden");
+    } catch (err) {
+      log.error(
+        COMPONENT_NAME,
+        "Failed to load global stats:",
+        err instanceof Error ? err.message : String(err)
+      );
+      // Show card with zeroes on error
+      if (burnedEl) burnedEl.textContent = "0";
+      if (rewardedEl) rewardedEl.textContent = "0";
+      if (cardEl) cardEl.classList.remove("hidden");
+    }
+  }
+
+  // Load stats when the loader finishes
+  window.addEventListener("loader-ready", () => loadStats(), {once: true});
+</script>

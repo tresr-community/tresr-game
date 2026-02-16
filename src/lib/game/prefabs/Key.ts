@@ -25,7 +25,7 @@ export class Key extends BaseEntity {
   private fadeTween: Phaser.Tweens.Tween | null = null;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, "key");
+    super(scene, x, y, "key_idle");
     this.initialX = x;
 
     const keyConfig = this.config.gameplay.entities.key;

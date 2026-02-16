@@ -22,7 +22,7 @@ export class Bomb extends BaseEntity {
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     // Texture key "bomb" maps to the candle sprite asset in config
-    super(scene, x, y, "bomb");
+    super(scene, x, y, "bomb_idle");
 
     const bombConfig = this.config.gameplay.entities.bomb;
     this.damage = bombConfig.damage;

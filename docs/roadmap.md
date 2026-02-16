@@ -132,16 +132,16 @@ This document outlines the feature and bug fix roadmap for the Tresr game, organ
 
 ## Phase 4: Economy and Blockchain (P1)
 
-### 4.1 Deposit Flow
+### 4.1 Fee Flow
 
 **Status:** DONE
 **Priority:** P1
 
 - [x] FeeGate entry fee payment
-- [x] Deposit transaction signing
+- [x] Fee transaction signing
 - [x] Session ID tracking
-- [ ] Implement 10% burn on deposit
-- [ ] Verify deposit on Juno backend
+- [ ] Implement 10% burn on fee
+- [ ] Verify fee on Juno backend
 
 ### 4.2 Claim Flow
 
@@ -417,7 +417,7 @@ This document outlines the feature and bug fix roadmap for the Tresr game, organ
 - [x] Bomb hazards (falling, splash damage, camera shake)
 - [x] SFX system (variants, seeded RNG, volume control)
 - [x] MusicManager (shuffle queue, preferences to Juno)
-- [x] FeeGate + deposit flow
+- [x] FeeGate + fee flow
 - [x] Claim flow (oracle sig, Vault.claim(), Recorder)
 - [x] Game over modals (victory + lost)
 - [x] Loading screen (coin animation, progress bar)
