@@ -23,3 +23,23 @@ juno-dev deploy     # Build and deploy to local satellite
 juno-dev agent-docs # Download AI agent documentation
 juno-dev lint       # Run linter
 ```
+
+## Running Commands in Devenv
+
+**ALL commands MUST be run inside `devenv shell`.** Tools like `cargo`, `bun`, `gh`, `git` (with pre-commit hooks), `juno`, and `solidity-check` are only available inside the devenv environment.
+
+Due to 1Password/secretspec being unavailable in the AI agent sandbox, use this pattern:
+
+```bash
+# Single command
+SECRETSPEC_PROVIDER=env devenv shell --quiet -- <command>
+
+# Examples
+SECRETSPEC_PROVIDER=env devenv shell --quiet -- cargo check
+SECRETSPEC_PROVIDER=env devenv shell --quiet -- juno-dev build-functions
+SECRETSPEC_PROVIDER=env devenv shell --quiet -- git commit -m "feat: add feature"
+SECRETSPEC_PROVIDER=env devenv shell --quiet -- gh pr create --base trunk --title "fix: something"
+SECRETSPEC_PROVIDER=env devenv shell --quiet -- devenv test
+```
+
+> **WARNING:** Running commands outside devenv will cause failures (missing binaries, broken pre-commit hooks, etc.)
