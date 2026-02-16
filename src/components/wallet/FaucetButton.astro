@@ -67,6 +67,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
         stopCooldownTick();
         return;
       }
+      btn!.textContent = EMOJI_CONTENT;
       btn!.disabled = true;
       btn!.title = `Cooldown: ${formatCooldownTime(seconds)}`;
       startCooldownTick();
