@@ -64,7 +64,7 @@ The GitHub `Mainnet` environment requires manual approval before the promote job
 
 `cd-foundry.yaml` is a single parameterized workflow that handles both testnet and mainnet:
 
-- **Push to trunk** (contracts/ changes) → always deploys to Testnet (Fuji)
+- **Push to trunk** (contracts/ changes) → always deploys to Testnet
 - **Manual dispatch** → choose Testnet or Mainnet
 
 Config values (RPC URL, addresses) are read dynamically from `config/tresr.yaml` based on the resolved network.

@@ -8,7 +8,7 @@ const envKey =
     : JUNO_ENVIRONMENT === "staging"
       ? ("testnet" as const)
       : ("mainnet" as const);
-const tokenSymbol = `$${config.blockchain.avalanche[envKey].tresr_token_ticker}`;
+const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
 ---
 
 <details class="dropdown dropdown-end">
@@ -201,7 +201,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].tresr_token_ticker}`
       : JUNO_ENVIRONMENT === "staging"
         ? "testnet"
         : "mainnet";
-  const tokenSymbol = `$${config.blockchain.avalanche[envKey].tresr_token_ticker}`;
+  const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
 
   function hideAllStates() {
     stateUnauthenticated.classList.add("hidden");

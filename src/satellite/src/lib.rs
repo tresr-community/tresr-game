@@ -1028,7 +1028,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     let profile_doc = SetDoc {
         data: encode_doc_data(&winner_profile)?,
         description: Some("Consolation prize notification added".to_string()),
-        version: winner_profile_doc.as_ref().and_then(|d| d.version),
+        version: None, // Upsert — avoids stale version from hook chain
     };
 
     set_doc_store(

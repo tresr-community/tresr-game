@@ -265,6 +265,7 @@ pub enum ClaimStatus {
 /// Game session data for validation
 /// Document key: session UUID
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct GameSession {
     /// When the session started (Unix timestamp ms)
     pub started_at: u64,

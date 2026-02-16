@@ -619,8 +619,16 @@ export async function signInWithAvalanche(): Promise<void> {
       message.includes("chainId") &&
       message.includes("not current network")
     ) {
+      const targetChainId =
+        config.blockchain.avalanche[
+          JUNO_ENVIRONMENT === "development"
+            ? "anvil"
+            : JUNO_ENVIRONMENT === "staging"
+              ? "testnet"
+              : "mainnet"
+        ].chain_id;
       throw new Error(
-        `Network mismatch: Please switch to Avalanche ${chainId === config.blockchain.avalanche.testnet.chain_id ? "Fuji testnet" : "mainnet"} in your wallet.`,
+        `Network mismatch: Please switch to chain ${targetChainId} in your wallet.`,
         {cause: error}
       );
     }

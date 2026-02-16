@@ -85,14 +85,13 @@
       "anvil": {
         "fee": 10,
         "burn_rate": 1000,
-        "chain_id": 43113,
+        "chain_id": 31337,
         "rpc_url": "http://localhost:8545",
-        "tresr_token_ticker": "tRON",
-        "tresr_token_contract": "0x3Aa4d9Acb0D650251dc78b6c1Cdd983E69c02bf1",
-        "tresr_token_treasury": "0x533d95Fa7D5CEd8f09e38aa359E406A3809Bc0e0",
+        "token_ticker": "tRON",
+        "tresr_token_contract": "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0xc5644f68702e1B997A3E4868035589411CCd11B7",
-        "faucet_contract": "0x6A5223550618620C4d1eC60F4809894A5F86cC78",
+        "vault_contract": "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
+        "faucet_contract": "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       },
       "testnet": {
@@ -100,10 +99,10 @@
         "burn_rate": 1000,
         "chain_id": 43113,
         "rpc_url": "https://api.avax-test.network/ext/bc/C/rpc",
-        "tresr_token_ticker": "tRON",
+        "token_ticker": "tRON",
+        "tresr_token_contract": "0x0000000000000000000000000000000000000000",
         "oracle_address": "0x0000000000000000000000000000000000000000",
         "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
-        "tresr_token_contract": "0x0000000000000000000000000000000000000000",
         "vault_contract": "0x0000000000000000000000000000000000000000",
         "faucet_contract": "0x0000000000000000000000000000000000000000"
       },
@@ -112,10 +111,10 @@
         "burn_rate": 1000,
         "chain_id": 43114,
         "rpc_url": "https://api.avax.network/ext/bc/C/rpc",
-        "tresr_token_ticker": "TRESR",
+        "token_ticker": "TRESR",
+        "tresr_token_contract": "0x9913BA363073Ca3e9eA0cD296E36B75aF9E40bef",
         "oracle_address": "0x0000000000000000000000000000000000000000",
         "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
-        "tresr_token_contract": "0x9913BA363073Ca3e9eA0cD296E36B75aF9E40bef",
         "vault_contract": "0x0000000000000000000000000000000000000000"
       }
     },

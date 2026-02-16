@@ -39,7 +39,7 @@
 
   // Set ticker from config
   const env = getEnvironmentKey();
-  const ticker = config.blockchain.avalanche[env].tresr_token_ticker;
+  const ticker = config.blockchain.avalanche[env].token_ticker;
   if (burnedTickerEl) burnedTickerEl.textContent = `$${ticker}`;
   if (rewardedTickerEl) rewardedTickerEl.textContent = `$${ticker}`;
 

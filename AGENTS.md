@@ -255,8 +255,9 @@ Directives for AI Agents:
   - **Immutable Contracts**: Prefer one-time deployable contracts over upgradeable ones. If upgrades are needed (rare), use OpenZeppelin's UUPS proxy with timelock.
   - **RPC and Chains**: For Avalanche, use official/testnet RPCs (e.g., `https://api.avax.network` for mainnet). Handle rate limits and finality checks (12+ blocks).
   - **Error Handling**: Use descriptive revert messages. Log events for off-chain monitoring.
-- **Workflow Integration**: Solidity contracts are separate from Juno Rust/Astro. Update `docs/solidity.md` for all changes. Deploy Fuji first for testing; mainnet requires human approval via GH Actions.
-- **Common Pitfalls to Avoid**: No selfdestruct in main contracts, no tx.origin for auth, no unbounded loops. Always burn-test on local Anvil before Fuji.
+- **Workflow Integration**: Solidity contracts are separate from Juno Rust/Astro. Update `docs/solidity.md` for all changes.
+  Deploy to testnet first for testing; mainnet requires human approval via GH Actions.
+- **Common Pitfalls to Avoid**: No selfdestruct in main contracts, no tx.origin for auth, no unbounded loops. Always burn-test on local Anvil before testnet.
 - **Documentation**: Update `docs/solidity.md` with setup/deploy guides. Use Mermaid diagrams for contract flows if complex.
 
 Foundry LLM documentation is available locally at `docs/agents/foundry.txt` (run `juno-dev agent-docs` to download).

@@ -19,7 +19,7 @@
         "@reown/appkit-adapter-wagmi": "1.8.18",
         "@tanstack/query-core": "5.90.20",
         "@types/seedrandom": "3.0.8",
-        "@wagmi/core": "3.3.3",
+        "@wagmi/core": "3.3.4",
         "astro": "5.17.2",
         "class-variance-authority": "0.7.1",
         "clsx": "2.1.1",
@@ -38,7 +38,7 @@
         "simple-cbor": "0.4.1",
         "tailwind-merge": "3.4.1",
         "unified": "11.0.5",
-        "viem": "2.46.0",
+        "viem": "2.46.1",
         "yaml": "2.8.2",
       },
       "devDependencies": {
@@ -531,7 +531,7 @@
 
     "@wagmi/connectors": ["@wagmi/connectors@7.1.6", "", { "peerDependencies": { "@base-org/account": "^2.5.1", "@coinbase/wallet-sdk": "^4.3.6", "@gemini-wallet/core": "~0.3.1", "@metamask/sdk": "~0.33.1", "@safe-global/safe-apps-provider": "~0.18.6", "@safe-global/safe-apps-sdk": "^9.1.0", "@wagmi/core": "3.3.2", "@walletconnect/ethereum-provider": "^2.21.1", "porto": "~0.2.35", "typescript": ">=5.7.3", "viem": "2.x" }, "optionalPeers": ["@base-org/account", "@coinbase/wallet-sdk", "@gemini-wallet/core", "@metamask/sdk", "@safe-global/safe-apps-provider", "@safe-global/safe-apps-sdk", "@walletconnect/ethereum-provider", "porto", "typescript"] }, "sha512-TKBTxSmiUh17tHdD7X1TQLtNIA4exuodPCwC0YuSaIRw8co1EivrUHjsHVsrJ7XKEsQhfp97ZRAVEssGcA4DPA=="],
 
-    "@wagmi/core": ["@wagmi/core@3.3.3", "", { "dependencies": { "eventemitter3": "5.0.1", "mipd": "0.0.7", "zustand": "5.0.0" }, "peerDependencies": { "@tanstack/query-core": ">=5.0.0", "ox": ">=0.11.1", "typescript": ">=5.7.3", "viem": "2.x" }, "optionalPeers": ["@tanstack/query-core", "ox", "typescript"] }, "sha512-Yg7fZgLDReh5TzCyFEHsaoDgk9FaQ0lAI+RSGYk7qFBs3SAnRXlHzc9NxEsv9E91JEzWaEzYI0WvgDFALT0Msw=="],
+    "@wagmi/core": ["@wagmi/core@3.3.4", "", { "dependencies": { "eventemitter3": "5.0.1", "mipd": "0.0.7", "zustand": "5.0.0" }, "peerDependencies": { "@tanstack/query-core": ">=5.0.0", "ox": ">=0.11.1", "typescript": ">=5.7.3", "viem": "2.x" }, "optionalPeers": ["@tanstack/query-core", "ox", "typescript"] }, "sha512-ulG2C3z6SKPYkliWtZMUuY1IoZSIhgDziO7Vh9CWk5pyZSNe3uthWnXBYnzcVe6BUpc3UeDio3GDqBWC09rH7A=="],
 
     "@wallet-standard/base": ["@wallet-standard/base@1.1.0", "", {}, ""],
 
@@ -1667,7 +1667,7 @@
 
     "vfile-message": ["vfile-message@4.0.3", "", { "dependencies": { "@types/unist": "^3.0.0", "unist-util-stringify-position": "^4.0.0" } }, ""],
 
-    "viem": ["viem@2.46.0", "", { "dependencies": { "@noble/curves": "1.9.1", "@noble/hashes": "1.8.0", "@scure/bip32": "1.7.0", "@scure/bip39": "1.6.0", "abitype": "1.2.3", "isows": "1.0.7", "ox": "0.12.1", "ws": "8.18.3" }, "peerDependencies": { "typescript": ">=5.0.4" }, "optionalPeers": ["typescript"] }, "sha512-6RSRSe41WneE7zouAALGzHSOx4uQn6ISJjswKeLxyOd+k/3gqvVm8K4J43ubAJPNSy9ZU8ygG7nKU+EhYf5RdQ=="],
+    "viem": ["viem@2.46.1", "", { "dependencies": { "@noble/curves": "1.9.1", "@noble/hashes": "1.8.0", "@scure/bip32": "1.7.0", "@scure/bip39": "1.6.0", "abitype": "1.2.3", "isows": "1.0.7", "ox": "0.12.1", "ws": "8.18.3" }, "peerDependencies": { "typescript": ">=5.0.4" }, "optionalPeers": ["typescript"] }, "sha512-c5YPQR/VueqoPG09Tp1JBw2iItKVRGVI0YkWekquRDZw0ciNBhO3muu2QjO9xFelOXh18q3d/kLbW83B2Oxf0g=="],
 
     "vite": ["vite@7.3.1", "", { "dependencies": { "esbuild": "^0.27.0", "fdir": "^6.5.0", "picomatch": "^4.0.3", "postcss": "^8.5.6", "rollup": "^4.43.0", "tinyglobby": "^0.2.15" }, "optionalDependencies": { "fsevents": "~2.3.3" }, "peerDependencies": { "@types/node": "^20.19.0 || >=22.12.0", "jiti": ">=1.21.0", "less": "^4.0.0", "lightningcss": "^1.21.0", "sass": "^1.70.0", "sass-embedded": "^1.70.0", "stylus": ">=0.54.8", "sugarss": "^5.0.0", "terser": "^5.16.0", "tsx": "^4.8.1", "yaml": "^2.4.2" }, "optionalPeers": ["less", "sass", "sass-embedded", "stylus", "sugarss", "terser", "tsx"], "bin": "bin/vite.js" }, ""],
 

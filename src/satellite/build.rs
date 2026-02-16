@@ -67,7 +67,7 @@ struct AvalancheNetwork {
     chain_id: u64,
     vault_contract: String,
     tresr_token_contract: String,
-    tresr_token_ticker: String,
+    token_ticker: String,
 }
 
 #[derive(Deserialize)]
@@ -144,7 +144,7 @@ pub const VAULT_CONTRACT_ADDRESS: &str = "{vault_contract}";
 /// TRESR token contract address on Avalanche (from client.blockchain.avalanche.{network}.tresr_token_contract)
 pub const TRESR_TOKEN_CONTRACT: &str = "{token_contract}";
 
-/// TRESR token ticker symbol (from client.blockchain.avalanche.{network}.tresr_token_ticker)
+/// TRESR token ticker symbol (from client.blockchain.avalanche.{network}.token_ticker)
 pub const TRESR_TOKEN_TICKER: &str = "{token_ticker}";
 
 /// Entry fee in tokens (from client.blockchain.avalanche.{network}.fee)
@@ -179,7 +179,7 @@ pub const CONSOLATION_PRIZE_MIN_GAMES: u64 = {consolation_prize_min_games};
         chain_id = chain.chain_id,
         vault_contract = chain.vault_contract,
         token_contract = chain.tresr_token_contract,
-        token_ticker = chain.tresr_token_ticker,
+        token_ticker = chain.token_ticker,
         fee = chain.fee,
         burn_rate = chain.burn_rate,
         ecdsa_key_name = ecdsa_key_name,

@@ -112,7 +112,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
     }
 
     async function handleClick() {
-      if (isProcessing || disposed) return;
+      if (isProcessing || disposed || btn!.disabled) return;
 
       if (!walletConnected) {
         log.warn(COMPONENT_NAME, "Connect wallet first");
@@ -154,7 +154,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
           const env = (
             await import("@/lib/wallet/avalanche")
           ).getEnvironmentKey();
-          const ticker = config.blockchain.avalanche[env].tresr_token_ticker;
+          const ticker = config.blockchain.avalanche[env].token_ticker;
           amountDisplay = `${formatBalance(dripAmount)} $${ticker}`;
         } catch {
           // Non-critical — just show generic message
@@ -190,7 +190,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
             const env = (
               await import("@/lib/wallet/avalanche")
             ).getEnvironmentKey();
-            ticker = config.blockchain.avalanche[env].tresr_token_ticker;
+            ticker = config.blockchain.avalanche[env].token_ticker;
           } catch {
             // fall back to default ticker
           }
@@ -263,3 +263,10 @@ const isProduction = JUNO_ENVIRONMENT === "production";
     );
   }
 </script>
+
+<style>
+  #faucet-btn:disabled {
+    pointer-events: auto;
+    cursor: not-allowed;
+  }
+</style>

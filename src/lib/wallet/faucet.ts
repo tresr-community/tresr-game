@@ -5,13 +5,14 @@
  * Only available in non-production environments.
  */
 
-import {createPublicClient, http, encodeFunctionData} from "viem";
+import {encodeFunctionData} from "viem";
 import type {ConfigTypes} from "@/types/config";
 import {loadConfigAsync} from "../config";
 import {log} from "../utils/log";
 import {FaucetAbi} from "./FaucetAbi";
 import {getWalletClient} from "./connection";
 import {getTargetChain, getEnvironmentKey} from "./avalanche";
+import {confirmReceipt, getReadClient} from "./tx";
 
 const COMPONENT_NAME = "Faucet";
 
@@ -51,11 +52,9 @@ export async function claimFaucet(): Promise<`0x${string}`> {
     chainConfig as AvalancheEnvConfig & {faucet_contract?: string}
   ).faucet_contract as `0x${string}`;
 
-  // Create a public client for gas estimation (uses correct RPC)
-  const publicClient = createPublicClient({
-    chain,
-    transport: http(chainConfig.rpc_url),
-  });
+  // Use wagmi's managed public client — its transport is shared with the
+  // wallet provider, avoiding receipt hangs on Anvil.
+  const publicClient = getReadClient();
 
   log.info(COMPONENT_NAME, "Claiming tokens from faucet...");
 
@@ -80,6 +79,10 @@ export async function claimFaucet(): Promise<`0x${string}`> {
   });
 
   log.info(COMPONENT_NAME, "Faucet claim tx:", hash);
+
+  // Confirm receipt through wagmi's managed transport (works on Anvil + live)
+  await confirmReceipt(hash, {component: COMPONENT_NAME});
+
   return hash;
 }
 
@@ -98,12 +101,8 @@ export async function getFaucetCooldownStatus(
   const faucetAddress = (
     chainConfig as AvalancheEnvConfig & {faucet_contract?: string}
   ).faucet_contract as `0x${string}`;
-  const chain = getTargetChain(chainConfig.rpc_url);
 
-  const publicClient = createPublicClient({
-    chain,
-    transport: http(chainConfig.rpc_url),
-  });
+  const publicClient = getReadClient();
 
   const lastDripTime = await publicClient.readContract({
     address: faucetAddress,
@@ -143,12 +142,8 @@ export async function getFaucetDripAmount(): Promise<bigint> {
   const faucetAddress = (
     chainConfig as AvalancheEnvConfig & {faucet_contract?: string}
   ).faucet_contract as `0x${string}`;
-  const chain = getTargetChain(chainConfig.rpc_url);
 
-  const publicClient = createPublicClient({
-    chain,
-    transport: http(chainConfig.rpc_url),
-  });
+  const publicClient = getReadClient();
 
   return await publicClient.readContract({
     address: faucetAddress,

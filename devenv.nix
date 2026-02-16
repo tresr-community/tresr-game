@@ -419,7 +419,7 @@ in
       solidity-check = {
         enable = true;
         name = "solidity-check";
-        entry = "solidity-dev --check";
+        entry = "solidity-dev check";
         pass_filenames = false;
       };
     };

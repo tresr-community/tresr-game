@@ -39,7 +39,7 @@
     "@reown/appkit-adapter-wagmi": "1.8.18",
     "@tanstack/query-core": "5.90.20",
     "@types/seedrandom": "3.0.8",
-    "@wagmi/core": "3.3.3",
+    "@wagmi/core": "3.3.4",
     "astro": "5.17.2",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
@@ -58,7 +58,7 @@
     "simple-cbor": "0.4.1",
     "tailwind-merge": "3.4.1",
     "unified": "11.0.5",
-    "viem": "2.46.0",
+    "viem": "2.46.1",
     "yaml": "2.8.2"
   },
   "devDependencies": {

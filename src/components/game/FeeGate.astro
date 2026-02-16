@@ -59,7 +59,8 @@
   import {config} from "@/lib/config/client";
   import {getEnvironmentKey} from "@/lib/wallet/avalanche";
   import {connectWallet, isConnected} from "@/lib/wallet/connection";
-  import {payFeeForGame, getPublicClient} from "@/lib/wallet/avalanche";
+  import {payFeeForGame} from "@/lib/wallet/avalanche";
+  import {confirmReceipt} from "@/lib/wallet/tx";
   import {getTresrBalance, formatBalance} from "@/lib/wallet/balance";
   import {parseBalance} from "@/lib/wallet/balance";
   import {
@@ -86,7 +87,7 @@
   const env = getEnvironmentKey();
   const chainConfig = config.blockchain.avalanche[env];
   const feeAmount = chainConfig.fee;
-  const ticker = chainConfig.tresr_token_ticker;
+  const ticker = chainConfig.token_ticker;
 
   // Display fee amount
   feeAmountDisplay.textContent = `${feeAmount} $${ticker}`;
@@ -231,20 +232,7 @@
       // Step 5: Wait for on-chain confirmation (ticket #198)
       markStep("confirm", "active");
       showStatus("Confirming transaction on-chain...");
-      const publicClient = await getPublicClient();
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash: txHash,
-      });
-      if (receipt.status !== "success") {
-        markStep("confirm", "error");
-        showStatus("Transaction reverted on-chain. Try again.", true);
-        paymentInProgress = false;
-        btnPay.disabled = false;
-        paySpinner.classList.add("hidden");
-        payLabel.textContent = "Pay & Start Mission";
-        btnAbort.classList.remove("hidden");
-        return;
-      }
+      await confirmReceipt(txHash, {component: "FeeGate"});
       markStep("confirm", "done");
 
       // Store session info in the fee-gate module (async — generates HMAC signature)

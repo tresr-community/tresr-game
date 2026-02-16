@@ -48,7 +48,7 @@ function cmd_astro_build() {
 	log_info "🚀 Clean Astro build..."
 	rm -rf dist node_modules/.vite .astro # Vite/Astro caches
 	bun install
-	bun run prebuild # version-bump + client-config (non-CI)
+	bun run prebuild # client-config (non-CI)
 	bun run build    # astro build → NEW dist/_astro/sw-[HASH].js!
 	log_success "✅ Build done. NEW SW: $(find dist/_astro -name 'sw*' -print -quit 2>/dev/null || echo 'None')"
 }
@@ -59,7 +59,8 @@ function cmd_astro_build() {
 
 function cmd_functions_build() {
 	log_info "🔧 Building Juno serverless functions..."
-	juno functions build || {
+	# Set network so build.rs bakes the correct contract addresses from tresr.yaml
+	SATELLITE_NETWORK="${SATELLITE_NETWORK:-anvil}" juno functions build || {
 		log_error "Functions build failed!"
 		return 1
 	}

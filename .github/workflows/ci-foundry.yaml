@@ -73,7 +73,7 @@ jobs:
         name: Check Solidity Contracts
         shell: devenv shell --quiet bash -- -e {0}
         run: |
-          solidity-dev --check
+          solidity-dev check
 
       - id: report_status
         name: Report Status
