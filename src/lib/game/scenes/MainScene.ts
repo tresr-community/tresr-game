@@ -2229,6 +2229,7 @@ export class MainScene extends Phaser.Scene {
 
   private async onPlayerDeath() {
     if (this.phase === "lost" || this.phase === "victory") return;
+    const deathPhase = this.phase;
     this.phase = "lost";
     gameActions.setPhase("lost");
     log.info(COMPONENT_NAME, "PLAYER DIED. System Critical.");
@@ -2245,10 +2246,10 @@ export class MainScene extends Phaser.Scene {
     const deathDuration = Math.round(
       this.gameplayConfig.time_limit_seconds - this.survivalTimer
     );
-    trackPlayerDeath(this.score, this.phase, this.collectedKeys);
+    trackPlayerDeath(this.score, deathPhase, this.collectedKeys);
     trackGameLoss("player_died", {
       score: this.score,
-      phase: this.phase,
+      phase: deathPhase,
       keysCollected: this.collectedKeys,
       duration: deathDuration,
     });
