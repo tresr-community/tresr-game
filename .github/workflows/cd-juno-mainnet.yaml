@@ -125,6 +125,7 @@ jobs:
         name: Build Juno Functions
         shell: devenv shell --quiet bash -- -e {0}
         run: |
+          cargo generate-lockfile
           juno functions build
 
       - id: deploy_hosting
