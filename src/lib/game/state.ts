@@ -141,10 +141,10 @@ export const gameActions = {
     store.setKey("superCharge", Math.max(0, Math.min(value, max)));
   },
 
-  /** Add super charge (clamped to max) */
+  /** Add super charge (clamped 0 to max) */
   addSuperCharge(amount: number, max: number) {
     const current = store.get().superCharge;
-    store.setKey("superCharge", Math.min(current + amount, max));
+    store.setKey("superCharge", Math.max(0, Math.min(current + amount, max)));
   },
 
   /** Reset super charge to 0 */
