@@ -59,6 +59,11 @@ function cmd_astro_build() {
 
 function cmd_functions_build() {
 	log_info "🔧 Building Juno serverless functions..."
+
+	# Regenerate Cargo.lock so it matches current Cargo.toml (version bumps etc.)
+	# Juno CLI builds with --locked, so the lockfile must be up-to-date.
+	cargo generate-lockfile 2>/dev/null || log_warn "cargo generate-lockfile failed (continuing)"
+
 	# Set network so build.rs bakes the correct contract addresses from tresr.yaml
 	SATELLITE_NETWORK="${SATELLITE_NETWORK:-anvil}" juno functions build || {
 		log_error "Functions build failed!"
@@ -74,14 +79,10 @@ function cmd_functions_build() {
 function cmd_functions_deploy() {
 	local mode="${1:-development}"
 
-	# Step 1: Bump dev version before build so it's compiled into the WASM
-	log_info "📦 Bumping dev version..."
-	bun run version-dev || log_warn "Dev version bump failed (continuing anyway)"
-
-	# Step 2: Build Rust → WASM (includes the bumped version)
+	# Build Rust → WASM (version stays at 0.0.0 locally; CI sets real version via convco)
 	cmd_functions_build || return 1
 
-	# Step 3: Upgrade (direct deploy, skips CDN — use 'publish' for CI/CD)
+	# Upgrade (direct deploy, skips CDN — use 'publish' for CI/CD)
 	log_info "📤 Upgrading Juno serverless functions (mode=$mode)..."
 	juno functions upgrade --mode "$mode" || {
 		log_error "Functions upgrade failed!"

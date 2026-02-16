@@ -86,12 +86,14 @@ jobs:
         name: Build Functions (Development)
         shell: devenv shell --quiet bash -- -e {0}
         run: |
+          cargo generate-lockfile
           juno-dev build-functions
 
       - id: build_functions_prod
         name: Build Functions (Production)
         shell: devenv shell --quiet bash -- -e {0}
         run: |
+          cargo generate-lockfile
           juno functions build
 
       - id: report_status
