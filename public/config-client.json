@@ -88,11 +88,11 @@
         "chain_id": 43113,
         "rpc_url": "http://localhost:8545",
         "tresr_token_ticker": "tRON",
-        "tresr_token_contract": "0xF92FB772445695d6d5A5A4dBBFD2D886B1500A52",
+        "tresr_token_contract": "0x3Aa4d9Acb0D650251dc78b6c1Cdd983E69c02bf1",
         "tresr_token_treasury": "0x533d95Fa7D5CEd8f09e38aa359E406A3809Bc0e0",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0x5e586b9202A4022392Fa219C4771084De7c571c4",
-        "faucet_contract": "0x7EE0D65ed222Db98b8FA4E7AB84707055d53D05b",
+        "vault_contract": "0xc5644f68702e1B997A3E4868035589411CCd11B7",
+        "faucet_contract": "0x6A5223550618620C4d1eC60F4809894A5F86cC78",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       },
       "testnet": {
