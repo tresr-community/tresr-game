@@ -1529,9 +1529,11 @@ export class MainScene extends Phaser.Scene {
     if (loot.lootType === "powerup") {
       this.playSound("powerup_collect");
       // Hero voice line after a short delay (calling down the bot)
-      this.time.delayedCall(300, () => {
-        this.playSound("bot_spawn");
-      });
+      this.adHocTimers.push(
+        this.time.delayedCall(300, () => {
+          this.playSound("bot_spawn");
+        })
+      );
       this.spawnTresrBot();
     }
 
@@ -2020,18 +2022,22 @@ export class MainScene extends Phaser.Scene {
     const chestConfig = this.gameplayConfig.entities.chest;
 
     // Delayed air drop for dramatic effect after boss explosion
-    this.time.delayedCall(chestConfig.air_drop.delay_after_boss_ms, () => {
-      log.info(COMPONENT_NAME, "Air dropping Treasure Chest...");
-      const {width} = this.cameras.main;
-      // Spawn chest in center of walkable area
-      const chestGroundY =
-        (this.walkableArea.getTopY() + this.walkableArea.getBottomY()) / 2;
-      this.chest = new Chest(this, width / 2, chestGroundY, true);
-      const spritesConfig = this.registry.get(
-        "sprites_config"
-      ) as SpritesConfig;
-      this.chest.setScale(SpriteManager.getScaleFactor(spritesConfig, "chest"));
-    });
+    this.adHocTimers.push(
+      this.time.delayedCall(chestConfig.air_drop.delay_after_boss_ms, () => {
+        log.info(COMPONENT_NAME, "Air dropping Treasure Chest...");
+        const {width} = this.cameras.main;
+        // Spawn chest in center of walkable area
+        const chestGroundY =
+          (this.walkableArea.getTopY() + this.walkableArea.getBottomY()) / 2;
+        this.chest = new Chest(this, width / 2, chestGroundY, true);
+        const spritesConfig = this.registry.get(
+          "sprites_config"
+        ) as SpritesConfig;
+        this.chest.setScale(
+          SpriteManager.getScaleFactor(spritesConfig, "chest")
+        );
+      })
+    );
 
     // R-004: Chest is opened via attack, not overlap
     // The handlePlayerAttack method now checks for chest proximity
