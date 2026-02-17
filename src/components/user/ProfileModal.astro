@@ -486,7 +486,15 @@
       log.info(COMPONENT_NAME, "Profile saved successfully.", currentProfile);
     } catch (error) {
       log.error(COMPONENT_NAME, "Failed to save profile:", error);
-      window.showErrorToast("Failed to save profile", (error as Error).message);
+      const msg = (error as Error).message || "";
+      if (msg.includes("version")) {
+        window.showErrorToast(
+          "Profile was modified elsewhere",
+          "Please close and reopen the modal to refresh."
+        );
+      } else {
+        window.showErrorToast("Failed to save profile", msg);
+      }
     } finally {
       saveBtn.classList.remove("loading");
     }
