@@ -57,6 +57,10 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - id: free_disk_space
+        name: Free Disk Space
+        uses: ./.github/actions/free-disk-space
+
       - id: detect_changes
         name: Detect Contract Changes
         run: |
