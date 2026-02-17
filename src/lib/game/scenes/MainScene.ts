@@ -444,6 +444,7 @@ export class MainScene extends Phaser.Scene {
       combat: gameplay.combat,
       audio: gameplay.audio,
       vault: gameplay.vault,
+      fee_gate: gameplay.fee_gate,
     };
     const criticalJson = canonicalStringify(criticalValues);
 
