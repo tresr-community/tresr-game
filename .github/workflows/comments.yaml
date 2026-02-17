@@ -29,7 +29,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    timeout-minutes: 5
+    timeout-minutes: 30
 
     steps:
       - id: giphy_search
@@ -49,7 +49,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    timeout-minutes: 5
+    timeout-minutes: 30
 
     steps:
       - id: post_discord

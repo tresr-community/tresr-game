@@ -33,9 +33,14 @@ async function loadPrecacheManifest(): Promise<string[]> {
 self.addEventListener("install", (event: ExtendableEvent) => {
   console.log(`[SW] [INFO] Install event fired (build: ${BUILD_ID})`);
   event.waitUntil(
-    loadPrecacheManifest().then((assets) =>
-      caches.open(CACHE_NAME).then((cache) => cache.addAll(assets))
-    )
+    loadPrecacheManifest()
+      .then((assets) =>
+        caches.open(CACHE_NAME).then((cache) => cache.addAll(assets))
+      )
+      .catch((err) => {
+        console.error("[SW] [ERROR] Install failed:", err);
+        throw err;
+      })
   );
 });
 

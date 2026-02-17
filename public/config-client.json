@@ -42,7 +42,7 @@
   },
   "app": {
     "name": "TRESR Game",
-    "tagline": "Collect Keys. Fight Enemies. Claim the TRESR.",
+    "tagline": "Collect Keys. Fight Enemies. Claim the $TRESR.",
     "footer_text": "Economy powered by the Avalanche Blockchain.",
     "narration_text": {
       "intro": "Most days, Ron Jay embraces the degenerate life\nfarming airdrops and apeing into meme coins.\n\nBut today?\n\nToday Ron chooses violence against the\ntyrannical bankers shackling crypto's future.\n\nWelcome, to the Crypto Cage...\n"
@@ -1362,5 +1362,5 @@
       }
     ]
   },
-  "configHash": "df6727eab4d7101d2fd49510a0d389684b8501e60ea6fbe2471148325df553cd"
+  "configHash": "18ebfc69f149a3708f33efb8296f8474118d4da3e1900e5c312ef7f7ad5d575d"
 }

@@ -54,8 +54,8 @@ export class Key extends BaseEntity {
 
     // --- Z-axis falling (inline, not via BaseEntity.updateZ) ---
     if (this.z > 0 || this.vz !== 0) {
-      this.vz -= this.gravity;
       this.z += this.vz;
+      this.vz -= this.gravity;
 
       if (this.z <= 0) {
         this.z = 0;

@@ -97,13 +97,22 @@ class MusicManager {
       window.addEventListener("beforeunload", this.handleBeforeUnload);
 
       this.authUnsubscribe = subscribeToAuth(async (state) => {
-        if (state.isAuthenticated && !state.isGuest && state.user) {
-          await this.loadPreferences(state.user.key);
-        } else if (!this.initialPlayStarted && this.tracks.length > 0) {
-          // Guest or unauthenticated — default to shuffle playback
-          this.initialPlayStarted = true;
-          gameActions.updateMusic({playbackMode: "shuffle"});
-          this.playRandomAfterNarration();
+        try {
+          if (state.isAuthenticated && !state.isGuest && state.user) {
+            await this.loadPreferences(state.user.key);
+          } else if (!this.initialPlayStarted && this.tracks.length > 0) {
+            // Guest or unauthenticated — default to shuffle playback
+            this.initialPlayStarted = true;
+            gameActions.updateMusic({playbackMode: "shuffle"});
+            this.playRandomAfterNarration();
+          }
+        } catch (err) {
+          log.warn(COMPONENT_NAME, "Auth callback failed, falling back:", err);
+          if (!this.initialPlayStarted && this.tracks.length > 0) {
+            this.initialPlayStarted = true;
+            gameActions.updateMusic({playbackMode: "shuffle"});
+            this.playRandomAfterNarration();
+          }
         }
       });
     }
@@ -229,7 +238,16 @@ class MusicManager {
         this.playRandomAfterNarration();
       }
     } catch (e) {
-      log.warn(COMPONENT_NAME, "Failed to load preferences:", e);
+      log.warn(
+        COMPONENT_NAME,
+        "Failed to load preferences, applying defaults:",
+        e
+      );
+      const audioConfig = config.gameplay.audio;
+      gameActions.updateMusic({playbackMode: "shuffle"});
+      this.setVolume(audioConfig.default_music_volume, false);
+      this.setSfxVolume(audioConfig.default_sfx_volume, false);
+      this.playRandomAfterNarration();
     }
   }
 

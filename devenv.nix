@@ -48,10 +48,9 @@ let
   #packages = with pkgs; [ ];
 
   packagesUnstable = with pkgsUnstable; [
-    tailwindcss_4
+    claude-code-bin
     gemini-cli-bin
-    #claude-code-bin
-    claude-code
+    tailwindcss_4
   ];
 
   devPackages =
@@ -100,6 +99,7 @@ let
       toml-cli
 
       # Security
+      codeql
       trivy
 
       # Solidity.
@@ -500,6 +500,13 @@ in
       description = "Check Solidity code for errors.";
       exec = ''
         ./scripts/solidity-dev.sh "$@"
+      '';
+    };
+    codeql-run = {
+      package = pkgs.bash;
+      description = "Run CodeQL static analysis locally.";
+      exec = ''
+        ./scripts/codeql-run.sh "$@"
       '';
     };
   };

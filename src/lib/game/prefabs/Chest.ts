@@ -70,4 +70,9 @@ export class Chest extends BaseEntity {
     this.removeAllListeners(Phaser.Animations.Events.ANIMATION_COMPLETE);
     super.kill();
   }
+
+  destroy(fromScene?: boolean) {
+    this.removeAllListeners(Phaser.Animations.Events.ANIMATION_COMPLETE);
+    super.destroy(fromScene);
+  }
 }
