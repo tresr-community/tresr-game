@@ -995,6 +995,18 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         return Ok(());
     }
 
+    // Require minimum games played before awarding consolation prize
+    if winner_profile.stats.total_games_played < config::CONSOLATION_PRIZE_MIN_GAMES {
+        clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
+        ic_cdk::print(format!(
+            "Skipped consolation for {}: only {} games played (min {})",
+            winner_key,
+            winner_profile.stats.total_games_played,
+            config::CONSOLATION_PRIZE_MIN_GAMES
+        ));
+        return Ok(());
+    }
+
     // Calculate consolation amount (use fixed max for simplicity, avoiding expensive vault query)
     let consolation_amount = config::CONSOLATION_PRIZE_MAX;
 
