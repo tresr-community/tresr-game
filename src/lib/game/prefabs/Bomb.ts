@@ -96,8 +96,8 @@ export class Bomb extends BaseEntity {
     // --- Z-axis falling (inline, not via BaseEntity.updateZ) ---
     // We inline this so we can skip the Arcade body sync entirely.
     if (this.z > 0) {
-      this.vz -= this.gravity; // gravity pulls down
-      this.z += this.vz;
+      this.z += this.vz; // update position first (Symplectic Euler)
+      this.vz -= this.gravity; // then apply gravity
 
       if (this.z <= 0) {
         this.z = 0;

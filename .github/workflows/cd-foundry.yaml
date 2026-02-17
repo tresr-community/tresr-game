@@ -13,8 +13,6 @@ name: Foundry Deploy
 on:
   push:
     branches:
-      - main
-      - master
       - trunk
     paths:
       - "contracts/**"
@@ -32,7 +30,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'push' }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -61,12 +59,36 @@ jobs:
     environment: ${{ github.event_name == 'push' && 'Testnet' || github.event.inputs.environment }}
 
     steps:
+      - id: check_vars
+        name: Check Variables
+        env:
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          SNOWTRACE_API_KEY: ${{ secrets.SNOWTRACE_API_KEY }}
+        run: |
+          REQUIRED_VARS=(
+            DEPLOYER_PRIVATE_KEY
+            SNOWTRACE_API_KEY
+          )
+          for VAR in "${REQUIRED_VARS[@]}";
+          do
+            if [[ -z "${!VAR}" ]];
+            then
+              echo "::error::Required variable $VAR is not set"
+              exit 1
+            fi
+          done
+          echo "All required variables are set"
+
       - id: checkout_repository
         name: Checkout Repository
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
           submodules: recursive
+
+      - id: free_disk_space
+        name: Free Disk Space
+        uses: ./.github/actions/free-disk-space
 
       - id: setup_devenv
         name: Setup Devenv
@@ -101,6 +123,31 @@ jobs:
             echo "ORACLE_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.oracle_address" config/tresr.yaml)"
             echo "ADMIN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.safe_address" config/tresr.yaml)"
           } >> "$GITHUB_OUTPUT"
+
+      - id: validate_config
+        name: Validate Config
+        env:
+          RPC_URL: ${{ steps.read_config.outputs.RPC_URL }}
+          CHAIN_ID: ${{ steps.read_config.outputs.CHAIN_ID }}
+          TOKEN_ADDRESS: ${{ steps.read_config.outputs.TOKEN_ADDRESS }}
+          ORACLE_ADDRESS: ${{ steps.read_config.outputs.ORACLE_ADDRESS }}
+          ADMIN_ADDRESS: ${{ steps.read_config.outputs.ADMIN_ADDRESS }}
+        run: |
+          ERRORS=0
+          for VAR in RPC_URL CHAIN_ID TOKEN_ADDRESS ORACLE_ADDRESS ADMIN_ADDRESS; do
+            VAL="${!VAR}"
+            if [[ -z "$VAL" || "$VAL" == "null" ]]; then
+              echo "::error::Config value $VAR is empty or null"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "✓ $VAR=$VAL"
+            fi
+          done
+
+          if [[ $ERRORS -gt 0 ]]; then
+            echo "::error::$ERRORS config value(s) missing. Check tresr.yaml paths."
+            exit 1
+          fi
 
       - id: build_contracts
         name: Build Contracts

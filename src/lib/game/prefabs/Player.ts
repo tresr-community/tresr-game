@@ -103,6 +103,11 @@ export class Player extends BaseEntity {
 
     // Cache walkable area reference (set by MainScene.create before Player is constructed)
     this.walkableArea = scene.registry.get("walkable_area") as WalkableArea;
+    if (!this.walkableArea) {
+      throw new Error(
+        "Player: walkable_area not found in scene registry. Ensure MainScene.create sets it before constructing Player."
+      );
+    }
 
     // Enable health bar for player
     this.enableHealthBar(50, 6, -5);

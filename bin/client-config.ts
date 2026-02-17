@@ -254,16 +254,26 @@ interface PendingWrite {
       }
 
       // Validate contiguous numbering (1 through N) for each type
+      const sfxGaps: string[] = [];
       for (const [type, maxNum] of Object.entries(sfxVariants)) {
         for (let i = 1; i <= maxNum; i++) {
           const expected = `${type}_${i}`;
           if (!assets.sfx.includes(expected)) {
-            log.warn(
-              COMPONENT_NAME,
-              `SFX gap detected: ${expected} is missing (${type} has variants up to ${maxNum})`
+            sfxGaps.push(
+              `${expected} is missing (${type} has variants up to ${maxNum})`
             );
           }
         }
+      }
+      if (sfxGaps.length > 0) {
+        for (const gap of sfxGaps) {
+          log.error(COMPONENT_NAME, `SFX gap detected: ${gap}`);
+        }
+        log.error(
+          COMPONENT_NAME,
+          `Build failed: ${sfxGaps.length} SFX variant gap(s) found`
+        );
+        process.exit(1);
       }
 
       // Overwrite sfx_variants in gameplay config with auto-detected counts
@@ -367,6 +377,7 @@ interface PendingWrite {
         combat: gameplay.combat,
         audio: gameplay.audio,
         vault: gameplay.vault,
+        fee_gate: gameplay.fee_gate,
       };
       const criticalJson = canonicalStringify(criticalValues);
       const configHash = crypto

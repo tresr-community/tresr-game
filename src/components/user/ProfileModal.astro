@@ -486,7 +486,15 @@
       log.info(COMPONENT_NAME, "Profile saved successfully.", currentProfile);
     } catch (error) {
       log.error(COMPONENT_NAME, "Failed to save profile:", error);
-      window.showErrorToast("Failed to save profile", (error as Error).message);
+      const msg = (error as Error).message || "";
+      if (msg.includes("version")) {
+        window.showErrorToast(
+          "Profile was modified elsewhere",
+          "Please close and reopen the modal to refresh."
+        );
+      } else {
+        window.showErrorToast("Failed to save profile", msg);
+      }
     } finally {
       saveBtn.classList.remove("loading");
     }
@@ -545,36 +553,32 @@
   async function handleUnlinkWallet() {
     if (!confirm("Sever Neural Link?")) return;
 
-    // Fire async, no await on UI
-    (async () => {
-      try {
-        await disconnectWallet();
-        if (currentProfile) {
-          currentProfile.wallet.evmWalletLinked = false;
-          currentProfile.evmWallet = undefined;
-          currentProfile.walletProof = undefined;
-          const auth = getAuthState();
-          if (auth.user) {
-            const savedDoc = await saveUserProfile(
-              auth.user.key,
-              currentProfile,
-              currentVersion
-            );
-            currentVersion = savedDoc.version;
-          }
-          updateWalletUI();
-          trackWalletUnlink();
-          window.showInfoToast("Neural link severed");
+    try {
+      await disconnectWallet();
+      if (currentProfile) {
+        currentProfile.wallet.evmWalletLinked = false;
+        currentProfile.evmWallet = undefined;
+        currentProfile.walletProof = undefined;
+        const auth = getAuthState();
+        if (auth.user) {
+          const savedDoc = await saveUserProfile(
+            auth.user.key,
+            currentProfile,
+            currentVersion
+          );
+          currentVersion = savedDoc.version;
         }
-      } catch (err) {
-        log.error(COMPONENT_NAME, "Wallet unlink failed", err);
-        window.showErrorToast(
-          "Failed to sever neural link",
-          (err as Error).message
-        );
+        updateWalletUI();
+        trackWalletUnlink();
+        window.showInfoToast("Neural link severed");
       }
-    })();
-    closeProfileModal(); // Instant feedback
+    } catch (err) {
+      log.error(COMPONENT_NAME, "Wallet unlink failed", err);
+      window.showErrorToast(
+        "Failed to sever neural link",
+        (err as Error).message
+      );
+    }
   }
 
   function closeProfileModal() {

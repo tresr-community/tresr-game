@@ -43,7 +43,7 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
           >
             <span class="text-info">COLLECT KEYS.</span>{" "}
             <span class="text-error">FIGHT ENEMIES.</span>{" "}
-            <span class="text-warning italic">CLAIM THE TRESR.</span>
+            <span class="text-warning italic">CLAIM THE $TRESR.</span>
           </p>
 
           <div class="mt-4 flex flex-col items-center gap-3 md:mt-8 md:gap-6">
@@ -146,31 +146,43 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
     const wallpapers = config.assets.wallpapers;
     if (wallpapers.length === 0) return "";
 
-    const last = localStorage.getItem(LAST_WALLPAPER_KEY);
+    let last: string | null = null;
+    try {
+      last = localStorage.getItem(LAST_WALLPAPER_KEY);
+    } catch {
+      // Private browsing or restricted environment
+    }
+
     let candidates = wallpapers;
     if (last && wallpapers.length > 1) {
       candidates = wallpapers.filter((w) => w !== last);
     }
 
     const selected = candidates[Math.floor(Math.random() * candidates.length)];
-    localStorage.setItem(LAST_WALLPAPER_KEY, selected);
+    try {
+      localStorage.setItem(LAST_WALLPAPER_KEY, selected);
+    } catch {
+      // Quota exceeded or restricted environment
+    }
     return selected;
   }
+
+  let wallpaperImg: HTMLImageElement | null = null;
 
   const wallpaper = selectWallpaper();
   if (wallpaper) {
     const bg = document.getElementById("wallpaper-bg");
     if (bg) {
-      const img = new Image();
-      img.onload = () => {
-        bg.style.backgroundImage = `url('${img.src}')`;
+      wallpaperImg = new Image();
+      wallpaperImg.onload = () => {
+        bg.style.backgroundImage = `url('${wallpaperImg!.src}')`;
         bg.classList.remove("opacity-0");
         bg.classList.add("opacity-30");
       };
-      img.onerror = () => {
+      wallpaperImg.onerror = () => {
         // Fallback: leave without wallpaper
       };
-      img.src = `/assets/images/wallpapers/${wallpaper}.webp`;
+      wallpaperImg.src = `/assets/images/wallpapers/${wallpaper}.webp`;
     }
   }
 
@@ -181,21 +193,26 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
   window.addEventListener("loader-ready", handleLoaderReady);
 
   // Modal triggers
-  document.getElementById("btn-leaderboard")?.addEventListener("click", () => {
+  function handleLeaderboardClick() {
     document.dispatchEvent(new CustomEvent("tresr:open-leaderboard"));
-  });
+  }
 
-  document.getElementById("btn-manual")?.addEventListener("click", () => {
+  function handleManualClick() {
     document.dispatchEvent(new CustomEvent("tresr:open-how-to-play"));
-  });
+  }
+
+  const btnLeaderboard = document.getElementById("btn-leaderboard");
+  const btnManual = document.getElementById("btn-manual");
+  btnLeaderboard?.addEventListener("click", handleLeaderboardClick);
+  btnManual?.addEventListener("click", handleManualClick);
 
   // Vault status — lock START button when vault is below minimum cap
   const loginBtn = document.getElementById("login-button");
   let originalLoginText = loginBtn?.textContent?.trim() ?? "LOGIN";
   let vaultLocked = false;
 
-  document.addEventListener("tresr:vault-status", ((e: CustomEvent) => {
-    const {locked} = e.detail;
+  function handleVaultStatus(e: Event) {
+    const {locked} = (e as CustomEvent).detail;
     if (!loginBtn) return;
 
     if (locked && !vaultLocked) {
@@ -209,12 +226,23 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
       loginBtn.classList.remove("btn-disabled", "opacity-50");
       loginBtn.textContent = originalLoginText;
     }
-  }) as EventListener);
+  }
+
+  document.addEventListener("tresr:vault-status", handleVaultStatus);
 
   document.addEventListener(
     "astro:before-preparation",
     () => {
       window.removeEventListener("loader-ready", handleLoaderReady);
+      btnLeaderboard?.removeEventListener("click", handleLeaderboardClick);
+      btnManual?.removeEventListener("click", handleManualClick);
+      document.removeEventListener("tresr:vault-status", handleVaultStatus);
+      if (wallpaperImg) {
+        wallpaperImg.onload = null;
+        wallpaperImg.onerror = null;
+        wallpaperImg.src = "";
+        wallpaperImg = null;
+      }
     },
     {once: true}
   );

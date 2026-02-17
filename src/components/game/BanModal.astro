@@ -52,25 +52,28 @@
   const offenceEl = document.getElementById("ban-offence-count")!;
   const btnBack = document.getElementById("btn-ban-back") as HTMLButtonElement;
 
-  btnBack.addEventListener("click", () => {
+  function handleBtnBack() {
     modal.close();
     window.location.href = "/";
-  });
+  }
+  btnBack.addEventListener("click", handleBtnBack);
 
   // Prevent Escape key dismissal (ticket #155)
-  modal.addEventListener("cancel", (e) => {
+  function handleCancel(e: Event) {
     e.preventDefault();
-  });
+  }
+  modal.addEventListener("cancel", handleCancel);
 
   // Prevent backdrop click dismissal (ticket #155)
-  modal.addEventListener("click", (e) => {
+  function handleBackdropClick(e: MouseEvent) {
     if (e.target === modal) {
       e.preventDefault();
       e.stopPropagation();
     }
-  });
+  }
+  modal.addEventListener("click", handleBackdropClick);
 
-  document.addEventListener("tresr:ban-modal-open", (e: Event) => {
+  function handleBanModalOpen(e: Event) {
     const detail = (
       e as CustomEvent<{bannedUntil: number; offenceCount: number}>
     ).detail;
@@ -84,5 +87,17 @@
 
     offenceEl.textContent = String(detail.offenceCount);
     modal.showModal();
-  });
+  }
+  document.addEventListener("tresr:ban-modal-open", handleBanModalOpen);
+
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      btnBack.removeEventListener("click", handleBtnBack);
+      modal.removeEventListener("cancel", handleCancel);
+      modal.removeEventListener("click", handleBackdropClick as EventListener);
+      document.removeEventListener("tresr:ban-modal-open", handleBanModalOpen);
+    },
+    {once: true}
+  );
 </script>

@@ -40,10 +40,27 @@ use junobuild_utils::{decode_doc_data, encode_doc_data};
 use libsecp256k1::{Message, RecoveryId, Signature, recover};
 use tiny_keccak::{Hasher, Keccak};
 
+use std::cell::RefCell;
+
 use types::{
     BalanceRefreshRequest, ClaimRequest, ClaimStatus, FeeRequest, FeeStatus, GameSession,
     GlobalStats, LeaderboardEntry, RefreshStatus, UserProfile,
 };
+
+/// Cached top active scorer to avoid full leaderboard scans on every session completion.
+/// Populated lazily on first call and updated when new higher scores are written.
+#[derive(Clone)]
+struct TopScorerCache {
+    key: String,
+    score: u64,
+    scored_at: u64,
+    expires_at: u64,
+    owner: candid::Principal,
+}
+
+thread_local! {
+    static TOP_SCORER: RefCell<Option<TopScorerCache>> = const { RefCell::new(None) };
+}
 
 // =============================================================================
 // Assertion - Validate operations BEFORE they are executed
@@ -316,6 +333,18 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
             // Validate tx.from matches the caller's linked EVM wallet (ticket #285)
             let user_key = context.caller.to_text();
             let user_doc = get_doc_store(context.caller, "users".to_string(), user_key.clone())?;
+            if user_doc.is_none() {
+                fee.status = FeeStatus::Failed;
+                fee.error = Some("User profile not found — cannot credit deposit".to_string());
+                let updated_doc = SetDoc {
+                    data: encode_doc_data(&fee)?,
+                    description: context.data.data.after.description.clone(),
+                    version: context.data.data.after.version,
+                };
+                set_doc_store(context.caller, context.data.collection.clone(), context.data.key.clone(), updated_doc)?;
+                ic_cdk::print(format!("Fee rejected: no profile for {}", user_key));
+                return Ok(());
+            }
             if let Some(ref user_doc_inner) = user_doc {
                 let user_profile_check: UserProfile = decode_doc_data(&user_doc_inner.data)?;
                 let caller_wallet = match &user_profile_check.evm_wallet {
@@ -376,7 +405,11 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
             // Credit verified fee to user's wallet balance
             if let Some(user_doc_inner) = user_doc {
                 let mut user_profile: UserProfile = decode_doc_data(&user_doc_inner.data)?;
-                user_profile.wallet.balance += verified_amount;
+                user_profile.wallet.balance = user_profile
+                    .wallet
+                    .balance
+                    .checked_add(verified_amount)
+                    .ok_or("Balance overflow on deposit credit")?;
                 let updated_user = SetDoc {
                     data: encode_doc_data(&user_profile)?,
                     description: user_doc_inner.description.clone(),
@@ -895,12 +928,32 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
         leaderboard_doc,
     )?;
 
+    let new_expires = now_ms + config::SCORE_TTL_HOURS * 3_600_000;
     ic_cdk::print(format!(
         "Active score updated for user {}: score={}, expires_at={}",
-        caller_key,
-        session.score,
-        now_ms + config::SCORE_TTL_HOURS * 3_600_000
+        caller_key, session.score, new_expires
     ));
+
+    // Update the top scorer cache if this score beats the current top
+    TOP_SCORER.with(|cell| {
+        let mut cache = cell.borrow_mut();
+        let dominated = match &*cache {
+            None => true,
+            Some(c) => {
+                session.score > c.score
+                    || (session.score == c.score && now_ms < c.scored_at)
+            }
+        };
+        if dominated {
+            *cache = Some(TopScorerCache {
+                key: caller_key.clone(),
+                score: session.score,
+                scored_at: now_ms,
+                expires_at: new_expires,
+                owner: context.caller,
+            });
+        }
+    });
 
     // Resolve any expired top scores (consolation prize)
     resolve_expired_top_score().await?;
@@ -909,66 +962,56 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
 }
 
 /// Check if the top active score has expired and award a consolation prize if so.
-/// Called lazily on every game session update.
+/// Uses a thread-local cache to avoid full leaderboard scans on every call.
+/// The cache is populated lazily on first call and updated when new scores are written.
 async fn resolve_expired_top_score() -> Result<(), String> {
-    let canister_id = ic_cdk::id();
     let now_ms = time() / 1_000_000;
 
-    // List all leaderboard entries
-    let result = list_docs_store(
-        canister_id,
+    // Check or populate the cache
+    let cached = TOP_SCORER.with(|cell| cell.borrow().clone());
+    let cached = match cached {
+        Some(c) => c,
+        None => {
+            // Cold start: do one full scan to populate the cache
+            let top = scan_top_active_scorer()?;
+            if let Some(ref t) = top {
+                TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(t.clone()));
+            }
+            match top {
+                Some(t) => t,
+                None => return Ok(()), // No active scores at all
+            }
+        }
+    };
+
+    let winner_key = cached.key;
+    let winner_principal = cached.owner;
+
+    // Fetch the actual leaderboard doc to get the current entry
+    let winner_doc = get_doc_store(
+        winner_principal,
         "leaderboard".to_string(),
-        &ListParams {
-            matcher: None,
-            paginate: None,
-            order: None,
-            owner: None,
-        },
+        winner_key.clone(),
     )?;
 
-    // Find the entry with the highest active_score that has an expires_at set
-    let mut top_entry: Option<(String, LeaderboardEntry, candid::Principal)> = None;
-
-    for (key, doc) in &result.items {
-        let entry: LeaderboardEntry = match decode_doc_data(&doc.data) {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-
-        // Only consider entries with an active expiry
-        if entry.expires_at.is_none() || entry.active_score == 0 {
-            continue;
+    let winner_entry: LeaderboardEntry = match winner_doc {
+        Some(ref doc) => decode_doc_data(&doc.data)?,
+        None => {
+            // Entry was deleted; clear cache and return
+            TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
+            return Ok(());
         }
+    };
 
-        let owner = doc.owner;
-
-        match &top_entry {
-            None => {
-                top_entry = Some((key.clone(), entry, owner));
-            }
-            Some((_, current_top, _)) => {
-                if entry.active_score > current_top.active_score
-                    || (entry.active_score == current_top.active_score
-                        && entry.scored_at < current_top.scored_at)
-                {
-                    top_entry = Some((key.clone(), entry, owner));
-                }
-            }
-        }
+    // Verify the cached entry is still the top (check expiry field still matches)
+    let actual_expires = winner_entry.expires_at.unwrap_or(0);
+    if actual_expires == 0 || winner_entry.active_score == 0 {
+        // Entry was already cleared; invalidate cache and return
+        TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
+        return Ok(());
     }
 
-    let (winner_key, winner_entry, winner_principal) = match top_entry {
-        Some(t) => t,
-        None => return Ok(()), // No active scores
-    };
-
-    // Check if the top entry has expired
-    let expires_at = match winner_entry.expires_at {
-        Some(ts) => ts,
-        None => return Ok(()),
-    };
-
-    if expires_at >= now_ms {
+    if actual_expires >= now_ms {
         return Ok(()); // Not expired yet
     }
 
@@ -988,9 +1031,22 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     if check_ban(&winner_profile).is_err() {
         // Banned user — clear their expires_at and skip
         clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
+        TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
         ic_cdk::print(format!(
             "Skipped consolation for banned user {}",
             winner_key
+        ));
+        return Ok(());
+    }
+
+    // Require minimum games played before awarding consolation prize
+    if winner_profile.stats.total_games_played < config::CONSOLATION_PRIZE_MIN_GAMES {
+        clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
+        ic_cdk::print(format!(
+            "Skipped consolation for {}: only {} games played (min {})",
+            winner_key,
+            winner_profile.stats.total_games_played,
+            config::CONSOLATION_PRIZE_MIN_GAMES
         ));
         return Ok(());
     }
@@ -1064,12 +1120,67 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         profile_doc,
     )?;
 
+    // Invalidate cache so next call re-discovers the new top scorer
+    TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
+
     ic_cdk::print(format!(
         "Consolation prize of {} awarded to user {} (claim: {})",
         consolation_amount, winner_key, claim_key
     ));
 
     Ok(())
+}
+
+/// Perform a full leaderboard scan to find the top active scorer.
+/// Only called on cold start (cache miss). Returns None if no active scores exist.
+fn scan_top_active_scorer() -> Result<Option<TopScorerCache>, String> {
+    let canister_id = ic_cdk::id();
+    let result = list_docs_store(
+        canister_id,
+        "leaderboard".to_string(),
+        &ListParams {
+            matcher: None,
+            paginate: None,
+            order: None,
+            owner: None,
+        },
+    )?;
+
+    let mut top: Option<TopScorerCache> = None;
+
+    for (key, doc) in &result.items {
+        let entry: LeaderboardEntry = match decode_doc_data(&doc.data) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        if entry.expires_at.is_none() || entry.active_score == 0 {
+            continue;
+        }
+
+        let scored_at = entry.scored_at.unwrap_or(0);
+        let expires_at = entry.expires_at.unwrap_or(0);
+
+        let dominated = match &top {
+            None => true,
+            Some(c) => {
+                entry.active_score > c.score
+                    || (entry.active_score == c.score && scored_at < c.scored_at)
+            }
+        };
+
+        if dominated {
+            top = Some(TopScorerCache {
+                key: key.clone(),
+                score: entry.active_score,
+                scored_at,
+                expires_at,
+                owner: doc.owner,
+            });
+        }
+    }
+
+    Ok(top)
 }
 
 /// Clear the expires_at on a leaderboard entry to prevent re-processing.
@@ -1272,7 +1383,7 @@ async fn claim_authorize(
     // 4. Verify replay
     // TODO: Replace with real deterministic replay verification engine
     // Tracked in separate issue — for now, use stub that trusts reported values
-    let (verified_keys, boss_killed) = replay_verify_stub(&replay_inputs, vault_balance).await?;
+    let (verified_keys, boss_killed) = replay_verify_stub(&replay_inputs, vault_balance, reported_keys, session.boss_defeated).await?;
     if verified_keys != reported_keys || !boss_killed {
         // Cheat detected — apply ban
         apply_ban(&mut user_profile);
@@ -1317,11 +1428,24 @@ async fn claim_authorize(
         ));
     }
 
-    // 5. Calc amount
-    let perf_mult = (reported_keys as f64 / config::MAX_KEYS_COLLECTED as f64) * 0.5;
-    let max_perf = ((vault_balance as f64 * perf_mult) as u128).min(vault_balance / 2);
-    let guaranteed = fee_amount * 11 / 10;
+    // 5. Calc amount — integer-only arithmetic (no f64 precision loss)
+    // perf_mult = (reported_keys / MAX_KEYS) * 0.5
+    // => max_perf = vault_balance * reported_keys * 50 / (MAX_KEYS * 100)
+    let max_perf = vault_balance
+        .checked_mul(reported_keys as u128)
+        .and_then(|v| v.checked_mul(50))
+        .map(|v| v / (config::MAX_KEYS_COLLECTED as u128 * 100))
+        .unwrap_or(0)
+        .min(vault_balance / 2);
+    let guaranteed = fee_amount
+        .checked_mul(11)
+        .map(|v| v / 10)
+        .unwrap_or(fee_amount);
     let amount = max_perf.max(guaranteed).min(vault_balance);
+
+    if amount > u64::MAX as u128 {
+        return Err("Claim amount exceeds u64 range".to_string());
+    }
 
     // 6. Sign with IC threshold ECDSA
     let signature_hex = generate_claim_signature(
@@ -1336,13 +1460,29 @@ async fn claim_authorize(
     let signature_bytes = hex::decode(sig_clean)
         .map_err(|e| format!("Failed to decode signature hex: {}", e))?;
 
+    // Mark session as claimed to prevent double-claim race
+    let mut claimed_session = session.clone();
+    claimed_session.reward_claimed = true;
+    let claimed_doc = SetDoc {
+        data: encode_doc_data(&claimed_session)?,
+        description: Some("claim_authorize: marked reward_claimed".to_string()),
+        version: session_doc.as_ref().unwrap().version,
+    };
+    set_doc_store(caller, "game_sessions".to_string(), session_id.clone(), claimed_doc)?;
+
     Ok((amount, signature_bytes))
 }
 
-/// Replay verification stub — always trusts reported values.
-/// TODO: Replace with deterministic game replay engine (separate issue).
-async fn replay_verify_stub(_inputs: &[u8], _pot: u128) -> Result<(u64, bool), String> {
-    Ok((150, true))
+/// Replay verification stub — trusts reported values until the real replay engine is implemented.
+/// TODO: Replace with deterministic game replay engine that parses `_inputs` to independently
+/// verify keys collected and boss defeat. See tracking issue for replay engine.
+async fn replay_verify_stub(
+    _inputs: &[u8],
+    _pot: u128,
+    reported_keys: u64,
+    boss_defeated: bool,
+) -> Result<(u64, bool), String> {
+    Ok((reported_keys, boss_defeated))
 }
 
 

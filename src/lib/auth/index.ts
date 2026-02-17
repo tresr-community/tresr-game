@@ -290,9 +290,14 @@ async function doInitAuth(): Promise<void> {
       };
 
       // Load profile asynchronously
-      loadProfile(user.key).then(() => {
-        notifyAuthChange();
-      });
+      loadProfile(user.key)
+        .then(() => {
+          notifyAuthChange();
+        })
+        .catch((err) => {
+          log.info(COMPONENT_NAME, "Failed to load profile:", err);
+          notifyAuthChange();
+        });
     } else {
       // Check if we have a guest session
       const isGuest = sessionStorage.getItem(STORAGE_KEY_GUEST) === "true";
@@ -340,7 +345,7 @@ async function doInitAuth(): Promise<void> {
   };
   document.addEventListener("junoSignOutAuthTimer", signOutTimerHandler);
 
-  // Clean up auth timer listener on Astro page navigation
+  // Clean up auth timer listener and stale subscribers on Astro page navigation
   document.addEventListener(
     "astro:before-preparation",
     () => {
@@ -351,6 +356,8 @@ async function doInitAuth(): Promise<void> {
         );
         signOutTimerHandler = null;
       }
+      // Clear stale auth change callbacks from previous page components
+      authChangeCallbacks = [];
     },
     {once: true}
   );
@@ -398,6 +405,18 @@ export function getAuthState(): AuthState {
  */
 export async function signInAsGuest(): Promise<void> {
   log.info(COMPONENT_NAME, "Signing in as a Normie");
+
+  // Clear any stale Juno delegation from IndexedDB so getSatelliteConfig()
+  // cannot inadvertently return a previous user's identity during guest mode.
+  try {
+    const idbStorage = new IdbStorage();
+    await idbStorage.remove(KEY_STORAGE_KEY);
+    await idbStorage.remove(KEY_STORAGE_DELEGATION);
+  } catch (err) {
+    log.warn(COMPONENT_NAME, "IDB cleanup before guest login failed:", err);
+  }
+  siwaIdentity = null;
+
   sessionStorage.setItem(STORAGE_KEY_AUTH_MODE, "guest");
   sessionStorage.setItem(STORAGE_KEY_GUEST, "true");
 
@@ -585,12 +604,17 @@ export async function signInWithAvalanche(): Promise<void> {
       }
       log.info(COMPONENT_NAME, "Profile created/updated with SIWA wallet link");
     } catch (profileError) {
-      // Log but don't fail auth if profile creation fails
+      // Profile save failure during SIWA login can corrupt the wallet link.
+      // Disconnect and fail auth so the user retries cleanly.
       log.error(
         COMPONENT_NAME,
-        "Failed to create/update profile after SIWA login",
+        "Failed to save profile during SIWA login — disconnecting",
         profileError
       );
+      await disconnectWallet();
+      throw new Error("Failed to link wallet to profile. Please try again.", {
+        cause: profileError,
+      });
     }
 
     notifyAuthChange();
@@ -635,7 +659,7 @@ export async function signInWithAvalanche(): Promise<void> {
     if (message.includes("Not connected") || message.includes("RPC")) {
       throw new Error("Wallet disconnected. Please try again.", {cause: error});
     }
-    if (message.includes("rejected") || message.includes("cancelled")) {
+    if (/reject|cancel|denied|declined/i.test(message)) {
       throw new Error("Signature rejected. Approve SIWA message to login.", {
         cause: error,
       });

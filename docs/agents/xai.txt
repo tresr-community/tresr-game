@@ -2152,7 +2152,7 @@ There are two entities that users can create within the Collections service:
 * **File** — A single entity of a user-uploaded file.
 * **Collection** — A group of files linked together, with an embedding index for efficient retrieval.
   * When you create a collection you have the option to automatically generate embeddings for any files uploaded to that collection. You can then perform semantic search across files in multiple collections.
-  * A single file can belong to multiple collections but must be part of at least one collection.
+  * A single file can belong to multiple collections.
 
 ## What You Can Do
 
@@ -3141,7 +3141,48 @@ You can authenticate [WebSocket](#connect-via-websocket) connections using the x
 **IMPORTANT:** It is **recommended to use an ephemeral token** when authenticating from the client side (e.g. browser).
 If you use the xAI API key to authenticate from the client side, **the client may see the API key and make unauthorized API requests with it.**
 
-### Fetching Ephemeral Tokens
+### Using API Key Directly - Server Only
+
+For server-side applications where the API key is not exposed to clients, you can authenticate directly with your xAI API key.
+
+**Server-side only:** Only use API key authentication from secure server environments. Never expose your API key in client-side code.
+
+```pythonWithoutSDK
+import os
+import websockets
+
+XAI_API_KEY = os.getenv("XAI_API_KEY")
+base_url = "wss://api.x.ai/v1/realtime"
+
+# Connect with API key in Authorization header
+async with websockets.connect(
+    uri=base_url,
+    ssl=True,
+    additional_headers={"Authorization": f"Bearer {XAI_API_KEY}"}
+) as websocket:
+    # WebSocket connection is now authenticated
+    pass
+```
+
+```javascriptWithoutSDK
+import WebSocket from "ws";
+
+const baseUrl = "wss://api.x.ai/v1/realtime";
+
+// Connect with API key in Authorization header
+const ws = new WebSocket(baseUrl, {
+  headers: {
+    Authorization: "Bearer " + process.env.XAI_API_KEY,
+    "Content-Type": "application/json",
+  },
+});
+
+ws.on("open", () => {
+  console.log("Connected with API key authentication");
+});
+```
+
+### Using Ephemeral Tokens
 
 You need to set up another server or endpoint to fetch the ephemeral token from xAI. The ephemeral token will give the holder a scoped access to resources.
 
@@ -3217,24 +3258,19 @@ app.post("/session", async (req, res) => {
 app.listen(8081);
 ```
 
-### Using API Key Directly
-
-For server-side applications where the API key is not exposed to clients, you can authenticate directly with your xAI API key.
-
-**Server-side only:** Only use API key authentication from secure server environments. Never expose your API key in client-side code.
+The ephemeral token can be used in the same fashion as an API key:
 
 ```pythonWithoutSDK
 import os
 import websockets
 
-XAI_API_KEY = os.getenv("XAI_API_KEY")
 base_url = "wss://api.x.ai/v1/realtime"
 
 # Connect with API key in Authorization header
 async with websockets.connect(
     uri=base_url,
     ssl=True,
-    additional_headers={"Authorization": f"Bearer {XAI_API_KEY}"}
+    additional_headers={"Authorization": f"Bearer {OBTAINED_EPHEMERAL_TOKEN}"}
 ) as websocket:
     # WebSocket connection is now authenticated
     pass
@@ -3248,14 +3284,20 @@ const baseUrl = "wss://api.x.ai/v1/realtime";
 // Connect with API key in Authorization header
 const ws = new WebSocket(baseUrl, {
   headers: {
-    Authorization: "Bearer " + process.env.XAI_API_KEY,
+    Authorization: "Bearer " + OBTAINED_EPHEMERAL_TOKEN,
     "Content-Type": "application/json",
   },
 });
 
 ws.on("open", () => {
-  console.log("Connected with API key authentication");
+  console.log("Connected with ephemeral token authentication");
 });
+```
+
+If you need to send the ephemeral token from the browser, you can add the ephemeral token with a prefix `xai-client-secret.` to the `sec-websocket-protocol` header:
+
+```javascriptWithoutSDK
+new WebSocket("api.x.ai", [\`xai-client-secret.\${OBTAINED_EPHEMERAL_TOKEN}\`]);
 ```
 
 ## Voice Options
@@ -8765,12 +8807,12 @@ An overview of our models' capabilities and their associated pricing.
 | grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 480 RPM | $0.30 ($0.07) / $0.50 |
 | grok-2-image-1212 | text → image | - | - | 300 RPM | $0.07/image |
 | grok-2-image-1212 | text → image | - | - | 300 RPM | $0.07/image |
-| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-2-vision-1212 | text, image → text | functions, structured | 32,768 | 600 RPM | $2.00 ($0.00) / $10.00 |
-| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
 | grok-2-vision-1212 | text, image → text | functions, structured | 32,768 | 600 RPM | $2.00 ($0.00) / $10.00 |
 | grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
+| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
+| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
+| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
+| grok-2-vision-1212 | text, image → text | functions, structured | 32,768 | 600 RPM | $2.00 ($0.00) / $10.00 |
 | grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
 | grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
 | grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |

@@ -21,8 +21,6 @@ name: Release
 on:
   push:
     branches:
-      - main
-      - master
       - trunk
 
   workflow_dispatch:
@@ -48,9 +46,10 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
+  actions: write
   contents: write
   packages: read
   pull-requests: read
@@ -80,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: Testnet
 
-    timeout-minutes: 15
+    timeout-minutes: 30
     continue-on-error: false
 
     outputs:
@@ -95,6 +94,10 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
+
+      - id: free_disk_space
+        name: Free Disk Space
+        uses: ./.github/actions/free-disk-space
 
       - id: setup_devenv
         name: Setup Devenv
@@ -149,16 +152,34 @@ jobs:
         run: |
           bun run version-set ${{ steps.compute_version.outputs.version }}
 
+      - id: create_release
+        name: Create Pre-Release
+        if: steps.compute_version.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.compute_version.outputs.tag }}" \
+            --title "Pre-Release ${{ steps.compute_version.outputs.tag }}" \
+            --notes "Release ${{ steps.compute_version.outputs.tag }}" \
+            --prerelease \
+            --target "${{ github.sha }}"
+
       - id: generate_changelog
         name: Generate Changelog
         if: steps.compute_version.outputs.skip != 'true'
         shell: devenv shell --quiet bash -- -e {0}
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
           ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
         run: |
           TAG="${{ steps.compute_version.outputs.tag }}"
-          CHANGELOG=$(convco changelog "${TAG}" --max-versions 1 2>/dev/null || echo "Release ${TAG}")
+
+          # Fetch the tag created by gh release so convco can see it
+          git fetch --tags --force
+
+          # Generate changelog for the latest version (the one we just tagged)
+          CHANGELOG=$(convco changelog --max-versions 1 --no-links 2>/dev/null || echo "Release ${TAG}")
 
           {
             echo "${CHANGELOG}"
@@ -175,19 +196,10 @@ jobs:
             echo ":link: [Juno Console](https://console.juno.build/)"
           } > /tmp/changelog.md
 
-          echo "Generated changelog with testnet deployment for ${TAG}"
+          # Update the release with the real changelog
+          gh release edit "${TAG}" --notes-file /tmp/changelog.md
 
-      - id: create_release
-        name: Create Pre-Release
-        if: steps.compute_version.outputs.skip != 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release create "${{ steps.compute_version.outputs.tag }}" \
-            --title "Pre-Release ${{ steps.compute_version.outputs.tag }}" \
-            --notes-file /tmp/changelog.md \
-            --prerelease \
-            --target "${{ github.sha }}"
+          echo "Updated release ${TAG} with changelog"
 
   ##################################################
   # Deploy to Testnet (Juno)
@@ -218,7 +230,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: Mainnet
 
-    timeout-minutes: 5
+    timeout-minutes: 30
     continue-on-error: false
 
     outputs:
@@ -230,6 +242,10 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - id: free_disk_space
+        name: Free Disk Space
+        uses: ./.github/actions/free-disk-space
 
       - id: setup_devenv
         name: Setup Devenv
@@ -277,18 +293,18 @@ jobs:
 
       - id: generate_changelog
         name: Generate Release Changelog
-        shell: devenv shell --quiet bash -- -e {0}
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
           ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
         run: |
           TAG="${{ steps.validate_tag.outputs.tag }}"
-          CHANGELOG=$(convco changelog "${TAG}" --max-versions 1 2>/dev/null || echo "Release ${TAG}")
+
+          # Get existing release body (has changelog + testnet table)
+          EXISTING=$(gh release view "${TAG}" --json body -q '.body')
 
           {
-            echo "${CHANGELOG}"
-            echo ""
-            echo "---"
+            echo "${EXISTING}"
             echo ""
             echo "## :globe_with_meridians: Mainnet Deployment"
             echo ""

@@ -81,7 +81,7 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
       const bw = lootConfig.hitbox.width;
       const bh = lootConfig.hitbox.height;
       body.setSize(bw, bh);
-      body.setOffset((this.width - bw) / 2, this.height - bh);
+      body.setOffset((this.frame.width - bw) / 2, this.frame.height - bh);
       // Force-sync body position with sprite — without this the body
       // stays at the old position until the next physics step, causing
       // overlap detection to fail if checked before then.

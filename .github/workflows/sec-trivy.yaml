@@ -21,8 +21,6 @@ name: Trivy
 on:
   pull_request:
     branches:
-      - main
-      - master
       - trunk
     paths-ignore:
       - "docs/**"
@@ -75,6 +73,10 @@ jobs:
         with:
           fetch-depth: 1
           submodules: recursive
+
+      - id: free_disk_space
+        name: Free Disk Space
+        uses: ./.github/actions/free-disk-space
 
       - id: setup_devenv
         name: Setup Devenv

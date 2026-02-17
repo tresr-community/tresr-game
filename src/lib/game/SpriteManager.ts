@@ -79,6 +79,8 @@ export class SpriteManager {
 
   /** Track which enemy variants have been lazy-loaded */
   private loadedEnemyVariants: Set<number> = new Set();
+  /** Track in-flight enemy variant loads to prevent concurrent duplicates */
+  private pendingEnemyLoads: Map<number, Promise<void>> = new Map();
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -208,6 +210,12 @@ export class SpriteManager {
       return Promise.resolve();
     }
 
+    // Return existing in-flight promise to prevent concurrent duplicate loads
+    const pending = this.pendingEnemyLoads.get(variantIndex);
+    if (pending) {
+      return pending;
+    }
+
     const spriteConfig = this.loadConfig();
     if (!spriteConfig.enemies) {
       return Promise.resolve();
@@ -225,16 +233,22 @@ export class SpriteManager {
     // Queue the sprite sheets for loading
     this.preloadEnemySprites(variantIndex, spriteConfig.enemies);
 
-    // Start the loader and wait for completion
-    return new Promise<void>((resolve) => {
-      this.scene.load.once("complete", () => {
+    // Listen for this variant's specific spritesheet completion instead of
+    // the global "complete" event, which fires for any queued batch.
+    const loadPromise = new Promise<void>((resolve) => {
+      // cspell:disable-next-line -- Phaser loader event name
+      this.scene.load.once(`filecomplete-spritesheet-${firstAnimKey}`, () => {
         this.createEnemyAnimations(variantIndex, spriteConfig.enemies.anims);
         this.loadedEnemyVariants.add(variantIndex);
+        this.pendingEnemyLoads.delete(variantIndex);
         log.info(COMPONENT_NAME, `Lazy-loaded enemy variant ${variantIndex}`);
         resolve();
       });
       this.scene.load.start();
     });
+
+    this.pendingEnemyLoads.set(variantIndex, loadPromise);
+    return loadPromise;
   }
 
   /**

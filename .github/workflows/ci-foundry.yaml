@@ -2,6 +2,10 @@
 ##################################################
 # Name: ci-foundry.yaml
 # Description: Lint and check Solidity contracts
+#
+# NOTE: No paths filter — this workflow must always run so that the
+#       required "Check Contracts" status check is reported on every PR.
+#       A detect_changes step skips the actual check when no contracts changed.
 ##################################################
 
 name: Foundry CI
@@ -9,11 +13,7 @@ name: Foundry CI
 on:
   pull_request:
     branches:
-      - main
-      - master
       - trunk
-    paths:
-      - "contracts/**"
 
   merge_group:
     branches:
@@ -47,8 +47,6 @@ jobs:
     timeout-minutes: 30
     continue-on-error: false
 
-    environment: Testnet
-
     steps:
       - id: checkout_repository
         name: Checkout Repository
@@ -57,8 +55,26 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - id: free_disk_space
+        name: Free Disk Space
+        uses: ./.github/actions/free-disk-space
+
+      - id: detect_changes
+        name: Detect Contract Changes
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- contracts/ || true)
+          if [[ -z "${CHANGED}" ]]; then
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+            echo "No contract changes detected, skipping checks"
+          else
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+            echo "Contract changes detected:"
+            echo "${CHANGED}"
+          fi
+
       - id: setup_devenv
         name: Setup Devenv
+        if: steps.detect_changes.outputs.skip != 'true'
         uses: ./.github/actions/setup-devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -67,10 +83,12 @@ jobs:
 
       - id: cache_foundry
         name: Cache Foundry
+        if: steps.detect_changes.outputs.skip != 'true'
         uses: ./.github/actions/cache-foundry
 
       - id: check_solidity
         name: Check Solidity Contracts
+        if: steps.detect_changes.outputs.skip != 'true'
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           solidity-dev check
@@ -80,7 +98,7 @@ jobs:
         if: always()
         uses: ./.github/actions/report-status
         with:
-          result: ${{ steps.check_solidity.outcome }}
+          result: ${{ steps.detect_changes.outputs.skip == 'true' && 'success' || steps.check_solidity.outcome }}
           success-message: "Foundry CI passed: contract checks"
           failure-message: "Foundry CI failed"
           github-token: ${{ secrets.GITHUB_TOKEN }}

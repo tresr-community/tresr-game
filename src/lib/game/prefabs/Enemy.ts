@@ -114,6 +114,11 @@ export class Enemy extends BaseEntity {
       ["retardio", weights.retardio],
     ];
     const totalWeight = entries.reduce((sum, [, w]) => sum + w, 0);
+    if (totalWeight <= 0) {
+      this.aiType = "direct";
+      this.flankDirection = this.rng.frac() < 0.5 ? 1 : -1;
+      return;
+    }
     let roll = this.rng.frac() * totalWeight;
     this.aiType = "direct"; // fallback
     for (const [type, w] of entries) {
@@ -294,6 +299,7 @@ export class Enemy extends BaseEntity {
               this.retardioTarget.takeDamage(
                 aiConfig.retardio?.attack_damage ?? 10
               );
+              this.retardioTimer = 0;
             }
           }
         } else {
@@ -311,9 +317,12 @@ export class Enemy extends BaseEntity {
           this.play(this.animKeys.walk, true);
         }
       } else {
-        // No enemies nearby — wander erratically
-        this.setFlipX(this.rng.frac() < 0.5);
-        this.setVelocityX((this.rng.frac() - 0.5) * this.speed);
+        // No enemies nearby — wander erratically (timer-gated like erratic AI)
+        if (this.aiTimer > jitterTime) {
+          this.setFlipX(this.rng.frac() < 0.5);
+          this.setVelocityX((this.rng.frac() - 0.5) * this.speed);
+          this.aiTimer = 0;
+        }
         this.setVelocityY(0);
         this.play(this.animKeys.walk, true);
       }

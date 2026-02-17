@@ -19,7 +19,7 @@ on:
         default: ""
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: juno-mainnet-deploy-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
@@ -82,6 +82,10 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - id: free_disk_space
+        name: Free Disk Space
+        uses: ./.github/actions/free-disk-space
+
       - id: setup_devenv
         name: Setup Devenv
         uses: ./.github/actions/setup-devenv
@@ -121,8 +125,30 @@ jobs:
         name: Setup Juno
         uses: ./.github/actions/setup-juno
 
+      - id: detect_function_changes
+        name: Detect Function Changes
+        run: |
+          # Find the previous tag to diff against
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [[ -z "${PREV_TAG}" ]]; then
+            echo "No previous tag found, assuming functions changed"
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          CHANGED=$(git diff --name-only "${PREV_TAG}"...HEAD -- 'config/*.yaml' 'src/satellite/' || true)
+          if [[ -z "${CHANGED}" ]]; then
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+            echo "No function-related changes detected, skipping build/publish"
+          else
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+            echo "Function-related changes detected:"
+            echo "${CHANGED}"
+          fi
+
       - id: build_functions
         name: Build Juno Functions
+        if: steps.detect_function_changes.outputs.changed == 'true'
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           cargo generate-lockfile
@@ -146,6 +172,7 @@ jobs:
 
       - id: publish_functions
         name: Publish Functions
+        if: steps.detect_function_changes.outputs.changed == 'true'
         env:
           JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
         shell: devenv shell --quiet bash -- -e {0}
