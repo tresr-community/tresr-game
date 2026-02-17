@@ -13,8 +13,6 @@ name: Foundry CI
 on:
   pull_request:
     branches:
-      - main
-      - master
       - trunk
 
   merge_group:

@@ -229,7 +229,16 @@ class MusicManager {
         this.playRandomAfterNarration();
       }
     } catch (e) {
-      log.warn(COMPONENT_NAME, "Failed to load preferences:", e);
+      log.warn(
+        COMPONENT_NAME,
+        "Failed to load preferences, applying defaults:",
+        e
+      );
+      const audioConfig = config.gameplay.audio;
+      gameActions.updateMusic({playbackMode: "shuffle"});
+      this.setVolume(audioConfig.default_music_volume, false);
+      this.setSfxVolume(audioConfig.default_sfx_volume, false);
+      this.playRandomAfterNarration();
     }
   }
 
