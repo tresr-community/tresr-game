@@ -146,14 +146,24 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
     const wallpapers = config.assets.wallpapers;
     if (wallpapers.length === 0) return "";
 
-    const last = localStorage.getItem(LAST_WALLPAPER_KEY);
+    let last: string | null = null;
+    try {
+      last = localStorage.getItem(LAST_WALLPAPER_KEY);
+    } catch {
+      // Private browsing or restricted environment
+    }
+
     let candidates = wallpapers;
     if (last && wallpapers.length > 1) {
       candidates = wallpapers.filter((w) => w !== last);
     }
 
     const selected = candidates[Math.floor(Math.random() * candidates.length)];
-    localStorage.setItem(LAST_WALLPAPER_KEY, selected);
+    try {
+      localStorage.setItem(LAST_WALLPAPER_KEY, selected);
+    } catch {
+      // Quota exceeded or restricted environment
+    }
     return selected;
   }
 
