@@ -181,21 +181,26 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
   window.addEventListener("loader-ready", handleLoaderReady);
 
   // Modal triggers
-  document.getElementById("btn-leaderboard")?.addEventListener("click", () => {
+  function handleLeaderboardClick() {
     document.dispatchEvent(new CustomEvent("tresr:open-leaderboard"));
-  });
+  }
 
-  document.getElementById("btn-manual")?.addEventListener("click", () => {
+  function handleManualClick() {
     document.dispatchEvent(new CustomEvent("tresr:open-how-to-play"));
-  });
+  }
+
+  const btnLeaderboard = document.getElementById("btn-leaderboard");
+  const btnManual = document.getElementById("btn-manual");
+  btnLeaderboard?.addEventListener("click", handleLeaderboardClick);
+  btnManual?.addEventListener("click", handleManualClick);
 
   // Vault status — lock START button when vault is below minimum cap
   const loginBtn = document.getElementById("login-button");
   let originalLoginText = loginBtn?.textContent?.trim() ?? "LOGIN";
   let vaultLocked = false;
 
-  document.addEventListener("tresr:vault-status", ((e: CustomEvent) => {
-    const {locked} = e.detail;
+  function handleVaultStatus(e: Event) {
+    const {locked} = (e as CustomEvent).detail;
     if (!loginBtn) return;
 
     if (locked && !vaultLocked) {
@@ -209,12 +214,17 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
       loginBtn.classList.remove("btn-disabled", "opacity-50");
       loginBtn.textContent = originalLoginText;
     }
-  }) as EventListener);
+  }
+
+  document.addEventListener("tresr:vault-status", handleVaultStatus);
 
   document.addEventListener(
     "astro:before-preparation",
     () => {
       window.removeEventListener("loader-ready", handleLoaderReady);
+      btnLeaderboard?.removeEventListener("click", handleLeaderboardClick);
+      btnManual?.removeEventListener("click", handleManualClick);
+      document.removeEventListener("tresr:vault-status", handleVaultStatus);
     },
     {once: true}
   );
