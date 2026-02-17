@@ -1,0 +1,19 @@
+---
+##################################################
+# Name: codeql-config.yml
+# Description: Custom CodeQL configuration
+#
+# Excludes generated/vendored paths from analysis
+# to reduce noise and false positives.
+##################################################
+
+name: "TRESR Game CodeQL Configuration"
+
+paths-ignore:
+  - "node_modules/**"
+  - "contracts/lib/**"
+  - "contracts/cache/**"
+  - "contracts/out/**"
+  - "dist/**"
+  - "public/workers/**"
+  - "target/**"

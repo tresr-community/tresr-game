@@ -503,6 +503,13 @@ in
         ./scripts/solidity-dev.sh "$@"
       '';
     };
+    codeql-run = {
+      package = pkgs.bash;
+      description = "Run CodeQL static analysis locally.";
+      exec = ''
+        ./scripts/codeql-run.sh "$@"
+      '';
+    };
   };
 
   enterTest = ''
