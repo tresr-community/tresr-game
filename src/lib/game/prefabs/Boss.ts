@@ -223,8 +223,8 @@ export class Boss extends BaseEntity {
       "summon",
     ];
     // Seeded random pick for replay determinism (ticket #194)
-    this.currentAttack =
-      attacks[this.rng.integerInRange(0, attacks.length - 1)];
+    const idx = this.rng ? this.rng.integerInRange(0, attacks.length - 1) : 0;
+    this.currentAttack = attacks[idx];
     this.attackTimer = 0;
 
     const bossConfig = this.config.gameplay.entities.boss;
