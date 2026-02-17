@@ -290,9 +290,14 @@ async function doInitAuth(): Promise<void> {
       };
 
       // Load profile asynchronously
-      loadProfile(user.key).then(() => {
-        notifyAuthChange();
-      });
+      loadProfile(user.key)
+        .then(() => {
+          notifyAuthChange();
+        })
+        .catch((err) => {
+          log.info(COMPONENT_NAME, "Failed to load profile:", err);
+          notifyAuthChange();
+        });
     } else {
       // Check if we have a guest session
       const isGuest = sessionStorage.getItem(STORAGE_KEY_GUEST) === "true";
