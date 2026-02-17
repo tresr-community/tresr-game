@@ -47,8 +47,6 @@ jobs:
     timeout-minutes: 30
     continue-on-error: false
 
-    environment: Testnet
-
     steps:
       - id: checkout_repository
         name: Checkout Repository
@@ -56,6 +54,10 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
+
+      - id: free_disk_space
+        name: Free Disk Space
+        uses: ./.github/actions/free-disk-space
 
       - id: detect_changes
         name: Detect Contract Changes

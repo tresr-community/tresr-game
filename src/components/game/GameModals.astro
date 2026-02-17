@@ -179,16 +179,15 @@
   let lastClaimAuth: [bigint, Uint8Array | number[]] | null = null;
   let claimInProgress = false;
 
-  document.addEventListener("tresr:claim-auth", ((
-    e: CustomEvent<[bigint, Uint8Array | number[]]>
-  ) => {
-    lastClaimAuth = e.detail;
+  function handleClaimAuth(e: Event) {
+    lastClaimAuth = (e as CustomEvent<[bigint, Uint8Array | number[]]>).detail;
     // Update reward display with actual amount from oracle
     const rewardEl = document.getElementById("modal-victory-reward");
     if (rewardEl && lastClaimAuth) {
       rewardEl.innerText = `${formatTokenAmount(lastClaimAuth[0])} TRESR`;
     }
-  }) as EventListener);
+  }
+  document.addEventListener("tresr:claim-auth", handleClaimAuth);
 
   btnClaim?.addEventListener("click", async () => {
     if (claimInProgress) return;
@@ -340,7 +339,12 @@
       if (modalLost.open) modalLost.close();
     }
   });
-  document.addEventListener("astro:before-preparation", () => unsub(), {
-    once: true,
-  });
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      unsub();
+      document.removeEventListener("tresr:claim-auth", handleClaimAuth);
+    },
+    {once: true}
+  );
 </script>

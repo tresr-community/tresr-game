@@ -162,6 +162,7 @@
   // -----------------------------------------------------------------------
 
   function showWinToast(user: string, amountWei: bigint) {
+    if (disposed) return;
     if (!winToastEl || !winToastTextEl) return;
 
     const amountDisplay = formatVaultDisplay(amountWei);

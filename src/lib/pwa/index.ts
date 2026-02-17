@@ -20,6 +20,8 @@ class PWA {
   private updateCheckInterval: ReturnType<typeof setInterval> | null = null;
   private updateNotifyTimeout: ReturnType<typeof setTimeout> | null = null;
   private awaitingControllerChange: boolean = false;
+  private handleUpdateFound: (() => void) | null = null;
+  private handleControllerChange: (() => void) | null = null;
 
   private constructor() {}
 
@@ -39,7 +41,7 @@ class PWA {
         log.info(COMPONENT_NAME, "SW registered: /sw.js (scope: /)");
 
         // Listen for updatefound (standard PWA update detection)
-        this.registration.addEventListener("updatefound", () => {
+        this.handleUpdateFound = () => {
           log.info(COMPONENT_NAME, "Update found: New SW detected");
           const newWorker = this.registration!.installing;
           if (newWorker) {
@@ -48,7 +50,7 @@ class PWA {
               "New worker found, state:",
               newWorker.state
             );
-            newWorker.addEventListener("statechange", () => {
+            const handleStateChange = () => {
               log.info(
                 COMPONENT_NAME,
                 "New worker state changed to:",
@@ -70,11 +72,23 @@ class PWA {
                   newWorker.postMessage({action: "skipWaiting"});
                 }
               }
-            });
+              // Remove statechange listener once worker reaches terminal state
+              if (
+                newWorker.state === "activated" ||
+                newWorker.state === "redundant"
+              ) {
+                newWorker.removeEventListener("statechange", handleStateChange);
+              }
+            };
+            newWorker.addEventListener("statechange", handleStateChange);
           } else {
             log.warn(COMPONENT_NAME, "No installing worker found");
           }
-        });
+        };
+        this.registration.addEventListener(
+          "updatefound",
+          this.handleUpdateFound
+        );
       } catch (error) {
         log.error(COMPONENT_NAME, "SW registration failed:", error);
       }
@@ -82,13 +96,17 @@ class PWA {
       // When a new service worker takes control (after skipWaiting),
       // reload the page cleanly. Without this, skipWaiting fires but
       // the old SW might still serve stale assets during navigation.
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
+      this.handleControllerChange = () => {
         if (this.awaitingControllerChange) {
           log.info(COMPONENT_NAME, "New SW controller active — reloading page");
           this.awaitingControllerChange = false;
           window.location.href = "/";
         }
-      });
+      };
+      navigator.serviceWorker.addEventListener(
+        "controllerchange",
+        this.handleControllerChange
+      );
     } else {
       log.warn(COMPONENT_NAME, "SW not supported");
     }
@@ -257,6 +275,14 @@ class PWA {
     }
   }
 
+  dismissUpdateNotification() {
+    this.updatePending = false;
+    log.info(
+      COMPONENT_NAME,
+      "Update notification dismissed — future checks re-enabled"
+    );
+  }
+
   destroy() {
     if (this.updateNotifyTimeout) {
       clearTimeout(this.updateNotifyTimeout);
@@ -265,6 +291,20 @@ class PWA {
     if (this.updateCheckInterval) {
       clearInterval(this.updateCheckInterval);
       this.updateCheckInterval = null;
+    }
+    if (this.registration && this.handleUpdateFound) {
+      this.registration.removeEventListener(
+        "updatefound",
+        this.handleUpdateFound
+      );
+      this.handleUpdateFound = null;
+    }
+    if (this.handleControllerChange) {
+      navigator.serviceWorker?.removeEventListener(
+        "controllerchange",
+        this.handleControllerChange
+      );
+      this.handleControllerChange = null;
     }
   }
 

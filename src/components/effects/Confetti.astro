@@ -91,9 +91,19 @@
   }
 
   // Listen for confetti events
-  document.addEventListener("tresr:confetti", ((e: CustomEvent) => {
-    const count = e.detail?.count ?? DEFAULT_COUNT;
-    const colors = e.detail?.colors ?? DEFAULT_COLORS;
+  function handleConfetti(e: Event) {
+    const detail = (e as CustomEvent).detail;
+    const count = detail?.count ?? DEFAULT_COUNT;
+    const colors = detail?.colors ?? DEFAULT_COLORS;
     fire(count, colors);
-  }) as EventListener);
+  }
+  document.addEventListener("tresr:confetti", handleConfetti);
+
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      document.removeEventListener("tresr:confetti", handleConfetti);
+    },
+    {once: true}
+  );
 </script>

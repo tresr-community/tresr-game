@@ -21,7 +21,7 @@ import {
   isConnected as appKitIsConnected,
 } from "./appkit";
 import {config} from "../config/client";
-import {JUNO_ENVIRONMENT} from "../config/constants";
+import {getEnvironmentKey} from "../config/constants";
 import {log} from "../utils/log";
 
 const COMPONENT_NAME = "Connection";
@@ -40,17 +40,6 @@ export interface WalletConnection {
 function getTargetChainId(): number {
   const envKey = getEnvironmentKey();
   return config.blockchain.avalanche[envKey].chain_id;
-}
-
-/**
- * Get the environment key for config lookup.
- */
-function getEnvironmentKey(): "anvil" | "testnet" | "mainnet" {
-  return JUNO_ENVIRONMENT === "development"
-    ? "anvil"
-    : JUNO_ENVIRONMENT === "staging"
-      ? "testnet"
-      : "mainnet";
 }
 
 /**
