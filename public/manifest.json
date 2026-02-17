@@ -1,6 +1,7 @@
 {
   "name": "TRESR Game",
   "short_name": "TRESR",
+  "id": "/",
   "description": "Collect Keys. Fight Enemies. Claim the $TRESR.",
   "start_url": "/",
   "display": "fullscreen",
