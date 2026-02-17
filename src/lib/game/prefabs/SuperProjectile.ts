@@ -132,6 +132,7 @@ export class SuperProjectile extends Phaser.Physics.Arcade.Sprite {
         const enemy = child as Enemy;
         if (!enemy.active || enemy.hp <= 0) continue;
         if (this.piercedEnemies.has(enemy)) continue;
+        if (typeof enemy.groundY !== "number") continue;
 
         const hDist = Math.abs(this.x - enemy.x);
         const dDist = Math.abs(this.projectileGroundY - enemy.groundY);
@@ -151,7 +152,12 @@ export class SuperProjectile extends Phaser.Physics.Arcade.Sprite {
     }
 
     // Explode on boss hit — stops the projectile
-    if (this.bossRef && this.bossRef.active && this.bossRef.hp > 0) {
+    if (
+      this.bossRef &&
+      this.bossRef.active &&
+      this.bossRef.hp > 0 &&
+      typeof this.bossRef.groundY === "number"
+    ) {
       const hDist = Math.abs(this.x - this.bossRef.x);
       const dDist = Math.abs(this.projectileGroundY - this.bossRef.groundY);
 
