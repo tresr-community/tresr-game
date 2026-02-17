@@ -275,6 +275,14 @@ class PWA {
     }
   }
 
+  dismissUpdateNotification() {
+    this.updatePending = false;
+    log.info(
+      COMPONENT_NAME,
+      "Update notification dismissed — future checks re-enabled"
+    );
+  }
+
   destroy() {
     if (this.updateNotifyTimeout) {
       clearTimeout(this.updateNotifyTimeout);
