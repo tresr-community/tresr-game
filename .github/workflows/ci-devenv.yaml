@@ -42,8 +42,6 @@ jobs:
     timeout-minutes: 60
     continue-on-error: false
 
-    environment: Testnet
-
     steps:
       - id: checkout_repository
         name: Checkout Repository
