@@ -12,7 +12,7 @@ import {WagmiAdapter} from "@reown/appkit-adapter-wagmi";
 import {defineChain} from "@reown/appkit/networks";
 import type {Config} from "@wagmi/core";
 import {config} from "../config/client";
-import {JUNO_ENVIRONMENT} from "../config/constants";
+import {getEnvironmentKey} from "../config/constants";
 import {trackWalletConnect, trackWalletDisconnect} from "../metrics/analytics";
 import {log} from "../utils/log";
 
@@ -25,17 +25,6 @@ const WALLETCONNECT_PROJECT_ID = import.meta.env
 // Singleton instances
 let appKitInstance: AppKit | null = null;
 let wagmiAdapterInstance: WagmiAdapter | null = null;
-
-/**
- * Get the environment key for config lookup.
- */
-function getEnvironmentKey(): "anvil" | "testnet" | "mainnet" {
-  return JUNO_ENVIRONMENT === "development"
-    ? "anvil"
-    : JUNO_ENVIRONMENT === "staging"
-      ? "testnet"
-      : "mainnet";
-}
 
 /**
  * Build the target network from config using defineChain.
