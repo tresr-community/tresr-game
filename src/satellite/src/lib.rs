@@ -405,7 +405,11 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
             // Credit verified fee to user's wallet balance
             if let Some(user_doc_inner) = user_doc {
                 let mut user_profile: UserProfile = decode_doc_data(&user_doc_inner.data)?;
-                user_profile.wallet.balance += verified_amount;
+                user_profile.wallet.balance = user_profile
+                    .wallet
+                    .balance
+                    .checked_add(verified_amount)
+                    .ok_or("Balance overflow on deposit credit")?;
                 let updated_user = SetDoc {
                     data: encode_doc_data(&user_profile)?,
                     description: user_doc_inner.description.clone(),
