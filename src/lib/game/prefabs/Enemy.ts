@@ -317,9 +317,12 @@ export class Enemy extends BaseEntity {
           this.play(this.animKeys.walk, true);
         }
       } else {
-        // No enemies nearby — wander erratically
-        this.setFlipX(this.rng.frac() < 0.5);
-        this.setVelocityX((this.rng.frac() - 0.5) * this.speed);
+        // No enemies nearby — wander erratically (timer-gated like erratic AI)
+        if (this.aiTimer > jitterTime) {
+          this.setFlipX(this.rng.frac() < 0.5);
+          this.setVelocityX((this.rng.frac() - 0.5) * this.speed);
+          this.aiTimer = 0;
+        }
         this.setVelocityY(0);
         this.play(this.animKeys.walk, true);
       }
