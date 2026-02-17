@@ -299,6 +299,7 @@ export class Enemy extends BaseEntity {
               this.retardioTarget.takeDamage(
                 aiConfig.retardio?.attack_damage ?? 10
               );
+              this.retardioTimer = 0;
             }
           }
         } else {
