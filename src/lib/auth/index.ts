@@ -405,6 +405,18 @@ export function getAuthState(): AuthState {
  */
 export async function signInAsGuest(): Promise<void> {
   log.info(COMPONENT_NAME, "Signing in as a Normie");
+
+  // Clear any stale Juno delegation from IndexedDB so getSatelliteConfig()
+  // cannot inadvertently return a previous user's identity during guest mode.
+  try {
+    const idbStorage = new IdbStorage();
+    await idbStorage.remove(KEY_STORAGE_KEY);
+    await idbStorage.remove(KEY_STORAGE_DELEGATION);
+  } catch (err) {
+    log.warn(COMPONENT_NAME, "IDB cleanup before guest login failed:", err);
+  }
+  siwaIdentity = null;
+
   sessionStorage.setItem(STORAGE_KEY_AUTH_MODE, "guest");
   sessionStorage.setItem(STORAGE_KEY_GUEST, "true");
 
