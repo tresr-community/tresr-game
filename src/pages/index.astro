@@ -167,20 +167,22 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
     return selected;
   }
 
+  let wallpaperImg: HTMLImageElement | null = null;
+
   const wallpaper = selectWallpaper();
   if (wallpaper) {
     const bg = document.getElementById("wallpaper-bg");
     if (bg) {
-      const img = new Image();
-      img.onload = () => {
-        bg.style.backgroundImage = `url('${img.src}')`;
+      wallpaperImg = new Image();
+      wallpaperImg.onload = () => {
+        bg.style.backgroundImage = `url('${wallpaperImg!.src}')`;
         bg.classList.remove("opacity-0");
         bg.classList.add("opacity-30");
       };
-      img.onerror = () => {
+      wallpaperImg.onerror = () => {
         // Fallback: leave without wallpaper
       };
-      img.src = `/assets/images/wallpapers/${wallpaper}.webp`;
+      wallpaperImg.src = `/assets/images/wallpapers/${wallpaper}.webp`;
     }
   }
 
@@ -235,6 +237,12 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
       btnLeaderboard?.removeEventListener("click", handleLeaderboardClick);
       btnManual?.removeEventListener("click", handleManualClick);
       document.removeEventListener("tresr:vault-status", handleVaultStatus);
+      if (wallpaperImg) {
+        wallpaperImg.onload = null;
+        wallpaperImg.onerror = null;
+        wallpaperImg.src = "";
+        wallpaperImg = null;
+      }
     },
     {once: true}
   );
