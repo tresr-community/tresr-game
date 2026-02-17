@@ -345,7 +345,7 @@ async function doInitAuth(): Promise<void> {
   };
   document.addEventListener("junoSignOutAuthTimer", signOutTimerHandler);
 
-  // Clean up auth timer listener on Astro page navigation
+  // Clean up auth timer listener and stale subscribers on Astro page navigation
   document.addEventListener(
     "astro:before-preparation",
     () => {
@@ -356,6 +356,8 @@ async function doInitAuth(): Promise<void> {
         );
         signOutTimerHandler = null;
       }
+      // Clear stale auth change callbacks from previous page components
+      authChangeCallbacks = [];
     },
     {once: true}
   );
