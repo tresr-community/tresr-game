@@ -1291,7 +1291,8 @@ export class MainScene extends Phaser.Scene {
   }
 
   private spawnBomb() {
-    if (this.phase !== "survival" || !this.bombs) return;
+    if ((this.phase !== "survival" && this.phase !== "boss") || !this.bombs)
+      return;
     const {width, height} = this.cameras.main;
     const bombSpawner = this.gameplayConfig.entities.bomb.spawner;
     const xMargin = bombSpawner.x_margin;
@@ -1959,7 +1960,7 @@ export class MainScene extends Phaser.Scene {
     if (this.survivalCountdown) this.survivalCountdown.remove();
     if (this.spawnTimer) this.spawnTimer.remove();
     if (this.keySpawnTimer) this.keySpawnTimer.remove();
-    if (this.bombSpawnTimer) this.bombSpawnTimer.remove();
+    // Keep bombSpawnTimer running — spec requires bombs during boss phase
     if (this.enemyAttackTimer) this.enemyAttackTimer.remove();
     // Deactivate all enemies and bombs for pooling instead of destroying them
     // Using kill() keeps them in the pool for potential future use
