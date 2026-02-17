@@ -259,13 +259,11 @@ export function connectWallet(): Promise<string> {
   return new Promise((resolve, reject) => {
     const appKit = getAppKit();
 
-    // Timeout after 5 minutes
+    // Timeout after 5 minutes — always reject to avoid hanging forever
     const timeoutId = setTimeout(
       () => {
-        if (!appKit.getIsConnectedState()) {
-          unsubscribe();
-          reject(new Error("Connection timeout"));
-        }
+        unsubscribe();
+        reject(new Error("Connection timeout"));
       },
       5 * 60 * 1000
     );
