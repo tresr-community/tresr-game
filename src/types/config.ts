@@ -64,6 +64,7 @@ export interface ConfigTypes {  daisyui: {    themes: string[];
   };
   display: {    width: number;
     height: number;
+    design_height: number;
     background_color: string;
     pixel_art: boolean;
   };

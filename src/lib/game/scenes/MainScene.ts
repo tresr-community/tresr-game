@@ -303,6 +303,7 @@ export class MainScene extends Phaser.Scene {
   private recorder: Recorder = new Recorder();
   private spriteManager: SpriteManager;
   private gameplayConfig!: GameplayConfig;
+  private designHeight: number = 720;
   private walkableArea!: WalkableArea;
 
   private survivalTimer: number = 300;
@@ -532,6 +533,7 @@ export class MainScene extends Phaser.Scene {
     // Load gameplay config from registry
     const fullConfig = this.registry.get("full_config");
     this.gameplayConfig = fullConfig.gameplay as GameplayConfig;
+    this.designHeight = fullConfig.display?.design_height ?? 720;
 
     // Initialize survival timer from config
     this.survivalTimer = this.gameplayConfig.time_limit_seconds;
@@ -614,7 +616,12 @@ export class MainScene extends Phaser.Scene {
       Math.round(entities.player.spawn.y_ratio * height)
     );
     const spritesConfig = this.registry.get("sprites_config") as SpritesConfig;
-    const heroScale = SpriteManager.getScaleFactor(spritesConfig, "hero");
+    const heroScale = SpriteManager.getScaleFactor(
+      spritesConfig,
+      "hero",
+      height,
+      this.designHeight
+    );
     this.player.setScale(heroScale);
     this.scaleCircleBody(this.player, entities.player.hitbox);
     this.player.play("hero_idle", true);
@@ -623,7 +630,12 @@ export class MainScene extends Phaser.Scene {
     // Instantiate TresrBot (starts inactive, spawned on powerup collection)
     this.tresrBot = new TresrBot(this, 0, 0);
     this.physics.add.existing(this.tresrBot);
-    const botScale = SpriteManager.getScaleFactor(spritesConfig, "tresr_bot");
+    const botScale = SpriteManager.getScaleFactor(
+      spritesConfig,
+      "tresr_bot",
+      height,
+      this.designHeight
+    );
     this.tresrBot.setScale(botScale);
     this.scaleCircleBody(this.tresrBot, entities.tresr_bot.hitbox);
 
@@ -1243,6 +1255,89 @@ export class MainScene extends Phaser.Scene {
       const scaleY = height / tex.height;
       this.background.setScale(Math.max(scaleX, scaleY));
     }
+
+    // Re-scale all entity sprites for new canvas size
+    const spritesConfig = this.registry.get("sprites_config") as SpritesConfig;
+    if (spritesConfig) {
+      if (this.player) {
+        this.player.setScale(
+          SpriteManager.getScaleFactor(
+            spritesConfig,
+            "hero",
+            height,
+            this.designHeight
+          )
+        );
+      }
+      if (this.boss?.active) {
+        this.boss.setScale(
+          SpriteManager.getScaleFactor(
+            spritesConfig,
+            "boss",
+            height,
+            this.designHeight
+          )
+        );
+      }
+      if (this.tresrBot) {
+        this.tresrBot.setScale(
+          SpriteManager.getScaleFactor(
+            spritesConfig,
+            "tresr_bot",
+            height,
+            this.designHeight
+          )
+        );
+      }
+      if (this.chest?.active) {
+        this.chest.setScale(
+          SpriteManager.getScaleFactor(
+            spritesConfig,
+            "chest",
+            height,
+            this.designHeight
+          )
+        );
+      }
+      if (this.enemies) {
+        const enemyScale = SpriteManager.getScaleFactor(
+          spritesConfig,
+          "enemy",
+          height,
+          this.designHeight
+        );
+        for (const child of this.enemies.getChildren()) {
+          const enemy = child as Enemy;
+          if (enemy.active) enemy.setScale(enemyScale);
+        }
+      }
+      if (this.keys) {
+        const keyScale = SpriteManager.getScaleFactor(
+          spritesConfig,
+          "key",
+          height,
+          this.designHeight
+        );
+        for (const child of this.keys.getChildren()) {
+          if ((child as Phaser.GameObjects.Sprite).active) {
+            (child as Phaser.GameObjects.Sprite).setScale(keyScale);
+          }
+        }
+      }
+      if (this.bombs) {
+        const bombScale = SpriteManager.getScaleFactor(
+          spritesConfig,
+          "bomb",
+          height,
+          this.designHeight
+        );
+        for (const child of this.bombs.getChildren()) {
+          if ((child as Phaser.GameObjects.Sprite).active) {
+            (child as Phaser.GameObjects.Sprite).setScale(bombScale);
+          }
+        }
+      }
+    }
   }
 
   private spawnEnemy() {
@@ -1275,7 +1370,9 @@ export class MainScene extends Phaser.Scene {
         enemy.setTarget(this.player);
         const enemyScale = SpriteManager.getScaleFactor(
           spritesConfig,
-          textureKey
+          textureKey,
+          this.cameras.main.height,
+          this.designHeight
         );
         enemy.setScale(enemyScale);
         this.scaleCircleBody(enemy, this.gameplayConfig.entities.enemy.hitbox);
@@ -1299,7 +1396,14 @@ export class MainScene extends Phaser.Scene {
         "sprites_config"
       ) as SpritesConfig;
       key.spawn(x, groundY);
-      key.setScale(SpriteManager.getScaleFactor(spritesConfig, "key"));
+      key.setScale(
+        SpriteManager.getScaleFactor(
+          spritesConfig,
+          "key",
+          height,
+          this.designHeight
+        )
+      );
     }
   }
 
@@ -1323,7 +1427,12 @@ export class MainScene extends Phaser.Scene {
         "sprites_config"
       ) as SpritesConfig;
       bomb.spawn(x, groundY, startZ);
-      const bombScale = SpriteManager.getScaleFactor(spritesConfig, "bomb");
+      const bombScale = SpriteManager.getScaleFactor(
+        spritesConfig,
+        "bomb",
+        height,
+        this.designHeight
+      );
       bomb.setScale(bombScale);
       this.scaleRectBody(bomb, this.gameplayConfig.entities.bomb.hitbox);
     }
@@ -1478,7 +1587,9 @@ export class MainScene extends Phaser.Scene {
           enemy.setTarget(this.player);
           const enemyScale = SpriteManager.getScaleFactor(
             spritesConfig,
-            textureKey
+            textureKey,
+            this.cameras.main.height,
+            this.designHeight
           );
           enemy.setScale(enemyScale);
           this.scaleCircleBody(
@@ -1787,7 +1898,14 @@ export class MainScene extends Phaser.Scene {
       const spritesConfig = this.registry.get(
         "sprites_config"
       ) as SpritesConfig;
-      projectile.setScale(SpriteManager.getScaleFactor(spritesConfig, "super"));
+      projectile.setScale(
+        SpriteManager.getScaleFactor(
+          spritesConfig,
+          "super",
+          this.cameras.main.height,
+          this.designHeight
+        )
+      );
     }
   }
 
@@ -1993,7 +2111,14 @@ export class MainScene extends Phaser.Scene {
     const {width} = this.cameras.main;
     this.boss = new Boss(this, width / 2, this.rng);
     const spritesConfig = this.registry.get("sprites_config") as SpritesConfig;
-    this.boss.setScale(SpriteManager.getScaleFactor(spritesConfig, "boss"));
+    this.boss.setScale(
+      SpriteManager.getScaleFactor(
+        spritesConfig,
+        "boss",
+        this.cameras.main.height,
+        this.designHeight
+      )
+    );
     this.boss.play("boss_idle", true);
     if (this.player) this.boss.setTarget(this.player);
     if (this.tresrBot) this.tresrBot.setBoss(this.boss);
@@ -2048,7 +2173,12 @@ export class MainScene extends Phaser.Scene {
           "sprites_config"
         ) as SpritesConfig;
         this.chest.setScale(
-          SpriteManager.getScaleFactor(spritesConfig, "chest")
+          SpriteManager.getScaleFactor(
+            spritesConfig,
+            "chest",
+            this.cameras.main.height,
+            this.designHeight
+          )
         );
       })
     );

@@ -58,7 +58,12 @@ export class Preloader extends Phaser.Scene {
     );
     this.spinner.setOrigin(0.5);
     this.spinner.setScale(
-      SpriteManager.getScaleFactor(this.spritesConfig, "loader") * 0.5
+      SpriteManager.getScaleFactor(
+        this.spritesConfig,
+        "loader",
+        height,
+        clientConfig.display.design_height
+      ) * 0.5
     );
     this.spinner.play("loader_idle");
 

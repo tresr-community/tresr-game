@@ -380,21 +380,39 @@ export class SpriteManager {
    * Get the scaleFactor for an entity sprite.
    * Checks top-level sprites (hero, super, boss, enemies) and items.
    * Returns 1 if no scaleFactor is configured.
+   *
+   * When `canvasHeight` and `designHeight` are provided the config
+   * scaleFactor is multiplied by `canvasHeight / designHeight` so sprites
+   * maintain the same proportional screen size regardless of resolution.
+   * `designHeight` comes from `display.design_height` in tresr.yaml.
    */
   static getScaleFactor(
     spritesConfig: SpritesConfig,
-    entityKey: string
+    entityKey: string,
+    canvasHeight?: number,
+    designHeight?: number
   ): number {
-    if (entityKey === "hero") return spritesConfig.hero?.scaleFactor ?? 1;
-    if (entityKey === "super") return spritesConfig.super?.scaleFactor ?? 1;
-    if (entityKey === "boss") return spritesConfig.boss?.scaleFactor ?? 1;
-    if (entityKey === "tresr_bot")
-      return spritesConfig.tresr_bot?.scaleFactor ?? 1;
-    if (entityKey.startsWith("enemy"))
-      return spritesConfig.enemies?.scaleFactor ?? 1;
-    if (spritesConfig.items?.[entityKey])
-      return spritesConfig.items[entityKey].scaleFactor ?? 1;
-    return 1;
+    const resMult =
+      canvasHeight && designHeight ? canvasHeight / designHeight : 1;
+
+    let base: number;
+    if (entityKey === "hero") {
+      base = spritesConfig.hero?.scaleFactor ?? 1;
+    } else if (entityKey === "super") {
+      base = spritesConfig.super?.scaleFactor ?? 1;
+    } else if (entityKey === "boss") {
+      base = spritesConfig.boss?.scaleFactor ?? 1;
+    } else if (entityKey === "tresr_bot") {
+      base = spritesConfig.tresr_bot?.scaleFactor ?? 1;
+    } else if (entityKey.startsWith("enemy")) {
+      base = spritesConfig.enemies?.scaleFactor ?? 1;
+    } else if (spritesConfig.items?.[entityKey]) {
+      base = spritesConfig.items[entityKey].scaleFactor ?? 1;
+    } else {
+      base = 1;
+    }
+
+    return base * resMult;
   }
 
   /**

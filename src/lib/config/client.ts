@@ -344,6 +344,7 @@ export const config: ConfigTypes = {
   "display": {
     "width": 1280,
     "height": 720,
+    "design_height": 720,
     "background_color": "#000000",
     "pixel_art": true
   },

@@ -57,7 +57,18 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
     const spritesConfig = this.scene.registry.get(
       "sprites_config"
     ) as SpritesConfig;
-    const scale = SpriteManager.getScaleFactor(spritesConfig, textureKey);
+    const designHeight =
+      (
+        this.scene.registry.get("full_config") as {
+          display: {design_height: number};
+        }
+      )?.display?.design_height ?? 720;
+    const scale = SpriteManager.getScaleFactor(
+      spritesConfig,
+      textureKey,
+      this.scene.cameras.main.height,
+      designHeight
+    );
     this.setScale(scale);
     this.healAmount = type === "health" ? lootConfig.health.heal_amount : 0;
 

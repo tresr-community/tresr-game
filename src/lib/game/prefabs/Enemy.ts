@@ -100,6 +100,14 @@ export class Enemy extends BaseEntity {
     this.rng = rng;
   }
 
+  /** Play animation only if it exists — prevents infinite Phaser warnings
+   *  that lock the browser when a texture failed to load or had 0 frames. */
+  private safePlay(key: string, ignoreIfPlaying: boolean = true): void {
+    if (this.scene.anims.exists(key)) {
+      this.play(key, ignoreIfPlaying);
+    }
+  }
+
   private selectRandomAI() {
     // Weighted random selection from config
     const aiConfig = this.config.gameplay.entities.enemy.ai;
@@ -195,7 +203,7 @@ export class Enemy extends BaseEntity {
         this.setVelocityX(Math.sign(dx) * walkSpeed);
         this.setVelocityY(0);
       }
-      this.play(this.animKeys.walk, true);
+      this.safePlay(this.animKeys.walk, true);
       super.update();
       return;
     }
@@ -209,7 +217,7 @@ export class Enemy extends BaseEntity {
       this.setFlipX(nearestEdge < this.x);
       this.setVelocityX(Math.sign(nearestEdge - this.x) * fleeSpeed);
       this.setVelocityY(0);
-      this.play(this.animKeys.walk, true);
+      this.safePlay(this.animKeys.walk, true);
       // Kill once off-screen
       if (this.x < -50 || this.x > width + 50) {
         this.kill();
@@ -227,7 +235,7 @@ export class Enemy extends BaseEntity {
       this.setFlipX(this.passiveDirection < 0);
       this.setVelocityX(this.passiveDirection * this.speed);
       this.setVelocityY(0);
-      this.play(this.animKeys.walk, true);
+      this.safePlay(this.animKeys.walk, true);
 
       // Walk off-screen → self-destruct (no kill event, just disappears)
       if (this.x < -50 || this.x > width + 50) {
@@ -289,7 +297,7 @@ export class Enemy extends BaseEntity {
 
         if (dist < this.attackRange) {
           // Punch the other enemy
-          this.play(this.animKeys.attack, true);
+          this.safePlay(this.animKeys.attack, true);
           this.setVelocityX(0);
           this.setVelocityY(0);
           // Actually deal damage to the target enemy
@@ -314,7 +322,7 @@ export class Enemy extends BaseEntity {
             this.x = clamped.x;
             this.groundY = clamped.groundY;
           }
-          this.play(this.animKeys.walk, true);
+          this.safePlay(this.animKeys.walk, true);
         }
       } else {
         // No enemies nearby — wander erratically (timer-gated like erratic AI)
@@ -324,7 +332,7 @@ export class Enemy extends BaseEntity {
           this.aiTimer = 0;
         }
         this.setVelocityY(0);
-        this.play(this.animKeys.walk, true);
+        this.safePlay(this.animKeys.walk, true);
       }
 
       super.update();
@@ -379,7 +387,7 @@ export class Enemy extends BaseEntity {
               this.groundY = clamped.groundY;
             }
 
-            this.play(this.animKeys.walk, true);
+            this.safePlay(this.animKeys.walk, true);
 
             // Transition to lunge after orbit_time
             if (this.aiTimer > flankerConfig.orbit_time) {
@@ -423,7 +431,7 @@ export class Enemy extends BaseEntity {
               this.groundY = clamped.groundY;
             }
 
-            this.play(this.animKeys.walk, true);
+            this.safePlay(this.animKeys.walk, true);
 
             if (this.aiTimer > flankerConfig.recovery_time) {
               this.flankerPhase = "orbiting";
@@ -538,7 +546,7 @@ export class Enemy extends BaseEntity {
                 this.groundY = clamped.groundY;
               }
 
-              this.play(this.animKeys.walk, true);
+              this.safePlay(this.animKeys.walk, true);
               super.update();
               return;
             } else if (distToPlayer <= preferred * 1.3) {
@@ -564,7 +572,7 @@ export class Enemy extends BaseEntity {
                 }
               }
 
-              this.play(this.animKeys.walk, true);
+              this.safePlay(this.animKeys.walk, true);
               super.update();
               return;
             }
@@ -643,7 +651,7 @@ export class Enemy extends BaseEntity {
 
       if (dist < this.attackRange) {
         if (!isAttacking) {
-          this.play(this.animKeys.attack, true);
+          this.safePlay(this.animKeys.attack, true);
         }
         this.setVelocityX(0);
         this.setVelocityY(0);
@@ -663,12 +671,12 @@ export class Enemy extends BaseEntity {
         }
 
         if (!isAttacking) {
-          this.play(this.animKeys.walk, true);
+          this.safePlay(this.animKeys.walk, true);
         }
       }
     } else {
       this.setVelocity(0, 0);
-      this.play(this.animKeys.idle, true);
+      this.safePlay(this.animKeys.idle, true);
     }
 
     super.update();
@@ -690,7 +698,7 @@ export class Enemy extends BaseEntity {
       this.enableHealthBar(30, 4, -5);
     }
     if (this.hp > 0 && this.anims) {
-      this.play(this.animKeys.hurt, true);
+      this.safePlay(this.animKeys.hurt, true);
     }
   }
 
@@ -707,7 +715,7 @@ export class Enemy extends BaseEntity {
       this.healthBar.setVisible(false);
     }
 
-    if (this.anims) this.play(this.animKeys.hurt, true);
+    if (this.anims) this.safePlay(this.animKeys.hurt, true);
     this.setVelocity(0, 0);
     // Use cached config from BaseEntity
     const deathDelay =
@@ -816,7 +824,7 @@ export class Enemy extends BaseEntity {
       this.enterState = "active";
     }
     this.anims.stop();
-    this.play(this.animKeys.walk, true);
+    this.safePlay(this.animKeys.walk, true);
   }
 
   /**

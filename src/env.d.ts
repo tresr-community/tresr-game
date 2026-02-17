@@ -71,6 +71,7 @@ declare module "/config-client.json" {
     };
     display: {      width: number;
       height: number;
+      design_height: number;
       background_color: string;
       pixel_art: boolean;
     };
@@ -729,6 +730,7 @@ declare module "../../../public/config-client.json" {
     };
     display: {      width: number;
       height: number;
+      design_height: number;
       background_color: string;
       pixel_art: boolean;
     };
