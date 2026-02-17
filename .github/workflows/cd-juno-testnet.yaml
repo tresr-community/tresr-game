@@ -19,7 +19,7 @@ on:
         default: ""
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: juno-testnet-deploy-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
