@@ -260,3 +260,6 @@ prereleased
 appinstalled
 brrr
 uncollectible
+codescanning
+sarifv
+interpret

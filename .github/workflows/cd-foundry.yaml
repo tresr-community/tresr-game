@@ -13,8 +13,6 @@ name: Foundry Deploy
 on:
   push:
     branches:
-      - main
-      - master
       - trunk
     paths:
       - "contracts/**"
