@@ -137,6 +137,11 @@ const {title, description = "A 2.5D platformer for the Tresr Community"} =
           setTimeout(() => initAndTrack(), 0);
         }
       });
+
+      // Clean up periodic timers when the page is unloaded
+      window.addEventListener("pagehide", () => {
+        PWA.getInstance().destroy();
+      });
     </script>
   </body>
 </html>
