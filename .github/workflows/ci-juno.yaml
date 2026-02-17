@@ -52,6 +52,10 @@ jobs:
           fetch-depth: 0
           submodules: recursive
 
+      - id: free_disk_space
+        name: Free Disk Space
+        uses: ./.github/actions/free-disk-space
+
       - id: setup_devenv
         name: Setup Devenv
         uses: ./.github/actions/setup-devenv
@@ -81,18 +85,11 @@ jobs:
           juno-dev build
 
       - id: build_functions_dev
-        name: Build Functions (Development)
+        name: Build Functions
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           cargo generate-lockfile
           juno-dev build-functions
-
-      - id: build_functions_prod
-        name: Build Functions (Production)
-        shell: devenv shell --quiet bash -- -e {0}
-        run: |
-          cargo generate-lockfile
-          juno functions build
 
       - id: report_status
         name: Report Status
