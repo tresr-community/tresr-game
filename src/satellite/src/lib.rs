@@ -1272,7 +1272,7 @@ async fn claim_authorize(
     // 4. Verify replay
     // TODO: Replace with real deterministic replay verification engine
     // Tracked in separate issue — for now, use stub that trusts reported values
-    let (verified_keys, boss_killed) = replay_verify_stub(&replay_inputs, vault_balance).await?;
+    let (verified_keys, boss_killed) = replay_verify_stub(&replay_inputs, vault_balance, reported_keys, session.boss_defeated).await?;
     if verified_keys != reported_keys || !boss_killed {
         // Cheat detected — apply ban
         apply_ban(&mut user_profile);
@@ -1339,10 +1339,16 @@ async fn claim_authorize(
     Ok((amount, signature_bytes))
 }
 
-/// Replay verification stub — always trusts reported values.
-/// TODO: Replace with deterministic game replay engine (separate issue).
-async fn replay_verify_stub(_inputs: &[u8], _pot: u128) -> Result<(u64, bool), String> {
-    Ok((150, true))
+/// Replay verification stub — trusts reported values until the real replay engine is implemented.
+/// TODO: Replace with deterministic game replay engine that parses `_inputs` to independently
+/// verify keys collected and boss defeat. See tracking issue for replay engine.
+async fn replay_verify_stub(
+    _inputs: &[u8],
+    _pot: u128,
+    reported_keys: u64,
+    boss_defeated: bool,
+) -> Result<(u64, bool), String> {
+    Ok((reported_keys, boss_defeated))
 }
 
 
