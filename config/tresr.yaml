@@ -96,7 +96,7 @@ client:
       enabled: true
   app:
     name: TRESR Game
-    tagline: Collect Keys. Fight Enemies. Claim the TRESR.
+    tagline: Collect Keys. Fight Enemies. Claim the $TRESR.
     #footer_text: Powered by the Internet Computer and Avalanche Blockchain.
     footer_text: Economy powered by the Avalanche Blockchain.
     narration_text:
