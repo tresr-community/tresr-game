@@ -159,7 +159,7 @@ jobs:
           ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
         run: |
           TAG="${{ steps.compute_version.outputs.tag }}"
-          CHANGELOG=$(convco changelog "${TAG}" --max-versions 1 2>/dev/null || echo "Release ${TAG}")
+          CHANGELOG=$(convco changelog --unreleased 2>/dev/null || echo "Release ${TAG}")
 
           {
             echo "${CHANGELOG}"
@@ -278,18 +278,18 @@ jobs:
 
       - id: generate_changelog
         name: Generate Release Changelog
-        shell: devenv shell --quiet bash -- -e {0}
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
           ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
         run: |
           TAG="${{ steps.validate_tag.outputs.tag }}"
-          CHANGELOG=$(convco changelog "${TAG}" --max-versions 1 2>/dev/null || echo "Release ${TAG}")
+
+          # Get existing release body (has changelog + testnet table)
+          EXISTING=$(gh release view "${TAG}" --json body -q '.body')
 
           {
-            echo "${CHANGELOG}"
-            echo ""
-            echo "---"
+            echo "${EXISTING}"
             echo ""
             echo "## :globe_with_meridians: Mainnet Deployment"
             echo ""
