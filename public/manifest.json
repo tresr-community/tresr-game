@@ -1,7 +1,7 @@
 {
-  "name": "Tresr Game",
-  "short_name": "Tresr",
-  "description": "Collect Keys. Fight Enemies. Claim the TRESR.",
+  "name": "TRESR Game",
+  "short_name": "TRESR",
+  "description": "Collect Keys. Fight Enemies. Claim the $TRESR.",
   "start_url": "/",
   "display": "fullscreen",
   "background_color": "#0d0a14",
