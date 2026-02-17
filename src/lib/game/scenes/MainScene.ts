@@ -1696,11 +1696,15 @@ export class MainScene extends Phaser.Scene {
             this.phase === "lost" ||
             this.phase === "victory"
           ) {
+            player.off(
+              Phaser.Animations.Events.ANIMATION_COMPLETE,
+              onAnimComplete
+            );
             return;
           }
           if (player.anims.currentAnim?.key === "hero_super") {
             this.fireProjectile(player);
-          } else if (superRetries < maxSuperRetries) {
+          } else if (superRetries < maxSuperRetries && player.active) {
             superRetries++;
             player.once(
               Phaser.Animations.Events.ANIMATION_COMPLETE,
