@@ -21,8 +21,6 @@ name: Release
 on:
   push:
     branches:
-      - main
-      - master
       - trunk
 
   workflow_dispatch:
