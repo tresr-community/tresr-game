@@ -241,6 +241,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
   }
 
   function startCooldownTimer() {
+    if (disposed) return;
     if (cooldownTimer) clearInterval(cooldownTimer);
 
     refreshBtn.disabled = true;
@@ -248,7 +249,11 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     cooldownEl.classList.remove("hidden");
 
     cooldownTimer = setInterval(() => {
-      if (disposed) return;
+      if (disposed) {
+        clearInterval(cooldownTimer!);
+        cooldownTimer = null;
+        return;
+      }
       const remaining = Math.max(
         0,
         COOLDOWN_MS - (Date.now() - lastRefreshTime)

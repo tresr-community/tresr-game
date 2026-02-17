@@ -1,7 +1,7 @@
 import {encodeFunctionData, type Chain} from "viem";
 import {avalanche} from "viem/chains";
 import {loadConfigAsync} from "../config";
-import {JUNO_ENVIRONMENT} from "../config/constants";
+import {JUNO_ENVIRONMENT, getEnvironmentKey} from "../config/constants";
 import {log} from "../utils/log";
 import {VaultAbi, ERC20Abi} from "./VaultAbi";
 import {getWalletClient} from "./connection";
@@ -45,16 +45,8 @@ export function isVaultDeployed(cfg: {
   return !!addr && addr !== ZERO_ADDRESS;
 }
 
-/**
- * Get the environment key for config lookup.
- */
-export function getEnvironmentKey(): "anvil" | "testnet" | "mainnet" {
-  return JUNO_ENVIRONMENT === "development"
-    ? "anvil"
-    : JUNO_ENVIRONMENT === "staging"
-      ? "testnet"
-      : "mainnet";
-}
+// Re-export for consumers that import from ./avalanche
+export {getEnvironmentKey};
 
 /**
  * Create a public client for read-only operations.

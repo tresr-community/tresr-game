@@ -60,6 +60,7 @@
     if (laterBtn) {
       laterBtn.addEventListener("click", () => {
         trackPwaUpdate("dismissed");
+        PWA.getInstance().dismissUpdateNotification();
         closeUpdatePrompt();
       });
     }
