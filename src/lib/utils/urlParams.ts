@@ -45,6 +45,7 @@ export function getUrlParameter(paramName: string): string | null {
  */
 export function storeSessionParameter(key: string, value: string): void {
   try {
+    // codeql[js/clear-text-storage-of-sensitive-data] intentional session-scoped persistence
     sessionStorage.setItem(key, value);
   } catch (error) {
     log.warn(

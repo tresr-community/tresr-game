@@ -100,6 +100,7 @@ let
       toml-cli
 
       # Security
+      codeql
       trivy
 
       # Solidity.
@@ -500,6 +501,13 @@ in
       description = "Check Solidity code for errors.";
       exec = ''
         ./scripts/solidity-dev.sh "$@"
+      '';
+    };
+    codeql-run = {
+      package = pkgs.bash;
+      description = "Run CodeQL static analysis locally.";
+      exec = ''
+        ./scripts/codeql-run.sh "$@"
       '';
     };
   };
