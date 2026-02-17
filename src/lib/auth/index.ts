@@ -590,12 +590,17 @@ export async function signInWithAvalanche(): Promise<void> {
       }
       log.info(COMPONENT_NAME, "Profile created/updated with SIWA wallet link");
     } catch (profileError) {
-      // Log but don't fail auth if profile creation fails
+      // Profile save failure during SIWA login can corrupt the wallet link.
+      // Disconnect and fail auth so the user retries cleanly.
       log.error(
         COMPONENT_NAME,
-        "Failed to create/update profile after SIWA login",
+        "Failed to save profile during SIWA login — disconnecting",
         profileError
       );
+      await disconnectWallet();
+      throw new Error("Failed to link wallet to profile. Please try again.", {
+        cause: profileError,
+      });
     }
 
     notifyAuthChange();
