@@ -1317,11 +1317,24 @@ async fn claim_authorize(
         ));
     }
 
-    // 5. Calc amount
-    let perf_mult = (reported_keys as f64 / config::MAX_KEYS_COLLECTED as f64) * 0.5;
-    let max_perf = ((vault_balance as f64 * perf_mult) as u128).min(vault_balance / 2);
-    let guaranteed = fee_amount * 11 / 10;
+    // 5. Calc amount — integer-only arithmetic (no f64 precision loss)
+    // perf_mult = (reported_keys / MAX_KEYS) * 0.5
+    // => max_perf = vault_balance * reported_keys * 50 / (MAX_KEYS * 100)
+    let max_perf = vault_balance
+        .checked_mul(reported_keys as u128)
+        .and_then(|v| v.checked_mul(50))
+        .map(|v| v / (config::MAX_KEYS_COLLECTED as u128 * 100))
+        .unwrap_or(0)
+        .min(vault_balance / 2);
+    let guaranteed = fee_amount
+        .checked_mul(11)
+        .map(|v| v / 10)
+        .unwrap_or(fee_amount);
     let amount = max_perf.max(guaranteed).min(vault_balance);
+
+    if amount > u64::MAX as u128 {
+        return Err("Claim amount exceeds u64 range".to_string());
+    }
 
     // 6. Sign with IC threshold ECDSA
     let signature_hex = generate_claim_signature(
