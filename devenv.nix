@@ -100,6 +100,7 @@ let
       toml-cli
 
       # Security
+      codeql
       trivy
 
       # Solidity.
