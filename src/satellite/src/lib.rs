@@ -1373,6 +1373,16 @@ async fn claim_authorize(
     let signature_bytes = hex::decode(sig_clean)
         .map_err(|e| format!("Failed to decode signature hex: {}", e))?;
 
+    // Mark session as claimed to prevent double-claim race
+    let mut claimed_session = session.clone();
+    claimed_session.reward_claimed = true;
+    let claimed_doc = SetDoc {
+        data: encode_doc_data(&claimed_session)?,
+        description: Some("claim_authorize: marked reward_claimed".to_string()),
+        version: session_doc.as_ref().unwrap().version,
+    };
+    set_doc_store(caller, "game_sessions".to_string(), session_id.clone(), claimed_doc)?;
+
     Ok((amount, signature_bytes))
 }
 
