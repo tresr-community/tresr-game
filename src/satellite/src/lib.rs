@@ -316,6 +316,18 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
             // Validate tx.from matches the caller's linked EVM wallet (ticket #285)
             let user_key = context.caller.to_text();
             let user_doc = get_doc_store(context.caller, "users".to_string(), user_key.clone())?;
+            if user_doc.is_none() {
+                fee.status = FeeStatus::Failed;
+                fee.error = Some("User profile not found — cannot credit deposit".to_string());
+                let updated_doc = SetDoc {
+                    data: encode_doc_data(&fee)?,
+                    description: context.data.data.after.description.clone(),
+                    version: context.data.data.after.version,
+                };
+                set_doc_store(context.caller, context.data.collection.clone(), context.data.key.clone(), updated_doc)?;
+                ic_cdk::print(format!("Fee rejected: no profile for {}", user_key));
+                return Ok(());
+            }
             if let Some(ref user_doc_inner) = user_doc {
                 let user_profile_check: UserProfile = decode_doc_data(&user_doc_inner.data)?;
                 let caller_wallet = match &user_profile_check.evm_wallet {
