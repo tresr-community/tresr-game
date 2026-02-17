@@ -49,3 +49,14 @@ export const IC_HOST =
   JUNO_ENVIRONMENT === "development"
     ? `http://127.0.0.1:${JUNO_EMULATOR_PORT}`
     : "https://ic0.app";
+
+/**
+ * Get the environment key for blockchain config lookup.
+ */
+export function getEnvironmentKey(): "anvil" | "testnet" | "mainnet" {
+  return JUNO_ENVIRONMENT === "development"
+    ? "anvil"
+    : JUNO_ENVIRONMENT === "staging"
+      ? "testnet"
+      : "mainnet";
+}
