@@ -642,7 +642,7 @@ export async function signInWithAvalanche(): Promise<void> {
     if (message.includes("Not connected") || message.includes("RPC")) {
       throw new Error("Wallet disconnected. Please try again.", {cause: error});
     }
-    if (message.includes("rejected") || message.includes("cancelled")) {
+    if (/reject|cancel|denied|declined/i.test(message)) {
       throw new Error("Signature rejected. Approve SIWA message to login.", {
         cause: error,
       });
