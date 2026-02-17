@@ -40,10 +40,27 @@ use junobuild_utils::{decode_doc_data, encode_doc_data};
 use libsecp256k1::{Message, RecoveryId, Signature, recover};
 use tiny_keccak::{Hasher, Keccak};
 
+use std::cell::RefCell;
+
 use types::{
     BalanceRefreshRequest, ClaimRequest, ClaimStatus, FeeRequest, FeeStatus, GameSession,
     GlobalStats, LeaderboardEntry, RefreshStatus, UserProfile,
 };
+
+/// Cached top active scorer to avoid full leaderboard scans on every session completion.
+/// Populated lazily on first call and updated when new higher scores are written.
+#[derive(Clone)]
+struct TopScorerCache {
+    key: String,
+    score: u64,
+    scored_at: u64,
+    expires_at: u64,
+    owner: candid::Principal,
+}
+
+thread_local! {
+    static TOP_SCORER: RefCell<Option<TopScorerCache>> = const { RefCell::new(None) };
+}
 
 // =============================================================================
 // Assertion - Validate operations BEFORE they are executed
@@ -895,12 +912,32 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
         leaderboard_doc,
     )?;
 
+    let new_expires = now_ms + config::SCORE_TTL_HOURS * 3_600_000;
     ic_cdk::print(format!(
         "Active score updated for user {}: score={}, expires_at={}",
-        caller_key,
-        session.score,
-        now_ms + config::SCORE_TTL_HOURS * 3_600_000
+        caller_key, session.score, new_expires
     ));
+
+    // Update the top scorer cache if this score beats the current top
+    TOP_SCORER.with(|cell| {
+        let mut cache = cell.borrow_mut();
+        let dominated = match &*cache {
+            None => true,
+            Some(c) => {
+                session.score > c.score
+                    || (session.score == c.score && now_ms < c.scored_at)
+            }
+        };
+        if dominated {
+            *cache = Some(TopScorerCache {
+                key: caller_key.clone(),
+                score: session.score,
+                scored_at: now_ms,
+                expires_at: new_expires,
+                owner: context.caller,
+            });
+        }
+    });
 
     // Resolve any expired top scores (consolation prize)
     resolve_expired_top_score().await?;
@@ -909,66 +946,56 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
 }
 
 /// Check if the top active score has expired and award a consolation prize if so.
-/// Called lazily on every game session update.
+/// Uses a thread-local cache to avoid full leaderboard scans on every call.
+/// The cache is populated lazily on first call and updated when new scores are written.
 async fn resolve_expired_top_score() -> Result<(), String> {
-    let canister_id = ic_cdk::id();
     let now_ms = time() / 1_000_000;
 
-    // List all leaderboard entries
-    let result = list_docs_store(
-        canister_id,
+    // Check or populate the cache
+    let cached = TOP_SCORER.with(|cell| cell.borrow().clone());
+    let cached = match cached {
+        Some(c) => c,
+        None => {
+            // Cold start: do one full scan to populate the cache
+            let top = scan_top_active_scorer()?;
+            if let Some(ref t) = top {
+                TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(t.clone()));
+            }
+            match top {
+                Some(t) => t,
+                None => return Ok(()), // No active scores at all
+            }
+        }
+    };
+
+    let winner_key = cached.key;
+    let winner_principal = cached.owner;
+
+    // Fetch the actual leaderboard doc to get the current entry
+    let winner_doc = get_doc_store(
+        winner_principal,
         "leaderboard".to_string(),
-        &ListParams {
-            matcher: None,
-            paginate: None,
-            order: None,
-            owner: None,
-        },
+        winner_key.clone(),
     )?;
 
-    // Find the entry with the highest active_score that has an expires_at set
-    let mut top_entry: Option<(String, LeaderboardEntry, candid::Principal)> = None;
-
-    for (key, doc) in &result.items {
-        let entry: LeaderboardEntry = match decode_doc_data(&doc.data) {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-
-        // Only consider entries with an active expiry
-        if entry.expires_at.is_none() || entry.active_score == 0 {
-            continue;
+    let winner_entry: LeaderboardEntry = match winner_doc {
+        Some(ref doc) => decode_doc_data(&doc.data)?,
+        None => {
+            // Entry was deleted; clear cache and return
+            TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
+            return Ok(());
         }
+    };
 
-        let owner = doc.owner;
-
-        match &top_entry {
-            None => {
-                top_entry = Some((key.clone(), entry, owner));
-            }
-            Some((_, current_top, _)) => {
-                if entry.active_score > current_top.active_score
-                    || (entry.active_score == current_top.active_score
-                        && entry.scored_at < current_top.scored_at)
-                {
-                    top_entry = Some((key.clone(), entry, owner));
-                }
-            }
-        }
+    // Verify the cached entry is still the top (check expiry field still matches)
+    let actual_expires = winner_entry.expires_at.unwrap_or(0);
+    if actual_expires == 0 || winner_entry.active_score == 0 {
+        // Entry was already cleared; invalidate cache and return
+        TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
+        return Ok(());
     }
 
-    let (winner_key, winner_entry, winner_principal) = match top_entry {
-        Some(t) => t,
-        None => return Ok(()), // No active scores
-    };
-
-    // Check if the top entry has expired
-    let expires_at = match winner_entry.expires_at {
-        Some(ts) => ts,
-        None => return Ok(()),
-    };
-
-    if expires_at >= now_ms {
+    if actual_expires >= now_ms {
         return Ok(()); // Not expired yet
     }
 
@@ -988,6 +1015,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     if check_ban(&winner_profile).is_err() {
         // Banned user — clear their expires_at and skip
         clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
+        TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
         ic_cdk::print(format!(
             "Skipped consolation for banned user {}",
             winner_key
@@ -1064,12 +1092,67 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         profile_doc,
     )?;
 
+    // Invalidate cache so next call re-discovers the new top scorer
+    TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
+
     ic_cdk::print(format!(
         "Consolation prize of {} awarded to user {} (claim: {})",
         consolation_amount, winner_key, claim_key
     ));
 
     Ok(())
+}
+
+/// Perform a full leaderboard scan to find the top active scorer.
+/// Only called on cold start (cache miss). Returns None if no active scores exist.
+fn scan_top_active_scorer() -> Result<Option<TopScorerCache>, String> {
+    let canister_id = ic_cdk::id();
+    let result = list_docs_store(
+        canister_id,
+        "leaderboard".to_string(),
+        &ListParams {
+            matcher: None,
+            paginate: None,
+            order: None,
+            owner: None,
+        },
+    )?;
+
+    let mut top: Option<TopScorerCache> = None;
+
+    for (key, doc) in &result.items {
+        let entry: LeaderboardEntry = match decode_doc_data(&doc.data) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+
+        if entry.expires_at.is_none() || entry.active_score == 0 {
+            continue;
+        }
+
+        let scored_at = entry.scored_at.unwrap_or(0);
+        let expires_at = entry.expires_at.unwrap_or(0);
+
+        let dominated = match &top {
+            None => true,
+            Some(c) => {
+                entry.active_score > c.score
+                    || (entry.active_score == c.score && scored_at < c.scored_at)
+            }
+        };
+
+        if dominated {
+            top = Some(TopScorerCache {
+                key: key.clone(),
+                score: entry.active_score,
+                scored_at,
+                expires_at,
+                owner: doc.owner,
+            });
+        }
+    }
+
+    Ok(top)
 }
 
 /// Clear the expires_at on a leaderboard entry to prevent re-processing.
