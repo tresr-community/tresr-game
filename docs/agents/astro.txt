@@ -2185,13 +2185,12 @@ These docs are brought to you by all these helpful people. [Join us on GitHub!](
 * [![trueberryless](https://avatars.githubusercontent.com/u/99918022?s=64 "trueberryless")](https://github.com/trueberryless)
 * [![Chrissdroid](https://avatars.githubusercontent.com/u/29927270?s=64 "Chrissdroid")](https://github.com/Chrissdroid)
 * [![AitorMT](https://avatars.githubusercontent.com/u/25897764?s=64 "AitorMT")](https://github.com/AitorMT)
-* [![jp-knj](https://avatars.githubusercontent.com/u/70939128?s=64 "jp-knj")](https://github.com/jp-knj)
-* [![kecrily](https://avatars.githubusercontent.com/u/45708948?s=64 "kecrily")](https://github.com/kecrily)
 * [![ematipico](https://avatars.githubusercontent.com/u/602478?s=64 "ematipico")](https://github.com/ematipico)
+* [![kecrily](https://avatars.githubusercontent.com/u/45708948?s=64 "kecrily")](https://github.com/kecrily)
+* [![jp-knj](https://avatars.githubusercontent.com/u/70939128?s=64 "jp-knj")](https://github.com/jp-knj)
 * [![vrabe](https://avatars.githubusercontent.com/u/8216525?s=64 "vrabe")](https://github.com/vrabe)
 * [![Fryuni](https://avatars.githubusercontent.com/u/11063910?s=64 "Fryuni")](https://github.com/Fryuni)
 * [![kyosuke](https://avatars.githubusercontent.com/u/13069?s=64 "kyosuke")](https://github.com/kyosuke)
-* [![alexnguyennz](https://avatars.githubusercontent.com/u/54233296?s=64 "alexnguyennz")](https://github.com/alexnguyennz)
 * [![jasikpark](https://avatars.githubusercontent.com/u/10626596?s=64 "jasikpark")](https://github.com/jasikpark)
 * [![ElianCodes](https://avatars.githubusercontent.com/u/15145918?s=64 "ElianCodes")](https://github.com/ElianCodes)
 * [![Princesseuh](https://avatars.githubusercontent.com/u/3019731?s=64 "Princesseuh")](https://github.com/Princesseuh)
@@ -2273,7 +2272,7 @@ These docs are brought to you by all these helpful people. [Join us on GitHub!](
 * [![yeonjulee1005](https://avatars.githubusercontent.com/u/57179957?s=64 "yeonjulee1005")](https://github.com/yeonjulee1005)
 * [![apatel369](https://avatars.githubusercontent.com/u/33442948?s=64 "apatel369")](https://github.com/apatel369)
 * [![agriffard](https://avatars.githubusercontent.com/u/703248?s=64 "agriffard")](https://github.com/agriffard)
-* [![deining](https://avatars.githubusercontent.com/u/18169566?s=64 "deining")](https://github.com/deining)
+* [![tejapaturu](https://avatars.githubusercontent.com/u/37566594?s=64 "tejapaturu")](https://github.com/tejapaturu)
 * [![HashCookie](https://avatars.githubusercontent.com/u/92775570?s=64 "HashCookie")](https://github.com/HashCookie)
 * [![tkskto](https://avatars.githubusercontent.com/u/12536486?s=64 "tkskto")](https://github.com/tkskto)
 * [![n-tong009](https://avatars.githubusercontent.com/u/66517416?s=64 "n-tong009")](https://github.com/n-tong009)
@@ -2283,7 +2282,9 @@ These docs are brought to you by all these helpful people. [Join us on GitHub!](
 * [![magnum-zx](https://avatars.githubusercontent.com/u/46154381?s=64 "magnum-zx")](https://github.com/magnum-zx)
 * [![crutchcorn](https://avatars.githubusercontent.com/u/9100169?s=64 "crutchcorn")](https://github.com/crutchcorn)
 * [![Adammatthiesen](https://avatars.githubusercontent.com/u/30383579?s=64 "Adammatthiesen")](https://github.com/Adammatthiesen)
+* [![deining](https://avatars.githubusercontent.com/u/18169566?s=64 "deining")](https://github.com/deining)
 * [![arisa-fukuzaki](https://avatars.githubusercontent.com/u/25793187?s=64 "arisa-fukuzaki")](https://github.com/arisa-fukuzaki)
+* [![avilyre](https://avatars.githubusercontent.com/u/66757451?s=64 "avilyre")](https://github.com/avilyre)
 * [![caioferrarezi](https://avatars.githubusercontent.com/u/14830190?s=64 "caioferrarezi")](https://github.com/caioferrarezi)
 * [![Elib27](https://avatars.githubusercontent.com/u/92606530?s=64 "Elib27")](https://github.com/Elib27)
 * [![jdwilkin4](https://avatars.githubusercontent.com/u/67210629?s=64 "jdwilkin4")](https://github.com/jdwilkin4)
@@ -2295,8 +2296,7 @@ These docs are brought to you by all these helpful people. [Join us on GitHub!](
 * [![pyronaur](https://avatars.githubusercontent.com/u/988095?s=64 "pyronaur")](https://github.com/pyronaur)
 * [![ninuzdellalb](https://avatars.githubusercontent.com/u/68387835?s=64 "ninuzdellalb")](https://github.com/ninuzdellalb)
 * [![sujang958](https://avatars.githubusercontent.com/u/59335584?s=64 "sujang958")](https://github.com/sujang958)
-* [![tejapaturu](https://avatars.githubusercontent.com/u/37566594?s=64 "tejapaturu")](https://github.com/tejapaturu)
-* [![Njong392](https://avatars.githubusercontent.com/u/81039882?s=64 "Njong392")](https://github.com/Njong392)
+* [![ankddev](https://avatars.githubusercontent.com/u/190183925?s=64 "ankddev")](https://github.com/ankddev)
 * [![Pukimaa](https://avatars.githubusercontent.com/u/58347116?s=64 "Pukimaa")](https://github.com/Pukimaa)
 * [![RafidMuhymin](https://avatars.githubusercontent.com/u/63650415?s=64 "RafidMuhymin")](https://github.com/RafidMuhymin)
 * [![ralacerda](https://avatars.githubusercontent.com/u/19380403?s=64 "ralacerda")](https://github.com/ralacerda)
@@ -2308,24 +2308,23 @@ These docs are brought to you by all these helpful people. [Join us on GitHub!](
 * [![manchan4869](https://avatars.githubusercontent.com/u/65327974?s=64 "manchan4869")](https://github.com/manchan4869)
 * [![staticWagomU](https://avatars.githubusercontent.com/u/34824645?s=64 "staticWagomU")](https://github.com/staticWagomU)
 * [![imbant](https://avatars.githubusercontent.com/u/17983739?s=64 "imbant")](https://github.com/imbant)
-* [![ankddev](https://avatars.githubusercontent.com/u/190183925?s=64 "ankddev")](https://github.com/ankddev)
 * [![angelmarfil](https://avatars.githubusercontent.com/u/59626670?s=64 "angelmarfil")](https://github.com/angelmarfil)
 * [![bandantonio](https://avatars.githubusercontent.com/u/16765690?s=64 "bandantonio")](https://github.com/bandantonio)
-* [![avilyre](https://avatars.githubusercontent.com/u/66757451?s=64 "avilyre")](https://github.com/avilyre)
 * [![BassamXYZ](https://avatars.githubusercontent.com/u/100040151?s=64 "BassamXYZ")](https://github.com/BassamXYZ)
 * [![wtchnm](https://avatars.githubusercontent.com/u/37726261?s=64 "wtchnm")](https://github.com/wtchnm)
 * [![garysassano](https://avatars.githubusercontent.com/u/10464497?s=64 "garysassano")](https://github.com/garysassano)
 * [![olets](https://avatars.githubusercontent.com/u/3282350?s=64 "olets")](https://github.com/olets)
 * [![IgorKowalczyk](https://avatars.githubusercontent.com/u/49127376?s=64 "IgorKowalczyk")](https://github.com/IgorKowalczyk)
+* [![Singebob](https://avatars.githubusercontent.com/u/24290044?s=64 "Singebob")](https://github.com/Singebob)
+* [![Njong392](https://avatars.githubusercontent.com/u/81039882?s=64 "Njong392")](https://github.com/Njong392)
 * [![NightFeather0615](https://avatars.githubusercontent.com/u/77222233?s=64 "NightFeather0615")](https://github.com/NightFeather0615)
 * [![nermalcat69](https://avatars.githubusercontent.com/u/73933669?s=64 "nermalcat69")](https://github.com/nermalcat69)
 * [![mogeko](https://avatars.githubusercontent.com/u/26341224?s=64 "mogeko")](https://github.com/mogeko)
 * [![tinymachine](https://avatars.githubusercontent.com/u/171986?s=64 "tinymachine")](https://github.com/tinymachine)
-* [![mhstrkmp](https://avatars.githubusercontent.com/u/5558193?s=64 "mhstrkmp")](https://github.com/mhstrkmp)
-* [![Singebob](https://avatars.githubusercontent.com/u/24290044?s=64 "Singebob")](https://github.com/Singebob)
 * [![Kenzo-Wada](https://avatars.githubusercontent.com/u/79452224?s=64 "Kenzo-Wada")](https://github.com/Kenzo-Wada)
-* [![marsidev](https://avatars.githubusercontent.com/u/56328053?s=64 "marsidev")](https://github.com/marsidev)
 * [![lorenzolewis](https://avatars.githubusercontent.com/u/15347255?s=64 "lorenzolewis")](https://github.com/lorenzolewis)
+* [![mhstrkmp](https://avatars.githubusercontent.com/u/5558193?s=64 "mhstrkmp")](https://github.com/mhstrkmp)
+* [![marsidev](https://avatars.githubusercontent.com/u/56328053?s=64 "marsidev")](https://github.com/marsidev)
 * [![dependabot\[bot\]](https://avatars.githubusercontent.com/u/49699333?s=64 "dependabot\[bot\]")](https://github.com/dependabot\[bot])
 * [![dorasans](https://avatars.githubusercontent.com/u/75212478?s=64 "dorasans")](https://github.com/dorasans)
 * [![ktym4a](https://avatars.githubusercontent.com/u/51779800?s=64 "ktym4a")](https://github.com/ktym4a)
@@ -24776,13 +24775,13 @@ The following integrations are maintained by Astro.
 
   ### [@astrojs/​cloudflare](/en/guides/integrations-guide/cloudflare/)
 
-* ![](/logos/netlify.svg)
-
-  ### [@astrojs/​netlify](/en/guides/integrations-guide/netlify/)
-
 * ![](/logos/node.svg)
 
   ### [@astrojs/​node](/en/guides/integrations-guide/node/)
+
+* ![](/logos/netlify.svg)
+
+  ### [@astrojs/​netlify](/en/guides/integrations-guide/netlify/)
 
 * ![](/logos/vercel.svg)
 
@@ -24794,13 +24793,13 @@ The following integrations are maintained by Astro.
 
   ### [@astrojs/​db](/en/guides/integrations-guide/db/)
 
-* ![](/logos/mdx.svg)
-
-  ### [@astrojs/​mdx](/en/guides/integrations-guide/mdx/)
-
 * ![](/logos/markdoc.svg)
 
   ### [@astrojs/​markdoc](/en/guides/integrations-guide/markdoc/)
+
+* ![](/logos/mdx.svg)
+
+  ### [@astrojs/​mdx](/en/guides/integrations-guide/mdx/)
 
 * ![](/logos/partytown.svg)
 
@@ -36921,13 +36920,13 @@ You may also wish to add an adapter even if your site is entirely static and you
 
   ### [@astrojs/​cloudflare](/en/guides/integrations-guide/cloudflare/)
 
-* ![](/logos/netlify.svg)
-
-  ### [@astrojs/​netlify](/en/guides/integrations-guide/netlify/)
-
 * ![](/logos/node.svg)
 
   ### [@astrojs/​node](/en/guides/integrations-guide/node/)
+
+* ![](/logos/netlify.svg)
+
+  ### [@astrojs/​netlify](/en/guides/integrations-guide/netlify/)
 
 * ![](/logos/vercel.svg)
 
