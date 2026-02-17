@@ -320,6 +320,7 @@ export class MainScene extends Phaser.Scene {
   public userAddr: string = "";
   public configHash: string = "";
   private configTampered: boolean = false;
+  private configVerification: Promise<boolean> | null = null;
   private superDamageActive: boolean = false;
 
   // Change detection for store updates (ticket #162, #200: avoid per-frame thrashing)
@@ -379,7 +380,7 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  async init(data: {sessionId?: string; userAddr?: string; seed?: number}) {
+  init(data: {sessionId?: string; userAddr?: string; seed?: number}) {
     // Use fee-gate session ID passed from Preloader; guests get a non-claimable placeholder (ticket #244)
     this.sessionId = data.sessionId || `guest-${Date.now()}`;
     this.userAddr =
@@ -399,21 +400,26 @@ export class MainScene extends Phaser.Scene {
     TouchInput.getInstance().reset();
     gameActions.setPaused(false);
 
-    // Verify and store config hash for anti-cheat (ticket #108, #128)
-    // Blocking — must complete before gameplay starts
-    const hashValid = await this.verifyConfigHash();
-    if (!hashValid) {
-      this.configTampered = true;
-      gameActions.setConfigTampered();
-      log.error(
-        COMPONENT_NAME,
-        "Config integrity check failed. Gameplay disabled."
-      );
-    }
-
-    // Subscribe to Pause state (store unsubscribe for cleanup)
+    // Subscribe to Pause state synchronously (before async work)
     this.storeUnsubscribe = gameState.subscribe((state) => {
       this.setPause(state.isPaused);
+    });
+
+    // Start config hash verification — resolves before the 3s countdown
+    // finishes but after Phaser calls create() (since Phaser doesn't await
+    // async init). The .then() sets configTampered as soon as the sub-ms
+    // SHA-256 digest completes; startGameplay() re-checks before spawners.
+    this.configVerification = this.verifyConfigHash();
+    this.configVerification.then((hashValid) => {
+      if (!hashValid) {
+        this.configTampered = true;
+        gameActions.setConfigTampered();
+        log.error(
+          COMPONENT_NAME,
+          "Config integrity check failed. Gameplay disabled."
+        );
+        document.dispatchEvent(new CustomEvent("tresr:config-tampered"));
+      }
     });
   }
 
@@ -764,6 +770,12 @@ export class MainScene extends Phaser.Scene {
   }
 
   private startGameplay() {
+    // Re-check config tampering before starting spawners (#92)
+    if (this.configTampered) {
+      log.error(COMPONENT_NAME, "Config tampered — gameplay start aborted.");
+      return;
+    }
+
     // Signal music to start now that gameplay has begun
     window.dispatchEvent(new Event("tresr:gameplay-start"));
 
