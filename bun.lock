@@ -43,7 +43,7 @@
       },
       "devDependencies": {
         "@eslint/js": "10.0.1",
-        "@icp-sdk/bindgen": "0.2.1",
+        "@icp-sdk/bindgen": "0.2.2",
         "@junobuild/config": "2.10.1",
         "@junobuild/vite-plugin": "4.7.0",
         "@tailwindcss/postcss": "4.1.18",
@@ -211,7 +211,7 @@
 
     "@icp-sdk/auth": ["@icp-sdk/auth@5.0.0", "", { "dependencies": { "idb": "^7.1.1" }, "peerDependencies": { "@icp-sdk/core": "^5" } }, ""],
 
-    "@icp-sdk/bindgen": ["@icp-sdk/bindgen@0.2.1", "", { "dependencies": { "commander": "^14.0.2" }, "bin": { "icp-bindgen": "dist/esm/cli/icp-bindgen.js" } }, ""],
+    "@icp-sdk/bindgen": ["@icp-sdk/bindgen@0.2.2", "", { "dependencies": { "commander": "^14.0.2" }, "bin": { "icp-bindgen": "dist/esm/cli/icp-bindgen.js" } }, "sha512-zGeFBIwogs1oFrhNSnSeBuHbNKnuqtZ4MqKLuWp2qcNxw+JLglK6JHNo7we6+PtnjaeKABg3/hjhha+mzSJzlg=="],
 
     "@icp-sdk/canisters": ["@icp-sdk/canisters@3.4.0", "", { "dependencies": { "@noble/hashes": "^1.8.0", "base58-js": "^3.0.3", "bech32": "^2.0.0", "mime": "^3.0.0" }, "peerDependencies": { "@dfinity/utils": "^4.1", "@icp-sdk/core": "^5" } }, ""],
 
