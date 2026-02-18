@@ -77,6 +77,13 @@ declare module "/config-client.json" {
     };
     gameplay: {      time_limit_seconds: number;
       max_keys: number;
+      difficulty_escalation: {        enabled: boolean;
+        interval_seconds: number;
+        enemy_spawn_multiplier: number;
+        bomb_spawn_multiplier: number;
+        min_enemy_spawn_ms: number;
+        min_bomb_spawn_ms: number;
+      };
       guest: {        enabled: boolean;
         max_sessions_per_day: number;
         storage_key: string;
@@ -744,6 +751,13 @@ declare module "../../../public/config-client.json" {
     };
     gameplay: {      time_limit_seconds: number;
       max_keys: number;
+      difficulty_escalation: {        enabled: boolean;
+        interval_seconds: number;
+        enemy_spawn_multiplier: number;
+        bomb_spawn_multiplier: number;
+        min_enemy_spawn_ms: number;
+        min_bomb_spawn_ms: number;
+      };
       guest: {        enabled: boolean;
         max_sessions_per_day: number;
         storage_key: string;

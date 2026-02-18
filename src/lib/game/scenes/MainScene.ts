@@ -40,6 +40,14 @@ import {SpawnManager} from "@/lib/game/managers/SpawnManager";
 // Helper type for gameplay config (entity-centric schema)
 export interface GameplayConfig {
   time_limit_seconds: number;
+  difficulty_escalation: {
+    enabled: boolean;
+    interval_seconds: number;
+    enemy_spawn_multiplier: number;
+    bomb_spawn_multiplier: number;
+    min_enemy_spawn_ms: number;
+    min_bomb_spawn_ms: number;
+  };
   physics: {
     gravity: number;
     timestep: number;
@@ -767,6 +775,7 @@ export class MainScene extends Phaser.Scene {
         if (this.survivalTimer > 0) {
           this.survivalTimer--;
           this.updateTimerStatus();
+          this.spawnManager.checkDifficultyEscalation(this.survivalTimer);
 
           // At 5 seconds remaining: enemies flee, stop spawning new ones
           if (this.survivalTimer === 5) {
