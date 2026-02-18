@@ -37,6 +37,7 @@ export class Preloader extends Phaser.Scene {
   private subtitleText?: Phaser.GameObjects.Text;
   private typewriterDone: boolean = false;
   private typewriterTimer?: Phaser.Time.TimerEvent;
+  private charDelay: number = 50; // Default; overridden by audio duration
   private readyCheckTimer?: Phaser.Time.TimerEvent;
   // DOM overlay elements for video loader mode
   private overlayEl?: HTMLDivElement;
@@ -236,7 +237,7 @@ export class Preloader extends Phaser.Scene {
     });
   }
 
-  private startTypewriter() {
+  private startTypewriter(charDelay?: number) {
     const introText = clientConfig.app.narration_text.intro;
     if (!introText) {
       this.typewriterDone = true;
@@ -245,7 +246,7 @@ export class Preloader extends Phaser.Scene {
 
     // Video mode: use DOM-based typewriter in the overlay panel
     if (this.loaderMode === "video" && this.overlayTextContainer) {
-      this.startDomTypewriter(introText);
+      this.startDomTypewriter(introText, charDelay);
       return;
     }
 
@@ -312,7 +313,7 @@ export class Preloader extends Phaser.Scene {
         this.subtitleText!.text += "\n\n";
         // Longer pause for paragraph break
         this.typewriterTimer = this.time.addEvent({
-          delay: 600,
+          delay: 600, // paragraph pause
           callback: advanceChar,
         });
         this.scrollToCurrentLine(lineHeight);
@@ -330,7 +331,7 @@ export class Preloader extends Phaser.Scene {
       }
 
       this.typewriterTimer = this.time.addEvent({
-        delay: 50,
+        delay: charDelay ?? this.charDelay,
         callback: advanceChar,
       });
     };
@@ -372,7 +373,7 @@ export class Preloader extends Phaser.Scene {
    * DOM-based typewriter for video mode (hybrid terminal + glassmorphism).
    * Text types character-by-character; older paragraphs fade like a terminal log.
    */
-  private startDomTypewriter(text: string) {
+  private startDomTypewriter(text: string, charDelay?: number) {
     const container = this.overlayTextContainer!;
     const paragraphs = text.split(/\n\n+/);
     let paraIndex = 0;
@@ -418,7 +419,10 @@ export class Preloader extends Phaser.Scene {
       const panel = container.parentElement;
       if (panel) panel.scrollTop = panel.scrollHeight;
 
-      this.domTypewriterTimeoutId = window.setTimeout(advanceChar, 50);
+      this.domTypewriterTimeoutId = window.setTimeout(
+        advanceChar,
+        charDelay ?? this.charDelay
+      );
     };
 
     advanceChar();
@@ -494,10 +498,15 @@ export class Preloader extends Phaser.Scene {
     };
     this.introAudio.addEventListener("ended", this.introEndedHandler);
     this.introAudio.addEventListener("error", this.introErrorHandler);
+
+    // Compute per-character typewriter delay from audio duration so text
+    // and voice finish together (fixes 5-second desync).
+    this.computeCharDelay(this.introAudio);
+
     // Start typewriter only once audio actually begins playing (ticket #290)
     this.introPlayingHandler = () => {
       this.introPlayingHandler = null; // auto-clear after once fires
-      this.startTypewriter();
+      this.startTypewriter(this.charDelay);
     };
     this.introAudio.addEventListener("playing", this.introPlayingHandler, {
       once: true,
@@ -509,6 +518,40 @@ export class Preloader extends Phaser.Scene {
       this.typewriterDone = true; // skip typewriter if audio was blocked
       window.dispatchEvent(new Event("tresr:narration-complete"));
     });
+  }
+
+  /**
+   * Derive per-character typewriter delay from the narration audio duration.
+   * Ensures text finishes at the same time as the voice.
+   */
+  private computeCharDelay(audio: HTMLAudioElement) {
+    const introText = clientConfig.app.narration_text.intro;
+    if (!introText) return;
+
+    const compute = () => {
+      const duration = audio.duration;
+      // Guard: duration may be NaN/Infinity for streaming or failed loads
+      if (!Number.isFinite(duration) || duration <= 0) return;
+
+      const totalChars = introText.replace(/\n\n+/g, "").length;
+      const paragraphCount = introText.split(/\n\n+/).length;
+      const totalParagraphPauseMs = Math.max(0, paragraphCount - 1) * 600;
+      const availableMs = duration * 1000 - totalParagraphPauseMs;
+      // Floor of 30ms prevents unreadably fast text
+      this.charDelay = Math.max(30, Math.floor(availableMs / totalChars));
+
+      log.info(
+        COMPONENT_NAME,
+        `Audio duration: ${duration.toFixed(1)}s → charDelay: ${this.charDelay}ms`
+      );
+    };
+
+    // Duration may already be available (cached audio)
+    if (Number.isFinite(audio.duration) && audio.duration > 0) {
+      compute();
+    } else {
+      audio.addEventListener("loadedmetadata", compute, {once: true});
+    }
   }
 
   // Core SFX types — always preloaded (used every session within first seconds)

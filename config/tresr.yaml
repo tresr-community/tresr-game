@@ -676,7 +676,7 @@ client:
 
     # Hero character (Ron Jay)
     hero:
-      scaleFactor: 1.0
+      scaleFactor: 0.75
       anims:
         - name: idle
           frames: 6
@@ -722,7 +722,7 @@ client:
           frameHeight: 512
     # Super Attack Projectile (spinning coin hadouken)
     super:
-      scaleFactor: 1.0
+      scaleFactor: 0.50
       anims:
         - name: spin
           frames: 5
@@ -733,7 +733,7 @@ client:
           frameHeight: 512
     # Boss character (Gary Gensler)
     boss:
-      scaleFactor: 1.0
+      scaleFactor: 1.25
       anims:
         - name: idle
           frames: 6
@@ -774,7 +774,7 @@ client:
     # Each one uses the same animations/mechanics.
     # Per-anim paths use {i} placeholder for variant number.
     enemies:
-      scaleFactor: 1.0
+      scaleFactor: 0.75
       count: 5
       anims:
         - name: idle
@@ -824,7 +824,7 @@ client:
           frameHeight: 512
     # TRESR-BOT companion (AI ally spawned from powerup pickup)
     tresr_bot:
-      scaleFactor: 1.0
+      scaleFactor: 0.75
       anims:
         - name: idle
           frames: 6
@@ -857,7 +857,7 @@ client:
     # Items (per-animation sheets)
     items:
       key:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 5
@@ -867,7 +867,7 @@ client:
             frameWidth: 256
             frameHeight: 512
       bomb:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 5
@@ -911,7 +911,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_1:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -921,7 +921,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_2:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -931,7 +931,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_3:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -941,7 +941,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_4:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -951,7 +951,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_5:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -961,7 +961,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_1:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -971,7 +971,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_2:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -981,7 +981,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_3:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -991,7 +991,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_4:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -1001,7 +1001,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_5:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
