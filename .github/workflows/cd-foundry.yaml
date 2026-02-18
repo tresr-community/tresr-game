@@ -154,22 +154,32 @@ jobs:
         name: Build Contracts
         shell: devenv shell --quiet bash -- -e {0}
         run: |
-          forge build --root contracts
+          cd contracts
+          forge build
+
+      - id: normalize_key
+        name: Normalize Deployer Key
+        env:
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+        run: |
+          KEY="${DEPLOYER_PRIVATE_KEY}"
+          [[ "$KEY" != 0x* ]] && KEY="0x${KEY}"
+          echo "DEPLOYER_PRIVATE_KEY=${KEY}" >> "$GITHUB_ENV"
 
       - id: deploy_test_token
         name: Deploy Test Token (Testnet Only)
         if: steps.resolve_environment.outputs.network == 'testnet'
         shell: devenv shell --quiet bash -- -e {0}
         env:
-          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
           SNOWTRACE_API_KEY: ${{ secrets.SNOWTRACE_API_KEY }}
         run: |
+          cd contracts
           forge script script/DeployToken.s.sol:DeployTestToken \
-            --root contracts \
             --rpc-url ${{ steps.read_config.outputs.RPC_URL }} \
             --broadcast \
             --verify \
-            --etherscan-api-key "$SNOWTRACE_API_KEY"
+            --etherscan-api-key "$SNOWTRACE_API_KEY" \
+            -vvvv
 
       - id: detect_vault_mode
         name: Detect Vault Deploy Mode
@@ -189,34 +199,34 @@ jobs:
         if: steps.detect_vault_mode.outputs.mode == 'deploy'
         shell: devenv shell --quiet bash -- -e {0}
         env:
-          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
           TOKEN_ADDRESS: ${{ steps.read_config.outputs.TOKEN_ADDRESS }}
           ADMIN_ADDRESS: ${{ steps.read_config.outputs.ADMIN_ADDRESS }}
           ORACLE_ADDRESS: ${{ steps.read_config.outputs.ORACLE_ADDRESS }}
           SNOWTRACE_API_KEY: ${{ secrets.SNOWTRACE_API_KEY }}
         run: |
+          cd contracts
           forge script script/Vault.s.sol:DeployVault \
-            --root contracts \
             --rpc-url ${{ steps.read_config.outputs.RPC_URL }} \
             --broadcast \
             --verify \
-            --etherscan-api-key "$SNOWTRACE_API_KEY"
+            --etherscan-api-key "$SNOWTRACE_API_KEY" \
+            -vvvv
 
       - id: upgrade_vault
         name: Upgrade Vault (New Implementation)
         if: steps.detect_vault_mode.outputs.mode == 'upgrade'
         shell: devenv shell --quiet bash -- -e {0}
         env:
-          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
           VAULT_PROXY_ADDRESS: ${{ steps.read_config.outputs.VAULT_ADDRESS }}
           SNOWTRACE_API_KEY: ${{ secrets.SNOWTRACE_API_KEY }}
         run: |
+          cd contracts
           forge script script/UpgradeVault.s.sol:UpgradeVault \
-            --root contracts \
             --rpc-url ${{ steps.read_config.outputs.RPC_URL }} \
             --broadcast \
             --verify \
-            --etherscan-api-key "$SNOWTRACE_API_KEY"
+            --etherscan-api-key "$SNOWTRACE_API_KEY" \
+            -vvvv
 
       - id: upgrade_summary
         name: Upgrade Multisig Summary
