@@ -89,6 +89,7 @@ export interface ConfigTypes {  daisyui: {    themes: string[];
     };
     physics: {      gravity: number;
       timestep: number;
+      game_speed: number;
     };
     visuals: {      shadow: {        color: number;
         opacity: number;

@@ -91,7 +91,7 @@ export class SuperProjectile extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  update() {
+  update(dt?: number) {
     if (gameState.get().isPaused) return;
     if (!this.active || this.hasHit) return;
 
@@ -99,8 +99,9 @@ export class SuperProjectile extends Phaser.Physics.Arcade.Sprite {
     const offscreenMargin =
       this.config.gameplay.entities.player.super.hitbox.offscreen_margin;
 
-    const dt = this.config.gameplay.physics.timestep;
-    const moveX = this.direction * this.speed * dt;
+    // Use real delta time from MainScene (falls back to reference timestep)
+    const frameDt = dt ?? 0.01667;
+    const moveX = this.direction * this.speed * frameDt;
     this.x += moveX;
     this.travelled += Math.abs(moveX);
 

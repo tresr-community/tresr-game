@@ -44,18 +44,21 @@ export class Key extends BaseEntity {
     }
   }
 
-  update() {
+  update(dt?: number) {
     if (gameState.get().isPaused) return;
     if (!this.active) return;
 
     const gp = this.config.gameplay;
-    const timestep = gp.physics.timestep;
+    // Use real delta time from MainScene (falls back to reference timestep)
+    const frameDt = dt ?? BaseEntity.REFERENCE_DT;
     const offscreenKillDistance = gp.entities.key.offscreen_kill_distance;
 
     // --- Z-axis falling (inline, not via BaseEntity.updateZ) ---
+    // Scale gravity by dt ratio for frame-rate independence.
+    const gravityScale = frameDt / BaseEntity.REFERENCE_DT;
     if (this.z > 0 || this.vz !== 0) {
       this.z += this.vz;
-      this.vz -= this.gravity;
+      this.vz -= this.gravity * gravityScale;
 
       if (this.z <= 0) {
         this.z = 0;
@@ -67,7 +70,7 @@ export class Key extends BaseEntity {
     // Horizontal drift with oscillation (parachute sway effect)
     // Only sway while airborne — once landed (z == 0), freeze X position.
     if (this.z > 0) {
-      this.time += timestep;
+      this.time += frameDt;
       const {width} = this.scene.cameras.main;
       const halfWidth = this.displayWidth / 2;
       this.x = Phaser.Math.Clamp(

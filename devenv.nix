@@ -210,6 +210,13 @@ in
           Authorization = lib.optionalString (config.env ? GITHUB_TOKEN) "Bearer ${config.env.GITHUB_TOKEN}";
         };
       };
+      phaser-editor = {
+        type = "stdio";
+        command = "bunx";
+        args = [
+          "@phaserjs/editor-mcp-server"
+        ];
+      };
       daisyui-blueprint = {
         type = "stdio";
         command = "bunx";

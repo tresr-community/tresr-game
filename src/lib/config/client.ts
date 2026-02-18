@@ -375,16 +375,17 @@ export const config: ConfigTypes = {
     },
     "physics": {
       "gravity": 0.8,
-      "timestep": 0.01667
+      "timestep": 0.01667,
+      "game_speed": 1
     },
     "visuals": {
       "shadow": {
         "color": 0,
         "opacity": 0.35,
-        "width": 50,
-        "height": 12,
-        "offset_x": 8,
-        "offset_y": 4
+        "width": 70,
+        "height": 16,
+        "offset_x": 0,
+        "offset_y": 2
       },
       "damage_tint_duration": 100
     },
@@ -1327,30 +1328,30 @@ export const config: ConfigTypes = {
   "changelog": {
     "versions": [
       {
-        "version": "0.3.0",
-        "date": "2026-02-15",
-        "title": "Decaying High Score & Consolation Prize",
+        "version": "next...",
+        "date": "TBD",
+        "title": "Make AI great again",
         "notes": [
-          "Active score leaderboard with 24h TTL decay — your high score rugs itself",
-          "Consolation prize for expired #1 active score — a participation trophy for degens",
-          "Two-tab leaderboard UI (ACTIVE + ALL TIME) — so you can cope in two dimensions",
-          "Game session tracking on victory and defeat — receipts for your bags and your L's",
-          "Countdown timers on active leaderboard entries — watch your clout evaporate in real time",
           "5 new enemy AI types — the bankers brought reinforcements from TradFi",
-          "Mobile support so you can beat-up bankers from the toilet",
-          "PWA Mobile support for that poor-man native app feel",
-          "Portrait mode blocked — forced landscape, no vertical charts allowed",
-          "Screen wake lock — your phone won't paper-hand and go to sleep mid-boss",
-          "CI pipeline caching — builds go brrr 🚀"
+          "Consolation prize for expired #1 active score — a participation trophy for degens",
+          "Active score leaderboard with 24h TTL decay — your high score rugs itself"
         ]
       },
       {
         "version": "0.2.0",
-        "date": "2026-02-14",
-        "title": "Leaderboard",
+        "date": "2026-02-18",
+        "title": "Mobile Friendly",
         "notes": [
+          "Mobile support so you can beat-up bankers from the toilet",
+          "PWA Mobile support for that poor-man native app feel",
+          "Portrait mode blocked — forced landscape, no vertical charts allowed",
+          "CI Pipelines — because yolo-pushing to main was getting old (it wasn't)",
+          "CI Pipeline caching — builds go brrr 🚀",
+          "Game session tracking on victory and defeat — receipts for your bags and your L's",
           "Leaderboard — finally some on-chain clout to flex",
-          "CI Pipelines — because yolo-pushing to main was getting old (it wasn't)"
+          "Countdown timers on active leaderboard entries — watch your clout evaporate in real time",
+          "Screen wake lock — your phone won't paper-hand and go to sleep mid-boss",
+          "Two-tab leaderboard UI (ACTIVE + ALL TIME) — so you can cope in two dimensions"
         ]
       },
       {
@@ -1375,5 +1376,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "258036a3b91582bbace9c2fa7d508c5129f3d30d598f6cddd61b5681ba7a47f7"
+  "configHash": "3b633606273a76e6984f1ec7c59fba6a1c32e011c6b1ca14a511152c5137f64b"
 };

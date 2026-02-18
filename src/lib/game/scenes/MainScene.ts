@@ -43,6 +43,7 @@ interface GameplayConfig {
   physics: {
     gravity: number;
     timestep: number;
+    game_speed: number;
   };
   visuals: {
     shadow: {color: number; opacity: number; width: number; height: number};
@@ -2438,7 +2439,7 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  update() {
+  update(time: number, delta: number) {
     if (this.configTampered) return;
 
     // Handle Pause via ESC
@@ -2448,6 +2449,11 @@ export class MainScene extends Phaser.Scene {
 
     if (gameState.get().isPaused) return;
 
+    // Compute frame-rate independent delta time (seconds), scaled by game_speed.
+    // Phaser gives `delta` in milliseconds; clamp to avoid spiral-of-death on tab-switch.
+    const gameSpeed = this.gameplayConfig.physics.game_speed;
+    const dt = Math.min(delta / 1000, 0.05) * gameSpeed;
+
     if (this.background && this.player) {
       const {width, height} = this.cameras.main;
       // Subtle parallax drift — background shifts slightly opposite to player movement
@@ -2456,24 +2462,24 @@ export class MainScene extends Phaser.Scene {
     }
 
     if (this.player && this.player.active) {
-      this.player.update();
+      this.player.update(dt);
       if (this.player.hp !== this.lastReportedHp) {
         gameActions.setHp(this.player.hp);
         this.lastReportedHp = this.player.hp;
       }
     }
     if (this.boss) {
-      this.boss.update();
+      this.boss.update(dt);
       if (this.boss.hp !== this.lastReportedBossHp) {
         gameActions.setBossHp(this.boss.hp);
         this.lastReportedBossHp = this.boss.hp;
       }
     }
     if (this.tresrBot && this.tresrBot.active) {
-      this.tresrBot.update(this.time.now);
+      this.tresrBot.update(time, dt);
     }
     if (this.chest?.active) {
-      this.chest.update();
+      this.chest.update(dt);
     }
 
     // Clear super damage flag once all projectiles have despawned (handles misses)
@@ -2491,12 +2497,19 @@ export class MainScene extends Phaser.Scene {
     // from overwriting the Z-axis adjusted positions.
     if (this.keys) {
       this.keys.getChildren().forEach((child) => {
-        if (child.active) (child as Key).update();
+        if (child.active) (child as Key).update(dt);
       });
     }
     if (this.bombs) {
       this.bombs.getChildren().forEach((child) => {
-        if (child.active) (child as Bomb).update();
+        if (child.active) (child as Bomb).update(dt);
+      });
+    }
+
+    // Update super projectiles with delta time
+    if (this.superProjectiles) {
+      this.superProjectiles.getChildren().forEach((child) => {
+        if (child.active) (child as SuperProjectile).update(dt);
       });
     }
 

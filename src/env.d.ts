@@ -96,6 +96,7 @@ declare module "/config-client.json" {
       };
       physics: {        gravity: number;
         timestep: number;
+        game_speed: number;
       };
       visuals: {        shadow: {          color: number;
           opacity: number;
@@ -762,6 +763,7 @@ declare module "../../../public/config-client.json" {
       };
       physics: {        gravity: number;
         timestep: number;
+        game_speed: number;
       };
       visuals: {        shadow: {          color: number;
           opacity: number;

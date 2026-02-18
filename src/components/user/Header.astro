@@ -9,6 +9,7 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
 <header
   id="app-header"
   class="pointer-events-none fixed top-0 right-0 left-0 z-[50] flex justify-end p-4"
+  style="padding-top: max(1rem, var(--safe-top)); padding-right: max(1rem, var(--safe-right));"
 >
   <div
     class="bg-base-100/50 border-primary/20 pointer-events-auto flex items-center gap-2 rounded-full border p-1 shadow-lg backdrop-blur-md"
@@ -47,7 +48,7 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
         </summary>
         <ul
           id="theme-list"
-          class="dropdown-content menu bg-base-100 rounded-box z-[1] max-h-[60vh] w-auto max-w-[90vw] min-w-48 overflow-y-auto p-2 shadow"
+          class="dropdown-content menu bg-base-100 rounded-box z-[1] max-h-[60vh] w-auto max-w-[90vw] min-w-56 overflow-y-auto p-2 shadow"
         >
         </ul>
       </details>

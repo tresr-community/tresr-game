@@ -176,7 +176,7 @@ export class Enemy extends BaseEntity {
     }
   }
 
-  update() {
+  update(dt?: number) {
     if (gameState.get().isPaused) return;
     if (!this.active || !this.anims || this.hp <= 0) return;
     // Skip AI movement during knockback — let physics impulse play out
@@ -188,7 +188,8 @@ export class Enemy extends BaseEntity {
     // Use cached config from BaseEntity
     const gp = this.config.gameplay;
     const aiConfig = gp.entities.enemy.ai;
-    const timestep = gp.physics.timestep;
+    // Use real delta time from MainScene (falls back to reference timestep)
+    const frameDt = dt ?? BaseEntity.REFERENCE_DT;
 
     // Handle walk-in from off-screen
     if (this.enterState === "walking_in") {
@@ -204,7 +205,7 @@ export class Enemy extends BaseEntity {
         this.setVelocityY(0);
       }
       this.safePlay(this.animKeys.walk, true);
-      super.update();
+      super.update(dt);
       return;
     }
 
@@ -223,11 +224,11 @@ export class Enemy extends BaseEntity {
         this.kill();
         return;
       }
-      super.update();
+      super.update(dt);
       return;
     }
 
-    this.aiTimer += timestep;
+    this.aiTimer += frameDt;
 
     // --- Passive AI: Walk across screen, ignore player unless provoked ---
     if (this.aiType === "passive" && !this.provoked) {
@@ -250,18 +251,18 @@ export class Enemy extends BaseEntity {
         this.groundY = clamped.groundY;
       }
 
-      super.update();
+      super.update(dt);
       return;
     }
 
     // --- Retardio AI: Chase and attack other enemies (not the player) ---
     if (this.aiType === "retardio") {
-      const dt = timestep;
+      const retDt = frameDt;
       const aiConfig = this.config.gameplay.entities.enemy.ai;
       const jitterTime = aiConfig.retardio?.jitter_time ?? 0.3;
 
       // Re-pick target every few seconds or if current target is dead
-      this.retardioTimer += dt;
+      this.retardioTimer += retDt;
       if (
         !this.retardioTarget ||
         !this.retardioTarget.active ||
@@ -313,7 +314,7 @@ export class Enemy extends BaseEntity {
         } else {
           this.setVelocityX(Math.cos(angle) * this.speed);
           this.setVelocityY(0);
-          this.groundY += Math.sin(angle) * this.speed * dt;
+          this.groundY += Math.sin(angle) * this.speed * retDt;
           if (this.walkableArea) {
             const clamped = this.walkableArea.clampToWalkable(
               this.x,
@@ -335,12 +336,12 @@ export class Enemy extends BaseEntity {
         this.safePlay(this.animKeys.walk, true);
       }
 
-      super.update();
+      super.update(dt);
       return;
     }
 
     if (this.target) {
-      const dt = timestep;
+      const chaseDt = frameDt;
 
       // Calculate direction to target's ground position
       const targetGroundY =
@@ -359,7 +360,7 @@ export class Enemy extends BaseEntity {
 
           if (this.flankerPhase === "orbiting") {
             // Circle around the player at orbit radius
-            this.flankerOrbitAngle += dt * 2; // ~2 rad/s orbit speed
+            this.flankerOrbitAngle += chaseDt * 2; // ~2 rad/s orbit speed
             const orbitX =
               this.target.x +
               Math.cos(this.flankerOrbitAngle) *
@@ -376,7 +377,7 @@ export class Enemy extends BaseEntity {
             this.setFlipX(this.target.x < this.x);
             this.setVelocityX(Math.cos(orbitAngle) * this.speed);
             this.setVelocityY(0);
-            this.groundY += Math.sin(orbitAngle) * this.speed * dt;
+            this.groundY += Math.sin(orbitAngle) * this.speed * chaseDt;
 
             if (this.walkableArea) {
               const clamped = this.walkableArea.clampToWalkable(
@@ -395,7 +396,7 @@ export class Enemy extends BaseEntity {
               this.aiTimer = 0;
               this.speed = this.baseSpeed * flankerConfig.lunge_speed_mult;
             }
-            super.update();
+            super.update(dt);
             return;
           }
 
@@ -420,7 +421,7 @@ export class Enemy extends BaseEntity {
             this.setFlipX(this.target.x < this.x);
             this.setVelocityX(Math.cos(retreatAngle) * this.speed);
             this.setVelocityY(0);
-            this.groundY += Math.sin(retreatAngle) * this.speed * dt;
+            this.groundY += Math.sin(retreatAngle) * this.speed * chaseDt;
 
             if (this.walkableArea) {
               const clamped = this.walkableArea.clampToWalkable(
@@ -438,7 +439,7 @@ export class Enemy extends BaseEntity {
               this.aiTimer = 0;
               this.speed = this.baseSpeed * flankerConfig.speed_mult;
             }
-            super.update();
+            super.update(dt);
             return;
           }
           break;
@@ -520,7 +521,7 @@ export class Enemy extends BaseEntity {
             const preferred = cautiousConfig.preferred_distance;
 
             // Flip strafe direction periodically
-            this.cautiousStrafeTimer += dt;
+            this.cautiousStrafeTimer += chaseDt;
             if (this.cautiousStrafeTimer > cautiousConfig.strafe_switch_time) {
               this.cautiousStrafeDir *= -1;
               this.cautiousStrafeTimer = 0;
@@ -535,7 +536,7 @@ export class Enemy extends BaseEntity {
               this.setFlipX(this.target.x < this.x);
               this.setVelocityX(Math.cos(retreatAngle) * this.speed);
               this.setVelocityY(0);
-              this.groundY += Math.sin(retreatAngle) * this.speed * dt;
+              this.groundY += Math.sin(retreatAngle) * this.speed * chaseDt;
 
               if (this.walkableArea) {
                 const clamped = this.walkableArea.clampToWalkable(
@@ -547,7 +548,7 @@ export class Enemy extends BaseEntity {
               }
 
               this.safePlay(this.animKeys.walk, true);
-              super.update();
+              super.update(dt);
               return;
             } else if (distToPlayer <= preferred * 1.3) {
               // Within strafe zone — move laterally (perpendicular to player)
@@ -560,7 +561,7 @@ export class Enemy extends BaseEntity {
                 this.setFlipX(this.target.x < this.x);
                 this.setVelocityX(perpX * this.speed);
                 this.setVelocityY(0);
-                this.groundY += perpGY * this.speed * dt;
+                this.groundY += perpGY * this.speed * chaseDt;
 
                 if (this.walkableArea) {
                   const clamped = this.walkableArea.clampToWalkable(
@@ -573,7 +574,7 @@ export class Enemy extends BaseEntity {
               }
 
               this.safePlay(this.animKeys.walk, true);
-              super.update();
+              super.update(dt);
               return;
             }
             // Too far — creep closer (fall through to normal chase)
@@ -658,7 +659,7 @@ export class Enemy extends BaseEntity {
       } else {
         this.setVelocityX(Math.cos(angle) * this.speed);
         this.setVelocityY(0);
-        this.groundY += Math.sin(angle) * this.speed * dt;
+        this.groundY += Math.sin(angle) * this.speed * chaseDt;
 
         // Clamp to walkable area (both X and groundY)
         if (this.walkableArea) {
@@ -679,7 +680,7 @@ export class Enemy extends BaseEntity {
       this.safePlay(this.animKeys.idle, true);
     }
 
-    super.update();
+    super.update(dt);
   }
 
   public takeDamage(amount: number) {

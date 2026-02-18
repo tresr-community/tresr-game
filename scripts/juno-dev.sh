@@ -540,6 +540,7 @@ AGENT_DOCS_DIR="docs/agents"
 # Add new sources here - name will be lowercased for filename
 AGENT_DOC_SOURCES=(
 	"astro|https://docs.astro.build/llms-full.txt"
+	"cloudflare|https://developers.cloudflare.com/llms-full.txt"
 	"daisyui|https://daisyui.com/llms.txt"
 	"foundry|https://getfoundry.sh/llms-full.txt"
 	"juno|https://juno.build/llms-full.txt"

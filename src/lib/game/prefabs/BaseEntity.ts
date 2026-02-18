@@ -234,17 +234,26 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
     this._airDropLanding = config?.landing ?? null;
   }
 
-  update() {
-    this.updateZ();
+  update(dt?: number) {
+    this.updateZ(dt);
     this.setDepth(this.groundY);
     this.updateShadow();
     this.updateHealthBar();
   }
 
-  protected updateZ() {
+  /** Reference timestep (1/60s) that gravity/vz values were originally tuned for. */
+  protected static readonly REFERENCE_DT = 0.01667;
+
+  protected updateZ(dt?: number) {
     if (this.z > 0 || this.vz !== 0) {
+      // Scale gravity by the ratio of actual dt to the reference timestep.
+      // This preserves Symplectic-Euler jump height/feel at any frame rate.
+      const step = dt ?? BaseEntity.REFERENCE_DT;
+      const gravityScale = step / BaseEntity.REFERENCE_DT;
+      const gravityStep = this.gravity * gravityScale;
+
       this.z += this.vz;
-      this.vz -= this.gravity;
+      this.vz -= gravityStep;
 
       // Cap max jump height so visual Y never goes above the top of the canvas.
       // Skipped during air drops where z intentionally exceeds groundY.
