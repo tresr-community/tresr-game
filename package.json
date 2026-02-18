@@ -20,6 +20,7 @@
     "audio": "bun run bin/audio.ts",
     "sprites": "bun run bin/sprites.ts",
     "wallpapers": "bun run bin/wallpapers.ts",
+    "videos": "bun run bin/videos.ts",
     "postinstall:copy-auth": "bun -e \"require('node:fs').cpSync('node_modules/@junobuild/core/dist/workers/', './public/workers', {recursive: true});\"",
     "postinstall": "bun run postinstall:copy-auth"
   },

@@ -55,7 +55,7 @@ struct TopScorerCache {
     key: String,
     score: u64,
     scored_at: u64,
-    expires_at: u64,
+    _expires_at: u64,
     owner: candid::Principal,
 }
 
@@ -289,6 +289,7 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
 
     let entry = LeaderboardEntry {
         nickname: profile.nickname.clone(),
+        avatar_url: profile.preferences.avatar_url.clone(),
         high_score: profile.stats.high_score,
         games_won: profile.stats.total_games_won,
         active_score: existing.as_ref().map_or(0, |e| e.active_score),
@@ -881,12 +882,12 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
         "users".to_string(),
         caller_key.clone(),
     )?;
-    let nickname = match user_doc {
+    let (nickname, avatar_url) = match user_doc {
         Some(ref doc) => {
             let profile: UserProfile = decode_doc_data(&doc.data)?;
-            profile.nickname
+            (profile.nickname, profile.preferences.avatar_url)
         }
-        None => "Unknown".to_string(),
+        None => ("Unknown".to_string(), None),
     };
 
     // Read existing leaderboard entry (keep raw Doc for version)
@@ -907,6 +908,7 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
     // Update leaderboard entry with active score
     let entry = LeaderboardEntry {
         nickname,
+        avatar_url,
         high_score: prev_high.max(session.score),
         games_won: if session.boss_defeated { prev_won + 1 } else { prev_won },
         active_score: session.score,
@@ -949,7 +951,7 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
                 key: caller_key.clone(),
                 score: session.score,
                 scored_at: now_ms,
-                expires_at: new_expires,
+                _expires_at: new_expires,
                 owner: context.caller,
             });
         }
@@ -1174,7 +1176,7 @@ fn scan_top_active_scorer() -> Result<Option<TopScorerCache>, String> {
                 key: key.clone(),
                 score: entry.active_score,
                 scored_at,
-                expires_at,
+                _expires_at: expires_at,
                 owner: doc.owner,
             });
         }
@@ -1485,6 +1487,18 @@ async fn replay_verify_stub(
     Ok((reported_keys, boss_defeated))
 }
 
+
+// =============================================================================
+// Random Seed Callback — required by `on_init_random_seed` feature
+// =============================================================================
+
+/// Called by junobuild-satellite after the RNG has been seeded on canister upgrade.
+/// Custom loggers (`junobuild_satellite::{info,debug,warn,error}`) depend on the
+/// RNG for unique document keys, so they only work reliably AFTER this callback.
+#[unsafe(no_mangle)]
+fn juno_on_init_random_seed() {
+    logging::log_info("Satellite", "RNG seeded — custom loggers ready");
+}
 
 // =============================================================================
 // Include Juno Satellite - MUST be at the end

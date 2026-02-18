@@ -88,10 +88,10 @@
         "chain_id": 31337,
         "rpc_url": "http://localhost:8545",
         "token_ticker": "tRON",
-        "tresr_token_contract": "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
+        "tresr_token_contract": "0x922D6956C99E12DFeB3224DEA977D0939758A1Fe",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
-        "faucet_contract": "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44",
+        "vault_contract": "0x2E2Ed0Cfd3AD2f1d34481277b3204d807Ca2F8c2",
+        "faucet_contract": "0xdbC43Ba45381e02825b14322cDdd15eC4B3164E6",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       },
       "testnet": {
@@ -378,7 +378,9 @@
         "color": 0,
         "opacity": 0.35,
         "width": 50,
-        "height": 12
+        "height": 12,
+        "offset_x": 8,
+        "offset_y": 4
       },
       "damage_tint_duration": 100
     },
@@ -787,7 +789,13 @@
       }
     },
     "loading_screen": {
+      "mode": "video",
       "spinner": {
+        "y_offset": -60
+      },
+      "video": {
+        "path": "/assets/videos/loader.webp",
+        "scale": 0.4,
         "y_offset": -60
       }
     }

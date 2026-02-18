@@ -107,3 +107,30 @@
     rgba(0, 0, 0, 0.1) 4px
   );
 }
+
+/* Reown AppKit wallet modal: force fullscreen in landscape on mobile.
+   enableMobileFullScreen doesn't trigger in landscape because AppKit
+   detects landscape phones as "desktop" by viewport width.
+   CSS custom properties cascade into shadow DOM to control the inner card.
+   max-height: 500px ensures this only fires on phones, not desktops. */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  :root {
+    --apkt-modal-width: 100% !important;
+  }
+
+  w3m-modal,
+  appkit-modal {
+    --apkt-modal-width: 100% !important;
+    --w3m-border-radius-master: 0px !important;
+    --apkt-borderRadius-5: 0px !important;
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    max-width: 100vw !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-y: auto !important;
+  }
+}

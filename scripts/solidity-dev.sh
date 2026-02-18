@@ -535,7 +535,7 @@ function run_deploy_token() {
 	deploy_output=$(
 		DEPLOYER_PRIVATE_KEY="$DEPLOYER_PRIVATE_KEY" \
 			FAUCET_FUND_AMOUNT="100000000000000000000000" \
-			forge script script/DeployTestToken.s.sol:DeployTestToken \
+			forge script script/DeployToken.s.sol:DeployTestToken \
 			--rpc-url "$ANVIL_RPC_URL" \
 			--broadcast \
 			2>&1

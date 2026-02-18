@@ -1,12 +1,11 @@
 import {defineConfig} from "@junobuild/config";
 import fs from "node:fs";
 import path from "node:path";
-import yaml from "yaml";
 
-const configPath = path.resolve(process.cwd(), "config", "tresr.yaml");
+const configPath = path.resolve(process.cwd(), "config", "config-server.json");
 const configContent = fs.readFileSync(configPath, "utf8");
-const fullConfig = yaml.parse(configContent);
-const junoConfig = fullConfig.server.juno;
+const serverConfig = JSON.parse(configContent);
+const junoConfig = serverConfig.juno;
 
 // Variable substitution for placeholders like ${VAR}
 const substitute = (val) => {

@@ -48,8 +48,8 @@ let
   #packages = with pkgs; [ ];
 
   packagesUnstable = with pkgsUnstable; [
-    claude-code-bin
-    gemini-cli-bin
+    claude-code
+    gemini-cli
     tailwindcss_4
   ];
 
@@ -57,8 +57,8 @@ let
     with pkgs;
     [
       # AI Agents
-      #gemini-cli-bin
-      #claude-code-bin
+      #gemini-cli
+      #claude-code
 
       # pickle-rick dependencies
       python3

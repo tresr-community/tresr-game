@@ -101,6 +101,8 @@ declare module "/config-client.json" {
           opacity: number;
           width: number;
           height: number;
+          offset_x: number;
+          offset_y: number;
         };
         damage_tint_duration: number;
       };
@@ -437,7 +439,12 @@ declare module "/config-client.json" {
           victory: number;
         };
       };
-      loading_screen: {        spinner: {          y_offset: number;
+      loading_screen: {        mode: string;
+        spinner: {          y_offset: number;
+        };
+        video: {          path: string;
+          scale: number;
+          y_offset: number;
         };
       };
     };
@@ -760,6 +767,8 @@ declare module "../../../public/config-client.json" {
           opacity: number;
           width: number;
           height: number;
+          offset_x: number;
+          offset_y: number;
         };
         damage_tint_duration: number;
       };
@@ -1096,7 +1105,12 @@ declare module "../../../public/config-client.json" {
           victory: number;
         };
       };
-      loading_screen: {        spinner: {          y_offset: number;
+      loading_screen: {        mode: string;
+        spinner: {          y_offset: number;
+        };
+        video: {          path: string;
+          scale: number;
+          y_offset: number;
         };
       };
     };

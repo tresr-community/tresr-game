@@ -546,6 +546,7 @@ AGENT_DOC_SOURCES=(
 	"oisy|https://docs.oisy.com/llms-full.txt"
 	"reown|https://docs.reown.com/llms-full.txt"
 	"viem|https://viem.sh/llms-full.txt"
+	"wagmi|https://wagmi.sh/llms-full.txt"
 	"xai|https://docs.x.ai/llms.txt"
 )
 

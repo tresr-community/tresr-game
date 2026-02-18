@@ -104,6 +104,7 @@ frontmatter
 gitsubmodule
 gitsubmodules
 libopus
+libwebp
 lockdb
 ltrimstr
 MSVC
@@ -124,6 +125,7 @@ rustup
 shellcheck
 startswith
 topup
+vcodec
 versionrc
 VITE
 webp
@@ -136,6 +138,7 @@ SARIF
 trivy
 
 # Art and design
+glassmorphism
 Lizardcube
 narr
 Orbitron
@@ -193,6 +196,7 @@ oxalica
 
 # Word fragments from hyphenated compounds
 # cspell splits on hyphens and suffixes, producing these fragments
+apkt
 atal
 cript
 ility
@@ -228,6 +232,7 @@ repe
 rint
 rboard
 rray
+scro
 ution
 
 # Code and API names

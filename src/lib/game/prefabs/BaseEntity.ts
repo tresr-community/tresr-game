@@ -205,7 +205,8 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
    * Shadow sits at the character's feet (groundY) regardless of jump height.
    */
   protected updateShadow() {
-    this.shadow.setPosition(this.x, this.groundY);
+    const s = this.config.gameplay.visuals.shadow;
+    this.shadow.setPosition(this.x + s.offset_x, this.groundY + s.offset_y);
     this.shadow.setDepth(this.depth - 1);
   }
 

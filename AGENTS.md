@@ -33,7 +33,8 @@ Available documentation:
 | Juno    | `docs/agents/juno.txt`    | [LLMs](https://juno.build/llms-full.txt)       |
 | OISY    | `docs/agents/oisy.txt`    | [LLMs](https://docs.oisy.com/llms-full.txt)    |
 | Reown   | `docs/agents/reown.txt`   | [LLMs](https://docs.reown.com/llms-full.txt)   |
-| Viem    | `docs/agents/viem.txt`    | [LLMs](https://viem.sh/llms.txt)               |
+| Viem    | `docs/agents/viem.txt`    | [LLMs](https://viem.sh/llms-full.txt)          |
+| Wagmi   | `docs/agents/wagmi.txt`   | [LLMs](https://wagmi.sh/llms-full.txt)         |
 | xAI     | `docs/agents/xai.txt`     | [LLMs](https://docs.x.ai/llms.txt)             |
 
 When working on specific features, reference the relevant documentation file for accurate, up-to-date API information.
@@ -348,11 +349,12 @@ The `bin/` directory contains unified CLI tools for processing game assets. All 
 | ---------------------- | ----------------------------------------- | ----------------------------------------- |
 | `bin/audio.ts`         | `--convert`                               | Convert MP3/OPUS audio to WebM            |
 | `bin/sprites.ts`       | `--convert`, `--check`, `--calc`, `--cut` | Sprite sheet processing pipeline          |
+| `bin/videos.ts`        | `--convert`                               | Convert MP4 videos to animated WebP       |
 | `bin/wallpapers.ts`    | `--sync`, `--update`, `--pending`         | Wallpaper conversion and state management |
 | `bin/client-config.ts` | _(no flags)_                              | Generate client configuration JSON        |
 | `bin/version.ts`       | `--bump`, `--set`, `--get`                | Version management                        |
 
-Package.json shortcuts are available: `bun run audio`, `bun run sprites`, `bun run wallpapers`.
+Package.json shortcuts are available: `bun run audio`, `bun run sprites`, `bun run videos`, `bun run wallpapers`.
 
 ### bin/audio.ts
 
@@ -366,6 +368,23 @@ bun run bin/audio.ts --help      # Show usage
 - **Source directories**: `assets-source/audio/{music,sfx}/{mp3,opus}/`
 - **Output directories**: `public/assets/audio/{music,sfx}/`
 - **Codec**: libopus for MP3 sources, copy for OPUS sources
+- **Requires**: `ffmpeg` (available in devenv shell)
+
+### bin/videos.ts
+
+Converts MP4 video files to animated WebP using ffmpeg. Strips audio and applies compression.
+
+```bash
+bun run bin/videos.ts --convert   # Convert all MP4 to animated WebP
+bun run bin/videos.ts --help      # Show usage
+```
+
+- **Source directory**: `assets-source/videos/`
+- **Output directory**: `public/assets/videos/`
+- **Codec**: libwebp (lossy, quality 50, 24 fps, infinite loop)
+- **Audio**: Stripped during conversion
+- **Source files**: Left untouched after conversion
+- **Skipping**: Up-to-date files skipped via mtime comparison
 - **Requires**: `ffmpeg` (available in devenv shell)
 
 ### bin/sprites.ts
