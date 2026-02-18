@@ -26,7 +26,7 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
     id="login-button"
     data-external-trigger={hideTrigger}
     class:list={[
-      "btn btn-primary btn-lg font-display px-12 text-2xl tracking-widest shadow-[0_0_30px_rgba(var(--primary),0.4)] transition-all duration-500 hover:scale-105",
+      "btn btn-primary btn-md md:btn-lg font-display px-8 text-lg tracking-widest shadow-[0_0_30px_rgba(var(--primary),0.4)] transition-all duration-500 hover:scale-105 md:px-12 md:text-2xl",
       {hidden: hideTrigger},
     ]}
   >
@@ -42,7 +42,9 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
 
 <!-- Unified Auth Modal -->
 <dialog id="login-modal" class="modal">
-  <div class="modal-box border-primary/30 bg-base-200 relative max-w-md border">
+  <div
+    class="modal-box border-primary/30 bg-base-200 relative h-full max-h-full w-full max-w-full border sm:h-auto sm:max-h-[85vh] sm:w-auto sm:max-w-md sm:rounded-2xl"
+  >
     <button
       id="btn-close-auth"
       class="btn btn-circle btn-ghost absolute top-2 right-2 min-h-[44px] min-w-[44px] text-lg"

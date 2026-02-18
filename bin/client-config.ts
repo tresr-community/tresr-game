@@ -14,6 +14,11 @@ const publicConfigPath: string = path.join(
   "public",
   "config-client.json"
 );
+const serverConfigPath: string = path.join(
+  projectRoot,
+  "config",
+  "config-server.json"
+);
 const typeOutputPath: string = path.join(
   projectRoot,
   "src",
@@ -414,6 +419,11 @@ interface PendingWrite {
       const validateContent = generateValidation(clientConfig);
       writeOrCollect(validatePath, validateContent);
     }
+
+    // Write server config as JSON so juno.config.mjs (and the Skylab container)
+    // can read it without needing the `yaml` npm package.
+    const serverSection = (config.server as Record<string, unknown>) || {};
+    writeOrCollect(serverConfigPath, JSON.stringify(serverSection, null, 2));
 
     writeOrCollect(publicConfigPath, JSON.stringify(clientConfig, null, 2));
 

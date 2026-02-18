@@ -105,6 +105,8 @@ export function getAppKit(): AppKit {
     defaultNetwork: targetNetwork,
     projectId: WALLETCONNECT_PROJECT_ID,
     metadata,
+    // Render modal fullscreen on mobile devices (landscape-friendly)
+    enableMobileFullScreen: true,
     features: {
       analytics: true,
       // Disable email/social login - we only want wallet connections

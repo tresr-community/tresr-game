@@ -206,18 +206,17 @@ import Loader from "@/components/game/Loader.astro";
       }
     }
 
-    // Fullscreen — request on mobile to maximize canvas and enable orientation lock
+    // Fullscreen — request on mobile to maximize canvas and enable orientation lock.
+    // Uses documentElement instead of game-container so the header toolbar
+    // remains visible above the game canvas during fullscreen gameplay.
     async function requestFullscreen() {
       const isTouchDevice =
         "ontouchstart" in window || navigator.maxTouchPoints > 0;
       if (!isTouchDevice) return;
 
-      const container = document.getElementById("game-container");
-      if (!container) return;
-
       try {
-        if (container.requestFullscreen) {
-          await container.requestFullscreen();
+        if (document.documentElement.requestFullscreen) {
+          await document.documentElement.requestFullscreen();
           log.info(COMPONENT_NAME, "Fullscreen activated");
           // Orientation lock works reliably in fullscreen
           requestLandscapeLock();

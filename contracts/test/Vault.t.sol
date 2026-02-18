@@ -217,6 +217,25 @@ contract VaultTest is Test {
         _signAndClaim(keccak256("session2"), 100 * 10 ** 18, 75);
     }
 
+    function testUpgradePreservesState() public {
+        // 1. Put funds in vault
+        testPayFee();
+        uint256 vaultBalBefore = token.balanceOf(address(vault));
+        uint256 burnRateBefore = vault.burnRate();
+
+        // 2. Deploy new implementation and upgrade
+        vm.startPrank(owner);
+        TresrVault newImpl = new TresrVault();
+        vault.upgradeToAndCall(address(newImpl), "");
+        vm.stopPrank();
+
+        // 3. Verify state is preserved across upgrade
+        assertEq(token.balanceOf(address(vault)), vaultBalBefore, "Balance lost after upgrade");
+        assertEq(vault.burnRate(), burnRateBefore, "Burn rate changed after upgrade");
+        assertTrue(vault.hasRole(vault.DEFAULT_ADMIN_ROLE(), owner), "Admin role lost after upgrade");
+        assertTrue(vault.hasRole(vault.ORACLE_ROLE(), oracle), "Oracle role lost after upgrade");
+    }
+
     // --- Helpers ---
 
     /// @dev Sign a claim with the oracle key and execute it as the user

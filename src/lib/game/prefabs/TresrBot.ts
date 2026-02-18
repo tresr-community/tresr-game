@@ -180,24 +180,24 @@ export class TresrBot extends BaseEntity {
     this.boss = boss;
   }
 
-  update(time?: number) {
+  update(time?: number, dt?: number) {
     if (gameState.get().isPaused) return;
     if (!this.active || !this.isAlive) return;
 
     // During air drop, only process z-axis physics (no AI)
     if (this.z > 0) {
-      super.update();
+      super.update(dt);
       return;
     }
 
     if (this.isKnockedBack) {
-      super.update();
+      super.update(dt);
       return;
     }
 
     const botConfig = this.config.gameplay.entities.tresr_bot;
     const now = time ?? this.scene.time.now;
-    const dt = this.config.gameplay.physics.timestep;
+    const frameDt = dt ?? BaseEntity.REFERENCE_DT;
 
     // Find target — nearest active enemy or boss
     this.findTarget();
@@ -235,7 +235,7 @@ export class TresrBot extends BaseEntity {
           this.target.x,
           this.target.groundY,
           botConfig.speed,
-          dt
+          frameDt
         );
       }
     }
@@ -252,7 +252,7 @@ export class TresrBot extends BaseEntity {
           this.owner.x,
           this.owner.groundY,
           botConfig.speed * botConfig.combat.follow_speed_mult,
-          dt
+          frameDt
         );
       } else {
         // 5. Idle
@@ -273,7 +273,7 @@ export class TresrBot extends BaseEntity {
       this.groundY = clamped.groundY;
     }
 
-    super.update();
+    super.update(dt);
   }
 
   private findTarget() {

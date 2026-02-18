@@ -189,11 +189,11 @@ client:
         burn_rate: 1000 # 10% in basis points — must match Vault.sol burnRate
         chain_id: 31337 # Standalone Anvil (no fork)
         rpc_url: http://localhost:8545
-        token_ticker: "tRON"
-        tresr_token_contract: "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1"
+        token_ticker: tRON
+        tresr_token_contract: "0x922D6956C99E12DFeB3224DEA977D0939758A1Fe"
         deployer_address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-        vault_contract: "0x09635F643e140090A9A8Dcd712eD6285858ceBef"
-        faucet_contract: "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44"
+        vault_contract: "0x2E2Ed0Cfd3AD2f1d34481277b3204d807Ca2F8c2"
+        faucet_contract: "0xdbC43Ba45381e02825b14322cDdd15eC4B3164E6"
         player_wallet: "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       testnet:
         fee: 10 # Fee in tokens to play
@@ -237,6 +237,7 @@ client:
   display:
     width: 1280
     height: 720
+    design_height: 720 # Baseline height that all scaleFactor values are authored against
     background_color: "#000000"
     pixel_art: true # use nearest-neighbor scaling for pixel art
   gameplay:
@@ -272,13 +273,16 @@ client:
     physics:
       gravity: 0.8
       timestep: 0.01667 # 1/60 for 60 FPS
+      game_speed: 1.0 # Global simulation speed multiplier (2.0 = double speed)
     # Global visuals
     visuals:
       shadow:
         color: 0x000000
         opacity: 0.35
-        width: 50
-        height: 12
+        width: 70
+        height: 16
+        offset_x: 0 # Horizontal shadow offset (px) — 0 = directly under character
+        offset_y: 2 # Vertical shadow offset (px) — small nudge so shadow sits at feet
       damage_tint_duration: 100 # Red tint flash duration (ms), applies to all entities
     # Scoring (cross-entity, stays flat)
     # Points awarded for each in-game action, used to calculate the player's final score.
@@ -548,7 +552,7 @@ client:
         spawner:
           pool_size: 20
           delay_ms: 2000
-          start_z: 500
+          start_z: 800 # Must exceed max groundY (~700) so keys enter from above the screen
           x_margin: 100
           y_margin_top_ratio: 0.833 # Top of walkable area ratio (must match walkable_area.top_y_ratio)
           y_margin_bottom_ratio: 0.035 # Bottom margin ratio from screen edge (25/720)
@@ -565,7 +569,7 @@ client:
         spawner:
           pool_size: 10 # Max bombs in the object pool
           delay_ms: 5000 # Interval between bomb drops (ms)
-          start_z: 400 # Initial height above ground (px, for fall animation)
+          start_z: 800 # Must exceed max groundY (~700) so bombs enter from above the screen
           x_margin: 100 # Horizontal margin from screen edges for spawn (px)
           y_margin_top_ratio: 0.833 # Top of walkable area ratio (must match walkable_area.top_y_ratio)
           y_margin_bottom_ratio: 0.035 # Bottom margin ratio from screen edge (25/720)
@@ -649,9 +653,17 @@ client:
       # Files follow naming convention: {type}_{number}.webm (contiguous from 1).
       # Adding/removing files automatically updates variant counts on rebuild.
       sfx_variants: {}
-    # Loading screen configuration (cinematic intro — spinner only)
+    # Loading screen configuration (cinematic intro)
+    # mode: "sprite" = old spritesheet coin, "video" = animated WebP video
     loading_screen:
+      # mode: sprite
+      mode: video
       spinner:
+        y_offset: -60
+      video:
+        path: /assets/videos/loader.webp
+        # Scale relative to canvas height (0.0–1.0). 0.4 = 40% of screen height.
+        scale: 0.4
         y_offset: -60
   # Sprite configuration for characters and items
   # Each sprite uses row-based animations in a spritesheet
@@ -665,7 +677,7 @@ client:
 
     # Hero character (Ron Jay)
     hero:
-      scaleFactor: 0.586
+      scaleFactor: 0.75
       anims:
         - name: idle
           frames: 6
@@ -711,7 +723,7 @@ client:
           frameHeight: 512
     # Super Attack Projectile (spinning coin hadouken)
     super:
-      scaleFactor: 0.5
+      scaleFactor: 0.50
       anims:
         - name: spin
           frames: 5
@@ -722,7 +734,7 @@ client:
           frameHeight: 512
     # Boss character (Gary Gensler)
     boss:
-      scaleFactor: 1.172
+      scaleFactor: 1.25
       anims:
         - name: idle
           frames: 6
@@ -763,7 +775,7 @@ client:
     # Each one uses the same animations/mechanics.
     # Per-anim paths use {i} placeholder for variant number.
     enemies:
-      scaleFactor: 0.586
+      scaleFactor: 0.75
       count: 5
       anims:
         - name: idle
@@ -813,7 +825,7 @@ client:
           frameHeight: 512
     # TRESR-BOT companion (AI ally spawned from powerup pickup)
     tresr_bot:
-      scaleFactor: 0.586
+      scaleFactor: 0.75
       anims:
         - name: idle
           frames: 6
@@ -846,7 +858,7 @@ client:
     # Items (per-animation sheets)
     items:
       key:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 5
@@ -856,7 +868,7 @@ client:
             frameWidth: 256
             frameHeight: 512
       bomb:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 5
@@ -900,7 +912,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_1:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -910,7 +922,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_2:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -920,7 +932,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_3:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -930,7 +942,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_4:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -940,7 +952,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_5:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -950,7 +962,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_1:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -960,7 +972,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_2:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -970,7 +982,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_3:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -980,7 +992,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_4:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
@@ -990,7 +1002,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_5:
-        scaleFactor: 0.2
+        scaleFactor: 0.25
         anims:
           - name: idle
             frames: 4
