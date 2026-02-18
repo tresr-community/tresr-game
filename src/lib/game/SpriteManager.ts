@@ -221,9 +221,13 @@ export class SpriteManager {
       return Promise.resolve();
     }
 
+    const entityKey = `enemy_${variantIndex}`;
+    const animKeys = spriteConfig.enemies.anims.map(
+      (a) => `${entityKey}_${a.name}`
+    );
+
     // Check if textures already exist (e.g. from a previous scene)
-    const firstAnimKey = `enemy_${variantIndex}_${spriteConfig.enemies.anims[0].name}`;
-    if (this.scene.textures.exists(firstAnimKey)) {
+    if (this.scene.textures.exists(animKeys[0])) {
       this.loadedEnemyVariants.add(variantIndex);
       // Still create animations in case they don't exist yet
       this.createEnemyAnimations(variantIndex, spriteConfig.enemies.anims);
@@ -233,17 +237,25 @@ export class SpriteManager {
     // Queue the sprite sheets for loading
     this.preloadEnemySprites(variantIndex, spriteConfig.enemies);
 
-    // Listen for this variant's specific spritesheet completion instead of
-    // the global "complete" event, which fires for any queued batch.
+    // Wait for ALL spritesheets in this variant to finish loading before
+    // creating animations. Previously we only waited for the first sheet,
+    // which caused walk/jump/attack/hurt textures to have 0 frames.
     const loadPromise = new Promise<void>((resolve) => {
-      // cspell:disable-next-line -- Phaser loader event name
-      this.scene.load.once(`filecomplete-spritesheet-${firstAnimKey}`, () => {
-        this.createEnemyAnimations(variantIndex, spriteConfig.enemies.anims);
-        this.loadedEnemyVariants.add(variantIndex);
-        this.pendingEnemyLoads.delete(variantIndex);
-        log.info(COMPONENT_NAME, `Lazy-loaded enemy variant ${variantIndex}`);
-        resolve();
-      });
+      let remaining = animKeys.length;
+      const onSheetLoaded = () => {
+        remaining--;
+        if (remaining <= 0) {
+          this.createEnemyAnimations(variantIndex, spriteConfig.enemies.anims);
+          this.loadedEnemyVariants.add(variantIndex);
+          this.pendingEnemyLoads.delete(variantIndex);
+          log.info(COMPONENT_NAME, `Lazy-loaded enemy variant ${variantIndex}`);
+          resolve();
+        }
+      };
+      for (const key of animKeys) {
+        // cspell:disable-next-line -- Phaser loader event name
+        this.scene.load.once(`filecomplete-spritesheet-${key}`, onSheetLoaded);
+      }
       this.scene.load.start();
     });
 
@@ -380,21 +392,39 @@ export class SpriteManager {
    * Get the scaleFactor for an entity sprite.
    * Checks top-level sprites (hero, super, boss, enemies) and items.
    * Returns 1 if no scaleFactor is configured.
+   *
+   * When `canvasHeight` and `designHeight` are provided the config
+   * scaleFactor is multiplied by `canvasHeight / designHeight` so sprites
+   * maintain the same proportional screen size regardless of resolution.
+   * `designHeight` comes from `display.design_height` in tresr.yaml.
    */
   static getScaleFactor(
     spritesConfig: SpritesConfig,
-    entityKey: string
+    entityKey: string,
+    canvasHeight?: number,
+    designHeight?: number
   ): number {
-    if (entityKey === "hero") return spritesConfig.hero?.scaleFactor ?? 1;
-    if (entityKey === "super") return spritesConfig.super?.scaleFactor ?? 1;
-    if (entityKey === "boss") return spritesConfig.boss?.scaleFactor ?? 1;
-    if (entityKey === "tresr_bot")
-      return spritesConfig.tresr_bot?.scaleFactor ?? 1;
-    if (entityKey.startsWith("enemy"))
-      return spritesConfig.enemies?.scaleFactor ?? 1;
-    if (spritesConfig.items?.[entityKey])
-      return spritesConfig.items[entityKey].scaleFactor ?? 1;
-    return 1;
+    const resMult =
+      canvasHeight && designHeight ? canvasHeight / designHeight : 1;
+
+    let base: number;
+    if (entityKey === "hero") {
+      base = spritesConfig.hero?.scaleFactor ?? 1;
+    } else if (entityKey === "super") {
+      base = spritesConfig.super?.scaleFactor ?? 1;
+    } else if (entityKey === "boss") {
+      base = spritesConfig.boss?.scaleFactor ?? 1;
+    } else if (entityKey === "tresr_bot") {
+      base = spritesConfig.tresr_bot?.scaleFactor ?? 1;
+    } else if (entityKey.startsWith("enemy")) {
+      base = spritesConfig.enemies?.scaleFactor ?? 1;
+    } else if (spritesConfig.items?.[entityKey]) {
+      base = spritesConfig.items[entityKey].scaleFactor ?? 1;
+    } else {
+      base = 1;
+    }
+
+    return base * resMult;
   }
 
   /**

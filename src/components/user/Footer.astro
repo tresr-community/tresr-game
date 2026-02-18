@@ -4,15 +4,15 @@ import {config} from "@/lib/config/client.ts";
 const footerText: ConfigTypes["app"]["footer_text"] = config.app.footer_text;
 ---
 
-<footer class="flex justify-center p-2">
+<footer class="fixed inset-x-0 bottom-0 z-20 flex justify-center p-2">
   <div
     class="bg-base-300/80 border-primary/20 text-base-content/50 rounded-t-lg border-x border-t px-4 py-1 font-mono text-xs backdrop-blur"
   >
     <span class="opacity-75">{footerText}</span>
     <span class="mx-2">|</span>
-    <a href="/credits" class="hover:text-primary transition-colors">CREDITS</a>
+    <a href="/credits" class="link link-hover link-primary">CREDITS</a>
     <span class="mx-2">|</span>
-    <a href="/changelog" class="hover:text-primary transition-colors"
+    <a href="/changelog" class="link link-hover link-primary"
       >v{import.meta.env.PACKAGE_VERSION}</a
     >
   </div>

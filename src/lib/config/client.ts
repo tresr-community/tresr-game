@@ -92,10 +92,10 @@ export const config: ConfigTypes = {
         "chain_id": 31337,
         "rpc_url": "http://localhost:8545",
         "token_ticker": "tRON",
-        "tresr_token_contract": "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
+        "tresr_token_contract": "0x922D6956C99E12DFeB3224DEA977D0939758A1Fe",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
-        "faucet_contract": "0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44",
+        "vault_contract": "0x2E2Ed0Cfd3AD2f1d34481277b3204d807Ca2F8c2",
+        "faucet_contract": "0xdbC43Ba45381e02825b14322cDdd15eC4B3164E6",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       },
       "testnet": {
@@ -344,6 +344,7 @@ export const config: ConfigTypes = {
   "display": {
     "width": 1280,
     "height": 720,
+    "design_height": 720,
     "background_color": "#000000",
     "pixel_art": true
   },
@@ -374,14 +375,17 @@ export const config: ConfigTypes = {
     },
     "physics": {
       "gravity": 0.8,
-      "timestep": 0.01667
+      "timestep": 0.01667,
+      "game_speed": 1
     },
     "visuals": {
       "shadow": {
         "color": 0,
         "opacity": 0.35,
-        "width": 50,
-        "height": 12
+        "width": 70,
+        "height": 16,
+        "offset_x": 0,
+        "offset_y": 2
       },
       "damage_tint_duration": 100
     },
@@ -667,7 +671,7 @@ export const config: ConfigTypes = {
         "spawner": {
           "pool_size": 20,
           "delay_ms": 2000,
-          "start_z": 500,
+          "start_z": 800,
           "x_margin": 100,
           "y_margin_top_ratio": 0.833,
           "y_margin_bottom_ratio": 0.035
@@ -687,7 +691,7 @@ export const config: ConfigTypes = {
         "spawner": {
           "pool_size": 10,
           "delay_ms": 5000,
-          "start_z": 400,
+          "start_z": 800,
           "x_margin": 100,
           "y_margin_top_ratio": 0.833,
           "y_margin_bottom_ratio": 0.035
@@ -790,7 +794,13 @@ export const config: ConfigTypes = {
       }
     },
     "loading_screen": {
+      "mode": "video",
       "spinner": {
+        "y_offset": -60
+      },
+      "video": {
+        "path": "/assets/videos/loader.webp",
+        "scale": 0.4,
         "y_offset": -60
       }
     }
@@ -801,7 +811,7 @@ export const config: ConfigTypes = {
       "frameHeight": 512
     },
     "hero": {
-      "scaleFactor": 0.586,
+      "scaleFactor": 0.75,
       "anims": [
         {
           "name": "idle",
@@ -874,7 +884,7 @@ export const config: ConfigTypes = {
       ]
     },
     "boss": {
-      "scaleFactor": 1.172,
+      "scaleFactor": 1.25,
       "anims": [
         {
           "name": "idle",
@@ -924,7 +934,7 @@ export const config: ConfigTypes = {
       ]
     },
     "enemies": {
-      "scaleFactor": 0.586,
+      "scaleFactor": 0.75,
       "count": 5,
       "anims": [
         {
@@ -975,7 +985,7 @@ export const config: ConfigTypes = {
       ]
     },
     "tresr_bot": {
-      "scaleFactor": 0.586,
+      "scaleFactor": 0.75,
       "anims": [
         {
           "name": "idle",
@@ -1017,7 +1027,7 @@ export const config: ConfigTypes = {
     },
     "items": {
       "key": {
-        "scaleFactor": 0.2,
+        "scaleFactor": 0.25,
         "anims": [
           {
             "name": "idle",
@@ -1031,7 +1041,7 @@ export const config: ConfigTypes = {
         ]
       },
       "bomb": {
-        "scaleFactor": 0.2,
+        "scaleFactor": 0.25,
         "anims": [
           {
             "name": "idle",
@@ -1091,7 +1101,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_1": {
-        "scaleFactor": 0.2,
+        "scaleFactor": 0.25,
         "anims": [
           {
             "name": "idle",
@@ -1105,7 +1115,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_2": {
-        "scaleFactor": 0.2,
+        "scaleFactor": 0.25,
         "anims": [
           {
             "name": "idle",
@@ -1119,7 +1129,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_3": {
-        "scaleFactor": 0.2,
+        "scaleFactor": 0.25,
         "anims": [
           {
             "name": "idle",
@@ -1133,7 +1143,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_4": {
-        "scaleFactor": 0.2,
+        "scaleFactor": 0.25,
         "anims": [
           {
             "name": "idle",
@@ -1147,7 +1157,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_5": {
-        "scaleFactor": 0.2,
+        "scaleFactor": 0.25,
         "anims": [
           {
             "name": "idle",
@@ -1161,7 +1171,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_1": {
-        "scaleFactor": 0.2,
+        "scaleFactor": 0.25,
         "anims": [
           {
             "name": "idle",
@@ -1175,7 +1185,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_2": {
-        "scaleFactor": 0.2,
+        "scaleFactor": 0.25,
         "anims": [
           {
             "name": "idle",
@@ -1189,7 +1199,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_3": {
-        "scaleFactor": 0.2,
+        "scaleFactor": 0.25,
         "anims": [
           {
             "name": "idle",
@@ -1203,7 +1213,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_4": {
-        "scaleFactor": 0.2,
+        "scaleFactor": 0.25,
         "anims": [
           {
             "name": "idle",
@@ -1217,7 +1227,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_5": {
-        "scaleFactor": 0.2,
+        "scaleFactor": 0.25,
         "anims": [
           {
             "name": "idle",
@@ -1318,30 +1328,31 @@ export const config: ConfigTypes = {
   "changelog": {
     "versions": [
       {
-        "version": "0.3.0",
-        "date": "2026-02-15",
-        "title": "Decaying High Score & Consolation Prize",
+        "version": "next...",
+        "date": "TBD",
+        "title": "Make AI great again",
         "notes": [
-          "Active score leaderboard with 24h TTL decay — your high score rugs itself",
-          "Consolation prize for expired #1 active score — a participation trophy for degens",
-          "Two-tab leaderboard UI (ACTIVE + ALL TIME) — so you can cope in two dimensions",
-          "Game session tracking on victory and defeat — receipts for your bags and your L's",
-          "Countdown timers on active leaderboard entries — watch your clout evaporate in real time",
           "5 new enemy AI types — the bankers brought reinforcements from TradFi",
-          "Mobile support so you can beat-up bankers from the toilet",
-          "PWA Mobile support for that poor-man native app feel",
-          "Portrait mode blocked — forced landscape, no vertical charts allowed",
-          "Screen wake lock — your phone won't paper-hand and go to sleep mid-boss",
-          "CI pipeline caching — builds go brrr 🚀"
+          "Consolation prize for expired #1 active score — a participation trophy for degens",
+          "Active score leaderboard with 24h TTL decay — your high score rugs itself",
+          "Unit tests included to catch dem sneaky regressions"
         ]
       },
       {
         "version": "0.2.0",
-        "date": "2026-02-14",
-        "title": "Leaderboard",
+        "date": "2026-02-18",
+        "title": "Mobile Friendly",
         "notes": [
+          "Mobile support so you can beat-up bankers from the toilet",
+          "PWA Mobile support for that poor-man native app feel",
+          "Portrait mode blocked — forced landscape, no vertical charts allowed",
+          "CI Pipelines — because yolo-pushing to main was getting old (it wasn't)",
+          "CI Pipeline caching — builds go brrr 🚀",
+          "Game session tracking on victory and defeat — receipts for your bags and your L's",
           "Leaderboard — finally some on-chain clout to flex",
-          "CI Pipelines — because yolo-pushing to main was getting old (it wasn't)"
+          "Countdown timers on active leaderboard entries — watch your clout evaporate in real time",
+          "Screen wake lock — your phone won't paper-hand and go to sleep mid-boss",
+          "Two-tab leaderboard UI (ACTIVE + ALL TIME) — so you can cope in two dimensions"
         ]
       },
       {
@@ -1366,5 +1377,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "18ebfc69f149a3708f33efb8296f8474118d4da3e1900e5c312ef7f7ad5d575d"
+  "configHash": "3b633606273a76e6984f1ec7c59fba6a1c32e011c6b1ca14a511152c5137f64b"
 };

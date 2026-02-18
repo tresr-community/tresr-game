@@ -21,6 +21,7 @@ junobuild-satellite = { version = "0.4.0", default-features = false, features = 
     "on_upload_asset",
     "on_delete_asset",
     "on_delete_many_assets",
+    "on_init_random_seed",
 ] }
 junobuild-shared = "0.6.0"
 junobuild-macros = "0.2.0"

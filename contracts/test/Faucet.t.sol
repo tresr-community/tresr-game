@@ -2,8 +2,8 @@
 pragma solidity ^0.8.27;
 
 import "forge-std/Test.sol";
-import "../src/TresrTestToken.sol";
-import "../src/TresrFaucet.sol";
+import "../src/Token.sol";
+import "../src/Faucet.sol";
 
 contract TresrFaucetTest is Test {
     RonToken token;
@@ -19,6 +19,11 @@ contract TresrFaucetTest is Test {
         vm.startPrank(owner);
 
         token = new RonToken(owner);
+
+        // Disable bootup restrictions so faucet drip transfers work
+        token.setLiquidityPool(owner);
+        token.setBootingUp(false);
+
         faucet = new TresrFaucet(address(token), owner);
 
         // Fund faucet with 100k tokens

@@ -3,7 +3,9 @@
 ---
 
 <dialog id="modal-victory" class="modal modal-middle">
-  <div class="modal-box border-success/30 bg-base-300 border text-center">
+  <div
+    class="modal-box border-success/30 bg-base-300 h-full max-h-full w-full max-w-full border text-center sm:h-auto sm:max-h-[85vh] sm:w-auto sm:max-w-lg sm:rounded-2xl"
+  >
     <h3
       class="text-success font-display text-2xl font-black tracking-widest uppercase sm:text-4xl"
     >
@@ -27,23 +29,43 @@
 
     <div
       id="victory-stats"
-      class="my-1 grid grid-cols-2 gap-1 font-mono text-xs sm:my-2 sm:gap-2 sm:text-sm"
+      class="stats stats-horizontal bg-base-200/50 my-1 w-full shadow sm:my-2"
     >
-      <div class="bg-base-200/50 rounded p-2">
-        <div class="text-xs uppercase opacity-50">Score</div>
-        <div id="victory-stat-score" class="text-primary font-bold">0</div>
+      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
+        <div class="stat-title text-xs uppercase">Score</div>
+        <div
+          id="victory-stat-score"
+          class="stat-value text-primary font-mono text-sm sm:text-lg"
+        >
+          0
+        </div>
       </div>
-      <div class="bg-base-200/50 rounded p-2">
-        <div class="text-xs uppercase opacity-50">Keys</div>
-        <div id="victory-stat-keys" class="text-info font-bold">0</div>
+      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
+        <div class="stat-title text-xs uppercase">Keys</div>
+        <div
+          id="victory-stat-keys"
+          class="stat-value text-info font-mono text-sm sm:text-lg"
+        >
+          0
+        </div>
       </div>
-      <div class="bg-base-200/50 rounded p-2">
-        <div class="text-xs uppercase opacity-50">Enemies</div>
-        <div id="victory-stat-enemies" class="text-error font-bold">0</div>
+      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
+        <div class="stat-title text-xs uppercase">Enemies</div>
+        <div
+          id="victory-stat-enemies"
+          class="stat-value text-error font-mono text-sm sm:text-lg"
+        >
+          0
+        </div>
       </div>
-      <div class="bg-base-200/50 rounded p-2">
-        <div class="text-xs uppercase opacity-50">Time</div>
-        <div id="victory-stat-time" class="text-warning font-bold">0:00</div>
+      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
+        <div class="stat-title text-xs uppercase">Time</div>
+        <div
+          id="victory-stat-time"
+          class="stat-value text-warning font-mono text-sm sm:text-lg"
+        >
+          0:00
+        </div>
       </div>
     </div>
     <div
@@ -65,7 +87,9 @@
 </dialog>
 
 <dialog id="modal-lost" class="modal modal-middle">
-  <div class="modal-box border-error/30 bg-base-300 border text-center">
+  <div
+    class="modal-box border-error/30 bg-base-300 h-full max-h-full w-full max-w-full border text-center sm:h-auto sm:max-h-[85vh] sm:w-auto sm:max-w-lg sm:rounded-2xl"
+  >
     <h3
       class="text-error font-display text-2xl font-black tracking-widest uppercase sm:text-4xl"
     >
@@ -78,23 +102,43 @@
 
     <div
       id="lost-stats"
-      class="my-1 grid grid-cols-2 gap-1 font-mono text-xs sm:my-2 sm:gap-2 sm:text-sm"
+      class="stats stats-horizontal bg-base-200/50 my-1 w-full shadow sm:my-2"
     >
-      <div class="bg-base-200/50 rounded p-2">
-        <div class="text-xs uppercase opacity-50">Score</div>
-        <div id="lost-stat-score" class="text-primary font-bold">0</div>
+      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
+        <div class="stat-title text-xs uppercase">Score</div>
+        <div
+          id="lost-stat-score"
+          class="stat-value text-primary font-mono text-sm sm:text-lg"
+        >
+          0
+        </div>
       </div>
-      <div class="bg-base-200/50 rounded p-2">
-        <div class="text-xs uppercase opacity-50">Keys</div>
-        <div id="lost-stat-keys" class="text-info font-bold">0</div>
+      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
+        <div class="stat-title text-xs uppercase">Keys</div>
+        <div
+          id="lost-stat-keys"
+          class="stat-value text-info font-mono text-sm sm:text-lg"
+        >
+          0
+        </div>
       </div>
-      <div class="bg-base-200/50 rounded p-2">
-        <div class="text-xs uppercase opacity-50">Enemies</div>
-        <div id="lost-stat-enemies" class="text-error font-bold">0</div>
+      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
+        <div class="stat-title text-xs uppercase">Enemies</div>
+        <div
+          id="lost-stat-enemies"
+          class="stat-value text-error font-mono text-sm sm:text-lg"
+        >
+          0
+        </div>
       </div>
-      <div class="bg-base-200/50 rounded p-2">
-        <div class="text-xs uppercase opacity-50">Time</div>
-        <div id="lost-stat-time" class="text-warning font-bold">0:00</div>
+      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
+        <div class="stat-title text-xs uppercase">Time</div>
+        <div
+          id="lost-stat-time"
+          class="stat-value text-warning font-mono text-sm sm:text-lg"
+        >
+          0:00
+        </div>
       </div>
     </div>
     <div

@@ -99,12 +99,13 @@ export class Boss extends BaseEntity {
     return baseDamage * this.damageMult;
   }
 
-  update() {
+  update(dt?: number) {
     if (gameState.get().isPaused) return;
     if (!this.active || !this.anims || this.hp <= 0) return;
 
     const gp = this.config.gameplay;
-    const dt = gp.physics.timestep;
+    // Use real delta time from MainScene (falls back to reference timestep)
+    const frameDt = dt ?? BaseEntity.REFERENCE_DT;
     const bossConfig = gp.entities.boss;
     const descentSpeed = bossConfig.descent.speed;
 
@@ -116,7 +117,7 @@ export class Boss extends BaseEntity {
       }
     } else if (this.bossState === "fighting") {
       // Accumulate attack timer
-      this.attackTimer += dt;
+      this.attackTimer += frameDt;
 
       // Get cooldown (reduced in phase 2)
       const globalCooldown = bossConfig.attack_cooldown_ms / 1000;
@@ -125,7 +126,7 @@ export class Boss extends BaseEntity {
 
       switch (this.attackState) {
         case "chasing":
-          this.updateChase(dt);
+          this.updateChase(frameDt);
           // Check if ready to attack
           if (this.attackTimer >= globalCooldown * cooldownMult) {
             this.selectAttack();
@@ -134,7 +135,7 @@ export class Boss extends BaseEntity {
 
         case "windup":
           // Standing still during telegraph
-          this.attackDurationTimer -= dt;
+          this.attackDurationTimer -= frameDt;
           this.play(this.animKeys.attack, true); // Telegraph with attack anim
           if (this.attackDurationTimer <= 0) {
             this.executeAttack();
@@ -142,16 +143,16 @@ export class Boss extends BaseEntity {
           break;
 
         case "attacking":
-          this.attackDurationTimer -= dt;
-          this.updateCurrentAttack(dt);
+          this.attackDurationTimer -= frameDt;
+          this.updateCurrentAttack(frameDt);
           if (this.attackDurationTimer <= 0) {
             this.finishAttack();
           }
           break;
 
         case "cooldown":
-          this.attackDurationTimer -= dt;
-          this.updateChase(dt);
+          this.attackDurationTimer -= frameDt;
+          this.updateChase(frameDt);
           if (this.attackDurationTimer <= 0) {
             this.attackState = "chasing";
           }

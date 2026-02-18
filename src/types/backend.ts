@@ -68,6 +68,7 @@ export interface UserProfile {
 
 export interface LeaderboardEntry {
   nickname: string;
+  avatarUrl?: string;
   highScore: number;
   gamesWon: number;
   activeScore: number;

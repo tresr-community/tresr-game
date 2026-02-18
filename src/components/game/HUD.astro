@@ -13,6 +13,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
 
 <div
   class="pointer-events-none absolute inset-0 flex flex-col justify-between p-2 sm:p-4"
+  style="padding-top: max(0.5rem, var(--safe-top)); padding-left: max(0.5rem, var(--safe-left)); padding-right: max(0.5rem, var(--safe-right)); padding-bottom: max(0.5rem, var(--safe-bottom));"
 >
   <!-- Top Bar -->
   <div class="grid w-full grid-cols-3 items-start gap-1 sm:gap-4">
@@ -25,7 +26,18 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
           <div
             class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
           >
-            HP
+            <!-- Icon on mobile, text on desktop -->
+            <svg
+              class="inline h-3 w-3 sm:hidden"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+              ></path>
+            </svg>
+            <span class="hidden sm:inline">HP</span>
           </div>
           <div
             id="hud-hp"
@@ -38,7 +50,17 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
           <div
             class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
           >
-            Score
+            <svg
+              class="inline h-3 w-3 sm:hidden"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <polygon
+                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+              ></polygon>
+            </svg>
+            <span class="hidden sm:inline">Score</span>
           </div>
           <div
             id="hud-score"
@@ -51,7 +73,17 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
           <div
             class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
           >
-            Keys
+            <svg
+              class="inline h-3 w-3 sm:hidden"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
+              ></path>
+            </svg>
+            <span class="hidden sm:inline">Keys</span>
           </div>
           <div
             id="hud-keys"
@@ -67,7 +99,17 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
           <div
             class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
           >
-            Lives
+            <svg
+              class="inline h-3 w-3 sm:hidden"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"
+              ></path>
+            </svg>
+            <span class="hidden sm:inline">Lives</span>
           </div>
           <div
             id="hud-lives"
@@ -81,7 +123,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
           <div
             class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
           >
-            Super
+            <span class="hidden sm:inline">Super</span>
           </div>
           <div class="flex items-center justify-center">
             <div
@@ -130,7 +172,18 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
           <div
             class="stat-title text-center text-[8px] uppercase opacity-50 sm:text-[10px]"
           >
-            System Clock
+            <svg
+              class="inline h-3 w-3 sm:hidden"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span class="hidden sm:inline">System Clock</span>
           </div>
           <div
             id="hud-timer"
@@ -164,7 +217,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
       <!-- Centred Pause Button -->
       <button
         id="btn-hud-pause"
-        class="btn btn-circle btn-primary btn-sm sm:btn-md pointer-events-auto min-h-[40px] min-w-[40px] border-2 border-white/10 shadow-xl"
+        class="btn btn-circle btn-primary btn-sm sm:btn-md pointer-events-auto min-h-[48px] min-w-[48px] border-2 border-white/10 shadow-xl"
         title="Pause Mission (ESC)"
       >
         <svg

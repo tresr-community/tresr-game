@@ -48,8 +48,8 @@ let
   #packages = with pkgs; [ ];
 
   packagesUnstable = with pkgsUnstable; [
-    claude-code-bin
-    gemini-cli-bin
+    claude-code
+    gemini-cli
     tailwindcss_4
   ];
 
@@ -57,8 +57,8 @@ let
     with pkgs;
     [
       # AI Agents
-      #gemini-cli-bin
-      #claude-code-bin
+      #gemini-cli
+      #claude-code
 
       # pickle-rick dependencies
       python3
@@ -209,6 +209,13 @@ in
         headers = {
           Authorization = lib.optionalString (config.env ? GITHUB_TOKEN) "Bearer ${config.env.GITHUB_TOKEN}";
         };
+      };
+      phaser-editor = {
+        type = "stdio";
+        command = "bunx";
+        args = [
+          "@phaserjs/editor-mcp-server"
+        ];
       };
       daisyui-blueprint = {
         type = "stdio";
