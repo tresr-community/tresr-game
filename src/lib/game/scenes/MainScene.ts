@@ -6,7 +6,6 @@ import {Key} from "@/lib/game/prefabs/Key";
 import {Boss} from "@/lib/game/prefabs/Boss";
 import {Chest} from "@/lib/game/prefabs/Chest";
 import {Bomb} from "@/lib/game/prefabs/Bomb";
-import {SuperProjectile} from "@/lib/game/prefabs/SuperProjectile";
 import {LootDrop} from "@/lib/game/prefabs/LootDrop";
 import {TresrBot} from "@/lib/game/prefabs/TresrBot";
 import {gameActions, gameState} from "@/lib/game/state";
@@ -22,9 +21,7 @@ import {
   trackGameLoss,
   trackGameWin,
   trackBossSpawned,
-  trackBossDefeated,
   trackPlayerDeath,
-  trackLevelComplete,
   trackGamePause,
   trackGameResume,
 } from "@/lib/metrics/analytics";
@@ -36,10 +33,21 @@ import {timingSafeEqual} from "@/lib/utils/timing-safe-equal";
 import {recordOffense} from "@/lib/auth/ban";
 import {incrementGuestSession} from "@/lib/auth/guest";
 import TouchInput from "@/lib/game/TouchInput";
+import {SpawnManager} from "@/lib/game/managers/SpawnManager";
+import {CombatManager} from "@/lib/game/managers/CombatManager";
+import {UIManager} from "@/lib/game/managers/UIManager";
 
 // Helper type for gameplay config (entity-centric schema)
-interface GameplayConfig {
+export interface GameplayConfig {
   time_limit_seconds: number;
+  difficulty_escalation: {
+    enabled: boolean;
+    interval_seconds: number;
+    enemy_spawn_multiplier: number;
+    bomb_spawn_multiplier: number;
+    min_enemy_spawn_ms: number;
+    min_bomb_spawn_ms: number;
+  };
   physics: {
     gravity: number;
     timestep: number;
@@ -292,27 +300,20 @@ const COMPONENT_NAME = "MainScene";
 
 export class MainScene extends Phaser.Scene {
   private player?: Player;
-  private enemies?: Phaser.Physics.Arcade.Group;
-  private keys?: Phaser.Physics.Arcade.Group;
-  private bombs?: Phaser.Physics.Arcade.Group;
-  private superProjectiles?: Phaser.Physics.Arcade.Group;
-  private lootDrops?: Phaser.Physics.Arcade.Group;
   private boss?: Boss;
   private chest?: Chest;
   private tresrBot?: TresrBot;
-  private powerupDropCount: number = 0;
   private recorder: Recorder = new Recorder();
   private spriteManager: SpriteManager;
+  private spawnManager!: SpawnManager;
+  private combatManager!: CombatManager;
+  private uiManager!: UIManager;
   private gameplayConfig!: GameplayConfig;
   private designHeight: number = 720;
   private walkableArea!: WalkableArea;
 
   private survivalTimer: number = 300;
   private survivalCountdown?: Phaser.Time.TimerEvent;
-  private spawnTimer?: Phaser.Time.TimerEvent;
-  private keySpawnTimer?: Phaser.Time.TimerEvent;
-  private bombSpawnTimer?: Phaser.Time.TimerEvent;
-  private enemyAttackTimer?: Phaser.Time.TimerEvent;
   private background?: Phaser.GameObjects.Image;
 
   public collectedKeys: number = 0;
@@ -323,13 +324,6 @@ export class MainScene extends Phaser.Scene {
   public configHash: string = "";
   private configTampered: boolean = false;
   private configVerification: Promise<boolean> | null = null;
-  private superDamageActive: boolean = false;
-
-  // Change detection for store updates (ticket #162, #200: avoid per-frame thrashing)
-  private lastReportedScore: number = 0;
-  private lastReportedKeys: number = 0;
-  private lastReportedHp: number = 0;
-  private lastReportedBossHp: number = 0;
 
   private escKey?: Phaser.Input.Keyboard.Key;
 
@@ -342,13 +336,6 @@ export class MainScene extends Phaser.Scene {
   // Seeded RNG for reproducible gameplay
   private rng!: Phaser.Math.RandomDataGenerator;
   private seed: number = 0;
-
-  // Damage cooldown tracking for overlap-based collision
-  private lastBossDamageTime: number = 0;
-
-  // Hit-stop state tracking (ticket #230)
-  private hitStopActive: boolean = false;
-  private hitStopTimer?: Phaser.Time.TimerEvent;
 
   constructor() {
     super(SCENE_KEYS.MAIN);
@@ -395,10 +382,6 @@ export class MainScene extends Phaser.Scene {
 
     this.recorder.reset();
     this.configTampered = false;
-    this.hitStopActive = false;
-    this.hitStopTimer = undefined;
-    this.superDamageActive = false;
-    this.powerupDropCount = 0;
     TouchInput.getInstance().reset();
     gameActions.setPaused(false);
 
@@ -477,14 +460,7 @@ export class MainScene extends Phaser.Scene {
     if (isPaused) {
       trackGamePause();
       // Cancel active hit-stop before pausing (ticket #230)
-      if (this.hitStopActive) {
-        if (this.hitStopTimer) {
-          this.hitStopTimer.destroy();
-          this.hitStopTimer = undefined;
-        }
-        this.hitStopActive = false;
-        // Physics is already paused by hit-stop; game pause keeps it paused.
-      }
+      this.combatManager.cancelHitStop();
       this.physics.world.pause();
       this.anims.pauseAll();
       this.time.paused = true;
@@ -590,25 +566,42 @@ export class MainScene extends Phaser.Scene {
     // Get entity configs
     const entities = this.gameplayConfig.entities;
 
-    // Bombs group (falling bombs that explode on impact)
-    // Note: runChildUpdate disabled - we manually call update() in scene update()
-    // to ensure Z-axis physics runs after the Arcade physics step (same phase as Player)
-    // enable: false prevents createCallbackHandler from re-enabling bodies after construction
-    // allowGravity: false prevents Arcade gravity from fighting with our Z-axis system
-    this.bombs = this.physics.add.group({
-      classType: Bomb,
-      maxSize: entities.bomb.spawner.pool_size,
-      runChildUpdate: false,
-      enable: false,
-      allowGravity: false,
-    });
+    // Initialize SpawnManager (owns enemy/key/bomb/loot groups and spawn timers)
+    this.spawnManager = new SpawnManager(
+      this,
+      this.gameplayConfig,
+      this.rng,
+      this.walkableArea,
+      this.spriteManager,
+      this.designHeight,
+      () => this.phase
+    );
+    this.spawnManager.createGroups();
 
-    // Super projectile group (hadouken-style spinning coin)
-    this.superProjectiles = this.physics.add.group({
-      classType: SuperProjectile,
-      maxSize: entities.player.super.max_projectiles,
-      runChildUpdate: true,
-    });
+    // Combat manager (handles attacks, damage, VFX, super projectiles)
+    this.combatManager = new CombatManager(
+      this,
+      this.gameplayConfig,
+      this.spawnManager,
+      this.spriteManager,
+      this.rng,
+      this.walkableArea,
+      this.designHeight,
+      () => this.phase,
+      (points: number) => {
+        this.score += points;
+      },
+      (key: string) => this.playSound(key),
+      (timer: Phaser.Time.TimerEvent) => this.adHocTimers.push(timer)
+    );
+    this.combatManager.createGroups();
+
+    // UI manager (announcements, countdown, HUD sync)
+    this.uiManager = new UIManager(
+      this,
+      this.gameplayConfig,
+      (timer: Phaser.Time.TimerEvent) => this.adHocTimers.push(timer)
+    );
 
     // Instantiate Player at spawn position from config ratios
     this.player = new Player(
@@ -627,6 +620,9 @@ export class MainScene extends Phaser.Scene {
     this.scaleCircleBody(this.player, entities.player.hitbox);
     this.player.play("hero_idle", true);
     this.player.setRecorder(this.recorder);
+    this.spawnManager.setPlayer(this.player);
+    this.spawnManager.setRecorder(this.recorder);
+    this.combatManager.setPlayer(this.player);
 
     // Instantiate TresrBot (starts inactive, spawned on powerup collection)
     this.tresrBot = new TresrBot(this, 0, 0);
@@ -639,44 +635,16 @@ export class MainScene extends Phaser.Scene {
     );
     this.tresrBot.setScale(botScale);
     this.scaleCircleBody(this.tresrBot, entities.tresr_bot.hitbox);
+    this.spawnManager.setTresrBot(this.tresrBot);
+    this.combatManager.setTresrBot(this.tresrBot);
 
     // Initialize lives from config (ticket #191)
     gameActions.setLives(entities.player.lives);
 
-    // Setup Groups
-    this.enemies = this.physics.add.group({
-      classType: Enemy,
-      defaultKey: "enemy_1_idle",
-      maxSize: entities.enemy.spawner.pool_size,
-      runChildUpdate: true,
-    });
-    // Store in registry so swarm AI can find nearby allies
-    this.registry.set("enemy_group", this.enemies);
-    // Note: Keys/bombs use runChildUpdate: false and are manually updated in scene update()
-    // to ensure Z-axis physics runs after the Arcade physics step.
-    // allowGravity: false prevents Arcade gravity from fighting with our Z-axis system
-    // immovable: true prevents Arcade from applying velocity to the body
-    // Body stays enabled for overlap detection (key collection during fall)
-    this.keys = this.physics.add.group({
-      classType: Key,
-      maxSize: entities.key.spawner.pool_size,
-      runChildUpdate: false,
-      allowGravity: false,
-      immovable: true,
-    });
-
-    // Loot drop pool (ticket #192)
-    this.lootDrops = this.physics.add.group({
-      classType: LootDrop,
-      maxSize: entities.enemy.loot.pool_size,
-      runChildUpdate: false,
-      allowGravity: false,
-    });
-
     // Collisions
     this.physics.add.overlap(
       this.player,
-      this.keys,
+      this.spawnManager.keys!,
       this.collectKey,
       undefined,
       this
@@ -689,7 +657,7 @@ export class MainScene extends Phaser.Scene {
     // Loot collection overlap (ticket #192)
     this.physics.add.overlap(
       this.player,
-      this.lootDrops,
+      this.spawnManager.lootDrops!,
       this.collectLoot,
       undefined,
       this
@@ -698,89 +666,21 @@ export class MainScene extends Phaser.Scene {
     // Event Listeners
     this.events.on("boss_defeated", this.spawnChest, this);
     this.events.on("game_win", this.onVictory, this);
-    this.events.on("player_attack", this.handlePlayerAttack, this);
-    this.events.on("player_super", this.handlePlayerSuper, this);
-    this.events.on("super_pierce", this.handleSuperPierce, this);
-    this.events.on("super_hit", this.handleSuperProjectileHit, this);
     this.events.on("player_death", this.onPlayerDeath, this);
-    this.events.on("entity_death", this.onEntityDeath, this);
-    this.events.on("bomb_explosion", this.handleBombExplosion, this);
-    this.events.on("boss_ground_pound", this.handleBossGroundPound, this);
-    this.events.on("boss_summon", this.handleBossSummon, this);
     this.events.on("bot_attack", this.handleBotAttack, this);
     this.events.on("bot_special", this.handleBotSpecial, this);
     this.events.on("bot_land", this.handleBotLand, this);
     this.events.on("chest_land", this.handleChestLand, this);
+    // Combat events (managed by CombatManager)
+    this.combatManager.registerEvents();
 
     // Fade in from black (cinematic transition from Preloader)
     this.cameras.main.fadeIn(1000, 0, 0, 0);
 
     // 3-2-1 countdown before gameplay starts
-    this.showCountdown(() => {
+    this.uiManager.showCountdown(() => {
       this.startGameplay();
     });
-  }
-
-  private showCountdown(onComplete: () => void) {
-    const {width, height} = this.cameras.main;
-    const ann = this.gameplayConfig.announcements;
-
-    const numbers = ["3", "2", "1"];
-    let index = 0;
-
-    const showNext = () => {
-      if (index >= numbers.length) {
-        this.showPhaseAnnouncement("BEAR MARKET");
-        onComplete();
-        return;
-      }
-
-      // Responsive font: match showPhaseAnnouncement scaling
-      const fontSize = Math.min(80, Math.floor(width / 8));
-      const strokeThickness = Math.max(
-        2,
-        Math.round(ann.stroke_thickness * (fontSize / 80))
-      );
-
-      const numText = this.add
-        .text(width / 2, height / 2, numbers[index], {
-          font: `${fontSize}px Orbitron`,
-          color: ann.color,
-          stroke: ann.stroke_color,
-          strokeThickness,
-        })
-        .setOrigin(0.5)
-        .setDepth(1000)
-        .setScale(3)
-        .setAlpha(1);
-
-      // Play countdown SFX
-      try {
-        this.sound.play("countdown_1", {
-          volume: gameState.get().music.sfxVolume,
-        });
-      } catch {
-        // SFX may not be ready yet
-      }
-
-      // Each beat lasts 1 second: tween animates out over 800ms,
-      // then a 200ms gap before the next number starts.
-      this.tweens.add({
-        targets: numText,
-        scale: 1,
-        alpha: 0,
-        duration: 800,
-        ease: "Power2",
-        onComplete: () => {
-          numText.destroy();
-          index++;
-          this.adHocTimers.push(this.time.delayedCall(200, showNext));
-        },
-      });
-    };
-
-    // Start countdown after a brief delay to let fade-in start
-    this.adHocTimers.push(this.time.delayedCall(400, showNext));
   }
 
   private startGameplay() {
@@ -793,8 +693,6 @@ export class MainScene extends Phaser.Scene {
     // Signal music to start now that gameplay has begun
     window.dispatchEvent(new Event("tresr:gameplay-start"));
 
-    const entities = this.gameplayConfig.entities;
-
     // Survival Clock
     this.survivalCountdown = this.time.addEvent({
       delay: 1000,
@@ -802,17 +700,13 @@ export class MainScene extends Phaser.Scene {
         if (this.phase !== "survival") return;
         if (this.survivalTimer > 0) {
           this.survivalTimer--;
-          this.updateTimerStatus();
+          this.uiManager.updateTimerStatus(this.survivalTimer);
+          this.spawnManager.checkDifficultyEscalation(this.survivalTimer);
 
           // At 5 seconds remaining: enemies flee, stop spawning new ones
           if (this.survivalTimer === 5) {
-            if (this.spawnTimer) this.spawnTimer.remove();
-            if (this.enemies) {
-              this.enemies.getChildren().forEach((child) => {
-                const enemy = child as Enemy;
-                if (enemy.active) enemy.flee();
-              });
-            }
+            this.spawnManager.removeEnemySpawnTimer();
+            this.spawnManager.fleeAllEnemies();
           }
 
           // 3-2-1 countdown SFX
@@ -827,36 +721,11 @@ export class MainScene extends Phaser.Scene {
       loop: true,
     });
 
-    // Spawners
-    this.spawnTimer = this.time.addEvent({
-      delay: entities.enemy.spawner.delay_ms,
-      callback: this.spawnEnemy,
-      callbackScope: this,
-      loop: true,
-    });
-    // Key Spawner
-    this.keySpawnTimer = this.time.addEvent({
-      delay: entities.key.spawner.delay_ms,
-      callback: this.spawnKey,
-      callbackScope: this,
-      loop: true,
-    });
-    // Bomb spawner
-    this.bombSpawnTimer = this.time.addEvent({
-      delay: entities.bomb.spawner.delay_ms,
-      callback: this.spawnBomb,
-      callbackScope: this,
-      loop: true,
-    });
+    // Spawners (managed by SpawnManager)
+    this.spawnManager.setupTimers();
 
     // Enemy attack timer (R-004: enemies deal damage on contact)
-    const enemyAttackCheckMs = entities.enemy.combat.attack_check_ms;
-    this.enemyAttackTimer = this.time.addEvent({
-      delay: enemyAttackCheckMs,
-      callback: this.handleEnemyAttacks,
-      callbackScope: this,
-      loop: true,
-    });
+    this.combatManager.setupEnemyAttackTimer();
   }
 
   /**
@@ -870,19 +739,12 @@ export class MainScene extends Phaser.Scene {
     this.scale.off("resize", this.handleResize, this);
     this.events.off("boss_defeated", this.spawnChest, this);
     this.events.off("game_win", this.onVictory, this);
-    this.events.off("player_attack", this.handlePlayerAttack, this);
-    this.events.off("player_super", this.handlePlayerSuper, this);
-    this.events.off("super_pierce", this.handleSuperPierce, this);
-    this.events.off("super_hit", this.handleSuperProjectileHit, this);
     this.events.off("player_death", this.onPlayerDeath, this);
-    this.events.off("entity_death", this.onEntityDeath, this);
-    this.events.off("bomb_explosion", this.handleBombExplosion, this);
-    this.events.off("boss_ground_pound", this.handleBossGroundPound, this);
-    this.events.off("boss_summon", this.handleBossSummon, this);
     this.events.off("bot_attack", this.handleBotAttack, this);
     this.events.off("bot_special", this.handleBotSpecial, this);
     this.events.off("bot_land", this.handleBotLand, this);
     this.events.off("chest_land", this.handleChestLand, this);
+    this.combatManager.unregisterEvents();
 
     // Remove any pending super animation listener (ticket #251)
     if (this.player?.active) {
@@ -898,12 +760,8 @@ export class MainScene extends Phaser.Scene {
     // Stop all sounds to prevent audio overlap on scene transitions
     this.sound.stopAll();
 
-    // Clean up timers
-    if (this.survivalCountdown) this.survivalCountdown.destroy();
-    if (this.spawnTimer) this.spawnTimer.destroy();
-    if (this.keySpawnTimer) this.keySpawnTimer.destroy();
-    if (this.bombSpawnTimer) this.bombSpawnTimer.destroy();
-    if (this.enemyAttackTimer) this.enemyAttackTimer.destroy();
+    // Clean up timers (optional chaining for idempotent shutdown)
+    this.survivalCountdown?.destroy();
     // Clean up ad-hoc timers (ticket #195)
     for (const t of this.adHocTimers) t.destroy();
     this.adHocTimers.length = 0;
@@ -911,12 +769,10 @@ export class MainScene extends Phaser.Scene {
     // Unsubscribe from store
     if (this.storeUnsubscribe) this.storeUnsubscribe();
 
-    // Drain object pools (ticket #184)
-    this.enemies?.clear(true, true);
-    this.keys?.clear(true, true);
-    this.bombs?.clear(true, true);
-    this.superProjectiles?.clear(true, true);
-    this.lootDrops?.clear(true, true);
+    // Drain spawn-related pools and timers
+    this.spawnManager.shutdown();
+    this.combatManager.shutdown();
+    this.uiManager.shutdown();
 
     // Kill bot before nulling references
     if (this.tresrBot && this.tresrBot.active) {
@@ -993,10 +849,8 @@ export class MainScene extends Phaser.Scene {
 
     // Pause spawner timers explicitly
     if (this.survivalCountdown) this.survivalCountdown.paused = true;
-    if (this.spawnTimer) this.spawnTimer.paused = true;
-    if (this.keySpawnTimer) this.keySpawnTimer.paused = true;
-    if (this.bombSpawnTimer) this.bombSpawnTimer.paused = true;
-    if (this.enemyAttackTimer) this.enemyAttackTimer.paused = true;
+    this.spawnManager.pauseTimers();
+    this.combatManager.pauseTimers();
   }
 
   /**
@@ -1021,62 +875,9 @@ export class MainScene extends Phaser.Scene {
 
       // Resume spawner timers
       if (this.survivalCountdown) this.survivalCountdown.paused = false;
-      if (this.spawnTimer) this.spawnTimer.paused = false;
-      if (this.keySpawnTimer) this.keySpawnTimer.paused = false;
-      if (this.bombSpawnTimer) this.bombSpawnTimer.paused = false;
-      if (this.enemyAttackTimer) this.enemyAttackTimer.paused = false;
+      this.spawnManager.resumeTimers();
+      this.combatManager.resumeTimers();
     }
-  }
-
-  private showPhaseAnnouncement(text: string) {
-    const {width, height} = this.cameras.main;
-    const ann = this.gameplayConfig.announcements;
-
-    // Responsive font: cap at config size but scale down for smaller screens
-    const fontSize = Math.min(80, Math.floor(width / 8));
-    const strokeThickness = Math.max(
-      2,
-      Math.round(ann.stroke_thickness * (fontSize / 80))
-    );
-
-    const overlay = this.add
-      .text(width / 2, height / 2, text, {
-        font: `${fontSize}px Orbitron`,
-        color: ann.color,
-        stroke: ann.stroke_color,
-        strokeThickness,
-      })
-      .setOrigin(0.5)
-      .setDepth(1000)
-      .setAlpha(0)
-      .setScale(0.5);
-
-    if (text === "DEFEAT" || text === "SYSTEM CRITICAL") {
-      overlay.setColor("#ff0000");
-    } else if (text === "BOSS PHASE") {
-      overlay.setColor("#ffaa00");
-    }
-
-    this.tweens.add({
-      targets: overlay,
-      alpha: 1,
-      scale: 1,
-      duration: ann.enter_duration,
-      ease: "Back.easeOut",
-      onComplete: () => {
-        this.adHocTimers.push(
-          this.time.delayedCall(ann.display_duration, () => {
-            this.tweens.add({
-              targets: overlay,
-              alpha: 0,
-              scale: 1.5,
-              duration: ann.exit_duration,
-              onComplete: () => overlay.destroy(),
-            });
-          })
-        );
-      },
-    });
   }
 
   /**
@@ -1161,75 +962,6 @@ export class MainScene extends Phaser.Scene {
   }
 
   /**
-   * Handle enemy & boss attacks via 2.5D distance checks on groundY.
-   * Uses groundY (depth plane) instead of physics overlap so attacks connect
-   * correctly across the walkable area band (R-004).
-   */
-  private handleEnemyAttacks() {
-    if (!this.player || !this.player.active || this.player.hp <= 0) return;
-    if (this.phase === "lost" || this.phase === "victory") return;
-
-    const player = this.player;
-    const now = this.time.now;
-    const cooldownMs = this.gameplayConfig.combat.enemy_damage_cooldown_ms;
-    const pkb = this.gameplayConfig.entities.player.knockback;
-
-    // Check enemy attack damage — only when enemy is in attack animation
-    // and within range on BOTH axes (horizontal + depth) separately.
-    if (this.enemies) {
-      const enemyAttackRange =
-        this.gameplayConfig.entities.enemy.combat.attack_range;
-      const enemyDamage = this.gameplayConfig.entities.enemy.damage;
-      const depthThreshold =
-        this.gameplayConfig.entities.enemy.combat.depth_threshold;
-
-      this.enemies.getChildren().forEach((child) => {
-        const enemy = child as Enemy;
-        if (!enemy.active || enemy.hp <= 0) return;
-        if (now - enemy.lastPlayerDamageTime < cooldownMs) return;
-
-        // Only deal damage when enemy is playing attack animation
-        const isAttacking =
-          enemy.anims.isPlaying &&
-          enemy.anims.currentAnim?.key.endsWith("_attack");
-        if (!isAttacking) return;
-
-        const hDist = Math.abs(player.x - enemy.x);
-        const dDist = Math.abs(player.groundY - enemy.groundY);
-        if (hDist < enemyAttackRange && dDist < depthThreshold) {
-          player.takeDamage(enemyDamage);
-          player.applyKnockback(enemy.x, pkb.force, pkb.stun_ms);
-          this.playSound("hurt");
-          enemy.lastPlayerDamageTime = now;
-        }
-      });
-    }
-
-    // Check boss contact with player — separate axis checks
-    if (this.boss && this.boss.active && this.boss.hp > 0) {
-      if (now - this.lastBossDamageTime < cooldownMs) return;
-
-      const bossAttackRange = this.boss.getAttackRange();
-      const bossDamage = this.boss.getContactDamage();
-      const bossDepthThreshold =
-        this.gameplayConfig.entities.boss.combat.contact_depth_threshold;
-
-      const hDist = Math.abs(this.player.x - this.boss.x);
-      const dDist = Math.abs(this.player.groundY - this.boss.groundY);
-      if (hDist < bossAttackRange && dDist < bossDepthThreshold) {
-        this.player.takeDamage(bossDamage);
-        this.player.applyKnockback(this.boss.x, pkb.force, pkb.stun_ms);
-        this.playSound("hurt");
-        this.lastBossDamageTime = now;
-      }
-    }
-  }
-
-  private updateTimerStatus() {
-    gameActions.setTimer(this.survivalTimer);
-  }
-
-  /**
    * Handle dynamic canvas resize — recompute world bounds, walkable area,
    * and background cover-scale so the game fills any viewport.
    */
@@ -1300,305 +1032,44 @@ export class MainScene extends Phaser.Scene {
           )
         );
       }
-      if (this.enemies) {
+      if (this.spawnManager.enemies) {
         const enemyScale = SpriteManager.getScaleFactor(
           spritesConfig,
           "enemy",
           height,
           this.designHeight
         );
-        for (const child of this.enemies.getChildren()) {
+        for (const child of this.spawnManager.enemies.getChildren()) {
           const enemy = child as Enemy;
           if (enemy.active) enemy.setScale(enemyScale);
         }
       }
-      if (this.keys) {
+      if (this.spawnManager.keys) {
         const keyScale = SpriteManager.getScaleFactor(
           spritesConfig,
           "key",
           height,
           this.designHeight
         );
-        for (const child of this.keys.getChildren()) {
+        for (const child of this.spawnManager.keys.getChildren()) {
           if ((child as Phaser.GameObjects.Sprite).active) {
             (child as Phaser.GameObjects.Sprite).setScale(keyScale);
           }
         }
       }
-      if (this.bombs) {
+      if (this.spawnManager.bombs) {
         const bombScale = SpriteManager.getScaleFactor(
           spritesConfig,
           "bomb",
           height,
           this.designHeight
         );
-        for (const child of this.bombs.getChildren()) {
+        for (const child of this.spawnManager.bombs.getChildren()) {
           if ((child as Phaser.GameObjects.Sprite).active) {
             (child as Phaser.GameObjects.Sprite).setScale(bombScale);
           }
         }
       }
-    }
-  }
-
-  private spawnEnemy() {
-    if (this.phase !== "survival" || !this.enemies || !this.player) return;
-
-    // Spawn off-screen and walk in from left or right edge
-    const groundY = this.walkableArea.getRandomGroundY(this.rng);
-    const edge = this.rng.integerInRange(0, 1);
-    const offscreen = this.gameplayConfig.combat.enemy_spawn_offscreen_px;
-    const spawnX =
-      edge === 0 ? -offscreen : this.cameras.main.width + offscreen;
-    // Walk-in target: a random position inside the walkable area
-    const walkInTargetX = this.rng.integerInRange(
-      this.walkableArea.getLeftX() + 40,
-      this.walkableArea.getRightX() - 40
-    );
-
-    // Select random enemy variant for visual variety (count comes from sprites config)
-    const spritesConfig = this.registry.get("sprites_config") as SpritesConfig;
-    const enemyCount = spritesConfig.enemies.count;
-    const enemyVariant = this.rng.integerInRange(1, enemyCount);
-    const textureKey = `enemy_${enemyVariant}_idle`;
-
-    // Lazy-load enemy variant sprites on first spawn
-    this.spriteManager.ensureEnemyLoaded(enemyVariant).then(() => {
-      if (!this.enemies || !this.player) return;
-      const enemy = this.enemies.get(spawnX, groundY, textureKey) as Enemy;
-      if (enemy) {
-        enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
-        enemy.setTarget(this.player);
-        const enemyScale = SpriteManager.getScaleFactor(
-          spritesConfig,
-          textureKey,
-          this.cameras.main.height,
-          this.designHeight
-        );
-        enemy.setScale(enemyScale);
-        this.scaleCircleBody(enemy, this.gameplayConfig.entities.enemy.hitbox);
-      }
-    });
-  }
-
-  private spawnKey() {
-    if (!this.keys) return;
-    const {width, height} = this.cameras.main;
-    const keySpawner = this.gameplayConfig.entities.key.spawner;
-    const xMargin = keySpawner.x_margin;
-    const yMarginTop = Math.round(keySpawner.y_margin_top_ratio * height);
-    const yMarginBottom = Math.round(keySpawner.y_margin_bottom_ratio * height);
-
-    const x = this.rng.integerInRange(xMargin, width - xMargin);
-    const groundY = this.rng.integerInRange(yMarginTop, height - yMarginBottom);
-    const key = this.keys.get(x, groundY) as Key;
-    if (key) {
-      const spritesConfig = this.registry.get(
-        "sprites_config"
-      ) as SpritesConfig;
-      key.spawn(x, groundY);
-      key.setScale(
-        SpriteManager.getScaleFactor(
-          spritesConfig,
-          "key",
-          height,
-          this.designHeight
-        )
-      );
-    }
-  }
-
-  private spawnBomb() {
-    if ((this.phase !== "survival" && this.phase !== "boss") || !this.bombs)
-      return;
-    const {width, height} = this.cameras.main;
-    const bombSpawner = this.gameplayConfig.entities.bomb.spawner;
-    const xMargin = bombSpawner.x_margin;
-    const yMarginTop = Math.round(bombSpawner.y_margin_top_ratio * height);
-    const yMarginBottom = Math.round(
-      bombSpawner.y_margin_bottom_ratio * height
-    );
-    const startZ = bombSpawner.start_z;
-
-    const x = this.rng.integerInRange(xMargin, width - xMargin);
-    const groundY = this.rng.integerInRange(yMarginTop, height - yMarginBottom);
-    const bomb = this.bombs.get(x, groundY) as Bomb;
-    if (bomb) {
-      const spritesConfig = this.registry.get(
-        "sprites_config"
-      ) as SpritesConfig;
-      bomb.spawn(x, groundY, startZ);
-      const bombScale = SpriteManager.getScaleFactor(
-        spritesConfig,
-        "bomb",
-        height,
-        this.designHeight
-      );
-      bomb.setScale(bombScale);
-      this.scaleRectBody(bomb, this.gameplayConfig.entities.bomb.hitbox);
-    }
-  }
-
-  /**
-   * Handle bomb explosion - damage player and enemies in radius
-   */
-  private handleBombExplosion(data: {
-    x: number;
-    y: number;
-    radius: number;
-    damage: number;
-  }) {
-    // Play explosion sound using seeded RNG (ticket #118)
-    this.playSound("explosion");
-
-    // Damage player if in range
-    if (this.player && this.player.active && this.player.hp > 0) {
-      const distToPlayer = Phaser.Math.Distance.Between(
-        data.x,
-        data.y,
-        this.player.x,
-        this.player.groundY
-      );
-      if (distToPlayer < data.radius) {
-        this.player.takeDamage(data.damage);
-        this.playSound("hurt");
-      }
-    }
-
-    // Damage enemies if in range
-    if (this.enemies) {
-      this.enemies.getChildren().forEach((enemy) => {
-        const e = enemy as Enemy;
-        if (e.active && e.hp > 0) {
-          const dist = Phaser.Math.Distance.Between(
-            data.x,
-            data.y,
-            e.x,
-            e.groundY
-          );
-          if (dist < data.radius) {
-            e.takeDamage(data.damage);
-          }
-        }
-      });
-    }
-
-    // Damage boss if in range
-    if (this.boss && this.boss.active && this.boss.hp > 0) {
-      const distToBoss = Phaser.Math.Distance.Between(
-        data.x,
-        data.y,
-        this.boss.x,
-        this.boss.groundY
-      );
-      if (distToBoss < data.radius) {
-        this.boss.takeDamage(data.damage);
-      }
-    }
-
-    // Damage tresr bot if in range
-    if (this.tresrBot && this.tresrBot.active && this.tresrBot.hp > 0) {
-      const distToBot = Phaser.Math.Distance.Between(
-        data.x,
-        data.y,
-        this.tresrBot.x,
-        this.tresrBot.groundY
-      );
-      if (distToBot < data.radius) {
-        this.tresrBot.takeDamage(data.damage);
-      }
-    }
-  }
-
-  /**
-   * Handle boss ground pound AoE — damage player if in radius, VFX + camera shake
-   */
-  private handleBossGroundPound(data: {
-    x: number;
-    y: number;
-    radius: number;
-    damage: number;
-  }) {
-    this.playSound("explosion");
-    const gpFx = this.gameplayConfig.entities.boss.ground_pound_effects;
-    this.cameras.main.shake(gpFx.shake_duration, gpFx.shake_intensity);
-
-    // Expanding ring VFX
-    const ring = this.add.circle(
-      data.x,
-      data.y,
-      gpFx.ring_initial_radius,
-      0xff4400,
-      0.6
-    );
-    ring.setDepth(1000);
-    this.tweens.add({
-      targets: ring,
-      radius: data.radius,
-      alpha: 0,
-      duration: gpFx.ring_expand_duration,
-      onComplete: () => ring.destroy(),
-    });
-
-    // Damage player if in range
-    if (this.player && this.player.active && this.player.hp > 0) {
-      const dist = Phaser.Math.Distance.Between(
-        data.x,
-        data.y,
-        this.player.x,
-        this.player.groundY
-      );
-      if (dist < data.radius) {
-        this.player.takeDamage(data.damage);
-        this.playSound("hurt");
-      }
-    }
-  }
-
-  /**
-   * Handle boss summon — spawn enemies near the boss position
-   */
-  private handleBossSummon(data: {x: number; y: number; count: number}) {
-    if (!this.enemies || !this.player) return;
-
-    const spritesConfig = this.registry.get("sprites_config") as SpritesConfig;
-    const enemyCount = spritesConfig.enemies.count;
-    const {width} = this.cameras.main;
-
-    const summonOffscreen = this.gameplayConfig.combat.enemy_spawn_offscreen_px;
-    for (let i = 0; i < data.count; i++) {
-      // Spawn off-screen from alternating edges, walk in toward boss area
-      const groundY = this.walkableArea.getRandomGroundY(this.rng);
-      const edge = i % 2; // alternate left/right
-      const spawnX = edge === 0 ? -summonOffscreen : width + summonOffscreen;
-      const walkInTargetX = this.rng.integerInRange(
-        this.walkableArea.getLeftX() + 40,
-        this.walkableArea.getRightX() - 40
-      );
-
-      const enemyVariant = this.rng.integerInRange(1, enemyCount);
-      const textureKey = `enemy_${enemyVariant}_idle`;
-
-      // Lazy-load enemy variant sprites on first spawn
-      this.spriteManager.ensureEnemyLoaded(enemyVariant).then(() => {
-        if (!this.enemies || !this.player) return;
-        const enemy = this.enemies.get(spawnX, groundY, textureKey) as Enemy;
-        if (enemy) {
-          enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
-          enemy.setTarget(this.player);
-          const enemyScale = SpriteManager.getScaleFactor(
-            spritesConfig,
-            textureKey,
-            this.cameras.main.height,
-            this.designHeight
-          );
-          enemy.setScale(enemyScale);
-          this.scaleCircleBody(
-            enemy,
-            this.gameplayConfig.entities.enemy.hitbox
-          );
-        }
-      });
     }
   }
 
@@ -1660,425 +1131,10 @@ export class MainScene extends Phaser.Scene {
           this.playSound("bot_spawn");
         })
       );
-      this.spawnTresrBot();
+      this.spawnManager.spawnTresrBot();
     }
 
     loot.kill();
-  }
-
-  /**
-   * Spawn loot at enemy death position based on drop table (ticket #192)
-   */
-  private spawnLoot(x: number, y: number) {
-    if (!this.lootDrops) return;
-    const lootConfig = this.gameplayConfig.entities.enemy.loot;
-
-    // Roll for health drop (seeded RNG for replay determinism — ticket #194)
-    if (this.rng.frac() < lootConfig.health.drop_chance) {
-      const variant = this.rng.integerInRange(1, lootConfig.health.variants);
-      const drop = this.lootDrops.get(x, y) as LootDrop | null;
-      if (drop) {
-        drop.spawn(x, y, "health", `health_${variant}`);
-        return; // Only one drop per enemy
-      }
-    }
-
-    // Roll for power-up drop (seeded RNG for replay determinism — ticket #194)
-    // Cap at max_drops_per_game to prevent infinite bot refreshes
-    const maxPowerups =
-      this.gameplayConfig.entities.tresr_bot.max_drops_per_game;
-    if (
-      this.powerupDropCount < maxPowerups &&
-      this.rng.frac() < lootConfig.powerup.drop_chance
-    ) {
-      const variant = this.rng.integerInRange(1, lootConfig.powerup.variants);
-      const drop = this.lootDrops.get(x, y) as LootDrop | null;
-      if (drop) {
-        drop.spawn(x, y, "powerup", `powerup_${variant}`);
-        this.powerupDropCount++;
-      }
-    }
-  }
-
-  /**
-   * Spawn or refresh the TresrBot AI companion.
-   * Called when the player collects a powerup loot drop.
-   */
-  private spawnTresrBot() {
-    if (!this.tresrBot || !this.player) return;
-
-    // If already active, refresh lifetime instead of spawning a new one
-    if (this.tresrBot.active) {
-      this.tresrBot.refreshLifetime();
-      this.recorder.log("bot_refresh");
-      return;
-    }
-
-    // Spawn near the player
-    const spawnX = this.player.x + (this.player.flipX ? 60 : -60);
-    const spawnGY = this.player.groundY;
-    this.tresrBot.spawn(spawnX, spawnGY, this.player);
-
-    // Pass boss reference if we're in boss phase
-    if (this.boss) {
-      this.tresrBot.setBoss(this.boss);
-    }
-
-    this.recorder.log("bot_spawn");
-    // bot_spawn sound plays on landing via "bot_land" event
-  }
-
-  /**
-   * Handle player attack - damage enemies, boss, and open chest (R-004: Attack handling)
-   */
-  private handlePlayerAttack(player: Player) {
-    const playerConfig = this.gameplayConfig.entities.player;
-    const scoring = this.gameplayConfig.scoring;
-    const playerScale = player.scaleX;
-    const reach = playerConfig.combat.reach * playerScale;
-    const attackRange = playerConfig.combat.attack_range;
-    const playerDamage = playerConfig.damage;
-
-    const attackX = player.flipX ? player.x - reach : player.x + reach;
-    const attackY = player.groundY;
-
-    let hit = false;
-
-    // Check enemy hits (use groundY for 2.5D depth-plane distance, not visual y)
-    if (this.enemies) {
-      this.enemies.getChildren().forEach((enemy) => {
-        const e = enemy as Enemy;
-        if (e.active && e.hp > 0) {
-          const dist = Phaser.Math.Distance.Between(
-            attackX,
-            attackY,
-            e.x,
-            e.groundY
-          );
-          if (dist < attackRange) {
-            e.takeDamage(playerDamage);
-            const ekb = this.gameplayConfig.entities.enemy.knockback;
-            e.applyKnockback(player.x, ekb.force, ekb.stun_ms);
-            if (e.hp <= 0) {
-              this.score += scoring.enemy_kill;
-            }
-            hit = true;
-          }
-        }
-      });
-    }
-
-    // Check boss hit (use groundY for 2.5D depth-plane distance)
-    if (this.boss && this.boss.active && this.boss.hp > 0) {
-      const bossRange =
-        this.gameplayConfig.entities.boss.combat.attack_range +
-        this.gameplayConfig.combat.boss_melee_range_bonus;
-      const dist = Phaser.Math.Distance.Between(
-        attackX,
-        attackY,
-        this.boss.x,
-        this.boss.groundY
-      );
-      if (dist < bossRange) {
-        this.boss.takeDamage(playerDamage);
-        const bkb = this.gameplayConfig.entities.boss.knockback;
-        this.boss.applyKnockback(player.x, bkb.force, bkb.stun_ms);
-        this.score += scoring.boss_hit;
-        hit = true;
-      }
-    }
-
-    // R-004: Check chest hit (opens via attack, per spec)
-    if (this.tryOpenChest(attackX, attackY)) {
-      hit = true;
-    }
-
-    if (hit) {
-      this.playSound("punch");
-      this.triggerImpact();
-    }
-  }
-
-  /**
-   * Handle super attack - Hero charges up, then fires a hadouken projectile
-   * Phase 1: Play hero_super animation (charge-up with glowing hands)
-   * Phase 2: On last frame, spawn spinning coin projectile
-   */
-  private handlePlayerSuper(player: Player) {
-    log.info(COMPONENT_NAME, "SUPER ATTACK - Charging up!");
-
-    // Play the hero charge-up animation (row 6 of hero.png)
-    // Validate animation exists AND has valid frames before playing.
-    // Cached old sprites can cause Phaser to register animations with broken frame data.
-    const anim = this.anims.exists("hero_super")
-      ? this.anims.get("hero_super")
-      : null;
-    if (anim && anim.frames && anim.frames.length > 0) {
-      try {
-        player.play("hero_super", true);
-        let superRetries = 0;
-        const maxSuperRetries = 3;
-        const onAnimComplete = () => {
-          if (
-            !player.active ||
-            this.phase === "lost" ||
-            this.phase === "victory"
-          ) {
-            player.off(
-              Phaser.Animations.Events.ANIMATION_COMPLETE,
-              onAnimComplete
-            );
-            return;
-          }
-          if (player.anims.currentAnim?.key === "hero_super") {
-            this.fireProjectile(player);
-          } else if (superRetries < maxSuperRetries && player.active) {
-            superRetries++;
-            player.once(
-              Phaser.Animations.Events.ANIMATION_COMPLETE,
-              onAnimComplete
-            );
-          } else {
-            log.warn(
-              COMPONENT_NAME,
-              "Super animation re-listen exceeded max retries, firing immediately"
-            );
-            this.fireProjectile(player);
-          }
-        };
-        player.once(
-          Phaser.Animations.Events.ANIMATION_COMPLETE,
-          onAnimComplete
-        );
-      } catch (err) {
-        log.warn(
-          COMPONENT_NAME,
-          "hero_super animation failed to play, firing immediately:",
-          err
-        );
-        this.fireProjectile(player);
-      }
-    } else {
-      log.warn(
-        COMPONENT_NAME,
-        "hero_super animation not found or has no valid frames, firing immediately"
-      );
-      this.fireProjectile(player);
-    }
-  }
-
-  /**
-   * Fire the hadouken projectile after charge-up animation completes
-   */
-  private fireProjectile(player: Player) {
-    const superConfig = this.gameplayConfig.entities.player.super;
-    const superEffects = superConfig.effects;
-
-    log.info(COMPONENT_NAME, "SUPER ATTACK - Projectile fired!");
-
-    // Camera shake on release
-    this.cameras.main.shake(
-      superEffects.shake_duration,
-      superEffects.shake_intensity
-    );
-    this.playSound("explosion");
-
-    // Spawn projectile in the direction the player is facing
-    const direction = player.flipX ? -1 : 1;
-    const projectile = this.superProjectiles?.get() as SuperProjectile;
-    if (projectile) {
-      // Suppress super charge accumulation while super projectiles are in flight
-      this.superDamageActive = true;
-      // Set collision targets for efficient hit detection (direct group access vs scene scan)
-      if (this.enemies) {
-        projectile.setCollisionTargets(this.enemies, this.boss);
-      }
-      // Offset Y upward to torso height (origin is at feet with setOrigin(0.5, 1.0))
-      const torsoY = player.y - player.displayHeight * 0.6;
-      projectile.fire(player.x, torsoY, player.groundY, direction);
-      const spritesConfig = this.registry.get(
-        "sprites_config"
-      ) as SpritesConfig;
-      projectile.setScale(
-        SpriteManager.getScaleFactor(
-          spritesConfig,
-          "super",
-          this.cameras.main.height,
-          this.designHeight
-        )
-      );
-    }
-  }
-
-  /**
-   * Handle super projectile piercing through an enemy — fire VFX + scoring
-   */
-  private handleSuperPierce(data: {x: number; y: number; killed: boolean}) {
-    const scoring = this.gameplayConfig.scoring;
-
-    // Score: full kill points if enemy died, hit points if survived
-    if (data.killed) {
-      this.score += scoring.enemy_kill;
-    } else {
-      this.score += scoring.super_hit;
-    }
-
-    // Fire burst VFX at pierce point
-    const burst = this.add.circle(data.x, data.y, 6, 0xff6600, 0.9);
-    burst.setDepth(1000);
-    this.tweens.add({
-      targets: burst,
-      radius: 24,
-      alpha: 0,
-      duration: 200,
-      onComplete: () => burst.destroy(),
-    });
-
-    // Inner white-hot core
-    const core = this.add.circle(data.x, data.y, 3, 0xffcc00, 1);
-    core.setDepth(1001);
-    this.tweens.add({
-      targets: core,
-      radius: 10,
-      alpha: 0,
-      duration: 150,
-      onComplete: () => core.destroy(),
-    });
-
-    this.playSound("punch");
-    gameActions.setScore(this.score);
-  }
-
-  /**
-   * Handle super projectile boss impact — explosion VFX + scoring
-   */
-  private handleSuperProjectileHit(data: {
-    x: number;
-    y: number;
-    groundY: number;
-  }) {
-    const scoring = this.gameplayConfig.scoring;
-    const superEffects = this.gameplayConfig.entities.player.super.effects;
-
-    this.score += scoring.boss_hit;
-
-    // Visual explosion at impact point
-    this.triggerFlash();
-
-    // Expanding ring VFX at impact
-    const initialRadius = superEffects.explosion_initial_radius;
-    const expandDuration = superEffects.explosion_expand_duration;
-    const ring = this.add.circle(data.x, data.y, initialRadius, 0xffff00, 0.5);
-    ring.setDepth(1000);
-    this.tweens.add({
-      targets: ring,
-      radius: 80,
-      alpha: 0,
-      duration: expandDuration,
-      onComplete: () => ring.destroy(),
-    });
-
-    log.info(COMPONENT_NAME, "Super projectile hit boss!");
-  }
-
-  private onEntityDeath(data: {type: string; x: number; y: number}) {
-    if (data.type.startsWith("enemy")) {
-      this.playSound("death");
-      gameActions.incrementEnemiesKilled();
-      this.spawnLoot(data.x, data.y);
-
-      // Don't replenish super charge from kills caused by the super attack itself
-      if (this.superDamageActive) return;
-
-      // Accumulate super charge on enemy kill
-      const config = this.registry.get("full_config");
-      const playerSuper = config.gameplay.entities.player.super;
-      const chargePerKill = playerSuper.charge_per_kill;
-      const maxCharge = playerSuper.max_charge;
-      gameActions.addSuperCharge(chargePerKill, maxCharge);
-    } else if (data.type === "boss") {
-      trackBossDefeated();
-      this.playSound("explosion");
-      MusicManager.getInstance().stop();
-
-      // Fire explosion VFX — 3-layer expanding circles
-      const deathFx = this.gameplayConfig.entities.boss.death_effects;
-
-      // Layer 1: White-hot core
-      const core = this.add.circle(data.x, data.y, 15, 0xffffff, 1);
-      core.setDepth(1002);
-      this.tweens.add({
-        targets: core,
-        radius: 40,
-        alpha: 0,
-        duration: 200,
-        onComplete: () => core.destroy(),
-      });
-
-      // Layer 2: Orange inner fire
-      const inner = this.add.circle(data.x, data.y, 20, 0xff6600, 0.9);
-      inner.setDepth(1001);
-      this.tweens.add({
-        targets: inner,
-        radius: 80,
-        alpha: 0,
-        duration: 300,
-        onComplete: () => inner.destroy(),
-      });
-
-      // Layer 3: Red-orange outer ring
-      const outer = this.add.circle(data.x, data.y, 30, 0xff4400, 0.7);
-      outer.setDepth(1000);
-      this.tweens.add({
-        targets: outer,
-        radius: 150,
-        alpha: 0,
-        duration: 500,
-        onComplete: () => outer.destroy(),
-      });
-
-      // Camera shake + fire-tinted flash
-      this.cameras.main.shake(deathFx.shake_duration, deathFx.shake_intensity);
-      this.cameras.main.flash(
-        deathFx.flash_duration,
-        deathFx.flash_r,
-        deathFx.flash_g,
-        deathFx.flash_b
-      );
-    }
-  }
-
-  private triggerImpact() {
-    const playerConfig = this.gameplayConfig.entities.player;
-    this.cameras.main.shake(
-      playerConfig.effects.attack_shake_duration,
-      playerConfig.effects.attack_shake_intensity
-    );
-    this.playSound("hurt");
-
-    // Hit stop: pause physics briefly (ticket #230: track state for pause sync fix)
-    const hitStopMs = playerConfig.combat.hit_stop_ms;
-
-    // Cancel any overlapping hit-stop before starting a new one
-    if (this.hitStopTimer) {
-      this.hitStopTimer.destroy();
-      this.hitStopTimer = undefined;
-    }
-
-    this.hitStopActive = true;
-    this.physics.world.pause();
-    this.hitStopTimer = this.time.delayedCall(hitStopMs, () => {
-      this.hitStopActive = false;
-      this.hitStopTimer = undefined;
-      this.physics.world.resume();
-    });
-    this.adHocTimers.push(this.hitStopTimer);
-  }
-
-  private triggerFlash() {
-    const flashDuration =
-      this.gameplayConfig.entities.player.effects.victory_flash_duration;
-    this.cameras.main.flash(flashDuration, 255, 255, 255);
   }
 
   private onSurvivalComplete() {
@@ -2090,24 +1146,13 @@ export class MainScene extends Phaser.Scene {
     this.phase = "boss";
     gameActions.setPhase("boss");
     if (this.survivalCountdown) this.survivalCountdown.remove();
-    if (this.spawnTimer) this.spawnTimer.remove();
-    if (this.keySpawnTimer) this.keySpawnTimer.remove();
+    this.spawnManager.removeSurvivalSpawnTimers();
     // Keep bombSpawnTimer running — spec requires bombs during boss phase
-    if (this.enemyAttackTimer) this.enemyAttackTimer.remove();
+    this.combatManager.removeEnemyAttackTimer();
     // Deactivate all enemies and bombs for pooling instead of destroying them
     // Using kill() keeps them in the pool for potential future use
-    if (this.enemies) {
-      this.enemies.getChildren().forEach((child) => {
-        const enemy = child as Enemy;
-        if (enemy.active) enemy.kill();
-      });
-    }
-    if (this.bombs) {
-      this.bombs.getChildren().forEach((child) => {
-        const bomb = child as Bomb;
-        if (bomb.active) bomb.kill();
-      });
-    }
+    this.spawnManager.killAllEnemies();
+    this.spawnManager.killAllBombs();
 
     const {width} = this.cameras.main;
     this.boss = new Boss(this, width / 2, this.rng);
@@ -2123,93 +1168,36 @@ export class MainScene extends Phaser.Scene {
     this.boss.play("boss_idle", true);
     if (this.player) this.boss.setTarget(this.player);
     if (this.tresrBot) this.tresrBot.setBoss(this.boss);
+    this.spawnManager.setBoss(this.boss);
+    this.combatManager.setBoss(this.boss);
 
     // Track boss HP in store for HUD display
     gameActions.setBossHp(this.boss.hp, this.boss.maxHp);
 
     // Re-add attack timer for boss contact damage checks
-    const enemyAttackCheckMs =
-      this.gameplayConfig.entities.enemy.combat.attack_check_ms;
-    this.enemyAttackTimer = this.time.addEvent({
-      delay: enemyAttackCheckMs,
-      callback: this.handleEnemyAttacks,
-      callbackScope: this,
-      loop: true,
-    });
+    this.combatManager.setupEnemyAttackTimer();
 
-    this.triggerFlash();
+    this.combatManager.triggerFlash();
     this.playSound("explosion"); // Arrival sound
-    this.showPhaseAnnouncement("BOSS PHASE");
+    this.uiManager.showPhaseAnnouncement("BOSS PHASE");
     trackBossSpawned();
   }
 
   /**
    * Spawn the treasure chest after boss defeat (R-004: Chest handling)
-   * Chest must be opened via player attack, not overlap
+   * Delegates to SpawnManager; chest reference set via callback.
    */
   private spawnChest() {
-    if (this.chest) return; // Prevent double spawn
-    trackLevelComplete(this.score, this.collectedKeys);
-
-    // Kill all remaining enemies when boss is defeated
-    if (this.enemies) {
-      this.enemies.getChildren().forEach((child) => {
-        const enemy = child as Enemy;
-        if (enemy.active) enemy.kill();
-      });
-    }
-
-    const chestConfig = this.gameplayConfig.entities.chest;
-
-    // Delayed air drop for dramatic effect after boss explosion
-    this.adHocTimers.push(
-      this.time.delayedCall(chestConfig.air_drop.delay_after_boss_ms, () => {
-        log.info(COMPONENT_NAME, "Air dropping Treasure Chest...");
-        const {width} = this.cameras.main;
-        // Spawn chest in center of walkable area
-        const chestGroundY =
-          (this.walkableArea.getTopY() + this.walkableArea.getBottomY()) / 2;
-        this.chest = new Chest(this, width / 2, chestGroundY, true);
-        const spritesConfig = this.registry.get(
-          "sprites_config"
-        ) as SpritesConfig;
-        this.chest.setScale(
-          SpriteManager.getScaleFactor(
-            spritesConfig,
-            "chest",
-            this.cameras.main.height,
-            this.designHeight
-          )
-        );
-      })
-    );
-
-    // R-004: Chest is opened via attack, not overlap
-    // The handlePlayerAttack method now checks for chest proximity
-  }
-
-  /**
-   * Attempt to open chest via player attack (R-004: Chest opens via punch)
-   * Returns true if chest was opened
-   */
-  private tryOpenChest(attackX: number, attackY: number): boolean {
-    if (!this.chest || !this.chest.active) return false;
-
-    const dist = Phaser.Math.Distance.Between(
-      attackX,
-      attackY,
-      this.chest.x,
-      this.chest.groundY
-    );
-
-    const chestRange = this.gameplayConfig.entities.chest.combat.interact_range;
-    if (dist < chestRange) {
-      if (this.chest.open()) {
-        this.playSound("open_treasure_chest");
-        return true;
+    const timer = this.spawnManager.spawnChest(
+      this.chest,
+      this.score,
+      this.collectedKeys,
+      (chest) => {
+        this.chest = chest;
+        this.combatManager.setChest(chest);
       }
-    }
-    return false;
+    );
+    if (timer) this.adHocTimers.push(timer);
   }
 
   private async onVictory() {
@@ -2225,7 +1213,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     this.playSound("victory");
-    this.showPhaseAnnouncement("VICTORY");
+    this.uiManager.showPhaseAnnouncement("VICTORY");
     const winDuration = Math.round(
       this.gameplayConfig.time_limit_seconds - this.survivalTimer
     );
@@ -2397,7 +1385,7 @@ export class MainScene extends Phaser.Scene {
 
     this.playSound("game_over");
     MusicManager.getInstance().stop();
-    this.showPhaseAnnouncement("DEFEAT");
+    this.uiManager.showPhaseAnnouncement("DEFEAT");
     const deathDuration = Math.round(
       this.gameplayConfig.time_limit_seconds - this.survivalTimer
     );
@@ -2463,17 +1451,9 @@ export class MainScene extends Phaser.Scene {
 
     if (this.player && this.player.active) {
       this.player.update(dt);
-      if (this.player.hp !== this.lastReportedHp) {
-        gameActions.setHp(this.player.hp);
-        this.lastReportedHp = this.player.hp;
-      }
     }
     if (this.boss) {
       this.boss.update(dt);
-      if (this.boss.hp !== this.lastReportedBossHp) {
-        gameActions.setBossHp(this.boss.hp);
-        this.lastReportedBossHp = this.boss.hp;
-      }
     }
     if (this.tresrBot && this.tresrBot.active) {
       this.tresrBot.update(time, dt);
@@ -2482,45 +1462,37 @@ export class MainScene extends Phaser.Scene {
       this.chest.update(dt);
     }
 
-    // Clear super damage flag once all projectiles have despawned (handles misses)
-    if (this.superDamageActive && this.superProjectiles) {
-      const hasActive = this.superProjectiles
-        .getChildren()
-        .some((p) => p.active);
-      if (!hasActive) this.superDamageActive = false;
-    }
+    // Cache group children once per frame to avoid repeated getChildren() allocations
+    const keyChildren = this.spawnManager.keys?.getChildren();
+    const bombChildren = this.spawnManager.bombs?.getChildren();
 
     // Manually update keys and bombs for Z-axis falling physics.
     // These run here (in scene update, after Arcade physics step) rather than
     // via runChildUpdate (which runs in preUpdate, before physics step).
     // This matches Player/Boss update timing and prevents Arcade body.postUpdate
     // from overwriting the Z-axis adjusted positions.
-    if (this.keys) {
-      this.keys.getChildren().forEach((child) => {
+    if (keyChildren) {
+      for (let i = 0; i < keyChildren.length; i++) {
+        const child = keyChildren[i];
         if (child.active) (child as Key).update(dt);
-      });
+      }
     }
-    if (this.bombs) {
-      this.bombs.getChildren().forEach((child) => {
+    if (bombChildren) {
+      for (let i = 0; i < bombChildren.length; i++) {
+        const child = bombChildren[i];
         if (child.active) (child as Bomb).update(dt);
-      });
+      }
     }
 
-    // Update super projectiles with delta time
-    if (this.superProjectiles) {
-      this.superProjectiles.getChildren().forEach((child) => {
-        if (child.active) (child as SuperProjectile).update(dt);
-      });
-    }
+    // Update super projectiles + clear super damage flag (managed by CombatManager)
+    this.combatManager.updateProjectiles(dt);
 
-    // Only update store when values actually change (ticket #162)
-    if (this.score !== this.lastReportedScore) {
-      gameActions.setScore(this.score);
-      this.lastReportedScore = this.score;
-    }
-    if (this.collectedKeys !== this.lastReportedKeys) {
-      gameActions.setKeys(this.collectedKeys);
-      this.lastReportedKeys = this.collectedKeys;
-    }
+    // Sync HUD state (score, keys, HP, boss HP) with change detection (ticket #162, #200)
+    this.uiManager.syncState(
+      this.score,
+      this.collectedKeys,
+      this.player?.hp,
+      this.boss?.hp
+    );
   }
 }

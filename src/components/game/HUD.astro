@@ -195,26 +195,8 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
       </div>
     </div>
 
-    <!-- Right: Theme/Profile Icons Placeholder -->
-    <div class="pointer-events-none flex justify-end opacity-0">
-      <div class="h-10 w-32 rounded-full bg-black/20"></div>
-    </div>
-  </div>
-
-  <!-- Bottom HUD Area: 3-column grid with min-w-0 on sides to guarantee true centering -->
-  <div class="grid w-full grid-cols-3 items-end">
-    <div class="min-w-0"></div>
-
-    <!-- Center: Phase Alerts & Pause Button -->
-    <div class="flex flex-col items-center gap-1 pb-2 sm:gap-2 sm:pb-4">
-      <div
-        id="hud-phase-alert"
-        class="badge badge-primary sm:badge-lg hidden text-[10px] font-bold tracking-widest uppercase sm:text-xs"
-      >
-        BOSS INCOMING
-      </div>
-
-      <!-- Centred Pause Button -->
+    <!-- Right: Pause Button -->
+    <div class="flex justify-end">
       <button
         id="btn-hud-pause"
         class="btn btn-circle btn-primary btn-sm sm:btn-md pointer-events-auto min-h-[48px] min-w-[48px] border-2 border-white/10 shadow-xl"
@@ -231,6 +213,21 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
           <rect x="14" y="4" width="4" height="16"></rect>
         </svg>
       </button>
+    </div>
+  </div>
+
+  <!-- Bottom HUD Area: 3-column grid with min-w-0 on sides to guarantee true centering -->
+  <div class="grid w-full grid-cols-3 items-end">
+    <div class="min-w-0"></div>
+
+    <!-- Center: Phase Alerts -->
+    <div class="flex flex-col items-center gap-1 pb-2 sm:gap-2 sm:pb-4">
+      <div
+        id="hud-phase-alert"
+        class="badge badge-primary sm:badge-lg hidden text-[10px] font-bold tracking-widest uppercase sm:text-xs"
+      >
+        BOSS INCOMING
+      </div>
     </div>
 
     <!-- Right: Boss HP Bar (only visible during boss phase) -->

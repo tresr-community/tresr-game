@@ -158,6 +158,7 @@ Pickel
 
 # Technical terms
 alnum
+hexdigit
 upserted
 verif
 Graphviz
