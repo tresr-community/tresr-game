@@ -2,8 +2,9 @@ import Phaser from "phaser";
 import {BaseEntity} from "./BaseEntity";
 import type {WalkableArea} from "@/lib/game/WalkableArea";
 import {gameState} from "@/lib/game/state";
+import {log} from "@/lib/utils/log";
 
-//const COMPONENT_NAME = "Enemy";
+const COMPONENT_NAME = "Enemy";
 
 // AI behavior types for enemy variety
 type EnemyAIType =
@@ -171,7 +172,14 @@ export class Enemy extends BaseEntity {
         this.retardioTimer = 0;
         break;
       }
+      case "direct":
+        this.speed = this.baseSpeed;
+        break;
       default:
+        log.warn(
+          COMPONENT_NAME,
+          `Unknown AI type in selectRandomAI: ${this.aiType}`
+        );
         this.speed = this.baseSpeed;
     }
   }
@@ -630,7 +638,13 @@ export class Enemy extends BaseEntity {
           // Fall through to default chase behavior
           break;
         }
-        // "direct", "passive" (provoked), "retardio" (handled above) — no modification
+        // "direct", "passive" (provoked) — no modification needed
+        case "direct":
+        case "passive":
+          break;
+        default:
+          log.warn(COMPONENT_NAME, `Unknown AI behavior: ${this.aiType}`);
+          break;
       }
 
       const dx = targetX - this.x;

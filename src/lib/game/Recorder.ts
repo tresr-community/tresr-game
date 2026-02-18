@@ -5,6 +5,20 @@ export interface GameAction {
   a: string; // action key (e.g., 'move_left', 'attack')
 }
 
+/** All valid action types that the Recorder accepts. */
+const VALID_ACTIONS = new Set([
+  "move_left",
+  "move_right",
+  "move_up",
+  "move_down",
+  "jump",
+  "attack",
+  "super",
+  "bot_refresh",
+  "bot_spawn",
+  "bot_despawn",
+]);
+
 export class Recorder {
   private static readonly MAX_ACTIONS = 50_000;
   private static readonly COMPONENT_NAME = "Recorder";
@@ -22,8 +36,20 @@ export class Recorder {
     this.capped = false;
   }
 
+  /** Clear the action buffer without resetting the start time. */
+  clear() {
+    this.actions = [];
+    this.capped = false;
+  }
+
   log(action: string) {
     if (this.capped) return;
+
+    if (!VALID_ACTIONS.has(action)) {
+      appLog.warn(Recorder.COMPONENT_NAME, `Unknown action type: ${action}`);
+      return;
+    }
+
     if (this.actions.length >= Recorder.MAX_ACTIONS) {
       this.capped = true;
       appLog.warn(
