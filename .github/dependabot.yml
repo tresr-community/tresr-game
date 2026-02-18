@@ -24,9 +24,7 @@ updates:
     assignees:
       - "MAHDTech"
     labels:
-      - "dependencies"
-      - "dependabot"
-      - "actions"
+      - "chore"
     target-branch: "trunk"
     commit-message:
       prefix: "chore(deps)"
@@ -47,9 +45,7 @@ updates:
     assignees:
       - "MAHDTech"
     labels:
-      - "dependencies"
-      - "dependabot"
-      - "submodules"
+      - "chore"
     target-branch: "trunk"
     commit-message:
       prefix: "chore(deps)"
@@ -57,10 +53,10 @@ updates:
     open-pull-requests-limit: 5
 
   #########################
-  # NPM
+  # Bun
   #########################
 
-  - package-ecosystem: "npm"
+  - package-ecosystem: "bun"
     directory: "/"
     schedule:
       interval: "weekly"
@@ -70,9 +66,7 @@ updates:
     assignees:
       - "MAHDTech"
     labels:
-      - "dependencies"
-      - "dependabot"
-      - "npm"
+      - "chore"
     target-branch: "trunk"
     commit-message:
       prefix: "chore(deps)"
@@ -93,9 +87,7 @@ updates:
     assignees:
       - "MAHDTech"
     labels:
-      - "dependencies"
-      - "dependabot"
-      - "cargo"
+      - "chore"
     target-branch: "trunk"
     commit-message:
       prefix: "chore(deps)"
