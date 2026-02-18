@@ -1334,7 +1334,8 @@ export const config: ConfigTypes = {
         "notes": [
           "5 new enemy AI types — the bankers brought reinforcements from TradFi",
           "Consolation prize for expired #1 active score — a participation trophy for degens",
-          "Active score leaderboard with 24h TTL decay — your high score rugs itself"
+          "Active score leaderboard with 24h TTL decay — your high score rugs itself",
+          "Unit tests included to catch dem sneaky regressions"
         ]
       },
       {
