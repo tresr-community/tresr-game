@@ -898,12 +898,12 @@ export class MainScene extends Phaser.Scene {
     // Stop all sounds to prevent audio overlap on scene transitions
     this.sound.stopAll();
 
-    // Clean up timers
-    if (this.survivalCountdown) this.survivalCountdown.destroy();
-    if (this.spawnTimer) this.spawnTimer.destroy();
-    if (this.keySpawnTimer) this.keySpawnTimer.destroy();
-    if (this.bombSpawnTimer) this.bombSpawnTimer.destroy();
-    if (this.enemyAttackTimer) this.enemyAttackTimer.destroy();
+    // Clean up timers (optional chaining for idempotent shutdown)
+    this.survivalCountdown?.destroy();
+    this.spawnTimer?.destroy();
+    this.keySpawnTimer?.destroy();
+    this.bombSpawnTimer?.destroy();
+    this.enemyAttackTimer?.destroy();
     // Clean up ad-hoc timers (ticket #195)
     for (const t of this.adHocTimers) t.destroy();
     this.adHocTimers.length = 0;
@@ -2482,11 +2482,20 @@ export class MainScene extends Phaser.Scene {
       this.chest.update(dt);
     }
 
+    // Cache group children once per frame to avoid repeated getChildren() allocations
+    const keyChildren = this.keys?.getChildren();
+    const bombChildren = this.bombs?.getChildren();
+    const projectileChildren = this.superProjectiles?.getChildren();
+
     // Clear super damage flag once all projectiles have despawned (handles misses)
-    if (this.superDamageActive && this.superProjectiles) {
-      const hasActive = this.superProjectiles
-        .getChildren()
-        .some((p) => p.active);
+    if (this.superDamageActive && projectileChildren) {
+      let hasActive = false;
+      for (let i = 0; i < projectileChildren.length; i++) {
+        if (projectileChildren[i].active) {
+          hasActive = true;
+          break;
+        }
+      }
       if (!hasActive) this.superDamageActive = false;
     }
 
@@ -2495,22 +2504,25 @@ export class MainScene extends Phaser.Scene {
     // via runChildUpdate (which runs in preUpdate, before physics step).
     // This matches Player/Boss update timing and prevents Arcade body.postUpdate
     // from overwriting the Z-axis adjusted positions.
-    if (this.keys) {
-      this.keys.getChildren().forEach((child) => {
+    if (keyChildren) {
+      for (let i = 0; i < keyChildren.length; i++) {
+        const child = keyChildren[i];
         if (child.active) (child as Key).update(dt);
-      });
+      }
     }
-    if (this.bombs) {
-      this.bombs.getChildren().forEach((child) => {
+    if (bombChildren) {
+      for (let i = 0; i < bombChildren.length; i++) {
+        const child = bombChildren[i];
         if (child.active) (child as Bomb).update(dt);
-      });
+      }
     }
 
     // Update super projectiles with delta time
-    if (this.superProjectiles) {
-      this.superProjectiles.getChildren().forEach((child) => {
+    if (projectileChildren) {
+      for (let i = 0; i < projectileChildren.length; i++) {
+        const child = projectileChildren[i];
         if (child.active) (child as SuperProjectile).update(dt);
-      });
+      }
     }
 
     // Only update store when values actually change (ticket #162)
