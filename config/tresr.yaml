@@ -666,7 +666,7 @@ client:
 
     # Hero character (Ron Jay)
     hero:
-      scaleFactor: 0.586
+      scaleFactor: 1.0
       anims:
         - name: idle
           frames: 6
@@ -712,7 +712,7 @@ client:
           frameHeight: 512
     # Super Attack Projectile (spinning coin hadouken)
     super:
-      scaleFactor: 0.5
+      scaleFactor: 1.0
       anims:
         - name: spin
           frames: 5
@@ -723,7 +723,7 @@ client:
           frameHeight: 512
     # Boss character (Gary Gensler)
     boss:
-      scaleFactor: 1.172
+      scaleFactor: 1.0
       anims:
         - name: idle
           frames: 6
@@ -764,7 +764,7 @@ client:
     # Each one uses the same animations/mechanics.
     # Per-anim paths use {i} placeholder for variant number.
     enemies:
-      scaleFactor: 0.586
+      scaleFactor: 1.0
       count: 5
       anims:
         - name: idle
@@ -814,7 +814,7 @@ client:
           frameHeight: 512
     # TRESR-BOT companion (AI ally spawned from powerup pickup)
     tresr_bot:
-      scaleFactor: 0.586
+      scaleFactor: 1.0
       anims:
         - name: idle
           frames: 6

@@ -33,7 +33,7 @@ const TRANSFER_SELECTOR: [u8; 4] = [0xa9, 0x05, 0x9c, 0xbb];
 pub async fn verify_avalanche_fee(tx_hash: &str) -> Result<ParsedFee, String> {
     // Anvil mock: skip real RPC verification in local dev
     if crate::config::NETWORK_NAME == "anvil" {
-        ic_cdk::print(format!("ANVIL_MOCK: verify_avalanche_fee for {}", tx_hash));
+        crate::logging::log_debug("EvmRpc", &format!("ANVIL_MOCK: verify_avalanche_fee for {}", tx_hash));
         return Ok(ParsedFee {
             amount: 10,
             from: "0x0000000000000000000000000000000000000000".to_string(),
@@ -84,7 +84,7 @@ pub async fn verify_avalanche_claim_tx(
 ) -> Result<(), String> {
     // Anvil mock: skip real RPC verification in local dev
     if crate::config::NETWORK_NAME == "anvil" {
-        ic_cdk::print(format!("ANVIL_MOCK: verify_avalanche_claim_tx for {}", tx_hash));
+        crate::logging::log_debug("EvmRpc", &format!("ANVIL_MOCK: verify_avalanche_claim_tx for {}", tx_hash));
         return Ok(());
     }
 
@@ -627,7 +627,7 @@ async fn extract_signature_components(
 pub async fn get_token_balance(wallet_address: &str) -> Result<u64, String> {
     // Anvil mock: return fake balance in local dev
     if crate::config::NETWORK_NAME == "anvil" {
-        ic_cdk::print(format!("ANVIL_MOCK: get_token_balance for {}", wallet_address));
+        crate::logging::log_debug("EvmRpc", &format!("ANVIL_MOCK: get_token_balance for {}", wallet_address));
         return Ok(1000);
     }
 

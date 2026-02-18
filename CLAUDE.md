@@ -32,14 +32,14 @@ Due to 1Password/secretspec being unavailable in the AI agent sandbox, use this 
 
 ```bash
 # Single command
-SECRETSPEC_PROVIDER=env devenv shell --quiet -- <command>
+CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- <command>
 
 # Examples
-SECRETSPEC_PROVIDER=env devenv shell --quiet -- cargo check
-SECRETSPEC_PROVIDER=env devenv shell --quiet -- juno-dev build-functions
-SECRETSPEC_PROVIDER=env devenv shell --quiet -- git commit -m "feat: add feature"
-SECRETSPEC_PROVIDER=env devenv shell --quiet -- gh pr create --base trunk --title "fix: something"
-SECRETSPEC_PROVIDER=env devenv shell --quiet -- devenv test
+CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- cargo check
+CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- juno-dev build-functions
+CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- git commit -m "feat: add feature"
+CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- gh pr create --base trunk --title "fix: something"
+CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- devenv test
 ```
 
 > **WARNING:** Running commands outside devenv will cause failures (missing binaries, broken pre-commit hooks, etc.)

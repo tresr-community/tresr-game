@@ -268,3 +268,4 @@ temurin
 rmz
 rmz_version
 micr
+spritesheets

@@ -221,9 +221,13 @@ export class SpriteManager {
       return Promise.resolve();
     }
 
+    const entityKey = `enemy_${variantIndex}`;
+    const animKeys = spriteConfig.enemies.anims.map(
+      (a) => `${entityKey}_${a.name}`
+    );
+
     // Check if textures already exist (e.g. from a previous scene)
-    const firstAnimKey = `enemy_${variantIndex}_${spriteConfig.enemies.anims[0].name}`;
-    if (this.scene.textures.exists(firstAnimKey)) {
+    if (this.scene.textures.exists(animKeys[0])) {
       this.loadedEnemyVariants.add(variantIndex);
       // Still create animations in case they don't exist yet
       this.createEnemyAnimations(variantIndex, spriteConfig.enemies.anims);
@@ -233,17 +237,25 @@ export class SpriteManager {
     // Queue the sprite sheets for loading
     this.preloadEnemySprites(variantIndex, spriteConfig.enemies);
 
-    // Listen for this variant's specific spritesheet completion instead of
-    // the global "complete" event, which fires for any queued batch.
+    // Wait for ALL spritesheets in this variant to finish loading before
+    // creating animations. Previously we only waited for the first sheet,
+    // which caused walk/jump/attack/hurt textures to have 0 frames.
     const loadPromise = new Promise<void>((resolve) => {
-      // cspell:disable-next-line -- Phaser loader event name
-      this.scene.load.once(`filecomplete-spritesheet-${firstAnimKey}`, () => {
-        this.createEnemyAnimations(variantIndex, spriteConfig.enemies.anims);
-        this.loadedEnemyVariants.add(variantIndex);
-        this.pendingEnemyLoads.delete(variantIndex);
-        log.info(COMPONENT_NAME, `Lazy-loaded enemy variant ${variantIndex}`);
-        resolve();
-      });
+      let remaining = animKeys.length;
+      const onSheetLoaded = () => {
+        remaining--;
+        if (remaining <= 0) {
+          this.createEnemyAnimations(variantIndex, spriteConfig.enemies.anims);
+          this.loadedEnemyVariants.add(variantIndex);
+          this.pendingEnemyLoads.delete(variantIndex);
+          log.info(COMPONENT_NAME, `Lazy-loaded enemy variant ${variantIndex}`);
+          resolve();
+        }
+      };
+      for (const key of animKeys) {
+        // cspell:disable-next-line -- Phaser loader event name
+        this.scene.load.once(`filecomplete-spritesheet-${key}`, onSheetLoaded);
+      }
       this.scene.load.start();
     });
 

@@ -802,7 +802,7 @@ export const config: ConfigTypes = {
       "frameHeight": 512
     },
     "hero": {
-      "scaleFactor": 0.586,
+      "scaleFactor": 1,
       "anims": [
         {
           "name": "idle",
@@ -861,7 +861,7 @@ export const config: ConfigTypes = {
       ]
     },
     "super": {
-      "scaleFactor": 0.5,
+      "scaleFactor": 1,
       "anims": [
         {
           "name": "spin",
@@ -875,7 +875,7 @@ export const config: ConfigTypes = {
       ]
     },
     "boss": {
-      "scaleFactor": 1.172,
+      "scaleFactor": 1,
       "anims": [
         {
           "name": "idle",
@@ -925,7 +925,7 @@ export const config: ConfigTypes = {
       ]
     },
     "enemies": {
-      "scaleFactor": 0.586,
+      "scaleFactor": 1,
       "count": 5,
       "anims": [
         {
@@ -976,7 +976,7 @@ export const config: ConfigTypes = {
       ]
     },
     "tresr_bot": {
-      "scaleFactor": 0.586,
+      "scaleFactor": 1,
       "anims": [
         {
           "name": "idle",

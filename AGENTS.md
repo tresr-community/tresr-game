@@ -57,7 +57,7 @@ Directives:
 - **Secret Management**: For non-secret variables, the dotenv `.env` file is acceptable however always use `secretspec` for managing secrets values like keys.
 - **IMPORTANT:** **1Password Integration** Due to the enablement of `secretspec`, and 1Password being unavailable in the AI Agent sandbox,
   to run devenv shell commands, use this method:
-  - `SECRETSPEC_PROVIDER=env devenv shell --quiet -- <command>`
+  - `CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- <command>`
   - As a fallback, ask the user to execute and paste the result.
 
 Devenv has it's own MCP server available at: <https://mcp.devenv.sh/> which can be started locally with `devenv mcp`. This can be used for additional knowledge about `devenv.nix` syntax.

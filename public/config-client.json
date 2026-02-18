@@ -798,7 +798,7 @@
       "frameHeight": 512
     },
     "hero": {
-      "scaleFactor": 0.586,
+      "scaleFactor": 1,
       "anims": [
         {
           "name": "idle",
@@ -857,7 +857,7 @@
       ]
     },
     "super": {
-      "scaleFactor": 0.5,
+      "scaleFactor": 1,
       "anims": [
         {
           "name": "spin",
@@ -871,7 +871,7 @@
       ]
     },
     "boss": {
-      "scaleFactor": 1.172,
+      "scaleFactor": 1,
       "anims": [
         {
           "name": "idle",
@@ -921,7 +921,7 @@
       ]
     },
     "enemies": {
-      "scaleFactor": 0.586,
+      "scaleFactor": 1,
       "count": 5,
       "anims": [
         {
@@ -972,7 +972,7 @@
       ]
     },
     "tresr_bot": {
-      "scaleFactor": 0.586,
+      "scaleFactor": 1,
       "anims": [
         {
           "name": "idle",

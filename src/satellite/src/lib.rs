@@ -15,6 +15,7 @@
 //! - `balance_refresh`: Requests to sync balance from on-chain
 
 mod evm_rpc;
+mod logging;
 mod types;
 
 /// Build-time generated constants from config/tresr.yaml (see build.rs).
@@ -248,9 +249,8 @@ fn assert_delete_doc(_context: AssertDeleteDocContext) -> Result<(), String> {
 /// Juno only allows one #[on_set_doc] per module, so we dispatch by collection name
 #[on_set_doc(collections = ["users", "fees", "claims", "game_sessions", "balance_refresh"])]
 async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
-    // Diagnostic: confirm the hook fires (visible in docker logs juno-skylab)
-    ic_cdk::print(format!(
-        "[HOOK] on_set_doc fired for collection='{}' key='{}'",
+    logging::log_info("Hooks", &format!(
+        "on_set_doc fired for collection='{}' key='{}'",
         context.data.collection, context.data.key
     ));
 
@@ -310,8 +310,8 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
         leaderboard_doc,
     )?;
 
-    ic_cdk::print(format!(
-        "Leaderboard updated for user {}: score={}, nickname={}",
+    logging::log_info("Leaderboard", &format!(
+        "Updated for user {}: score={}, nickname={}",
         context.data.key, profile.stats.high_score, profile.nickname
     ));
 
@@ -342,7 +342,7 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                     version: context.data.data.after.version,
                 };
                 set_doc_store(context.caller, context.data.collection.clone(), context.data.key.clone(), updated_doc)?;
-                ic_cdk::print(format!("Fee rejected: no profile for {}", user_key));
+                logging::log_error("Fees", &format!("Fee rejected: no profile for {}", user_key));
                 return Ok(());
             }
             if let Some(ref user_doc_inner) = user_doc {
@@ -373,7 +373,7 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                         version: context.data.data.after.version,
                     };
                     set_doc_store(context.caller, context.data.collection.clone(), context.data.key.clone(), updated_doc)?;
-                    ic_cdk::print(format!(
+                    logging::log_error("Fees", &format!(
                         "Fee rejected: tx.from {} != caller wallet {}",
                         parsed.from, caller_wallet
                     ));
@@ -416,13 +416,13 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                     version: user_doc_inner.version,
                 };
                 set_doc_store(context.caller, "users".to_string(), user_key.clone(), updated_user)?;
-                ic_cdk::print(format!(
+                logging::log_info("Fees", &format!(
                     "Fee verified: {} tokens for user {}. New balance: {}",
                     verified_amount, user_key, user_profile.wallet.balance
                 ));
             } else {
-                ic_cdk::print(format!(
-                    "Warning: Fee verified but user profile not found for {}",
+                logging::log_warn("Fees", &format!(
+                    "Fee verified but user profile not found for {}",
                     context.caller.to_text()
                 ));
             }
@@ -452,7 +452,7 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                 updated_doc,
             )?;
 
-            ic_cdk::print(format!("Fee verification failed: {}", e));
+            logging::log_error("Fees", &format!("Fee verification failed: {}", e));
         }
     }
 
@@ -629,7 +629,7 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
 
             update_claim_doc(&context, &claim).await?;
 
-            ic_cdk::print(format!(
+            logging::log_info("Claims", &format!(
                 "Consolation claim signature generated for user {} amount {}",
                 context.caller.to_text(),
                 claim.amount
@@ -717,7 +717,7 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
 
             update_claim_doc(&context, &claim).await?;
 
-            ic_cdk::print(format!(
+            logging::log_info("Claims", &format!(
                 "Claim signature generated for user {} session {}",
                 context.caller.to_text(),
                 claim.game_session_id
@@ -742,7 +742,7 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
             stats.total_rewarded += claim.amount;
         })?;
 
-        ic_cdk::print(format!(
+        logging::log_info("Claims", &format!(
             "Claim completed for user {} session {}",
             context.caller.to_text(),
             claim.game_session_id
@@ -821,7 +821,7 @@ async fn on_balance_refresh(context: OnSetDocContext) -> Result<(), String> {
         Err(e) => {
             refresh.status = RefreshStatus::Failed;
             refresh.error = Some(e.clone());
-            ic_cdk::print(format!(
+            logging::log_error("Balance", &format!(
                 "Balance refresh failed for wallet {}: {}",
                 refresh.evm_wallet, e
             ));
@@ -842,7 +842,7 @@ async fn on_balance_refresh(context: OnSetDocContext) -> Result<(), String> {
     )?;
 
     if refresh.status == RefreshStatus::Completed {
-        ic_cdk::print(format!(
+        logging::log_info("Balance", &format!(
             "Balance refresh completed for wallet {}: {} tokens",
             refresh.evm_wallet,
             refresh.balance.unwrap_or(0)
@@ -854,16 +854,16 @@ async fn on_balance_refresh(context: OnSetDocContext) -> Result<(), String> {
 
 /// Process game session updates: update leaderboard active score and resolve expired top scores.
 async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> {
-    ic_cdk::print(format!(
-        "[HOOK] on_game_session_update: key='{}' data_len={}",
+    logging::log_debug("GameSession", &format!(
+        "on_game_session_update: key='{}' data_len={}",
         context.data.key,
         context.data.data.after.data.len()
     ));
 
     let session: GameSession = decode_doc_data(&context.data.data.after.data)?;
 
-    ic_cdk::print(format!(
-        "[HOOK] on_game_session_update: deserialized OK, ended_at={:?}, score={}",
+    logging::log_debug("GameSession", &format!(
+        "on_game_session_update: deserialized OK, ended_at={:?}, score={}",
         session.ended_at, session.score
     ));
 
@@ -929,7 +929,7 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
     )?;
 
     let new_expires = now_ms + config::SCORE_TTL_HOURS * 3_600_000;
-    ic_cdk::print(format!(
+    logging::log_info("Leaderboard", &format!(
         "Active score updated for user {}: score={}, expires_at={}",
         caller_key, session.score, new_expires
     ));
@@ -1032,7 +1032,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         // Banned user — clear their expires_at and skip
         clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
         TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
-        ic_cdk::print(format!(
+        logging::log_warn("Consolation", &format!(
             "Skipped consolation for banned user {}",
             winner_key
         ));
@@ -1042,7 +1042,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     // Require minimum games played before awarding consolation prize
     if winner_profile.stats.total_games_played < config::CONSOLATION_PRIZE_MIN_GAMES {
         clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
-        ic_cdk::print(format!(
+        logging::log_warn("Consolation", &format!(
             "Skipped consolation for {}: only {} games played (min {})",
             winner_key,
             winner_profile.stats.total_games_played,
@@ -1123,7 +1123,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     // Invalidate cache so next call re-discovers the new top scorer
     TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
 
-    ic_cdk::print(format!(
+    logging::log_info("Consolation", &format!(
         "Consolation prize of {} awarded to user {} (claim: {})",
         consolation_amount, winner_key, claim_key
     ));
@@ -1394,7 +1394,7 @@ async fn claim_authorize(
         };
         set_doc_store(caller, "users".to_string(), caller_text.clone(), ban_doc)?;
 
-        ic_cdk::print(format!(
+        logging::log_error("AntiCheat", &format!(
             "CHEAT_DETECTED: replay invalid for user {}. Offence #{}, banned_until={:?}",
             caller_text, user_profile.offence_count, user_profile.banned_until
         ));
@@ -1415,7 +1415,7 @@ async fn claim_authorize(
         };
         set_doc_store(caller, "users".to_string(), caller_text.clone(), ban_doc)?;
 
-        ic_cdk::print(format!(
+        logging::log_error("AntiCheat", &format!(
             "CHEAT_DETECTED: max keys exceeded for user {}. Offence #{}, banned_until={:?}",
             caller_text, user_profile.offence_count, user_profile.banned_until
         ));
