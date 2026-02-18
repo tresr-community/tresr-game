@@ -30,6 +30,9 @@ export class SpawnManager {
 
   // State
   private powerupDropCount: number = 0;
+  private escalationStep: number = 0;
+  private currentEnemySpawnMs: number = 0;
+  private currentBombSpawnMs: number = 0;
 
   // Dynamic entity references (set by MainScene as they become available)
   private player?: Player;
@@ -114,9 +117,14 @@ export class SpawnManager {
   setupTimers() {
     const entities = this.config.entities;
 
+    // Track current spawn delays for difficulty escalation
+    this.currentEnemySpawnMs = entities.enemy.spawner.delay_ms;
+    this.currentBombSpawnMs = entities.bomb.spawner.delay_ms;
+    this.escalationStep = 0;
+
     // Spawners
     this.spawnTimer = this.scene.time.addEvent({
-      delay: entities.enemy.spawner.delay_ms,
+      delay: this.currentEnemySpawnMs,
       callback: this.spawnEnemy,
       callbackScope: this,
       loop: true,
@@ -130,7 +138,7 @@ export class SpawnManager {
     });
     // Bomb spawner
     this.bombSpawnTimer = this.scene.time.addEvent({
-      delay: entities.bomb.spawner.delay_ms,
+      delay: this.currentBombSpawnMs,
       callback: this.spawnBomb,
       callbackScope: this,
       loop: true,
@@ -397,6 +405,56 @@ export class SpawnManager {
     if (this.bombSpawnTimer) this.bombSpawnTimer.paused = false;
   }
 
+  /**
+   * Check and apply difficulty escalation based on elapsed survival time.
+   * Reduces enemy and bomb spawn delays at configured intervals.
+   */
+  checkDifficultyEscalation(survivalTimer: number) {
+    const esc = this.config.difficulty_escalation;
+    if (!esc.enabled) return;
+
+    const elapsed = this.config.time_limit_seconds - survivalTimer;
+    const expectedStep = Math.floor(elapsed / esc.interval_seconds);
+    if (expectedStep <= this.escalationStep) return;
+
+    this.escalationStep = expectedStep;
+
+    // Recreate enemy spawn timer with reduced delay
+    this.currentEnemySpawnMs = Math.max(
+      esc.min_enemy_spawn_ms,
+      this.currentEnemySpawnMs * esc.enemy_spawn_multiplier
+    );
+    if (this.spawnTimer) {
+      this.spawnTimer.remove();
+      this.spawnTimer = this.scene.time.addEvent({
+        delay: this.currentEnemySpawnMs,
+        callback: this.spawnEnemy,
+        callbackScope: this,
+        loop: true,
+      });
+    }
+
+    // Recreate bomb spawn timer with reduced delay
+    this.currentBombSpawnMs = Math.max(
+      esc.min_bomb_spawn_ms,
+      this.currentBombSpawnMs * esc.bomb_spawn_multiplier
+    );
+    if (this.bombSpawnTimer) {
+      this.bombSpawnTimer.remove();
+      this.bombSpawnTimer = this.scene.time.addEvent({
+        delay: this.currentBombSpawnMs,
+        callback: this.spawnBomb,
+        callbackScope: this,
+        loop: true,
+      });
+    }
+
+    log.info(
+      COMPONENT_NAME,
+      `Difficulty escalated to step ${this.escalationStep}`
+    );
+  }
+
   shutdown() {
     // Destroy timers
     this.spawnTimer?.destroy();
@@ -411,6 +469,9 @@ export class SpawnManager {
 
     // Reset state
     this.powerupDropCount = 0;
+    this.escalationStep = 0;
+    this.currentEnemySpawnMs = 0;
+    this.currentBombSpawnMs = 0;
     this.player = undefined;
     this.boss = undefined;
     this.tresrBot = undefined;
