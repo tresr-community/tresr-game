@@ -1,4 +1,4 @@
-//! Build script — reads config/tresr.yaml and generates Rust constants.
+//! Build script — reads config/tresr.yaml and server-constants.ts to generate Rust constants.
 //!
 //! Generated file: `$OUT_DIR/generated_config.rs`
 //! Network selection: `SATELLITE_NETWORK` env var (default: "mainnet")
@@ -78,6 +78,7 @@ struct Icp {
 fn main() {
     // Re-run when config changes
     println!("cargo::rerun-if-changed=../../config/tresr.yaml");
+    println!("cargo::rerun-if-changed=../../src/lib/config/server-constants.ts");
     println!("cargo::rerun-if-env-changed=SATELLITE_NETWORK");
 
     // Read config
@@ -93,6 +94,36 @@ fn main() {
     let config: Config = serde_yaml::from_str(&yaml_str).unwrap_or_else(|e| {
         panic!("Failed to parse tresr.yaml: {}", e);
     });
+
+    // Read SERVER_CONFIG_HASH from auto-generated server-constants.ts (#41)
+    let constants_path = Path::new("../../src/lib/config/server-constants.ts");
+    let constants_str = fs::read_to_string(constants_path).unwrap_or_else(|e| {
+        panic!(
+            "Failed to read server-constants.ts at {}: {}",
+            constants_path.display(),
+            e
+        )
+    });
+    let config_hash = constants_str
+        .lines()
+        .find_map(|line| {
+            let trimmed = line.trim();
+            if trimmed.starts_with("export const SERVER_CONFIG_HASH") {
+                // Extract hex string between quotes
+                trimmed.split('"').nth(1)
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| {
+            panic!("SERVER_CONFIG_HASH not found in server-constants.ts")
+        });
+    // Validate it looks like a SHA-256 hex digest
+    assert!(
+        config_hash.len() == 64 && config_hash.chars().all(|c| c.is_ascii_hexdigit()),
+        "SERVER_CONFIG_HASH is not a valid 64-char hex string: '{}'",
+        config_hash
+    );
 
     // Select network (default: mainnet)
     let network = env::var("SATELLITE_NETWORK").unwrap_or_else(|_| "mainnet".to_string());
@@ -170,6 +201,9 @@ pub const CONSOLATION_PRIZE_MAX: u64 = {consolation_prize_max};
 
 /// Minimum games played to qualify for consolation prize (from server.highscore.consolation_prize_min_games)
 pub const CONSOLATION_PRIZE_MIN_GAMES: u64 = {consolation_prize_min_games};
+
+/// SHA-256 config hash for anti-cheat validation (from server-constants.ts, ticket #41)
+pub const CONFIG_HASH: &str = "{config_hash}";
 "#,
         network = network,
         ban_durations = ban_durations,
@@ -187,6 +221,7 @@ pub const CONSOLATION_PRIZE_MIN_GAMES: u64 = {consolation_prize_min_games};
         consolation_prize_percent = config.server.highscore.consolation_prize_percent,
         consolation_prize_max = config.server.highscore.consolation_prize_max,
         consolation_prize_min_games = config.server.highscore.consolation_prize_min_games,
+        config_hash = config_hash,
     );
 
     // Write to OUT_DIR

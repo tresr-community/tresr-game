@@ -1486,7 +1486,42 @@ async fn claim_authorize(
         _ => return Err("No linked EVM wallet".to_string()),
     };
 
-    // 1. Fetch session from Datastore
+    // 1a. Validate config hash from replay payload (#41)
+    let client_config_hash = extract_config_hash(&replay_inputs).map_err(|e| {
+        logging::log_error(
+            "AntiCheat",
+            &format!("Failed to parse replay payload for user {}: {}", caller_text, e),
+        );
+        format!("Invalid replay payload: {}", e)
+    })?;
+
+    if client_config_hash != config::CONFIG_HASH {
+        // Config tampered — apply ban
+        apply_ban(&mut user_profile);
+        let ban_doc = SetDoc {
+            data: encode_doc_data(&user_profile)?,
+            description: Some("Ban applied: config hash mismatch".to_string()),
+            version: user_doc_version,
+        };
+        set_doc_store(caller, "users".to_string(), caller_text.clone(), ban_doc)?;
+
+        logging::log_error(
+            "AntiCheat",
+            &format!(
+                "CHEAT_DETECTED: config hash mismatch for user {}. Expected={}, got={}. Offence #{}, banned_until={:?}",
+                caller_text, config::CONFIG_HASH, client_config_hash,
+                user_profile.offence_count, user_profile.banned_until
+            ),
+        );
+
+        return Err(format!(
+            "CHEAT_DETECTED: Config hash mismatch. Offence #{}, banned_until={}",
+            user_profile.offence_count,
+            user_profile.banned_until.unwrap_or(0)
+        ));
+    }
+
+    // 1b. Fetch session from Datastore
     let session_doc = get_doc_store(caller, "game_sessions".to_string(), session_id.clone())?;
     let session: GameSession = match session_doc {
         Some(ref doc) => decode_doc_data(&doc.data)?,
@@ -1655,6 +1690,47 @@ async fn replay_verify_stub(
     boss_defeated: bool,
 ) -> Result<(u64, bool), String> {
     Ok((reported_keys, boss_defeated))
+}
+
+/// Parse the binary replay payload to extract the config hash (#41).
+///
+/// Payload format (length-prefixed, built by MainScene):
+///   [4 bytes input length (big-endian)][inputs][configHash (64 UTF-8 bytes)][4 bytes seed length][seed]
+///
+/// Returns the config hash as a UTF-8 string, or an error if the payload is malformed.
+fn extract_config_hash(payload: &[u8]) -> Result<String, String> {
+    // Need at least 4 bytes for input length prefix
+    if payload.len() < 4 {
+        return Err("Payload too short: missing input length".to_string());
+    }
+
+    let input_len = u32::from_be_bytes(
+        payload[0..4]
+            .try_into()
+            .map_err(|_| "Failed to read input length")?,
+    ) as usize;
+
+    let hash_start = 4 + input_len;
+    // Config hash is a 64-char hex SHA-256 digest (64 UTF-8 bytes)
+    let hash_end = hash_start + 64;
+    if payload.len() < hash_end {
+        return Err(format!(
+            "Payload too short for config hash: need {} bytes, have {}",
+            hash_end,
+            payload.len()
+        ));
+    }
+
+    let hash_bytes = &payload[hash_start..hash_end];
+    let hash_str =
+        std::str::from_utf8(hash_bytes).map_err(|_| "Config hash is not valid UTF-8")?;
+
+    // Validate hex format
+    if !hash_str.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err("Config hash contains non-hex characters".to_string());
+    }
+
+    Ok(hash_str.to_string())
 }
 
 // =============================================================================
