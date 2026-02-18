@@ -122,6 +122,7 @@ jobs:
             echo "TOKEN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.tresr_token_contract" config/tresr.yaml)"
             echo "ORACLE_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.oracle_address" config/tresr.yaml)"
             echo "ADMIN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.safe_address" config/tresr.yaml)"
+            echo "VAULT_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.vault_contract" config/tresr.yaml)"
           } >> "$GITHUB_OUTPUT"
 
       - id: validate_config
@@ -163,15 +164,29 @@ jobs:
           DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
           SNOWTRACE_API_KEY: ${{ secrets.SNOWTRACE_API_KEY }}
         run: |
-          forge script script/DeployTestToken.s.sol:DeployTestToken \
+          forge script script/DeployToken.s.sol:DeployTestToken \
             --root contracts \
             --rpc-url ${{ steps.read_config.outputs.RPC_URL }} \
             --broadcast \
             --verify \
             --etherscan-api-key "$SNOWTRACE_API_KEY"
 
-      - id: deploy_contracts
-        name: Deploy Contracts
+      - id: detect_vault_mode
+        name: Detect Vault Deploy Mode
+        run: |
+          VAULT_ADDR="${{ steps.read_config.outputs.VAULT_ADDRESS }}"
+          ZERO="0x0000000000000000000000000000000000000000"
+          if [[ "$VAULT_ADDR" == "$ZERO" || -z "$VAULT_ADDR" || "$VAULT_ADDR" == "null" ]]; then
+            echo "mode=deploy" >> "$GITHUB_OUTPUT"
+            echo "🆕 Vault mode: FRESH DEPLOY (no existing proxy)"
+          else
+            echo "mode=upgrade" >> "$GITHUB_OUTPUT"
+            echo "⬆️ Vault mode: UPGRADE (existing proxy at $VAULT_ADDR)"
+          fi
+
+      - id: deploy_vault
+        name: Deploy Vault (Fresh Proxy)
+        if: steps.detect_vault_mode.outputs.mode == 'deploy'
         shell: devenv shell --quiet bash -- -e {0}
         env:
           DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
@@ -186,6 +201,87 @@ jobs:
             --broadcast \
             --verify \
             --etherscan-api-key "$SNOWTRACE_API_KEY"
+
+      - id: upgrade_vault
+        name: Upgrade Vault (New Implementation)
+        if: steps.detect_vault_mode.outputs.mode == 'upgrade'
+        shell: devenv shell --quiet bash -- -e {0}
+        env:
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          VAULT_PROXY_ADDRESS: ${{ steps.read_config.outputs.VAULT_ADDRESS }}
+          SNOWTRACE_API_KEY: ${{ secrets.SNOWTRACE_API_KEY }}
+        run: |
+          forge script script/UpgradeVault.s.sol:UpgradeVault \
+            --root contracts \
+            --rpc-url ${{ steps.read_config.outputs.RPC_URL }} \
+            --broadcast \
+            --verify \
+            --etherscan-api-key "$SNOWTRACE_API_KEY"
+
+      - id: upgrade_summary
+        name: Upgrade Multisig Summary
+        if: steps.detect_vault_mode.outputs.mode == 'upgrade'
+        run: |
+          CHAIN_ID="${{ steps.read_config.outputs.CHAIN_ID }}"
+          PROXY="${{ steps.read_config.outputs.VAULT_ADDRESS }}"
+          NETWORK="${{ steps.resolve_environment.outputs.network }}"
+          LATEST="contracts/broadcast/UpgradeVault.s.sol/${CHAIN_ID}/run-latest.json"
+
+          # Extract new implementation address from broadcast
+          NEW_IMPL=""
+          if [[ -f "$LATEST" ]]; then
+            NEW_IMPL=$(jq -r '.transactions[] | select(.transactionType == "CREATE") | .contractAddress' "$LATEST" 2>/dev/null | head -1)
+          fi
+
+          if [[ -z "$NEW_IMPL" ]]; then
+            echo "::warning::Could not extract new implementation address from broadcast"
+            NEW_IMPL="(check step logs)"
+          fi
+
+          # Compute upgradeToAndCall calldata:
+          #   selector: 4f1ef286 (upgradeToAndCall(address,bytes))
+          #   arg1: new implementation address (padded to 32 bytes)
+          #   arg2: offset to bytes (0x40)
+          #   arg3: length of bytes (0x00 = empty)
+          IMPL_PADDED=$(echo "$NEW_IMPL" | sed 's/0x//' | tr '[:upper:]' '[:lower:]')
+          IMPL_PADDED=$(printf '%064s' "$IMPL_PADDED" | tr ' ' '0')
+          CALLDATA="0x4f1ef286${IMPL_PADDED}0000000000000000000000000000000000000000000000000000000000000040""0000000000000000000000000000000000000000000000000000000000000000"
+
+          # Set explorer URL
+          if [[ "$NETWORK" == "mainnet" ]]; then
+            EXPLORER="https://snowtrace.io"
+          else
+            EXPLORER="https://testnet.snowtrace.io"
+          fi
+
+          {
+            echo "## 🔐 Multisig Action Required"
+            echo ""
+            echo "A new Vault implementation was deployed. Submit the upgrade transaction to your Gnosis Safe."
+            echo ""
+            echo "### Addresses"
+            echo ""
+            echo "| | | |"
+            echo "|---|---|---|"
+            echo "| **Proxy** | \`${PROXY}\` | [View ↗](${EXPLORER}/address/${PROXY}) |"
+            echo "| **New Impl** | \`${NEW_IMPL}\` | [View ↗](${EXPLORER}/address/${NEW_IMPL}) |"
+            echo "| **Network** | ${NETWORK} | |"
+            echo ""
+            echo "### Safe Transaction"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| **To** | \`${PROXY}\` |"
+            echo "| **Value** | \`0\` |"
+            echo "| **Data** | _(see below)_ |"
+            echo ""
+            echo '```'
+            echo "${CALLDATA}"
+            echo '```'
+            echo ""
+            echo "---"
+            echo "*Paste the above calldata into your Safe's **Transaction Builder** → **Custom data**.*"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - id: deploy_summary
         name: Deploy Summary

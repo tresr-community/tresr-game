@@ -1,4 +1,5 @@
 # Auto-generated files
+config/config-server.json
 public/config-client.json
 public/precache-manifest.json
 public/workers/

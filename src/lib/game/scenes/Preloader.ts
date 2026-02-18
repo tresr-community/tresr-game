@@ -7,9 +7,15 @@ import {getAuthState} from "@/lib/auth";
 import {getUserProfile} from "@/lib/user";
 import {getSessionId} from "@/lib/game/fee-gate";
 
-// Loading screen config interface (spinner only — progress bar + text removed in cinematic rewrite)
+// Loading screen config interface
 interface LoadingScreenConfig {
+  mode: "sprite" | "video";
   spinner: {
+    y_offset: number;
+  };
+  video?: {
+    path: string;
+    scale: number;
     y_offset: number;
   };
 }
@@ -25,12 +31,18 @@ export class Preloader extends Phaser.Scene {
   private introEndedHandler: (() => void) | null = null;
   private introErrorHandler: (() => void) | null = null;
   private introPlayingHandler: (() => void) | null = null;
-  private spinner!: Phaser.GameObjects.Sprite;
+  private spinner?: Phaser.GameObjects.Sprite;
+  private loaderMode: "sprite" | "video" = "sprite";
   private wallpaperKey: string = "";
   private subtitleText?: Phaser.GameObjects.Text;
   private typewriterDone: boolean = false;
   private typewriterTimer?: Phaser.Time.TimerEvent;
+  private charDelay: number = 50; // Default; overridden by audio duration
   private readyCheckTimer?: Phaser.Time.TimerEvent;
+  // DOM overlay elements for video loader mode
+  private overlayEl?: HTMLDivElement;
+  private overlayTextContainer?: HTMLDivElement;
+  private domTypewriterTimeoutId?: number;
 
   constructor() {
     super(SCENE_KEYS.PRELOADER);
@@ -45,22 +57,33 @@ export class Preloader extends Phaser.Scene {
     log.info(COMPONENT_NAME, "Loading assets...");
 
     const {width, height} = this.cameras.main;
-    const loadingConfig: LoadingScreenConfig =
-      clientConfig.gameplay.loading_screen;
+    const loadingConfig = clientConfig.gameplay
+      .loading_screen as unknown as LoadingScreenConfig;
 
-    const spinnerConfig = loadingConfig.spinner;
+    this.loaderMode = loadingConfig.mode ?? "sprite";
 
-    // Display the spinning gold coin loader (preloaded in BootScene)
-    this.spinner = this.add.sprite(
-      width / 2,
-      height / 2 + spinnerConfig.y_offset,
-      "loader"
-    );
-    this.spinner.setOrigin(0.5);
-    this.spinner.setScale(
-      SpriteManager.getScaleFactor(this.spritesConfig, "loader") * 0.5
-    );
-    this.spinner.play("loader_idle");
+    if (this.loaderMode === "video" && loadingConfig.video) {
+      // Video mode: create a DOM <img> overlay displaying the animated WebP
+      this.createVideoLoader(loadingConfig.video);
+    } else {
+      // Sprite mode: display the spinning gold coin loader (preloaded in BootScene)
+      const spinnerConfig = loadingConfig.spinner;
+      this.spinner = this.add.sprite(
+        width / 2,
+        height / 2 + spinnerConfig.y_offset,
+        "loader"
+      );
+      this.spinner.setOrigin(0.5);
+      this.spinner.setScale(
+        SpriteManager.getScaleFactor(
+          this.spritesConfig,
+          "loader",
+          height,
+          clientConfig.display.design_height
+        ) * 0.5
+      );
+      this.spinner.play("loader_idle");
+    }
 
     // Start intro narration (async — does not block Phaser loader)
     this.startIntroNarration();
@@ -77,6 +100,109 @@ export class Preloader extends Phaser.Scene {
       this.showWallpaperBackground,
       this
     );
+  }
+
+  /**
+   * Create a full-screen DOM overlay displaying the animated WebP video.
+   * Sits above the Phaser canvas, HUD, touch controls, and header (z-index 90)
+   * so the intro is a true full-screen cinema experience.
+   * Contains a glassmorphism panel with terminal-style typewriter text.
+   */
+  private createVideoLoader(videoConfig: {
+    path: string;
+    scale: number;
+    y_offset: number;
+  }) {
+    // Full-screen overlay — covers everything except portrait warning & toasts
+    const overlay = document.createElement("div");
+    overlay.id = "video-intro-overlay";
+    overlay.style.cssText = `
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      transition: opacity 0.8s ease;
+    `;
+
+    // Animated WebP background (plays natively via CSS)
+    const videoBg = document.createElement("div");
+    videoBg.style.cssText = `
+      position: absolute;
+      inset: 0;
+      background-image: url('${videoConfig.path}');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    `;
+    overlay.appendChild(videoBg);
+
+    // Subtle vignette gradient for text contrast
+    const vignette = document.createElement("div");
+    vignette.style.cssText = `
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(0,0,0,0.1) 40%, rgba(0,0,0,0.5) 100%);
+      pointer-events: none;
+    `;
+    overlay.appendChild(vignette);
+
+    // Glassmorphism panel for narration text
+    const panel = document.createElement("div");
+    panel.style.cssText = `
+      position: relative;
+      width: 85%;
+      max-width: 700px;
+      margin-bottom: 2%;
+      padding: 1.2rem 1.5rem;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 16px;
+      border: 1px solid rgba(0, 255, 136, 0.15);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+      max-height: 35vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 100%);
+      mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 100%);
+    `;
+    overlay.appendChild(panel);
+
+    // Text container inside panel
+    const textContainer = document.createElement("div");
+    panel.appendChild(textContainer);
+
+    document.body.appendChild(overlay);
+    this.overlayEl = overlay;
+    this.overlayTextContainer = textContainer;
+
+    log.info(COMPONENT_NAME, `Video loader: ${videoConfig.path} (DOM overlay)`);
+  }
+
+  /**
+   * Fade out and remove the video DOM overlay.
+   * Reveals the Phaser canvas (and camera fade-to-black) beneath.
+   */
+  private removeVideoLoader(fadeDuration: number = 800): Promise<void> {
+    return new Promise((resolve) => {
+      if (!this.overlayEl) {
+        resolve();
+        return;
+      }
+
+      this.overlayEl.style.opacity = "0";
+
+      setTimeout(() => {
+        this.overlayEl?.remove();
+        this.overlayEl = undefined;
+        this.overlayTextContainer = undefined;
+        resolve();
+      }, fadeDuration);
+    });
   }
 
   private showWallpaperBackground() {
@@ -111,10 +237,16 @@ export class Preloader extends Phaser.Scene {
     });
   }
 
-  private startTypewriter() {
+  private startTypewriter(charDelay?: number) {
     const introText = clientConfig.app.narration_text.intro;
     if (!introText) {
       this.typewriterDone = true;
+      return;
+    }
+
+    // Video mode: use DOM-based typewriter in the overlay panel
+    if (this.loaderMode === "video" && this.overlayTextContainer) {
+      this.startDomTypewriter(introText, charDelay);
       return;
     }
 
@@ -181,7 +313,7 @@ export class Preloader extends Phaser.Scene {
         this.subtitleText!.text += "\n\n";
         // Longer pause for paragraph break
         this.typewriterTimer = this.time.addEvent({
-          delay: 600,
+          delay: 600, // paragraph pause
           callback: advanceChar,
         });
         this.scrollToCurrentLine(lineHeight);
@@ -199,7 +331,7 @@ export class Preloader extends Phaser.Scene {
       }
 
       this.typewriterTimer = this.time.addEvent({
-        delay: 50,
+        delay: charDelay ?? this.charDelay,
         callback: advanceChar,
       });
     };
@@ -235,6 +367,99 @@ export class Preloader extends Phaser.Scene {
       duration: 300,
       ease: "Sine.easeOut",
     });
+  }
+
+  /**
+   * DOM-based typewriter for video mode (hybrid terminal + glassmorphism).
+   * Text types character-by-character; older paragraphs fade like a terminal log.
+   */
+  private startDomTypewriter(text: string, charDelay?: number) {
+    const container = this.overlayTextContainer!;
+    const paragraphs = text.split(/\n\n+/);
+    let paraIndex = 0;
+    let charIndex = 0;
+    let currentLine = this.addOverlayTextLine();
+
+    const advanceChar = () => {
+      if (paraIndex >= paragraphs.length) {
+        this.typewriterDone = true;
+        return;
+      }
+
+      const currentPara = paragraphs[paraIndex];
+
+      if (charIndex >= currentPara.length) {
+        // Paragraph complete — move to next
+        paraIndex++;
+        charIndex = 0;
+
+        if (paraIndex >= paragraphs.length) {
+          this.typewriterDone = true;
+          return;
+        }
+
+        // Fade older paragraphs (terminal scroll effect)
+        this.updateOverlayLineOpacities();
+        currentLine = this.addOverlayTextLine();
+
+        // Keep panel scrolled to newest text
+        const panel = container.parentElement;
+        if (panel) panel.scrollTop = panel.scrollHeight;
+
+        // Pause between paragraphs
+        this.domTypewriterTimeoutId = window.setTimeout(advanceChar, 600);
+        return;
+      }
+
+      currentLine.textContent =
+        (currentLine.textContent || "") + currentPara[charIndex];
+      charIndex++;
+
+      // Auto-scroll
+      const panel = container.parentElement;
+      if (panel) panel.scrollTop = panel.scrollHeight;
+
+      this.domTypewriterTimeoutId = window.setTimeout(
+        advanceChar,
+        charDelay ?? this.charDelay
+      );
+    };
+
+    advanceChar();
+  }
+
+  /** Create a new paragraph element in the overlay text container. */
+  private addOverlayTextLine(): HTMLParagraphElement {
+    const p = document.createElement("p");
+    p.style.cssText = `
+      color: #00ff88;
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(14px, 2.5vw, 18px);
+      text-align: center;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      text-shadow: 0 0 10px rgba(0, 255, 136, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9);
+      margin: 0 0 0.5em 0;
+      transition: opacity 0.6s ease;
+    `;
+    this.overlayTextContainer!.appendChild(p);
+    return p;
+  }
+
+  /** Fade older paragraphs — newest stays bright, older lines dim out. */
+  private updateOverlayLineOpacities() {
+    if (!this.overlayTextContainer) return;
+    const lines = Array.from(
+      this.overlayTextContainer.children
+    ) as HTMLElement[];
+    const count = lines.length;
+    for (let i = 0; i < count; i++) {
+      const age = count - i; // 1 = newest completed, higher = older
+      if (age <= 1) lines[i].style.opacity = "0.55";
+      else if (age === 2) lines[i].style.opacity = "0.3";
+      else if (age === 3) lines[i].style.opacity = "0.15";
+      else lines[i].style.opacity = "0.08";
+    }
   }
 
   private async startIntroNarration() {
@@ -273,10 +498,15 @@ export class Preloader extends Phaser.Scene {
     };
     this.introAudio.addEventListener("ended", this.introEndedHandler);
     this.introAudio.addEventListener("error", this.introErrorHandler);
+
+    // Compute per-character typewriter delay from audio duration so text
+    // and voice finish together (fixes 5-second desync).
+    this.computeCharDelay(this.introAudio);
+
     // Start typewriter only once audio actually begins playing (ticket #290)
     this.introPlayingHandler = () => {
       this.introPlayingHandler = null; // auto-clear after once fires
-      this.startTypewriter();
+      this.startTypewriter(this.charDelay);
     };
     this.introAudio.addEventListener("playing", this.introPlayingHandler, {
       once: true,
@@ -288,6 +518,40 @@ export class Preloader extends Phaser.Scene {
       this.typewriterDone = true; // skip typewriter if audio was blocked
       window.dispatchEvent(new Event("tresr:narration-complete"));
     });
+  }
+
+  /**
+   * Derive per-character typewriter delay from the narration audio duration.
+   * Ensures text finishes at the same time as the voice.
+   */
+  private computeCharDelay(audio: HTMLAudioElement) {
+    const introText = clientConfig.app.narration_text.intro;
+    if (!introText) return;
+
+    const compute = () => {
+      const duration = audio.duration;
+      // Guard: duration may be NaN/Infinity for streaming or failed loads
+      if (!Number.isFinite(duration) || duration <= 0) return;
+
+      const totalChars = introText.replace(/\n\n+/g, "").length;
+      const paragraphCount = introText.split(/\n\n+/).length;
+      const totalParagraphPauseMs = Math.max(0, paragraphCount - 1) * 600;
+      const availableMs = duration * 1000 - totalParagraphPauseMs;
+      // Floor of 30ms prevents unreadably fast text
+      this.charDelay = Math.max(30, Math.floor(availableMs / totalChars));
+
+      log.info(
+        COMPONENT_NAME,
+        `Audio duration: ${duration.toFixed(1)}s → charDelay: ${this.charDelay}ms`
+      );
+    };
+
+    // Duration may already be available (cached audio)
+    if (Number.isFinite(audio.duration) && audio.duration > 0) {
+      compute();
+    } else {
+      audio.addEventListener("loadedmetadata", compute, {once: true});
+    }
   }
 
   // Core SFX types — always preloaded (used every session within first seconds)
@@ -403,8 +667,19 @@ export class Preloader extends Phaser.Scene {
 
     // Clean up textures no longer needed after Preloader (OOM fix)
     // Loader spinner is only used in Preloader — free its GPU texture
-    if (this.textures.exists("loader")) {
+    if (this.loaderMode === "sprite" && this.textures.exists("loader")) {
       this.textures.remove("loader");
+    }
+
+    // Clean up video DOM overlay if still present
+    if (this.domTypewriterTimeoutId) {
+      clearTimeout(this.domTypewriterTimeoutId);
+      this.domTypewriterTimeoutId = undefined;
+    }
+    if (this.overlayEl) {
+      this.overlayEl.remove();
+      this.overlayEl = undefined;
+      this.overlayTextContainer = undefined;
     }
   }
 
@@ -417,29 +692,35 @@ export class Preloader extends Phaser.Scene {
 
     log.info(COMPONENT_NAME, "Starting cinematic transition...");
 
-    const cx = this.spinner.x;
-    const cy = this.spinner.y;
+    if (this.loaderMode === "sprite" && this.spinner) {
+      // Sprite mode: particle burst + zoom out
+      const cx = this.spinner.x;
+      const cy = this.spinner.y;
 
-    // Gold particle burst from spinner position
-    const particles = this.add.particles(cx, cy, "loader", {
-      frame: 0,
-      speed: {min: 100, max: 400},
-      angle: {min: 0, max: 360},
-      scale: {start: 0.3, end: 0},
-      lifespan: 800,
-      quantity: 30,
-      emitting: false,
-    });
-    particles.explode(30);
+      // Gold particle burst from spinner position
+      const particles = this.add.particles(cx, cy, "loader", {
+        frame: 0,
+        speed: {min: 100, max: 400},
+        angle: {min: 0, max: 360},
+        scale: {start: 0.3, end: 0},
+        lifespan: 800,
+        quantity: 30,
+        emitting: false,
+      });
+      particles.explode(30);
 
-    // Coin zoom + fade out
-    this.tweens.add({
-      targets: this.spinner,
-      scale: 15,
-      alpha: 0,
-      duration: 800,
-      ease: "Power2",
-    });
+      // Coin zoom + fade out
+      this.tweens.add({
+        targets: this.spinner,
+        scale: 15,
+        alpha: 0,
+        duration: 800,
+        ease: "Power2",
+      });
+    } else {
+      // Video mode: fade out the DOM overlay to reveal the game beneath
+      this.removeVideoLoader(800);
+    }
 
     // Fade subtitle text out
     if (this.subtitleText) {
@@ -453,8 +734,12 @@ export class Preloader extends Phaser.Scene {
     // Camera fade to black
     this.cameras.main.fadeOut(800, 0, 0, 0);
     this.cameras.main.once("camerafadeoutcomplete", () => {
-      // Clean up typewriter timer if still running
+      // Clean up typewriter timers if still running
       if (this.typewriterTimer) this.typewriterTimer.destroy();
+      if (this.domTypewriterTimeoutId) {
+        clearTimeout(this.domTypewriterTimeoutId);
+        this.domTypewriterTimeoutId = undefined;
+      }
       // Pass fee-gate session ID to MainScene (ticket #244)
       this.scene.start(SCENE_KEYS.MAIN, {sessionId: getSessionId()});
     });

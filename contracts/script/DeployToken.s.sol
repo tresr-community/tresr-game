@@ -2,12 +2,12 @@
 pragma solidity ^0.8.27;
 
 import "forge-std/Script.sol";
-import "../src/TresrTestToken.sol";
-import "../src/TresrFaucet.sol";
+import "../src/Token.sol";
+import "../src/Faucet.sol";
 
 /**
  * @title DeployTestToken
- * @dev Deploys RonToken + TresrFaucet and funds the faucet.
+ * @dev Deploys RonToken + TresrFaucet, configures bootup, and funds the faucet.
  *
  * Environment variables:
  *   DEPLOYER_PRIVATE_KEY  — EOA hot wallet key
@@ -21,15 +21,21 @@ contract DeployTestToken is Script {
 
         vm.startBroadcast(deployerKey);
 
-        // 1. Deploy token (mints 1B to deployer)
+        // 1. Deploy token (mints 468M to deployer)
         RonToken token = new RonToken(deployer);
         console.log("RonToken deployed at:", address(token));
 
-        // 2. Deploy faucet
+        // 2. Configure bootup — set deployer as LP and disable bootup
+        //    so testnet operates without transfer restrictions
+        token.setLiquidityPool(deployer);
+        token.setBootingUp(false);
+        console.log("Bootup configured: LP set to deployer, bootingUp disabled");
+
+        // 3. Deploy faucet
         TresrFaucet faucet = new TresrFaucet(address(token), deployer);
         console.log("TresrFaucet deployed at:", address(faucet));
 
-        // 3. Fund faucet (100k tokens by default)
+        // 4. Fund faucet (100k tokens by default)
         token.approve(address(faucet), faucetFundAmount);
         faucet.fund(faucetFundAmount);
         console.log("Faucet funded with:", faucetFundAmount);

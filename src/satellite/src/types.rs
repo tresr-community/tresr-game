@@ -274,6 +274,8 @@ fn default_theme() -> String {
 #[serde(rename_all = "camelCase")]
 pub struct LeaderboardEntry {
     pub nickname: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub avatar_url: Option<String>,
     // --- ALL TIME ---
     #[serde(default, deserialize_with = "deserialize_flexible_u64")]
     pub high_score: u64,

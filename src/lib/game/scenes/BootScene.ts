@@ -20,38 +20,49 @@ export class BootScene extends Phaser.Scene {
   preload() {
     log.info(COMPONENT_NAME, "Preloading...");
 
-    const loaderAnim = config.sprites.items.loader.anims.find(
-      (a) => a.name === "idle"
-    );
-    if (!loaderAnim) {
-      throw new Error("[FATAL] Loader idle animation not found in config");
-    }
+    const loaderMode = config.gameplay.loading_screen.mode ?? "sprite";
 
-    this.load.spritesheet("loader", loaderAnim.path, {
-      frameWidth: loaderAnim.frameWidth,
-      frameHeight: loaderAnim.frameHeight,
-    });
+    // Only preload the sprite sheet when using sprite mode
+    if (loaderMode === "sprite") {
+      const loaderAnim = config.sprites.items.loader.anims.find(
+        (a) => a.name === "idle"
+      );
+      if (!loaderAnim) {
+        throw new Error("[FATAL] Loader idle animation not found in config");
+      }
+
+      this.load.spritesheet("loader", loaderAnim.path, {
+        frameWidth: loaderAnim.frameWidth,
+        frameHeight: loaderAnim.frameHeight,
+      });
+    } else {
+      log.info(COMPONENT_NAME, "Video loader mode — skipping sprite preload");
+    }
   }
 
   create() {
     log.info(COMPONENT_NAME, "Starting Preloader...");
 
-    const loaderAnim = config.sprites.items.loader.anims.find(
-      (a) => a.name === "idle"
-    );
-    if (!loaderAnim) {
-      throw new Error("[FATAL] Loader idle animation not found in config");
-    }
+    const loaderMode = config.gameplay.loading_screen.mode ?? "sprite";
 
-    this.anims.create({
-      key: "loader_idle",
-      frames: this.anims.generateFrameNumbers("loader", {
-        start: 0,
-        end: loaderAnim.frames - 1,
-      }),
-      frameRate: loaderAnim.frameRate,
-      repeat: loaderAnim.repeat,
-    });
+    if (loaderMode === "sprite") {
+      const loaderAnim = config.sprites.items.loader.anims.find(
+        (a) => a.name === "idle"
+      );
+      if (!loaderAnim) {
+        throw new Error("[FATAL] Loader idle animation not found in config");
+      }
+
+      this.anims.create({
+        key: "loader_idle",
+        frames: this.anims.generateFrameNumbers("loader", {
+          start: 0,
+          end: loaderAnim.frames - 1,
+        }),
+        frameRate: loaderAnim.frameRate,
+        repeat: loaderAnim.repeat,
+      });
+    }
 
     this.scene.start(SCENE_KEYS.PRELOADER);
   }

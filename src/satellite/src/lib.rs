@@ -15,6 +15,7 @@
 //! - `balance_refresh`: Requests to sync balance from on-chain
 
 mod evm_rpc;
+mod logging;
 mod types;
 
 /// Build-time generated constants from config/tresr.yaml (see build.rs).
@@ -33,9 +34,8 @@ use junobuild_macros::{
 use junobuild_satellite::{
     AssertDeleteDocContext, AssertSetDocContext, OnDeleteAssetContext, OnDeleteDocContext,
     OnDeleteManyAssetsContext, OnDeleteManyDocsContext, OnSetDocContext, OnSetManyDocsContext,
-    OnUploadAssetContext, SetDoc, get_doc_store, include_satellite, list_docs_store, set_doc_store,
+    OnUploadAssetContext, SetDoc, get_doc_store, include_satellite, set_doc_store,
 };
-use junobuild_shared::types::list::ListParams;
 use junobuild_utils::{decode_doc_data, encode_doc_data};
 use libsecp256k1::{Message, RecoveryId, Signature, recover};
 use tiny_keccak::{Hasher, Keccak};
@@ -48,18 +48,37 @@ use types::{
 };
 
 /// Cached top active scorer to avoid full leaderboard scans on every session completion.
-/// Populated lazily on first call and updated when new higher scores are written.
+/// Populated lazily on first call from a persisted datastore document, and updated
+/// (with write-through) when new higher scores are written.
+///
+/// Previously this used a full `list_docs_store` scan on cold start which exceeded
+/// the 40B instruction limit (IC0522) as the leaderboard grew.
 #[derive(Clone)]
 struct TopScorerCache {
     key: String,
     score: u64,
     scored_at: u64,
-    expires_at: u64,
+    _expires_at: u64,
     owner: candid::Principal,
 }
 
+/// Serializable version of TopScorerCache for datastore persistence.
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+struct TopScorerCacheDoc {
+    key: String,
+    score: u64,
+    scored_at: u64,
+    expires_at: u64,
+    /// Principal stored as text for JSON serialization
+    owner_principal: String,
+}
+
 thread_local! {
-    static TOP_SCORER: RefCell<Option<TopScorerCache>> = const { RefCell::new(None) };
+    /// `Some(Some(..))` = cached top scorer
+    /// `Some(None)` = cache loaded, no active top scorer exists
+    /// `None` = cache not yet loaded from datastore (cold start)
+    static TOP_SCORER: RefCell<Option<Option<TopScorerCache>>> = const { RefCell::new(None) };
 }
 
 // =============================================================================
@@ -184,9 +203,7 @@ fn assert_fee_request(context: &AssertSetDocContext) -> Result<(), String> {
     // submitted twice under different keys. Combined with tx.from validation
     // (ticket #285), this prevents any user from replaying another's fee.
     if context.data.key != data.tx_hash {
-        return Err(
-            "Fee document key must equal the transaction hash.".to_string(),
-        );
+        return Err("Fee document key must equal the transaction hash.".to_string());
     }
 
     Ok(())
@@ -248,20 +265,40 @@ fn assert_delete_doc(_context: AssertDeleteDocContext) -> Result<(), String> {
 /// Juno only allows one #[on_set_doc] per module, so we dispatch by collection name
 #[on_set_doc(collections = ["users", "fees", "claims", "game_sessions", "balance_refresh"])]
 async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
-    // Diagnostic: confirm the hook fires (visible in docker logs juno-skylab)
-    ic_cdk::print(format!(
-        "[HOOK] on_set_doc fired for collection='{}' key='{}'",
-        context.data.collection, context.data.key
-    ));
+    let ic_start = ic_cdk::api::instruction_counter();
+    let collection = context.data.collection.clone();
+    let key = context.data.key.clone();
 
-    match context.data.collection.as_str() {
+    logging::log_info(
+        "Hooks",
+        &format!(
+            "on_set_doc fired for collection='{}' key='{}'",
+            collection, key
+        ),
+    );
+
+    let result = match context.data.collection.as_str() {
         "fees" => on_fee_created(context).await,
         "claims" => on_claim_created(context).await,
         "balance_refresh" => on_balance_refresh(context).await,
         "game_sessions" => on_game_session_update(context).await,
         "users" => on_user_profile_updated(context).await,
         _ => Ok(()),
-    }
+    };
+
+    let ic_used = ic_cdk::api::instruction_counter() - ic_start;
+    logging::log_debug(
+        "Perf",
+        &format!(
+            "on_set_doc '{}' key='{}': {} instructions ({:.2}% of 40B limit)",
+            collection,
+            key,
+            ic_used,
+            (ic_used as f64 / 40_000_000_000.0) * 100.0
+        ),
+    );
+
+    result
 }
 
 /// Sync sanitized leaderboard entry when a user profile is saved.
@@ -284,11 +321,11 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
     .flatten();
 
     let existing_version = existing_doc.as_ref().and_then(|d| d.version);
-    let existing = existing_doc
-        .and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
+    let existing = existing_doc.and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
 
     let entry = LeaderboardEntry {
         nickname: profile.nickname.clone(),
+        avatar_url: profile.preferences.avatar_url.clone(),
         high_score: profile.stats.high_score,
         games_won: profile.stats.total_games_won,
         active_score: existing.as_ref().map_or(0, |e| e.active_score),
@@ -310,10 +347,13 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
         leaderboard_doc,
     )?;
 
-    ic_cdk::print(format!(
-        "Leaderboard updated for user {}: score={}, nickname={}",
-        context.data.key, profile.stats.high_score, profile.nickname
-    ));
+    logging::log_info(
+        "Leaderboard",
+        &format!(
+            "Updated for user {}: score={}, nickname={}",
+            context.data.key, profile.stats.high_score, profile.nickname
+        ),
+    );
 
     Ok(())
 }
@@ -341,8 +381,16 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                     description: context.data.data.after.description.clone(),
                     version: context.data.data.after.version,
                 };
-                set_doc_store(context.caller, context.data.collection.clone(), context.data.key.clone(), updated_doc)?;
-                ic_cdk::print(format!("Fee rejected: no profile for {}", user_key));
+                set_doc_store(
+                    context.caller,
+                    context.data.collection.clone(),
+                    context.data.key.clone(),
+                    updated_doc,
+                )?;
+                logging::log_error(
+                    "Fees",
+                    &format!("Fee rejected: no profile for {}", user_key),
+                );
                 return Ok(());
             }
             if let Some(ref user_doc_inner) = user_doc {
@@ -357,7 +405,12 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                             description: context.data.data.after.description.clone(),
                             version: context.data.data.after.version,
                         };
-                        set_doc_store(context.caller, context.data.collection.clone(), context.data.key.clone(), updated_doc)?;
+                        set_doc_store(
+                            context.caller,
+                            context.data.collection.clone(),
+                            context.data.key.clone(),
+                            updated_doc,
+                        )?;
                         return Ok(());
                     }
                 };
@@ -372,11 +425,19 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                         description: context.data.data.after.description.clone(),
                         version: context.data.data.after.version,
                     };
-                    set_doc_store(context.caller, context.data.collection.clone(), context.data.key.clone(), updated_doc)?;
-                    ic_cdk::print(format!(
-                        "Fee rejected: tx.from {} != caller wallet {}",
-                        parsed.from, caller_wallet
-                    ));
+                    set_doc_store(
+                        context.caller,
+                        context.data.collection.clone(),
+                        context.data.key.clone(),
+                        updated_doc,
+                    )?;
+                    logging::log_error(
+                        "Fees",
+                        &format!(
+                            "Fee rejected: tx.from {} != caller wallet {}",
+                            parsed.from, caller_wallet
+                        ),
+                    );
                     return Ok(());
                 }
             }
@@ -415,16 +476,27 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                     description: user_doc_inner.description.clone(),
                     version: user_doc_inner.version,
                 };
-                set_doc_store(context.caller, "users".to_string(), user_key.clone(), updated_user)?;
-                ic_cdk::print(format!(
-                    "Fee verified: {} tokens for user {}. New balance: {}",
-                    verified_amount, user_key, user_profile.wallet.balance
-                ));
+                set_doc_store(
+                    context.caller,
+                    "users".to_string(),
+                    user_key.clone(),
+                    updated_user,
+                )?;
+                logging::log_info(
+                    "Fees",
+                    &format!(
+                        "Fee verified: {} tokens for user {}. New balance: {}",
+                        verified_amount, user_key, user_profile.wallet.balance
+                    ),
+                );
             } else {
-                ic_cdk::print(format!(
-                    "Warning: Fee verified but user profile not found for {}",
-                    context.caller.to_text()
-                ));
+                logging::log_warn(
+                    "Fees",
+                    &format!(
+                        "Fee verified but user profile not found for {}",
+                        context.caller.to_text()
+                    ),
+                );
             }
 
             // Update global stats: track total fees and burned amount
@@ -452,7 +524,7 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                 updated_doc,
             )?;
 
-            ic_cdk::print(format!("Fee verification failed: {}", e));
+            logging::log_error("Fees", &format!("Fee verification failed: {}", e));
         }
     }
 
@@ -465,7 +537,9 @@ fn update_global_stats<F: FnOnce(&mut GlobalStats)>(updater: F) -> Result<(), St
     let canister_id = ic_cdk::id();
     let key = "global".to_string();
 
-    let existing_doc = get_doc_store(canister_id, "stats".to_string(), key.clone()).ok().flatten();
+    let existing_doc = get_doc_store(canister_id, "stats".to_string(), key.clone())
+        .ok()
+        .flatten();
     let existing_version = existing_doc.as_ref().and_then(|d| d.version);
 
     let mut stats = existing_doc
@@ -512,8 +586,8 @@ async fn generate_claim_signature(
 
     // sessionId: decode 0x-prefixed hex to 32 raw bytes (bytes32)
     let session_hex = session_id.strip_prefix("0x").unwrap_or(session_id);
-    let session_bytes = hex::decode(session_hex)
-        .map_err(|_| format!("Invalid sessionId hex: {}", session_id))?;
+    let session_bytes =
+        hex::decode(session_hex).map_err(|_| format!("Invalid sessionId hex: {}", session_id))?;
     if session_bytes.len() != 32 {
         return Err(format!(
             "sessionId must be 32 bytes, got {}",
@@ -523,8 +597,8 @@ async fn generate_claim_signature(
 
     // address: decode 0x-prefixed hex to 20 raw bytes
     let addr_hex = user_address.strip_prefix("0x").unwrap_or(user_address);
-    let addr_bytes = hex::decode(addr_hex)
-        .map_err(|_| format!("Invalid address hex: {}", user_address))?;
+    let addr_bytes =
+        hex::decode(addr_hex).map_err(|_| format!("Invalid address hex: {}", user_address))?;
     if addr_bytes.len() != 20 {
         return Err(format!(
             "address must be 20 bytes, got {}",
@@ -618,22 +692,22 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
             };
 
             // Generate signature for consolation claim (keys_collected = 0)
-            let signature = generate_claim_signature(
-                &claim.game_session_id,
-                &wallet_addr,
-                claim.amount,
-                0,
-            ).await?;
+            let signature =
+                generate_claim_signature(&claim.game_session_id, &wallet_addr, claim.amount, 0)
+                    .await?;
             claim.signature = Some(signature);
             claim.status = ClaimStatus::ReadyForChain;
 
             update_claim_doc(&context, &claim).await?;
 
-            ic_cdk::print(format!(
-                "Consolation claim signature generated for user {} amount {}",
-                context.caller.to_text(),
-                claim.amount
-            ));
+            logging::log_info(
+                "Claims",
+                &format!(
+                    "Consolation claim signature generated for user {} amount {}",
+                    context.caller.to_text(),
+                    claim.amount
+                ),
+            );
         } else {
             // --- Boss kill claim: full game session validation ---
             // 1. Fetch Game Session
@@ -687,7 +761,8 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
                 &wallet_addr,
                 claim.amount,
                 session.keys_collected,
-            ).await?;
+            )
+            .await?;
             claim.signature = Some(signature);
             claim.status = ClaimStatus::ReadyForChain;
 
@@ -717,11 +792,14 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
 
             update_claim_doc(&context, &claim).await?;
 
-            ic_cdk::print(format!(
-                "Claim signature generated for user {} session {}",
-                context.caller.to_text(),
-                claim.game_session_id
-            ));
+            logging::log_info(
+                "Claims",
+                &format!(
+                    "Claim signature generated for user {} session {}",
+                    context.caller.to_text(),
+                    claim.game_session_id
+                ),
+            );
         }
 
     // Handle claim completion: verify transaction
@@ -732,7 +810,8 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
             &claim.game_session_id,
             claim.amount,
             claim.keys_collected,
-        ).await?;
+        )
+        .await?;
         claim.status = ClaimStatus::Completed;
 
         update_claim_doc(&context, &claim).await?;
@@ -742,11 +821,14 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
             stats.total_rewarded += claim.amount;
         })?;
 
-        ic_cdk::print(format!(
-            "Claim completed for user {} session {}",
-            context.caller.to_text(),
-            claim.game_session_id
-        ));
+        logging::log_info(
+            "Claims",
+            &format!(
+                "Claim completed for user {} session {}",
+                context.caller.to_text(),
+                claim.game_session_id
+            ),
+        );
     } else {
         // Already processed or invalid state
         return Ok(());
@@ -821,10 +903,13 @@ async fn on_balance_refresh(context: OnSetDocContext) -> Result<(), String> {
         Err(e) => {
             refresh.status = RefreshStatus::Failed;
             refresh.error = Some(e.clone());
-            ic_cdk::print(format!(
-                "Balance refresh failed for wallet {}: {}",
-                refresh.evm_wallet, e
-            ));
+            logging::log_error(
+                "Balance",
+                &format!(
+                    "Balance refresh failed for wallet {}: {}",
+                    refresh.evm_wallet, e
+                ),
+            );
         }
     }
 
@@ -842,11 +927,14 @@ async fn on_balance_refresh(context: OnSetDocContext) -> Result<(), String> {
     )?;
 
     if refresh.status == RefreshStatus::Completed {
-        ic_cdk::print(format!(
-            "Balance refresh completed for wallet {}: {} tokens",
-            refresh.evm_wallet,
-            refresh.balance.unwrap_or(0)
-        ));
+        logging::log_info(
+            "Balance",
+            &format!(
+                "Balance refresh completed for wallet {}: {} tokens",
+                refresh.evm_wallet,
+                refresh.balance.unwrap_or(0)
+            ),
+        );
     }
 
     Ok(())
@@ -854,18 +942,24 @@ async fn on_balance_refresh(context: OnSetDocContext) -> Result<(), String> {
 
 /// Process game session updates: update leaderboard active score and resolve expired top scores.
 async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> {
-    ic_cdk::print(format!(
-        "[HOOK] on_game_session_update: key='{}' data_len={}",
-        context.data.key,
-        context.data.data.after.data.len()
-    ));
+    logging::log_debug(
+        "GameSession",
+        &format!(
+            "on_game_session_update: key='{}' data_len={}",
+            context.data.key,
+            context.data.data.after.data.len()
+        ),
+    );
 
     let session: GameSession = decode_doc_data(&context.data.data.after.data)?;
 
-    ic_cdk::print(format!(
-        "[HOOK] on_game_session_update: deserialized OK, ended_at={:?}, score={}",
-        session.ended_at, session.score
-    ));
+    logging::log_debug(
+        "GameSession",
+        &format!(
+            "on_game_session_update: deserialized OK, ended_at={:?}, score={}",
+            session.ended_at, session.score
+        ),
+    );
 
     // Only process completed sessions
     if session.ended_at.is_none() {
@@ -876,17 +970,13 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
     let now_ms = time() / 1_000_000;
 
     // Read caller's user profile for nickname
-    let user_doc = get_doc_store(
-        context.caller,
-        "users".to_string(),
-        caller_key.clone(),
-    )?;
-    let nickname = match user_doc {
+    let user_doc = get_doc_store(context.caller, "users".to_string(), caller_key.clone())?;
+    let (nickname, avatar_url) = match user_doc {
         Some(ref doc) => {
             let profile: UserProfile = decode_doc_data(&doc.data)?;
-            profile.nickname
+            (profile.nickname, profile.preferences.avatar_url)
         }
-        None => "Unknown".to_string(),
+        None => ("Unknown".to_string(), None),
     };
 
     // Read existing leaderboard entry (keep raw Doc for version)
@@ -898,8 +988,8 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
     .map(|doc| doc);
 
     let existing_lb_version = existing_lb_doc.as_ref().and_then(|d| d.version);
-    let existing = existing_lb_doc
-        .and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
+    let existing =
+        existing_lb_doc.and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
 
     let prev_high = existing.as_ref().map_or(0, |e| e.high_score);
     let prev_won = existing.as_ref().map_or(0, |e| e.games_won);
@@ -907,8 +997,13 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
     // Update leaderboard entry with active score
     let entry = LeaderboardEntry {
         nickname,
+        avatar_url,
         high_score: prev_high.max(session.score),
-        games_won: if session.boss_defeated { prev_won + 1 } else { prev_won },
+        games_won: if session.boss_defeated {
+            prev_won + 1
+        } else {
+            prev_won
+        },
         active_score: session.score,
         scored_at: Some(now_ms),
         expires_at: Some(now_ms + config::SCORE_TTL_HOURS * 3_600_000),
@@ -929,31 +1024,37 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
     )?;
 
     let new_expires = now_ms + config::SCORE_TTL_HOURS * 3_600_000;
-    ic_cdk::print(format!(
-        "Active score updated for user {}: score={}, expires_at={}",
-        caller_key, session.score, new_expires
-    ));
+    logging::log_info(
+        "Leaderboard",
+        &format!(
+            "Active score updated for user {}: score={}, expires_at={}",
+            caller_key, session.score, new_expires
+        ),
+    );
 
     // Update the top scorer cache if this score beats the current top
-    TOP_SCORER.with(|cell| {
-        let mut cache = cell.borrow_mut();
-        let dominated = match &*cache {
-            None => true,
-            Some(c) => {
-                session.score > c.score
-                    || (session.score == c.score && now_ms < c.scored_at)
+    let new_cache = TopScorerCache {
+        key: caller_key.clone(),
+        score: session.score,
+        scored_at: now_ms,
+        _expires_at: new_expires,
+        owner: context.caller,
+    };
+    let should_update = TOP_SCORER.with(|cell| {
+        let cache = cell.borrow();
+        match &*cache {
+            None => true,       // Cold start — we'll set it
+            Some(None) => true, // No existing top scorer
+            Some(Some(c)) => {
+                session.score > c.score || (session.score == c.score && now_ms < c.scored_at)
             }
-        };
-        if dominated {
-            *cache = Some(TopScorerCache {
-                key: caller_key.clone(),
-                score: session.score,
-                scored_at: now_ms,
-                expires_at: new_expires,
-                owner: context.caller,
-            });
         }
     });
+    if should_update {
+        TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(Some(new_cache.clone())));
+        // Write-through to datastore for cold-start recovery
+        persist_top_scorer_cache(&new_cache)?;
+    }
 
     // Resolve any expired top scores (consolation prize)
     resolve_expired_top_score().await?;
@@ -963,23 +1064,23 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
 
 /// Check if the top active score has expired and award a consolation prize if so.
 /// Uses a thread-local cache to avoid full leaderboard scans on every call.
-/// The cache is populated lazily on first call and updated when new scores are written.
+/// On cold start, loads from a persisted datastore document (single read) instead
+/// of scanning the entire leaderboard collection (IC0522 fix).
 async fn resolve_expired_top_score() -> Result<(), String> {
     let now_ms = time() / 1_000_000;
 
     // Check or populate the cache
     let cached = TOP_SCORER.with(|cell| cell.borrow().clone());
     let cached = match cached {
-        Some(c) => c,
+        Some(Some(c)) => c,
+        Some(None) => return Ok(()), // Cache loaded, no active top scorer
         None => {
-            // Cold start: do one full scan to populate the cache
-            let top = scan_top_active_scorer()?;
-            if let Some(ref t) = top {
-                TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(t.clone()));
-            }
+            // Cold start: load from persisted datastore document (O(1) read)
+            let top = load_persisted_top_scorer()?;
+            TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(top.clone()));
             match top {
                 Some(t) => t,
-                None => return Ok(()), // No active scores at all
+                None => return Ok(()), // No persisted top scorer
             }
         }
     };
@@ -998,7 +1099,8 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         Some(ref doc) => decode_doc_data(&doc.data)?,
         None => {
             // Entry was deleted; clear cache and return
-            TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
+            TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(None));
+            clear_persisted_top_scorer_cache();
             return Ok(());
         }
     };
@@ -1007,7 +1109,8 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     let actual_expires = winner_entry.expires_at.unwrap_or(0);
     if actual_expires == 0 || winner_entry.active_score == 0 {
         // Entry was already cleared; invalidate cache and return
-        TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
+        TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(None));
+        clear_persisted_top_scorer_cache();
         return Ok(());
     }
 
@@ -1016,11 +1119,8 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     }
 
     // Check if winner is banned
-    let winner_profile_doc = get_doc_store(
-        winner_principal,
-        "users".to_string(),
-        winner_key.clone(),
-    )?;
+    let winner_profile_doc =
+        get_doc_store(winner_principal, "users".to_string(), winner_key.clone())?;
 
     let mut winner_profile: UserProfile = match winner_profile_doc {
         Some(ref doc) => decode_doc_data(&doc.data)?,
@@ -1031,23 +1131,27 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     if check_ban(&winner_profile).is_err() {
         // Banned user — clear their expires_at and skip
         clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
-        TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
-        ic_cdk::print(format!(
-            "Skipped consolation for banned user {}",
-            winner_key
-        ));
+        TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(None));
+        clear_persisted_top_scorer_cache();
+        logging::log_warn(
+            "Consolation",
+            &format!("Skipped consolation for banned user {}", winner_key),
+        );
         return Ok(());
     }
 
     // Require minimum games played before awarding consolation prize
     if winner_profile.stats.total_games_played < config::CONSOLATION_PRIZE_MIN_GAMES {
         clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
-        ic_cdk::print(format!(
-            "Skipped consolation for {}: only {} games played (min {})",
-            winner_key,
-            winner_profile.stats.total_games_played,
-            config::CONSOLATION_PRIZE_MIN_GAMES
-        ));
+        logging::log_warn(
+            "Consolation",
+            &format!(
+                "Skipped consolation for {}: only {} games played (min {})",
+                winner_key,
+                winner_profile.stats.total_games_played,
+                config::CONSOLATION_PRIZE_MIN_GAMES
+            ),
+        );
         return Ok(());
     }
 
@@ -1121,66 +1225,114 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     )?;
 
     // Invalidate cache so next call re-discovers the new top scorer
-    TOP_SCORER.with(|cell| *cell.borrow_mut() = None);
+    TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(None));
+    clear_persisted_top_scorer_cache();
 
-    ic_cdk::print(format!(
-        "Consolation prize of {} awarded to user {} (claim: {})",
-        consolation_amount, winner_key, claim_key
-    ));
+    logging::log_info(
+        "Consolation",
+        &format!(
+            "Consolation prize of {} awarded to user {} (claim: {})",
+            consolation_amount, winner_key, claim_key
+        ),
+    );
 
     Ok(())
 }
 
-/// Perform a full leaderboard scan to find the top active scorer.
-/// Only called on cold start (cache miss). Returns None if no active scores exist.
-fn scan_top_active_scorer() -> Result<Option<TopScorerCache>, String> {
+/// Load the persisted top scorer cache from the datastore.
+/// Returns None if no cache document exists (no one has scored yet).
+/// This is an O(1) single-document read, replacing the previous O(N) full scan.
+fn load_persisted_top_scorer() -> Result<Option<TopScorerCache>, String> {
     let canister_id = ic_cdk::id();
-    let result = list_docs_store(
-        canister_id,
-        "leaderboard".to_string(),
-        &ListParams {
-            matcher: None,
-            paginate: None,
-            order: None,
-            owner: None,
-        },
-    )?;
+    let doc = get_doc_store(canister_id, "stats".to_string(), "top_scorer".to_string())
+        .ok()
+        .flatten();
 
-    let mut top: Option<TopScorerCache> = None;
-
-    for (key, doc) in &result.items {
-        let entry: LeaderboardEntry = match decode_doc_data(&doc.data) {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-
-        if entry.expires_at.is_none() || entry.active_score == 0 {
-            continue;
-        }
-
-        let scored_at = entry.scored_at.unwrap_or(0);
-        let expires_at = entry.expires_at.unwrap_or(0);
-
-        let dominated = match &top {
-            None => true,
-            Some(c) => {
-                entry.active_score > c.score
-                    || (entry.active_score == c.score && scored_at < c.scored_at)
+    match doc {
+        None => Ok(None),
+        Some(doc) => {
+            let cached: TopScorerCacheDoc = decode_doc_data(&doc.data)?;
+            // A zeroed-out doc (from clear_persisted_top_scorer_cache) means "no top scorer"
+            if cached.score == 0 && cached.key.is_empty() {
+                return Ok(None);
             }
-        };
-
-        if dominated {
-            top = Some(TopScorerCache {
-                key: key.clone(),
-                score: entry.active_score,
-                scored_at,
-                expires_at,
-                owner: doc.owner,
-            });
+            let owner = candid::Principal::from_text(&cached.owner_principal)
+                .map_err(|e| format!("Invalid principal in top scorer cache: {}", e))?;
+            Ok(Some(TopScorerCache {
+                key: cached.key,
+                score: cached.score,
+                scored_at: cached.scored_at,
+                _expires_at: cached.expires_at,
+                owner,
+            }))
         }
     }
+}
 
-    Ok(top)
+/// Persist the top scorer cache to the datastore for cold-start recovery.
+/// Uses the `stats` collection with key `top_scorer` (same managed collection as GlobalStats).
+fn persist_top_scorer_cache(cache: &TopScorerCache) -> Result<(), String> {
+    let canister_id = ic_cdk::id();
+
+    let existing_version =
+        get_doc_store(canister_id, "stats".to_string(), "top_scorer".to_string())
+            .ok()
+            .flatten()
+            .and_then(|d| d.version);
+
+    let cache_doc = TopScorerCacheDoc {
+        key: cache.key.clone(),
+        score: cache.score,
+        scored_at: cache.scored_at,
+        expires_at: cache._expires_at,
+        owner_principal: cache.owner.to_text(),
+    };
+
+    let doc = SetDoc {
+        data: encode_doc_data(&cache_doc)?,
+        description: Some("Persisted top scorer cache".to_string()),
+        version: existing_version,
+    };
+
+    set_doc_store(
+        canister_id,
+        "stats".to_string(),
+        "top_scorer".to_string(),
+        doc,
+    )?;
+    Ok(())
+}
+
+/// Clear the persisted top scorer cache (e.g., after consolation prize awarded).
+fn clear_persisted_top_scorer_cache() {
+    // Write an empty/zeroed entry rather than deleting, to avoid needing delete_doc_store
+    let canister_id = ic_cdk::id();
+    let existing_version =
+        get_doc_store(canister_id, "stats".to_string(), "top_scorer".to_string())
+            .ok()
+            .flatten()
+            .and_then(|d| d.version);
+
+    let empty = TopScorerCacheDoc {
+        key: String::new(),
+        score: 0,
+        scored_at: 0,
+        expires_at: 0,
+        owner_principal: ic_cdk::id().to_text(),
+    };
+
+    let doc = SetDoc {
+        data: encode_doc_data(&empty).unwrap_or_default(),
+        description: Some("Top scorer cache cleared".to_string()),
+        version: existing_version,
+    };
+
+    let _ = set_doc_store(
+        canister_id,
+        "stats".to_string(),
+        "top_scorer".to_string(),
+        doc,
+    );
 }
 
 /// Clear the expires_at on a leaderboard entry to prevent re-processing.
@@ -1204,12 +1356,7 @@ fn clear_leaderboard_expiry(
         version: existing_version,
     };
 
-    set_doc_store(
-        owner,
-        "leaderboard".to_string(),
-        key.to_string(),
-        doc,
-    )?;
+    set_doc_store(owner, "leaderboard".to_string(), key.to_string(), doc)?;
 
     Ok(())
 }
@@ -1316,6 +1463,7 @@ async fn claim_authorize(
     fee_tx_hash: String,
     replay_inputs: Vec<u8>,
 ) -> Result<(u128, Vec<u8>), String> {
+    let ic_start = ic_cdk::api::instruction_counter();
     let caller = ic_cdk::caller();
     let caller_text = caller.to_text();
 
@@ -1339,11 +1487,7 @@ async fn claim_authorize(
     };
 
     // 1. Fetch session from Datastore
-    let session_doc = get_doc_store(
-        caller,
-        "game_sessions".to_string(),
-        session_id.clone(),
-    )?;
+    let session_doc = get_doc_store(caller, "game_sessions".to_string(), session_id.clone())?;
     let session: GameSession = match session_doc {
         Some(ref doc) => decode_doc_data(&doc.data)?,
         None => return Err("Game session not found".to_string()),
@@ -1371,9 +1515,8 @@ async fn claim_authorize(
     let fee_amount: u128 = (parsed_fee.amount as u128) * 1_000_000_000_000_000_000u128;
 
     // 3. Query vault balance via EVM RPC
-    let vault_balance_tokens = evm_rpc::get_token_balance(
-        crate::config::VAULT_CONTRACT_ADDRESS,
-    ).await?;
+    let vault_balance_tokens =
+        evm_rpc::get_token_balance(crate::config::VAULT_CONTRACT_ADDRESS).await?;
     let vault_balance: u128 = (vault_balance_tokens as u128) * 1_000_000_000_000_000_000u128;
 
     if vault_balance < 1_000_000_000_000_000_000u128 {
@@ -1383,7 +1526,13 @@ async fn claim_authorize(
     // 4. Verify replay
     // TODO: Replace with real deterministic replay verification engine
     // Tracked in separate issue — for now, use stub that trusts reported values
-    let (verified_keys, boss_killed) = replay_verify_stub(&replay_inputs, vault_balance, reported_keys, session.boss_defeated).await?;
+    let (verified_keys, boss_killed) = replay_verify_stub(
+        &replay_inputs,
+        vault_balance,
+        reported_keys,
+        session.boss_defeated,
+    )
+    .await?;
     if verified_keys != reported_keys || !boss_killed {
         // Cheat detected — apply ban
         apply_ban(&mut user_profile);
@@ -1394,10 +1543,13 @@ async fn claim_authorize(
         };
         set_doc_store(caller, "users".to_string(), caller_text.clone(), ban_doc)?;
 
-        ic_cdk::print(format!(
-            "CHEAT_DETECTED: replay invalid for user {}. Offence #{}, banned_until={:?}",
-            caller_text, user_profile.offence_count, user_profile.banned_until
-        ));
+        logging::log_error(
+            "AntiCheat",
+            &format!(
+                "CHEAT_DETECTED: replay invalid for user {}. Offence #{}, banned_until={:?}",
+                caller_text, user_profile.offence_count, user_profile.banned_until
+            ),
+        );
 
         return Err(format!(
             "CHEAT_DETECTED: Replay invalid. Offence #{}, banned_until={}",
@@ -1415,10 +1567,13 @@ async fn claim_authorize(
         };
         set_doc_store(caller, "users".to_string(), caller_text.clone(), ban_doc)?;
 
-        ic_cdk::print(format!(
-            "CHEAT_DETECTED: max keys exceeded for user {}. Offence #{}, banned_until={:?}",
-            caller_text, user_profile.offence_count, user_profile.banned_until
-        ));
+        logging::log_error(
+            "AntiCheat",
+            &format!(
+                "CHEAT_DETECTED: max keys exceeded for user {}. Offence #{}, banned_until={:?}",
+                caller_text, user_profile.offence_count, user_profile.banned_until
+            ),
+        );
 
         return Err(format!(
             "CHEAT_DETECTED: Max {} keys. Offence #{}, banned_until={}",
@@ -1453,12 +1608,13 @@ async fn claim_authorize(
         &wallet_addr,
         amount as u64,
         session.keys_collected,
-    ).await?;
+    )
+    .await?;
 
     // Convert hex signature to bytes for return
     let sig_clean = signature_hex.strip_prefix("0x").unwrap_or(&signature_hex);
-    let signature_bytes = hex::decode(sig_clean)
-        .map_err(|e| format!("Failed to decode signature hex: {}", e))?;
+    let signature_bytes =
+        hex::decode(sig_clean).map_err(|e| format!("Failed to decode signature hex: {}", e))?;
 
     // Mark session as claimed to prevent double-claim race
     let mut claimed_session = session.clone();
@@ -1468,7 +1624,23 @@ async fn claim_authorize(
         description: Some("claim_authorize: marked reward_claimed".to_string()),
         version: session_doc.as_ref().unwrap().version,
     };
-    set_doc_store(caller, "game_sessions".to_string(), session_id.clone(), claimed_doc)?;
+    set_doc_store(
+        caller,
+        "game_sessions".to_string(),
+        session_id.clone(),
+        claimed_doc,
+    )?;
+
+    let ic_used = ic_cdk::api::instruction_counter() - ic_start;
+    logging::log_debug(
+        "Perf",
+        &format!(
+            "claim_authorize session='{}': {} instructions ({:.2}% of 40B limit)",
+            session_id,
+            ic_used,
+            (ic_used as f64 / 40_000_000_000.0) * 100.0
+        ),
+    );
 
     Ok((amount, signature_bytes))
 }
@@ -1485,6 +1657,17 @@ async fn replay_verify_stub(
     Ok((reported_keys, boss_defeated))
 }
 
+// =============================================================================
+// Random Seed Callback — required by `on_init_random_seed` feature
+// =============================================================================
+
+/// Called by junobuild-satellite after the RNG has been seeded on canister upgrade.
+/// Custom loggers (`junobuild_satellite::{info,debug,warn,error}`) depend on the
+/// RNG for unique document keys, so they only work reliably AFTER this callback.
+#[unsafe(no_mangle)]
+fn juno_on_init_random_seed() {
+    logging::log_info("Satellite", "RNG seeded — custom loggers ready");
+}
 
 // =============================================================================
 // Include Juno Satellite - MUST be at the end

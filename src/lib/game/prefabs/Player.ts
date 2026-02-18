@@ -117,7 +117,7 @@ export class Player extends BaseEntity {
     this.recorder = recorder;
   }
 
-  update() {
+  update(dt?: number) {
     // Guard: Don't update if destroyed, inactive, or dying (ticket #228)
     if (!this.active || !this.anims) return;
     if (this.isDying) return;
@@ -125,10 +125,10 @@ export class Player extends BaseEntity {
     // Use cached config from BaseEntity
     const gp = this.config.gameplay;
     const playerConfig = gp.entities.player;
-    const timestep = gp.physics.timestep;
     const gamepadDeadzone = playerConfig.input.gamepad_deadzone;
     const speed = this.speed;
-    const dt = timestep;
+    // Use real delta time from MainScene (falls back to reference timestep)
+    const frameDt = dt ?? BaseEntity.REFERENCE_DT;
 
     let vx = 0;
     let moveY = 0; // Depth movement (not Arcade velocity)
@@ -187,7 +187,7 @@ export class Player extends BaseEntity {
         padY < -deadzone ||
         touch.y < -touchDeadzone
       ) {
-        moveY = -speed * dt;
+        moveY = -speed * frameDt;
         this.recorder?.log("move_up");
         isMoving = true;
       } else if (
@@ -196,7 +196,7 @@ export class Player extends BaseEntity {
         padY > deadzone ||
         touch.y > touchDeadzone
       ) {
-        moveY = speed * dt;
+        moveY = speed * frameDt;
         this.recorder?.log("move_down");
         isMoving = true;
       }
@@ -269,7 +269,7 @@ export class Player extends BaseEntity {
     this.groundY = clampedPos.groundY;
 
     // Update Z physics, shadow, depth, and health bar AFTER movement inputs
-    super.update();
+    super.update(dt);
   }
 
   private jump() {
@@ -307,13 +307,8 @@ export class Player extends BaseEntity {
     this.scene.events.emit("player_super", this);
   }
 
-  protected updateShadow() {
-    if (!this.shadow) return;
-
-    // Shadow stays at groundY (feet position on the ground plane)
-    this.shadow.setPosition(this.x, this.groundY);
-    this.shadow.setDepth(this.depth - 1);
-  }
+  // Shadow rendering inherited from BaseEntity.updateShadow() which
+  // correctly applies offset_x / offset_y from gameplay.visuals.shadow config.
 
   /**
    * Respawn the player at spawn location with invincibility frames (ticket #191).
