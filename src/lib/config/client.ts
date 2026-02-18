@@ -670,7 +670,7 @@ export const config: ConfigTypes = {
         "spawner": {
           "pool_size": 20,
           "delay_ms": 2000,
-          "start_z": 500,
+          "start_z": 800,
           "x_margin": 100,
           "y_margin_top_ratio": 0.833,
           "y_margin_bottom_ratio": 0.035
@@ -690,7 +690,7 @@ export const config: ConfigTypes = {
         "spawner": {
           "pool_size": 10,
           "delay_ms": 5000,
-          "start_z": 400,
+          "start_z": 800,
           "x_margin": 100,
           "y_margin_top_ratio": 0.833,
           "y_margin_bottom_ratio": 0.035
@@ -1375,5 +1375,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "18ebfc69f149a3708f33efb8296f8474118d4da3e1900e5c312ef7f7ad5d575d"
+  "configHash": "258036a3b91582bbace9c2fa7d508c5129f3d30d598f6cddd61b5681ba7a47f7"
 };

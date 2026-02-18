@@ -707,7 +707,7 @@ export class Enemy extends BaseEntity {
     this.scene.events.emit("entity_death", {
       type: this.texture.key,
       x: this.x,
-      y: this.y,
+      y: this.groundY,
     });
 
     // Hide health bar immediately on death (don't wait for kill delay)

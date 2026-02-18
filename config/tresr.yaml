@@ -551,7 +551,7 @@ client:
         spawner:
           pool_size: 20
           delay_ms: 2000
-          start_z: 500
+          start_z: 800 # Must exceed max groundY (~700) so keys enter from above the screen
           x_margin: 100
           y_margin_top_ratio: 0.833 # Top of walkable area ratio (must match walkable_area.top_y_ratio)
           y_margin_bottom_ratio: 0.035 # Bottom margin ratio from screen edge (25/720)
@@ -568,7 +568,7 @@ client:
         spawner:
           pool_size: 10 # Max bombs in the object pool
           delay_ms: 5000 # Interval between bomb drops (ms)
-          start_z: 400 # Initial height above ground (px, for fall animation)
+          start_z: 800 # Must exceed max groundY (~700) so bombs enter from above the screen
           x_margin: 100 # Horizontal margin from screen edges for spawn (px)
           y_margin_top_ratio: 0.833 # Top of walkable area ratio (must match walkable_area.top_y_ratio)
           y_margin_bottom_ratio: 0.035 # Bottom margin ratio from screen edge (25/720)

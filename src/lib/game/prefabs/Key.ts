@@ -65,17 +65,20 @@ export class Key extends BaseEntity {
     }
 
     // Horizontal drift with oscillation (parachute sway effect)
-    this.time += timestep;
-    const {width} = this.scene.cameras.main;
-    const halfWidth = this.displayWidth / 2;
-    this.x = Phaser.Math.Clamp(
-      this.initialX +
-        this.speed * this.time +
-        Math.sin(this.time * this.oscillationFrequency) *
-          this.oscillationAmplitude,
-      halfWidth,
-      width - halfWidth
-    );
+    // Only sway while airborne — once landed (z == 0), freeze X position.
+    if (this.z > 0) {
+      this.time += timestep;
+      const {width} = this.scene.cameras.main;
+      const halfWidth = this.displayWidth / 2;
+      this.x = Phaser.Math.Clamp(
+        this.initialX +
+          this.speed * this.time +
+          Math.sin(this.time * this.oscillationFrequency) *
+            this.oscillationAmplitude,
+        halfWidth,
+        width - halfWidth
+      );
+    }
 
     // Update visual Y from Z height
     this.y = this.groundY - this.z;
