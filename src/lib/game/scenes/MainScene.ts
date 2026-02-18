@@ -35,6 +35,7 @@ import {incrementGuestSession} from "@/lib/auth/guest";
 import TouchInput from "@/lib/game/TouchInput";
 import {SpawnManager} from "@/lib/game/managers/SpawnManager";
 import {CombatManager} from "@/lib/game/managers/CombatManager";
+import {UIManager} from "@/lib/game/managers/UIManager";
 
 // Helper type for gameplay config (entity-centric schema)
 export interface GameplayConfig {
@@ -306,6 +307,7 @@ export class MainScene extends Phaser.Scene {
   private spriteManager: SpriteManager;
   private spawnManager!: SpawnManager;
   private combatManager!: CombatManager;
+  private uiManager!: UIManager;
   private gameplayConfig!: GameplayConfig;
   private designHeight: number = 720;
   private walkableArea!: WalkableArea;
@@ -322,12 +324,6 @@ export class MainScene extends Phaser.Scene {
   public configHash: string = "";
   private configTampered: boolean = false;
   private configVerification: Promise<boolean> | null = null;
-
-  // Change detection for store updates (ticket #162, #200: avoid per-frame thrashing)
-  private lastReportedScore: number = 0;
-  private lastReportedKeys: number = 0;
-  private lastReportedHp: number = 0;
-  private lastReportedBossHp: number = 0;
 
   private escKey?: Phaser.Input.Keyboard.Key;
 
@@ -600,6 +596,13 @@ export class MainScene extends Phaser.Scene {
     );
     this.combatManager.createGroups();
 
+    // UI manager (announcements, countdown, HUD sync)
+    this.uiManager = new UIManager(
+      this,
+      this.gameplayConfig,
+      (timer: Phaser.Time.TimerEvent) => this.adHocTimers.push(timer)
+    );
+
     // Instantiate Player at spawn position from config ratios
     this.player = new Player(
       this,
@@ -675,71 +678,9 @@ export class MainScene extends Phaser.Scene {
     this.cameras.main.fadeIn(1000, 0, 0, 0);
 
     // 3-2-1 countdown before gameplay starts
-    this.showCountdown(() => {
+    this.uiManager.showCountdown(() => {
       this.startGameplay();
     });
-  }
-
-  private showCountdown(onComplete: () => void) {
-    const {width, height} = this.cameras.main;
-    const ann = this.gameplayConfig.announcements;
-
-    const numbers = ["3", "2", "1"];
-    let index = 0;
-
-    const showNext = () => {
-      if (index >= numbers.length) {
-        this.showPhaseAnnouncement("BEAR MARKET");
-        onComplete();
-        return;
-      }
-
-      // Responsive font: match showPhaseAnnouncement scaling
-      const fontSize = Math.min(80, Math.floor(width / 8));
-      const strokeThickness = Math.max(
-        2,
-        Math.round(ann.stroke_thickness * (fontSize / 80))
-      );
-
-      const numText = this.add
-        .text(width / 2, height / 2, numbers[index], {
-          font: `${fontSize}px Orbitron`,
-          color: ann.color,
-          stroke: ann.stroke_color,
-          strokeThickness,
-        })
-        .setOrigin(0.5)
-        .setDepth(1000)
-        .setScale(3)
-        .setAlpha(1);
-
-      // Play countdown SFX
-      try {
-        this.sound.play("countdown_1", {
-          volume: gameState.get().music.sfxVolume,
-        });
-      } catch {
-        // SFX may not be ready yet
-      }
-
-      // Each beat lasts 1 second: tween animates out over 800ms,
-      // then a 200ms gap before the next number starts.
-      this.tweens.add({
-        targets: numText,
-        scale: 1,
-        alpha: 0,
-        duration: 800,
-        ease: "Power2",
-        onComplete: () => {
-          numText.destroy();
-          index++;
-          this.adHocTimers.push(this.time.delayedCall(200, showNext));
-        },
-      });
-    };
-
-    // Start countdown after a brief delay to let fade-in start
-    this.adHocTimers.push(this.time.delayedCall(400, showNext));
   }
 
   private startGameplay() {
@@ -759,7 +700,7 @@ export class MainScene extends Phaser.Scene {
         if (this.phase !== "survival") return;
         if (this.survivalTimer > 0) {
           this.survivalTimer--;
-          this.updateTimerStatus();
+          this.uiManager.updateTimerStatus(this.survivalTimer);
           this.spawnManager.checkDifficultyEscalation(this.survivalTimer);
 
           // At 5 seconds remaining: enemies flee, stop spawning new ones
@@ -831,6 +772,7 @@ export class MainScene extends Phaser.Scene {
     // Drain spawn-related pools and timers
     this.spawnManager.shutdown();
     this.combatManager.shutdown();
+    this.uiManager.shutdown();
 
     // Kill bot before nulling references
     if (this.tresrBot && this.tresrBot.active) {
@@ -938,57 +880,6 @@ export class MainScene extends Phaser.Scene {
     }
   }
 
-  private showPhaseAnnouncement(text: string) {
-    const {width, height} = this.cameras.main;
-    const ann = this.gameplayConfig.announcements;
-
-    // Responsive font: cap at config size but scale down for smaller screens
-    const fontSize = Math.min(80, Math.floor(width / 8));
-    const strokeThickness = Math.max(
-      2,
-      Math.round(ann.stroke_thickness * (fontSize / 80))
-    );
-
-    const overlay = this.add
-      .text(width / 2, height / 2, text, {
-        font: `${fontSize}px Orbitron`,
-        color: ann.color,
-        stroke: ann.stroke_color,
-        strokeThickness,
-      })
-      .setOrigin(0.5)
-      .setDepth(1000)
-      .setAlpha(0)
-      .setScale(0.5);
-
-    if (text === "DEFEAT" || text === "SYSTEM CRITICAL") {
-      overlay.setColor("#ff0000");
-    } else if (text === "BOSS PHASE") {
-      overlay.setColor("#ffaa00");
-    }
-
-    this.tweens.add({
-      targets: overlay,
-      alpha: 1,
-      scale: 1,
-      duration: ann.enter_duration,
-      ease: "Back.easeOut",
-      onComplete: () => {
-        this.adHocTimers.push(
-          this.time.delayedCall(ann.display_duration, () => {
-            this.tweens.add({
-              targets: overlay,
-              alpha: 0,
-              scale: 1.5,
-              duration: ann.exit_duration,
-              onComplete: () => overlay.destroy(),
-            });
-          })
-        );
-      },
-    });
-  }
-
   /**
    * Load deferred SFX that were skipped during Preloader (OOM fix).
    * These are contextual sounds (victory, game_over, bot, chest) that
@@ -1068,10 +959,6 @@ export class MainScene extends Phaser.Scene {
       // Fallback: SpriteManager will use defaults
       this.spriteManager.createAnimations();
     }
-  }
-
-  private updateTimerStatus() {
-    gameActions.setTimer(this.survivalTimer);
   }
 
   /**
@@ -1292,7 +1179,7 @@ export class MainScene extends Phaser.Scene {
 
     this.combatManager.triggerFlash();
     this.playSound("explosion"); // Arrival sound
-    this.showPhaseAnnouncement("BOSS PHASE");
+    this.uiManager.showPhaseAnnouncement("BOSS PHASE");
     trackBossSpawned();
   }
 
@@ -1326,7 +1213,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     this.playSound("victory");
-    this.showPhaseAnnouncement("VICTORY");
+    this.uiManager.showPhaseAnnouncement("VICTORY");
     const winDuration = Math.round(
       this.gameplayConfig.time_limit_seconds - this.survivalTimer
     );
@@ -1498,7 +1385,7 @@ export class MainScene extends Phaser.Scene {
 
     this.playSound("game_over");
     MusicManager.getInstance().stop();
-    this.showPhaseAnnouncement("DEFEAT");
+    this.uiManager.showPhaseAnnouncement("DEFEAT");
     const deathDuration = Math.round(
       this.gameplayConfig.time_limit_seconds - this.survivalTimer
     );
@@ -1564,17 +1451,9 @@ export class MainScene extends Phaser.Scene {
 
     if (this.player && this.player.active) {
       this.player.update(dt);
-      if (this.player.hp !== this.lastReportedHp) {
-        gameActions.setHp(this.player.hp);
-        this.lastReportedHp = this.player.hp;
-      }
     }
     if (this.boss) {
       this.boss.update(dt);
-      if (this.boss.hp !== this.lastReportedBossHp) {
-        gameActions.setBossHp(this.boss.hp);
-        this.lastReportedBossHp = this.boss.hp;
-      }
     }
     if (this.tresrBot && this.tresrBot.active) {
       this.tresrBot.update(time, dt);
@@ -1608,14 +1487,12 @@ export class MainScene extends Phaser.Scene {
     // Update super projectiles + clear super damage flag (managed by CombatManager)
     this.combatManager.updateProjectiles(dt);
 
-    // Only update store when values actually change (ticket #162)
-    if (this.score !== this.lastReportedScore) {
-      gameActions.setScore(this.score);
-      this.lastReportedScore = this.score;
-    }
-    if (this.collectedKeys !== this.lastReportedKeys) {
-      gameActions.setKeys(this.collectedKeys);
-      this.lastReportedKeys = this.collectedKeys;
-    }
+    // Sync HUD state (score, keys, HP, boss HP) with change detection (ticket #162, #200)
+    this.uiManager.syncState(
+      this.score,
+      this.collectedKeys,
+      this.player?.hp,
+      this.boss?.hp
+    );
   }
 }
