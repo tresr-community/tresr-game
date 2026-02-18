@@ -27,8 +27,16 @@ export const getGameConfig = (
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
+    fps: {
+      target: 60,
+      forceSetTimeOut: false,
+    },
+    audio: {
+      disableWebAudio: false,
+    },
     input: {
       gamepad: true,
+      activePointers: isMobile ? 3 : 2,
       // Prevent right-click context menu on mobile
       mouse: {
         preventDefaultDown: true,
