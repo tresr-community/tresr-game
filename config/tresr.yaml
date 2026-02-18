@@ -243,6 +243,14 @@ client:
   gameplay:
     time_limit_seconds: 300
     max_keys: 150
+    # Difficulty escalation — scales spawn rates over the survival phase
+    difficulty_escalation:
+      enabled: true
+      interval_seconds: 60 # Escalate every N seconds
+      enemy_spawn_multiplier: 0.85 # Multiply enemy spawn delay by this each step
+      bomb_spawn_multiplier: 0.90 # Multiply bomb spawn delay by this each step
+      min_enemy_spawn_ms: 800 # Floor for enemy spawn delay
+      min_bomb_spawn_ms: 2000 # Floor for bomb spawn delay
     # Guest rate limiting
     guest:
       enabled: true # Enable/Disable the "normie mode"
