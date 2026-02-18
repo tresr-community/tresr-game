@@ -254,6 +254,7 @@ gify
 
 # Crypto tokens and addresses
 retardio
+txns
 
 # Dev and game terms
 alltime
