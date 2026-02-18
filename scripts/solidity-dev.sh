@@ -139,6 +139,7 @@ function show_help() {
 	echo ""
 	echo "Commands:"
 	echo "  check                     Run all Solidity checks (fmt, slither, build, test)"
+	echo "  update                    Update Foundry dependencies (forge-std, OpenZeppelin)"
 	echo "  start   [--wallet ADDR]   Start standalone Anvil (chain 31337), fund wallet, tail logs"
 	echo "  stop                      Stop any running Anvil instance"
 	echo "  loop    [--wallet ADDR]   One-shot: deploy-token → deploy-vault → fund → health"
@@ -151,6 +152,60 @@ function show_help() {
 	echo ""
 	echo "Options:"
 	echo "  --wallet  0x...   Player wallet for funding (default: from tresr.yaml)"
+}
+
+# =============================================================================
+# Update — Update Foundry dependencies via git submodules
+# =============================================================================
+# NOTE: `forge update` does not work in a monorepo where `contracts/` is a
+#       subdirectory because `.gitmodules` lives at the repo root with paths like
+#       `contracts/lib/...`. Forge expects `.gitmodules` in its own root.
+#       We work around this by using `git submodule update` directly.
+
+function run_update() {
+	log_info "Updating Foundry dependencies..."
+
+	local project_root
+	project_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+
+	# Submodules to update (paths relative to repo root)
+	local deps=(
+		"contracts/lib/forge-std"
+		"contracts/lib/openzeppelin-contracts"
+		"contracts/lib/openzeppelin-contracts-upgradeable"
+	)
+
+	for dep in "${deps[@]}"; do
+		local name
+		name=$(basename "$dep")
+		log_info "Updating ${CYAN}${name}${NC}..."
+		git -C "$project_root" submodule update --remote "$dep" || {
+			log_error "Failed to update ${name}"
+			exit 1
+		}
+	done
+
+	# Sync nested submodules (openzeppelin has its own sub-deps)
+	log_info "Syncing nested submodules..."
+	git -C "$project_root" submodule update --init --recursive
+
+	# Clean any dirty content inside submodules (build artifacts, etc.)
+	log_info "Cleaning submodule working trees..."
+	git -C "$project_root" submodule foreach --recursive git checkout -- . 2>/dev/null || true
+	git -C "$project_root" submodule foreach --recursive git clean -fdx 2>/dev/null || true
+
+	# Regenerate foundry.lock to match new commits
+	log_info "Regenerating ${CYAN}foundry.lock${NC}..."
+	cd "${project_root}/contracts"
+	rm -f foundry.lock
+	forge build || {
+		log_error "Forge build failed after update!"
+		exit 1
+	}
+
+	log_info "${GREEN}Dependencies updated successfully!${NC}"
+	log_info "Review changes with: ${CYAN}git diff contracts/lib${NC}"
+	log_info "Commit with: ${CYAN}git add contracts/lib contracts/foundry.lock && git commit -m 'chore: update foundry deps'${NC}"
 }
 
 # =============================================================================
@@ -863,6 +918,9 @@ esac
 case "${1:-}" in
 check)
 	run_check
+	;;
+update)
+	run_update
 	;;
 start)
 	run_start "$@"
