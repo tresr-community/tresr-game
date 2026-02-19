@@ -12,8 +12,12 @@
 #   2. Bump version in package.json, manifest.json, Cargo.toml
 #   3. Testnet: Tag as v{version}, create pre-release
 #      → calls cd-juno-testnet.yaml (workflow_call)
+#      → calls cd-foundry-testnet.yaml (workflow_call) with oracle from Juno
+#      → updates config/tresr.yaml via PR if addresses changed
 #   4. Mainnet: Promote existing pre-release tag to release
 #      → calls cd-juno-mainnet.yaml (workflow_call)
+#      → calls cd-foundry-mainnet.yaml (workflow_call) with oracle from Juno
+#      → updates config/tresr.yaml via PR if addresses changed
 ##################################################
 
 name: Release
@@ -52,7 +56,7 @@ permissions:
   actions: write
   contents: write
   packages: read
-  pull-requests: read
+  pull-requests: write
   statuses: write
 
 env:
@@ -79,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: Testnet
 
-    timeout-minutes: 30
+    timeout-minutes: 60
     continue-on-error: false
 
     outputs:
@@ -204,16 +208,124 @@ jobs:
   ##################################################
   # Deploy to Testnet (Juno)
   # Calls cd-juno-testnet.yaml via workflow_call
+  # Outputs oracle_address for Foundry
+  #
+  # NOTE: No skip gate — Juno must always redeploy
+  # so config-only merges (2nd pass) pick up new
+  # contract addresses in config/tresr.yaml.
   ##################################################
 
   deploy-juno-testnet:
     name: Deploy Juno (Testnet)
     needs: pre-release
-    if: needs.pre-release.outputs.skip != 'true'
     uses: ./.github/workflows/cd-juno-testnet.yaml
     with:
       version: ${{ needs.pre-release.outputs.tag }}
     secrets: inherit
+
+  ##################################################
+  # Deploy Solidity contracts (Testnet)
+  # Calls cd-foundry.yaml via workflow_call
+  # Passes oracle_address from Juno deploy
+  ##################################################
+
+  deploy-foundry-testnet:
+    name: Deploy Contracts (Testnet)
+    needs: [pre-release, deploy-juno-testnet]
+    if: needs.pre-release.outputs.skip != 'true'
+    uses: ./.github/workflows/cd-foundry-testnet.yaml
+    with:
+      oracle_address: ${{ needs.deploy-juno-testnet.outputs.oracle_address }}
+    secrets: inherit
+
+  ##################################################
+  # Update config/tresr.yaml with deployed addresses
+  # Creates a PR via peter-evans/create-pull-request
+  ##################################################
+
+  update-config:
+    name: Update Config
+    needs: [pre-release, deploy-juno-testnet, deploy-foundry-testnet]
+    if: >-
+      always() &&
+      needs.pre-release.outputs.skip != 'true' &&
+      needs.deploy-foundry-testnet.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          ref: trunk
+
+      - id: update_yaml
+        name: Update tresr.yaml
+        run: |
+          CONFIG="config/tresr.yaml"
+          ORACLE="${{ needs.deploy-juno-testnet.outputs.oracle_address }}"
+          TOKEN="${{ needs.deploy-foundry-testnet.outputs.token_address }}"
+          VAULT="${{ needs.deploy-foundry-testnet.outputs.vault_address }}"
+          FAUCET="${{ needs.deploy-foundry-testnet.outputs.faucet_address }}"
+          ZERO="0x0000000000000000000000000000000000000000"
+
+          # sed+verify pattern from solidity-dev.sh
+          yaml_set() {
+            local key="$1" value="$2"
+            sed -i "/testnet:/,/mainnet:/ s|${key}: .*|${key}: \"${value}\"|" "$CONFIG"
+            actual=$(yq -r ".client.blockchain.avalanche.testnet.${key}" "$CONFIG" 2>/dev/null || echo "")
+            if [[ "$actual" != "$value" ]]; then
+              echo "::error::YAML update failed: ${key} is '${actual}' expected '${value}'"
+              exit 1
+            fi
+            echo "✓ ${key} = ${value}"
+          }
+
+          [[ -n "$ORACLE" && "$ORACLE" != "$ZERO" ]] && yaml_set oracle_address "$ORACLE"
+          [[ -n "$TOKEN"  && "$TOKEN"  != "$ZERO" ]] && yaml_set tresr_token_contract "$TOKEN"
+          [[ -n "$VAULT"  && "$VAULT"  != "$ZERO" ]] && yaml_set vault_contract "$VAULT"
+          [[ -n "$FAUCET" && "$FAUCET" != "$ZERO" ]] && yaml_set faucet_contract "$FAUCET"
+
+      - id: check_diff
+        name: Check for Changes
+        run: |
+          if git diff --quiet config/tresr.yaml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No config changes detected"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Config changes detected:"
+            git diff config/tresr.yaml
+          fi
+
+      - id: create_pr
+        name: Create Config PR
+        if: steps.check_diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update testnet contract addresses"
+          title: "chore: update testnet contract addresses"
+          body: |
+            Auto-generated after contract deployment.
+
+            | Address | Value |
+            |---------|-------|
+            | Oracle | `${{ needs.deploy-juno-testnet.outputs.oracle_address }}` |
+            | Token | `${{ needs.deploy-foundry-testnet.outputs.token_address }}` |
+            | Vault | `${{ needs.deploy-foundry-testnet.outputs.vault_address }}` |
+            | Faucet | `${{ needs.deploy-foundry-testnet.outputs.faucet_address }}` |
+          branch: "chore/update-testnet-contract-address"
+          base: trunk
+          labels: "contracts,dependencies"
+          assignees: "MAHDTech"
+          reviewers: "MAHDTech"
+          draft: false
+          signoff: true
+          delete-branch: true
+          sign-commits: true
 
   ##################################################
   # Promote a pre-release to release (mainnet)
@@ -230,7 +342,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: Mainnet
 
-    timeout-minutes: 30
+    timeout-minutes: 60
     continue-on-error: false
 
     outputs:
@@ -342,3 +454,98 @@ jobs:
     with:
       version: ${{ needs.promote.outputs.tag }}
     secrets: inherit
+
+  ##################################################
+  # Deploy Solidity contracts (Mainnet)
+  # Calls cd-foundry-mainnet.yaml via workflow_call
+  ##################################################
+
+  deploy-foundry-mainnet:
+    name: Deploy Contracts (Mainnet)
+    needs: [promote, deploy-juno-mainnet]
+    uses: ./.github/workflows/cd-foundry-mainnet.yaml
+    with:
+      oracle_address: ${{ needs.deploy-juno-mainnet.outputs.oracle_address }}
+    secrets: inherit
+
+  ##################################################
+  # Update config/tresr.yaml with mainnet addresses
+  # Creates a PR via peter-evans/create-pull-request
+  ##################################################
+
+  update-config-mainnet:
+    name: Update Config (Mainnet)
+    needs: [promote, deploy-juno-mainnet, deploy-foundry-mainnet]
+    if: >-
+      always() &&
+      needs.deploy-foundry-mainnet.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          ref: trunk
+
+      - id: update_yaml
+        name: Update tresr.yaml
+        run: |
+          CONFIG="config/tresr.yaml"
+          ORACLE="${{ needs.deploy-juno-mainnet.outputs.oracle_address }}"
+          VAULT="${{ needs.deploy-foundry-mainnet.outputs.vault_address }}"
+          ZERO="0x0000000000000000000000000000000000000000"
+
+          # sed+verify pattern — scoped to mainnet section
+          yaml_set() {
+            local key="$1" value="$2"
+            sed -i "/mainnet:/,\$  s|${key}: .*|${key}: \"${value}\"|" "$CONFIG"
+            actual=$(yq -r ".client.blockchain.avalanche.mainnet.${key}" "$CONFIG" 2>/dev/null || echo "")
+            if [[ "$actual" != "$value" ]]; then
+              echo "::error::YAML update failed: ${key} is '${actual}' expected '${value}'"
+              exit 1
+            fi
+            echo "✓ ${key} = ${value}"
+          }
+
+          [[ -n "$ORACLE" && "$ORACLE" != "$ZERO" ]] && yaml_set oracle_address "$ORACLE"
+          [[ -n "$VAULT"  && "$VAULT"  != "$ZERO" ]] && yaml_set vault_contract "$VAULT"
+
+      - id: check_diff
+        name: Check for Changes
+        run: |
+          if git diff --quiet config/tresr.yaml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No config changes detected"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Config changes detected:"
+            git diff config/tresr.yaml
+          fi
+
+      - id: create_pr
+        name: Create Config PR
+        if: steps.check_diff.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update mainnet contract addresses"
+          title: "chore: update mainnet contract addresses"
+          body: |
+            Auto-generated after mainnet contract deployment.
+
+            | Address | Value |
+            |---------|-------|
+            | Oracle | `${{ needs.deploy-juno-mainnet.outputs.oracle_address }}` |
+            | Vault | `${{ needs.deploy-foundry-mainnet.outputs.vault_address }}` |
+          branch: "chore/update-mainnet-contract-address"
+          base: trunk
+          labels: "contracts,dependencies"
+          assignees: "MAHDTech"
+          reviewers: "MAHDTech"
+          draft: false
+          signoff: true
+          delete-branch: true
+          sign-commits: true

@@ -1,0 +1,131 @@
+---
+name: Foundry Deploy Summary
+description: Generate a deploy summary in GITHUB_STEP_SUMMARY with contract addresses and explorer links.
+
+inputs:
+  network:
+    description: "Network name (testnet or mainnet)"
+    required: true
+  chain-id:
+    description: "Chain ID"
+    required: true
+  oracle-address:
+    description: "Oracle contract address"
+    required: false
+    default: ""
+  admin-address:
+    description: "Admin/Safe address"
+    required: false
+    default: ""
+  token-address:
+    description: "Token contract address"
+    required: false
+    default: ""
+  vault-address:
+    description: "Vault proxy address"
+    required: false
+    default: ""
+  workflow-name:
+    description: "Name of the calling workflow for the footer"
+    required: false
+    default: "cd-foundry"
+
+runs:
+  using: composite
+  steps:
+    - id: deploy_summary
+      name: Deploy Summary
+      if: always()
+      shell: bash
+      run: |
+        NETWORK="${{ inputs.network }}"
+        CHAIN_ID="${{ inputs.chain-id }}"
+
+        # Set explorer URL based on network
+        if [[ "$NETWORK" == "mainnet" ]]; then
+          EXPLORER="https://snowtrace.io"
+          NET_EMOJI="🟢"
+          NET_LABEL="Mainnet (C-Chain)"
+        else
+          EXPLORER="https://testnet.snowtrace.io"
+          NET_EMOJI="🟡"
+          NET_LABEL="Testnet (Fuji)"
+        fi
+
+        {
+          echo "## 🏗️ Foundry Deploy Summary"
+          echo ""
+          echo "| | |"
+          echo "|---|---|"
+          echo "| **Network** | ${NET_EMOJI} ${NET_LABEL} |"
+          echo "| **Chain ID** | \`${CHAIN_ID}\` |"
+          echo "| **Explorer** | [${EXPLORER}](${EXPLORER}) |"
+          echo ""
+
+          # Find all broadcast run-latest.json files
+          FOUND_CONTRACTS=false
+          for BROADCAST in contracts/broadcast/*/; do
+            SCRIPT_NAME=$(basename "$BROADCAST")
+            LATEST="contracts/broadcast/${SCRIPT_NAME}/${CHAIN_ID}/run-latest.json"
+
+            if [[ ! -f "$LATEST" ]]; then
+              continue
+            fi
+
+            # Extract CREATE transactions (deployed contracts)
+            CONTRACTS=$(jq -r '.transactions[] | select(.transactionType == "CREATE") | "\(.contractName)|\(.contractAddress)"' "$LATEST" 2>/dev/null)
+
+            if [[ -z "$CONTRACTS" ]]; then
+              continue
+            fi
+
+            if [[ "$FOUND_CONTRACTS" == "false" ]]; then
+              echo "### 📋 Deployed Contracts"
+              echo ""
+              echo "| Contract | Address | Explorer |"
+              echo "|----------|---------|----------|"
+              FOUND_CONTRACTS=true
+            fi
+
+            while IFS='|' read -r NAME ADDR; do
+              echo "| 📦 **${NAME}** | \`${ADDR}\` | [View ↗](${EXPLORER}/address/${ADDR}) |"
+            done <<< "$CONTRACTS"
+          done
+
+          if [[ "$FOUND_CONTRACTS" == "false" ]]; then
+            echo "> ⚠️ No contracts were deployed (check step logs above)."
+          fi
+
+          # Show configuration addresses used for this deployment
+          ORACLE="${{ inputs.oracle-address }}"
+          ADMIN="${{ inputs.admin-address }}"
+          TOKEN="${{ inputs.token-address }}"
+          VAULT="${{ inputs.vault-address }}"
+          ZERO="0x0000000000000000000000000000000000000000"
+
+          echo ""
+          echo "### 🔧 Configuration Addresses"
+          echo ""
+          echo "| Role | Address | Status |"
+          echo "|------|---------|--------|"
+          if [[ "$ORACLE" == "$ZERO" || -z "$ORACLE" ]]; then
+            echo "| 🔮 **Oracle** | \`${ORACLE}\` | ⚠️ Not configured |"
+          else
+            echo "| 🔮 **Oracle** | \`${ORACLE}\` | [View ↗](${EXPLORER}/address/${ORACLE}) |"
+          fi
+          if [[ "$TOKEN" == "$ZERO" || -z "$TOKEN" ]]; then
+            echo "| 🪙 **Token** | \`${TOKEN}\` | ⚠️ Not configured |"
+          else
+            echo "| 🪙 **Token** | \`${TOKEN}\` | [View ↗](${EXPLORER}/address/${TOKEN}) |"
+          fi
+          if [[ "$VAULT" == "$ZERO" || -z "$VAULT" ]]; then
+            echo "| 🏦 **Vault** | \`${VAULT}\` | ⚠️ Not configured |"
+          else
+            echo "| 🏦 **Vault** | \`${VAULT}\` | [View ↗](${EXPLORER}/address/${VAULT}) |"
+          fi
+          echo "| 🛡️ **Admin/Safe** | \`${ADMIN}\` | [View ↗](${EXPLORER}/address/${ADMIN}) |"
+
+          echo ""
+          echo "---"
+          echo "*Deployed via \`${{ inputs.workflow-name }}.yaml\` • $(date -u '+%Y-%m-%d %H:%M UTC')*"
+        } >> "$GITHUB_STEP_SUMMARY"

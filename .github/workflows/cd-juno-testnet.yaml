@@ -17,6 +17,10 @@ on:
         type: string
         required: false
         default: ""
+    outputs:
+      oracle_address:
+        description: "Deployed oracle contract address"
+        value: ${{ jobs.deploy.outputs.oracle_address }}
 
 concurrency:
   group: juno-testnet-deploy-${{ github.ref }}
@@ -47,10 +51,13 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    timeout-minutes: 30
+    timeout-minutes: 60
     continue-on-error: false
 
     environment: Testnet
+
+    outputs:
+      oracle_address: ${{ steps.get_oracle_address.outputs.oracle_address }}
 
     steps:
       - id: check_vars
