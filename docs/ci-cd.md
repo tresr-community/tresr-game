@@ -131,8 +131,7 @@ Lint, type-check, and build the Juno satellite:
 
 ## Foundry Deploy
 
-Foundry deploys are split into two `workflow_call` workflows, each
-also available via `workflow_dispatch`:
+Foundry deploys are split into two `workflow_call`-only workflows:
 
 | Workflow                  | Environment | Contracts deployed            |
 | ------------------------- | ----------- | ----------------------------- |
@@ -156,10 +155,9 @@ Shared logic is extracted into four composite actions under
 
 A `detect-changes` job gates the deploy:
 
-| Trigger             | Behaviour                                              |
-| ------------------- | ------------------------------------------------------ |
-| `workflow_call`     | Compares `contracts/**` changes since previous git tag |
-| `workflow_dispatch` | Always deploys                                         |
+| Trigger         | Behaviour                                              |
+| --------------- | ------------------------------------------------------ |
+| `workflow_call` | Compares `contracts/**` changes since previous git tag |
 
 > [!NOTE]
 > Config-only changes (e.g. `config/tresr.yaml`) do **not** trigger
@@ -174,8 +172,8 @@ If the balance is too low, the workflow fails early with a clear error.
 ### Token + Faucet (Testnet Only)
 
 The `DeployToken.s.sol` script deploys `RonToken` (test ERC-20)
-and `TresrFaucet`. This step is gated to Testnet only via an
-`if` condition.
+and `TresrFaucet`. This exists only in `cd-foundry-testnet.yaml` —
+the mainnet workflow deploys the Vault only (using the real TRESR token).
 
 ### Vault (Deploy vs Upgrade)
 
