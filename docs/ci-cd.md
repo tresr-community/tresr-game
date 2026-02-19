@@ -58,9 +58,9 @@ graph TD
     F --> G["Pre-release created </br> (automatic)"]
     G --> H["Testnet deployed"]
     H --> I["UAT / QA"]
-    I --> J["Run cd-release </br> (Mainnet — 1st run)"]
+    I --> J["Run cd-release-mainnet </br> (1st run)"]
     J --> K["Contracts deployed </br> + config PR created"]
-    K -->|merge PR| L["Run cd-release </br> (Mainnet — 2nd run)"]
+    K -->|merge PR| L["Run cd-release-mainnet </br> (2nd run)"]
     L --> M["Config applied </br> + deployed"]
 ```
 
@@ -68,19 +68,18 @@ graph TD
 
 Only these workflows can be triggered manually via `workflow_dispatch`:
 
-| Workflow                   | Purpose                                                |
-| -------------------------- | ------------------------------------------------------ |
-| `cd-release.yaml`          | Create pre-release (Testnet) or promote (Mainnet)      |
-| `cd-foundry-testnet.yaml`  | Deploy Solidity contracts to Testnet (also by release) |
-| `cd-foundry-mainnet.yaml`  | Deploy Solidity contracts to Mainnet (also by release) |
-| `chore-devenv-update.yaml` | Update devenv.lock, create PR                          |
+| Workflow                   | Purpose                                   |
+| -------------------------- | ----------------------------------------- |
+| `cd-release-testnet.yaml`  | Create pre-release and deploy to Testnet  |
+| `cd-release-mainnet.yaml`  | Promote pre-release and deploy to Mainnet |
+| `chore-devenv-update.yaml` | Update devenv.lock, create PR             |
 
 All other workflows are triggered automatically by events
 (PR, push, merge_group, schedule, workflow_call).
 
 ## Mainnet Promotion
 
-When running `cd-release.yaml` with `Environment: Mainnet`:
+When running `cd-release-mainnet.yaml`:
 
 - **With `release_tag`**: Promotes that specific pre-release
 - **Without `release_tag`**: Auto-discovers the latest pre-release and promotes it
@@ -132,16 +131,15 @@ Lint, type-check, and build the Juno satellite:
 
 ## Foundry Deploy
 
-Foundry deploys are split into two `workflow_call` workflows, each
-also available via `workflow_dispatch`:
+Foundry deploys are split into two `workflow_call`-only workflows:
 
 | Workflow                  | Environment | Contracts deployed            |
 | ------------------------- | ----------- | ----------------------------- |
 | `cd-foundry-testnet.yaml` | Testnet     | Test Token, Faucet, Vault     |
 | `cd-foundry-mainnet.yaml` | Mainnet     | Vault only (real TRESR token) |
 
-Both receive `oracle_address` from the corresponding Juno deploy
-when called by `cd-release.yaml`.
+Both are `workflow_call` only — they receive `oracle_address` from the
+corresponding Juno deploy when called by the release workflow.
 
 Shared logic is extracted into four composite actions under
 `.github/actions/`:
@@ -157,10 +155,9 @@ Shared logic is extracted into four composite actions under
 
 A `detect-changes` job gates the deploy:
 
-| Trigger             | Behaviour                                              |
-| ------------------- | ------------------------------------------------------ |
-| `workflow_call`     | Compares `contracts/**` changes since previous git tag |
-| `workflow_dispatch` | Always deploys                                         |
+| Trigger         | Behaviour                                              |
+| --------------- | ------------------------------------------------------ |
+| `workflow_call` | Compares `contracts/**` changes since previous git tag |
 
 > [!NOTE]
 > Config-only changes (e.g. `config/tresr.yaml`) do **not** trigger
@@ -175,8 +172,8 @@ If the balance is too low, the workflow fails early with a clear error.
 ### Token + Faucet (Testnet Only)
 
 The `DeployToken.s.sol` script deploys `RonToken` (test ERC-20)
-and `TresrFaucet`. This step is gated to Testnet only via an
-`if` condition.
+and `TresrFaucet`. This exists only in `cd-foundry-testnet.yaml` —
+the mainnet workflow deploys the Vault only (using the real TRESR token).
 
 ### Vault (Deploy vs Upgrade)
 
@@ -227,7 +224,7 @@ The pipeline auto-detects whether to do a **fresh deploy** or an
 5. Once executed, the proxy points to the new implementation
 
 > [!TIP]
-> After a successful deploy, the `update-config` job in `cd-release.yaml`
+> After a successful deploy, the `update-config` job in the release workflow
 > automatically creates a PR to update `config/tresr.yaml` with the new
 > contract addresses. Review and merge that PR to complete the cycle.
 
@@ -235,7 +232,7 @@ The pipeline auto-detects whether to do a **fresh deploy** or an
 
 ### cd-juno-testnet.yaml
 
-Called by `cd-release.yaml` after a successful pre-release.
+Called by `cd-release-testnet.yaml` after a successful pre-release.
 Deploys hosting, config, and (if changed) serverless functions
 to `staging` mode.
 
@@ -250,7 +247,7 @@ Steps:
 
 ### cd-juno-mainnet.yaml
 
-Called by `cd-release.yaml` after a successful promotion.
+Called by `cd-release-mainnet.yaml` after a successful promotion.
 Same structure as testnet but deploys in `production` mode.
 
 ## Security Scanning
@@ -336,17 +333,19 @@ client:
 | `report-status`          | Report workflow status to commit checks          |
 | `setup-devenv`           | Install and configure devenv with Cachix         |
 | `setup-juno`             | Install Juno CLI                                 |
+| `update-tresr-config`    | Update tresr.yaml, regenerate config, create PR  |
 | `version`                | Manage version bumping across project files      |
 
 ## Workflow Inventory
 
 | Workflow                   | Prefix | Trigger                         | Purpose                                  |
 | -------------------------- | ------ | ------------------------------- | ---------------------------------------- |
-| `cd-release.yaml`          | cd     | push to trunk, dispatch         | Create pre-release or promote to release |
+| `cd-release-testnet.yaml`  | cd     | push to trunk, dispatch         | Create pre-release and deploy to Testnet |
+| `cd-release-mainnet.yaml`  | cd     | dispatch only                   | Promote and deploy to Mainnet            |
 | `cd-juno-testnet.yaml`     | cd     | workflow_call only              | Deploy Juno to Testnet                   |
 | `cd-juno-mainnet.yaml`     | cd     | workflow_call only              | Deploy Juno to Mainnet                   |
-| `cd-foundry-testnet.yaml`  | cd     | workflow_call, dispatch         | Deploy Solidity contracts to Testnet     |
-| `cd-foundry-mainnet.yaml`  | cd     | workflow_call, dispatch         | Deploy Solidity contracts to Mainnet     |
+| `cd-foundry-testnet.yaml`  | cd     | workflow_call only              | Deploy Solidity contracts to Testnet     |
+| `cd-foundry-mainnet.yaml`  | cd     | workflow_call only              | Deploy Solidity contracts to Mainnet     |
 | `ci-devenv.yaml`           | ci     | pull_request, merge_group       | Test devenv shell                        |
 | `ci-foundry.yaml`          | ci     | pull_request, merge_group       | Lint and check Solidity                  |
 | `ci-juno.yaml`             | ci     | pull_request, merge_group       | Build and check Juno                     |

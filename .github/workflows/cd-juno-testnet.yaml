@@ -3,7 +3,7 @@
 # Name: cd-juno-testnet.yaml
 # Description: Deploy Juno to testnet (hosting + functions + config)
 #
-# Called by: cd-release.yaml (pre-release job)
+# Called by: cd-release-testnet.yaml (deploy-juno-testnet job)
 #
 ##################################################
 
