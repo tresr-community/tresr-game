@@ -179,3 +179,46 @@ jobs:
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           juno functions publish --mode staging
+
+      - id: get_oracle_address
+        name: Get Oracle Address
+        if: steps.detect_function_changes.outputs.changed == 'true'
+        shell: devenv shell --quiet bash -- -e {0}
+        env:
+          SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
+        run: |
+          # Call the satellite canister to get the ECDSA-derived oracle address
+          ORACLE=$(dfx canister call "$SATELLITE_ID" get_oracle_address '()' --ic 2>&1) || true
+          # Parse the Ok variant: (variant { Ok = "0x..." })
+          ADDR=$(echo "$ORACLE" | grep -oP '0x[0-9a-fA-F]{40}' | head -1)
+          if [[ -n "$ADDR" ]]; then
+            echo "oracle_address=${ADDR}" >> "$GITHUB_OUTPUT"
+            echo "✅ Oracle address: ${ADDR}"
+          else
+            echo "::warning::Could not retrieve oracle address — raw output: ${ORACLE}"
+            echo "oracle_address=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - id: deploy_summary
+        name: Deploy Summary
+        if: always()
+        run: |
+          SATELLITE_ID="${{ vars.VITE_SATELLITE_ID }}"
+          ORACLE="${{ steps.get_oracle_address.outputs.oracle_address }}"
+
+          {
+            echo "## 🚀 Juno Deploy Summary (Testnet)"
+            echo ""
+            echo "| | |"
+            echo "|---|---|"
+            echo "| **Satellite** | \`${SATELLITE_ID}\` |"
+            echo "| **Mode** | staging |"
+            if [[ -n "$ORACLE" ]]; then
+              echo "| **Oracle Address** | \`${ORACLE}\` |"
+            else
+              echo "| **Oracle Address** | ⚠️ _not retrieved_ |"
+            fi
+            echo ""
+            echo "---"
+            echo "*Deployed via \`cd-juno-testnet.yaml\` • $(date -u '+%Y-%m-%d %H:%M UTC')*"
+          } >> "$GITHUB_STEP_SUMMARY"
