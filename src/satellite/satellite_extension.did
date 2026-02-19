@@ -2,7 +2,11 @@
 // Any modifications may be overwritten.
 
 type Result = variant { Ok : record { nat; blob }; Err : text };
+type Result_1 = variant { Ok : text; Err : text };
 service : {
   // Authorize a claim with replay verification
   claim_authorize : (text, nat64, text, blob) -> (Result);
+  // Returns the satellite's Public Ethereum address derived from its threshold ECDSA key.
+  // This is the oracle address used for on-chain signature verification.
+  get_oracle_address : () -> (Result_1);
 }
