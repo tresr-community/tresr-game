@@ -440,6 +440,7 @@ export const idlFactory = ({ IDL }) => {
     'Ok' : IDL.Tuple(IDL.Nat, IDL.Vec(IDL.Nat8)),
     'Err' : IDL.Text,
   });
+  const Result_1 = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text });
   return IDL.Service({
     'authenticate' : IDL.Func(
         [AuthenticationArgs],
@@ -599,6 +600,7 @@ export const idlFactory = ({ IDL }) => {
         [Result],
         [],
       ),
+    'get_oracle_address' : IDL.Func([], [Result_1], []),
   });
 };
 export const init = ({ IDL }) => {
