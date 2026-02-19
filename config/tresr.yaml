@@ -201,13 +201,13 @@ client:
         chain_id: 43113
         rpc_url: https://api.avax-test.network/ext/bc/C/rpc
         token_ticker: tRON
-        tresr_token_contract: "0x0000000000000000000000000000000000000000"
+        tresr_token_contract: "0x87b5bf6ddf1d31fc3fb875bcf725732b0da3eb63"
         # IC satellite canister's derived ETH address (threshold ECDSA) — signs reward claims for Vault.
         # Obtain by deploying the satellite canister and calling its `get_oracle_address()` endpoint.
-        oracle_address: "0x0000000000000000000000000000000000000000"
+        oracle_address: "0xf2ff695cae8cc886d3c03afd502a35fcee61b66f"
         safe_address: "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3"
-        vault_contract: "0x0000000000000000000000000000000000000000"
-        faucet_contract: "0x0000000000000000000000000000000000000000"
+        vault_contract: "0xdff79d607ff2ddaf5e09343649a41d617b1ae867"
+        faucet_contract: "0x5b633eebad43243a32181792e4368ec62e9076e6"
       mainnet:
         fee: 10 # Fee in tokens to play
         burn_rate: 1000 # 10% in basis points — must match Vault.sol burnRate
