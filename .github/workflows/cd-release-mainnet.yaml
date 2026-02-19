@@ -1,0 +1,212 @@
+---
+##################################################
+# Name: cd-release-mainnet.yaml
+# Description: Release entrypoint for Mainnet
+#
+# Triggers:
+#   - Manual dispatch only (requires Mainnet environment approval)
+#
+# Flow:
+#   1. Validate the pre-release tag to promote
+#   2. Generate release changelog with mainnet deployment info
+#   3. Promote pre-release → release
+#   4. Deploy Juno (production) → get oracle_address
+#   5. Deploy Foundry (mainnet) → get contract addresses
+#   6. Update config/tresr.yaml via PR if addresses changed
+##################################################
+
+name: Release (Mainnet)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag to promote (e.g. v0.2.0). Leave blank to auto-discover latest pre-release."
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: release-mainnet-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: write
+  packages: read
+  pull-requests: write
+  statuses: write
+
+env:
+  NIXPKGS_ALLOW_UNFREE: 1
+  SECRETSPEC_PROVIDER: env
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  ##################################################
+  # Promote a pre-release to release
+  # Requires GitHub Environment "Mainnet" approvers
+  ##################################################
+
+  promote:
+    name: Promote to Release
+
+    runs-on: ubuntu-latest
+    environment: Mainnet
+
+    timeout-minutes: 60
+    continue-on-error: false
+
+    outputs:
+      tag: ${{ steps.validate_tag.outputs.tag }}
+
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: free_disk_space
+        name: Free Disk Space
+        uses: ./.github/actions/free-disk-space
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: validate_tag
+        name: Validate Release Tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+        run: |
+          if [[ -n "${RELEASE_TAG}" ]]; then
+            # User specified a tag — use it directly
+            TAG="${RELEASE_TAG}"
+            echo "Using provided release tag: ${TAG}"
+          else
+            # Auto-discover the latest pre-release
+            TAG=$(gh release list --json tagName,isPrerelease \
+              --jq '[.[] | select(.isPrerelease==true)] | first | .tagName' 2>/dev/null || echo "")
+
+            if [[ -z "${TAG}" || "${TAG}" == "null" ]]; then
+              echo "::error::No pre-releases found. Create one first via a Testnet deployment."
+              exit 1
+            fi
+            echo "Auto-discovered latest pre-release: ${TAG}"
+          fi
+
+          # Verify the release exists and IS a pre-release
+          RELEASE_INFO=$(gh release view "${TAG}" --json isPrerelease,tagName 2>&1) || {
+            echo "::error::Release '${TAG}' not found"
+            exit 1
+          }
+
+          IS_PRERELEASE=$(echo "${RELEASE_INFO}" | jq -r '.isPrerelease')
+          if [[ "${IS_PRERELEASE}" != "true" ]]; then
+            echo "::error::Release '${TAG}' has already been promoted to a full release."
+            echo "::error::If you want to promote a specific pre-release, enter the tag (e.g. v0.2.3)."
+            exit 1
+          fi
+
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "Validated: ${TAG} is a pre-release, ready to promote"
+
+      - id: generate_changelog
+        name: Generate Release Changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
+          ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
+        run: |
+          TAG="${{ steps.validate_tag.outputs.tag }}"
+
+          # Get existing release body (has changelog + testnet table)
+          EXISTING=$(gh release view "${TAG}" --json body -q '.body')
+
+          {
+            echo "${EXISTING}"
+            echo ""
+            echo "## :globe_with_meridians: Mainnet Deployment"
+            echo ""
+            echo "| Resource | ID |"
+            echo "|----------|-----|"
+            echo "| Satellite | ${SATELLITE_ID} |"
+            echo "| Orbiter | ${ORBITER_ID} |"
+            echo ""
+            echo ":link: [Juno Console](https://console.juno.build/)"
+          } > /tmp/changelog.md
+
+          echo "Generated release changelog with mainnet deployment for ${TAG}"
+
+      - id: promote_release
+        name: Promote Pre-Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ steps.validate_tag.outputs.tag }}" \
+            --prerelease=false \
+            --title "Release ${{ steps.validate_tag.outputs.tag }}" \
+            --notes-file /tmp/changelog.md
+
+          echo "Promoted ${{ steps.validate_tag.outputs.tag }} to release"
+
+  ##################################################
+  # Deploy to Juno (Mainnet)
+  ##################################################
+
+  deploy-juno-mainnet:
+    name: Deploy Juno (Mainnet)
+    needs: promote
+    uses: ./.github/workflows/cd-juno-mainnet.yaml
+    with:
+      version: ${{ needs.promote.outputs.tag }}
+    secrets: inherit
+
+  ##################################################
+  # Deploy Solidity contracts (Mainnet)
+  ##################################################
+
+  deploy-foundry-mainnet:
+    name: Deploy Contracts (Mainnet)
+    needs: [promote, deploy-juno-mainnet]
+    uses: ./.github/workflows/cd-foundry-mainnet.yaml
+    with:
+      oracle_address: ${{ needs.deploy-juno-mainnet.outputs.oracle_address }}
+    secrets: inherit
+
+  ##################################################
+  # Update config/tresr.yaml with mainnet addresses
+  ##################################################
+
+  update-config:
+    name: Update Config
+    needs: [promote, deploy-juno-mainnet, deploy-foundry-mainnet]
+    if: >-
+      always() &&
+      needs.deploy-foundry-mainnet.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          ref: trunk
+
+      - id: update_config
+        name: Update TRESR Config
+        uses: ./.github/actions/update-tresr-config
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          environment: mainnet
+          oracle-address: ${{ needs.deploy-juno-mainnet.outputs.oracle_address }}
+          vault-address: ${{ needs.deploy-foundry-mainnet.outputs.vault_address }}

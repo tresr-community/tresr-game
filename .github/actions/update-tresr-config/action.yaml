@@ -1,0 +1,125 @@
+---
+name: Update TRESR Config
+description: >
+  Update tresr.yaml with deployed contract addresses,
+  regenerate client config, and create a PR if changed.
+  Requires checkout first.
+
+inputs:
+  github-token:
+    description: "GitHub token for devenv setup and PR creation"
+    required: true
+  environment:
+    description: "Target environment: testnet or mainnet"
+    required: true
+  oracle-address:
+    description: "Oracle contract address"
+    required: false
+    default: ""
+  token-address:
+    description: "TRESR token contract address (testnet only)"
+    required: false
+    default: ""
+  vault-address:
+    description: "Vault proxy contract address"
+    required: false
+    default: ""
+  faucet-address:
+    description: "Faucet contract address (testnet only)"
+    required: false
+    default: ""
+
+outputs:
+  changed:
+    description: "Whether config files changed"
+    value: ${{ steps.check_diff.outputs.changed }}
+
+runs:
+  using: composite
+  steps:
+    - id: setup_devenv
+      name: Setup Devenv
+      uses: ./.github/actions/setup-devenv
+      with:
+        github-token: ${{ inputs.github-token }}
+
+    - id: update_yaml
+      name: Update tresr.yaml
+      shell: bash
+      run: |
+        CONFIG="config/tresr.yaml"
+        ENV="${{ inputs.environment }}"
+        ORACLE="${{ inputs.oracle-address }}"
+        TOKEN="${{ inputs.token-address }}"
+        VAULT="${{ inputs.vault-address }}"
+        FAUCET="${{ inputs.faucet-address }}"
+        ZERO="0x0000000000000000000000000000000000000000"
+
+        # sed+verify pattern from solidity-dev.sh
+        yaml_set() {
+          local key="$1" value="$2"
+          if [[ "$ENV" == "testnet" ]]; then
+            sed -i "/testnet:/,/mainnet:/ s|${key}: .*|${key}: \"${value}\"|" "$CONFIG"
+            actual=$(yq -r ".client.blockchain.avalanche.testnet.${key}" "$CONFIG" 2>/dev/null || echo "")
+          else
+            sed -i "/mainnet:/,\$  s|${key}: .*|${key}: \"${value}\"|" "$CONFIG"
+            actual=$(yq -r ".client.blockchain.avalanche.mainnet.${key}" "$CONFIG" 2>/dev/null || echo "")
+          fi
+          if [[ "$actual" != "$value" ]]; then
+            echo "::error::YAML update failed: ${key} is '${actual}' expected '${value}'"
+            exit 1
+          fi
+          echo "✓ ${key} = ${value}"
+        }
+
+        [[ -n "$ORACLE" && "$ORACLE" != "$ZERO" ]] && yaml_set oracle_address "$ORACLE"
+        [[ -n "$TOKEN"  && "$TOKEN"  != "$ZERO" ]] && yaml_set tresr_token_contract "$TOKEN"
+        [[ -n "$VAULT"  && "$VAULT"  != "$ZERO" ]] && yaml_set vault_contract "$VAULT"
+        [[ -n "$FAUCET" && "$FAUCET" != "$ZERO" ]] && yaml_set faucet_contract "$FAUCET"
+
+    - id: regenerate_config
+      name: Regenerate Client Config
+      shell: devenv shell --quiet bash -- -e {0}
+      run: |
+        bun install
+        bun run client-config
+
+    - id: check_diff
+      name: Check for Changes
+      shell: bash
+      run: |
+        if git diff --quiet; then
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+          echo "No config changes detected"
+        else
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "Config changes detected:"
+          git diff --stat
+        fi
+
+    - id: create_pr
+      name: Create Config PR
+      if: steps.check_diff.outputs.changed == 'true'
+      uses: peter-evans/create-pull-request@v8
+      with:
+        token: ${{ inputs.github-token }}
+        commit-message: "chore: update ${{ inputs.environment }} contract addresses"
+        title: "chore: update ${{ inputs.environment }} contract addresses"
+        body: |
+          Auto-generated after ${{ inputs.environment }} contract deployment.
+
+          | Address | Value |
+          |---------|-------|
+          | Oracle | `${{ inputs.oracle-address }}` |
+          | Token | `${{ inputs.token-address }}` |
+          | Vault | `${{ inputs.vault-address }}` |
+          | Faucet | `${{ inputs.faucet-address }}` |
+        branch: "chore/update-${{ inputs.environment }}-contract-address"
+        base: trunk
+        labels: "contracts,dependencies"
+        assignees: "MAHDTech"
+        reviewers: "MAHDTech"
+        draft: false
+        signoff: true
+        delete-branch: true
+        sign-commits: true

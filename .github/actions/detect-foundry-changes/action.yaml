@@ -20,13 +20,6 @@ runs:
       name: Check for Changes
       shell: bash
       run: |
-        # Manual dispatch always deploys
-        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          echo "deploy=true" >> "$GITHUB_OUTPUT"
-          echo "Manual dispatch — will deploy"
-          exit 0
-        fi
-
         PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
         if [[ -z "$PREV_TAG" ]]; then
           echo "deploy=true" >> "$GITHUB_OUTPUT"
