@@ -36,6 +36,7 @@ import TouchInput from "@/lib/game/TouchInput";
 import {SpawnManager} from "@/lib/game/managers/SpawnManager";
 import {CombatManager} from "@/lib/game/managers/CombatManager";
 import {UIManager} from "@/lib/game/managers/UIManager";
+import {scaleCircleBody} from "@/lib/game/utils/physics";
 
 // Helper type for gameplay config (entity-centric schema)
 export interface GameplayConfig {
@@ -342,33 +343,6 @@ export class MainScene extends Phaser.Scene {
     this.spriteManager = new SpriteManager(this);
   }
 
-  /** Apply a circular physics body from config hitbox values.
-   *  All values are in unscaled frame-local coords. Phaser internally applies
-   *  the game object's scale (_sx/_sy) to both the radius (via sourceWidth/height)
-   *  and the offset (via the body position formula: body.y = sprite.y + scaleY *
-   *  (offset.y - displayOriginY)). No manual scaling needed. */
-  private scaleCircleBody(
-    entity: Phaser.Physics.Arcade.Sprite,
-    hitbox: {radius: number; offsetX: number; offsetY: number}
-  ) {
-    const body = entity.body as Phaser.Physics.Arcade.Body;
-    if (body) {
-      body.setCircle(hitbox.radius, hitbox.offsetX, hitbox.offsetY);
-    }
-  }
-
-  /** Apply a rectangular physics body from config hitbox values.
-   *  Values are in unscaled frame-local coords — Phaser applies _sx/_sy internally. */
-  private scaleRectBody(
-    entity: Phaser.Physics.Arcade.Sprite,
-    hitbox: {width: number; height: number}
-  ) {
-    const body = entity.body as Phaser.Physics.Arcade.Body;
-    if (body) {
-      body.setSize(hitbox.width, hitbox.height);
-    }
-  }
-
   init(data: {sessionId?: string; userAddr?: string; seed?: number}) {
     // Use fee-gate session ID passed from Preloader; guests get a non-claimable placeholder (ticket #244)
     this.sessionId = data.sessionId || `guest-${Date.now()}`;
@@ -617,7 +591,7 @@ export class MainScene extends Phaser.Scene {
       this.designHeight
     );
     this.player.setScale(heroScale);
-    this.scaleCircleBody(this.player, entities.player.hitbox);
+    scaleCircleBody(this.player, entities.player.hitbox);
     this.player.play("hero_idle", true);
     this.player.setRecorder(this.recorder);
     this.spawnManager.setPlayer(this.player);
@@ -634,7 +608,7 @@ export class MainScene extends Phaser.Scene {
       this.designHeight
     );
     this.tresrBot.setScale(botScale);
-    this.scaleCircleBody(this.tresrBot, entities.tresr_bot.hitbox);
+    scaleCircleBody(this.tresrBot, entities.tresr_bot.hitbox);
     this.spawnManager.setTresrBot(this.tresrBot);
     this.combatManager.setTresrBot(this.tresrBot);
 
