@@ -17,6 +17,10 @@ on:
         type: string
         required: false
         default: ""
+    outputs:
+      oracle_address:
+        description: "Deployed oracle contract address"
+        value: ${{ jobs.deploy.outputs.oracle_address }}
 
 concurrency:
   group: juno-mainnet-deploy-${{ github.ref }}
@@ -47,10 +51,13 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    timeout-minutes: 30
+    timeout-minutes: 60
     continue-on-error: false
 
     environment: Mainnet
+
+    outputs:
+      oracle_address: ${{ steps.get_oracle_address.outputs.oracle_address }}
 
     steps:
       - id: check_vars
@@ -178,3 +185,22 @@ jobs:
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           juno functions publish --mode production
+
+      - id: get_oracle_address
+        name: Get Oracle Address
+        if: steps.detect_function_changes.outputs.changed == 'true'
+        shell: devenv shell --quiet bash -- -e {0}
+        env:
+          SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
+        run: |
+          # Call the satellite canister to get the ECDSA-derived oracle address
+          ORACLE=$(dfx canister call "$SATELLITE_ID" get_oracle_address '()' --ic 2>&1) || true
+          # Parse the Ok variant: (variant { Ok = "0x..." })
+          ADDR=$(echo "$ORACLE" | grep -oP '0x[0-9a-fA-F]{40}' | head -1)
+          if [[ -n "$ADDR" ]]; then
+            echo "oracle_address=${ADDR}" >> "$GITHUB_OUTPUT"
+            echo "✅ Oracle address: ${ADDR}"
+          else
+            echo "::warning::Could not retrieve oracle address — raw output: ${ORACLE}"
+            echo "oracle_address=" >> "$GITHUB_OUTPUT"
+          fi

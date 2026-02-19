@@ -1,0 +1,52 @@
+---
+name: Detect Foundry Changes
+description: Check if Solidity contract sources changed since the last git tag.
+
+inputs:
+  workflow-file:
+    description: "Calling workflow filename for change detection"
+    required: false
+    default: ""
+
+outputs:
+  deploy:
+    description: "Whether to deploy contracts (true/false)"
+    value: ${{ steps.check.outputs.deploy }}
+
+runs:
+  using: composite
+  steps:
+    - id: check
+      name: Check for Changes
+      shell: bash
+      run: |
+        # Manual dispatch always deploys
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+          echo "Manual dispatch — will deploy"
+          exit 0
+        fi
+
+        PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        if [[ -z "$PREV_TAG" ]]; then
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+          echo "No previous tag found — will deploy"
+          exit 0
+        fi
+
+        # Build the path filter
+        PATHS=('contracts/**')
+        WORKFLOW_FILE="${{ inputs.workflow-file }}"
+        if [[ -n "$WORKFLOW_FILE" ]]; then
+          PATHS+=(".github/workflows/${WORKFLOW_FILE}")
+        fi
+
+        CHANGED=$(git diff --name-only "${PREV_TAG}"...HEAD -- "${PATHS[@]}" || true)
+        if [[ -n "$CHANGED" ]]; then
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+          echo "Contract changes detected:"
+          echo "$CHANGED"
+        else
+          echo "deploy=false" >> "$GITHUB_OUTPUT"
+          echo "No contract changes — skipping deploy"
+        fi
