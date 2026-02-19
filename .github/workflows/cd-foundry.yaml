@@ -15,6 +15,7 @@ on:
     branches:
       - trunk
     paths:
+      - ".github/workflows/cd-foundry.yaml"
       - "contracts/**"
 
   workflow_dispatch:
@@ -163,12 +164,17 @@ jobs:
           DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
         run: |
           KEY="${DEPLOYER_PRIVATE_KEY}"
-          [[ "$KEY" != 0x* ]] && KEY="0x${KEY}"
+          if [[ "$KEY" != 0x* ]];
+          then
+            echo "Normalizing deployer key"
+            KEY="0x${KEY}"
+          fi
           echo "DEPLOYER_PRIVATE_KEY=${KEY}" >> "$GITHUB_ENV"
 
       - id: deploy_test_token
         name: Deploy Test Token (Testnet Only)
         if: steps.resolve_environment.outputs.network == 'testnet'
+        continue-on-error: true
         shell: devenv shell --quiet bash -- -e {0}
         env:
           SNOWTRACE_API_KEY: ${{ secrets.SNOWTRACE_API_KEY }}
@@ -197,6 +203,7 @@ jobs:
       - id: deploy_vault
         name: Deploy Vault (Fresh Proxy)
         if: steps.detect_vault_mode.outputs.mode == 'deploy'
+        continue-on-error: true
         shell: devenv shell --quiet bash -- -e {0}
         env:
           TOKEN_ADDRESS: ${{ steps.read_config.outputs.TOKEN_ADDRESS }}
@@ -215,6 +222,7 @@ jobs:
       - id: upgrade_vault
         name: Upgrade Vault (New Implementation)
         if: steps.detect_vault_mode.outputs.mode == 'upgrade'
+        continue-on-error: true
         shell: devenv shell --quiet bash -- -e {0}
         env:
           VAULT_PROXY_ADDRESS: ${{ steps.read_config.outputs.VAULT_ADDRESS }}
@@ -293,6 +301,29 @@ jobs:
             echo "*Paste the above calldata into your Safe's **Transaction Builder** → **Custom data**.*"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - id: check_deploys
+        name: Check Deploys
+        if: always()
+        run: |
+          FAILED=false
+          if [[ "${{ steps.deploy_test_token.outcome }}" == "failure" ]]; then
+            echo "::error::Deploy Test Token failed"
+            FAILED=true
+          fi
+          if [[ "${{ steps.deploy_vault.outcome }}" == "failure" ]]; then
+            echo "::error::Deploy Vault failed"
+            FAILED=true
+          fi
+          if [[ "${{ steps.upgrade_vault.outcome }}" == "failure" ]]; then
+            echo "::error::Upgrade Vault failed"
+            FAILED=true
+          fi
+          if [[ "$FAILED" == "true" ]]; then
+            echo "❌ One or more contract deployments failed — see errors above"
+            exit 1
+          fi
+          echo "✅ All contract deployments succeeded"
+
       - id: deploy_summary
         name: Deploy Summary
         if: always()
@@ -354,6 +385,35 @@ jobs:
             if [[ "$FOUND_CONTRACTS" == "false" ]]; then
               echo "> ⚠️ No contracts were deployed (check step logs above)."
             fi
+
+            # Show configuration addresses used for this deployment
+            ORACLE="${{ steps.read_config.outputs.ORACLE_ADDRESS }}"
+            ADMIN="${{ steps.read_config.outputs.ADMIN_ADDRESS }}"
+            TOKEN="${{ steps.read_config.outputs.TOKEN_ADDRESS }}"
+            VAULT="${{ steps.read_config.outputs.VAULT_ADDRESS }}"
+            ZERO="0x0000000000000000000000000000000000000000"
+
+            echo ""
+            echo "### 🔧 Configuration Addresses"
+            echo ""
+            echo "| Role | Address | Status |"
+            echo "|------|---------|--------|"
+            if [[ "$ORACLE" == "$ZERO" || -z "$ORACLE" ]]; then
+              echo "| 🔮 **Oracle** | \`${ORACLE}\` | ⚠️ Not configured |"
+            else
+              echo "| 🔮 **Oracle** | \`${ORACLE}\` | [View ↗](${EXPLORER}/address/${ORACLE}) |"
+            fi
+            if [[ "$TOKEN" == "$ZERO" || -z "$TOKEN" ]]; then
+              echo "| 🪙 **Token** | \`${TOKEN}\` | ⚠️ Not configured |"
+            else
+              echo "| 🪙 **Token** | \`${TOKEN}\` | [View ↗](${EXPLORER}/address/${TOKEN}) |"
+            fi
+            if [[ "$VAULT" == "$ZERO" || -z "$VAULT" ]]; then
+              echo "| 🏦 **Vault** | \`${VAULT}\` | ⚠️ Not configured |"
+            else
+              echo "| 🏦 **Vault** | \`${VAULT}\` | [View ↗](${EXPLORER}/address/${VAULT}) |"
+            fi
+            echo "| 🛡️ **Admin/Safe** | \`${ADMIN}\` | [View ↗](${EXPLORER}/address/${ADMIN}) |"
 
             echo ""
             echo "---"

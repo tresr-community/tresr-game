@@ -22,5 +22,5 @@ mainnet = "https://api.avax.network/ext/bc/C/rpc"
 
 [etherscan]
 
-fuji = { key = "${SNOWTRACE_API_KEY}" }
-mainnet = { key = "${SNOWTRACE_API_KEY}" }
+fuji = { key = "${SNOWTRACE_API_KEY}", url = "https://api-testnet.snowtrace.io/api" }
+mainnet = { key = "${SNOWTRACE_API_KEY}", url = "https://api.snowtrace.io/api" }
