@@ -3,8 +3,7 @@
 # Name: cd-foundry-mainnet.yaml
 # Description: Deploy Solidity contracts to Avalanche C-Chain (Mainnet)
 #
-# Called by: cd-release.yaml (deploy-foundry-mainnet job)
-# Also runnable via manual dispatch
+# Called by: cd-release-mainnet.yaml (deploy-foundry-mainnet job)
 #
 # Deploys: Vault only (uses real TRESR token from tresr.yaml)
 # Does NOT deploy test token or faucet.
@@ -25,8 +24,6 @@ on:
         value: ${{ jobs.deploy.outputs.vault_address }}
       deployed:
         value: ${{ jobs.detect-changes.outputs.deploy }}
-
-  workflow_dispatch: {}
 
 concurrency:
   group: foundry-mainnet-deploy-${{ github.ref }}

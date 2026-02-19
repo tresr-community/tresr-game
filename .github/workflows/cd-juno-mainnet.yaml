@@ -3,7 +3,7 @@
 # Name: cd-juno-mainnet.yaml
 # Description: Deploy Juno to mainnet (hosting + functions + config)
 #
-# Called by: cd-release.yaml (promote job)
+# Called by: cd-release-mainnet.yaml (deploy-juno-mainnet job)
 #
 ##################################################
 
