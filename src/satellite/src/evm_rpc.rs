@@ -33,7 +33,10 @@ const TRANSFER_SELECTOR: [u8; 4] = [0xa9, 0x05, 0x9c, 0xbb];
 pub async fn verify_avalanche_fee(tx_hash: &str) -> Result<ParsedFee, String> {
     // Anvil mock: skip real RPC verification in local dev
     if crate::config::NETWORK_NAME == "anvil" {
-        crate::logging::log_debug("EvmRpc", &format!("ANVIL_MOCK: verify_avalanche_fee for {}", tx_hash));
+        crate::logging::log_debug(
+            "EvmRpc",
+            &format!("ANVIL_MOCK: verify_avalanche_fee for {}", tx_hash),
+        );
         return Ok(ParsedFee {
             amount: 10,
             from: "0x0000000000000000000000000000000000000000".to_string(),
@@ -51,9 +54,13 @@ pub async fn verify_avalanche_fee(tx_hash: &str) -> Result<ParsedFee, String> {
         id: 1,
     };
 
-    let (response,): (RpcResponse,) = call(evm_rpc_id, "request", (request, crate::config::AVALANCHE_CHAIN_ID))
-        .await
-        .map_err(|(code, msg)| format!("EVM RPC call failed: {:?}: {}", code, msg))?;
+    let (response,): (RpcResponse,) = call(
+        evm_rpc_id,
+        "request",
+        (request, crate::config::AVALANCHE_CHAIN_ID),
+    )
+    .await
+    .map_err(|(code, msg)| format!("EVM RPC call failed: {:?}: {}", code, msg))?;
 
     if let Some(error) = response.error {
         return Err(format!("RPC error {}: {}", error.code, error.message));
@@ -84,7 +91,10 @@ pub async fn verify_avalanche_claim_tx(
 ) -> Result<(), String> {
     // Anvil mock: skip real RPC verification in local dev
     if crate::config::NETWORK_NAME == "anvil" {
-        crate::logging::log_debug("EvmRpc", &format!("ANVIL_MOCK: verify_avalanche_claim_tx for {}", tx_hash));
+        crate::logging::log_debug(
+            "EvmRpc",
+            &format!("ANVIL_MOCK: verify_avalanche_claim_tx for {}", tx_hash),
+        );
         return Ok(());
     }
 
@@ -99,9 +109,13 @@ pub async fn verify_avalanche_claim_tx(
         id: 1,
     };
 
-    let (response,): (RpcResponse,) = call(evm_rpc_id, "request", (request, crate::config::AVALANCHE_CHAIN_ID))
-        .await
-        .map_err(|(code, msg)| format!("EVM RPC call failed: {:?}: {}", code, msg))?;
+    let (response,): (RpcResponse,) = call(
+        evm_rpc_id,
+        "request",
+        (request, crate::config::AVALANCHE_CHAIN_ID),
+    )
+    .await
+    .map_err(|(code, msg)| format!("EVM RPC call failed: {:?}: {}", code, msg))?;
 
     if let Some(error) = response.error {
         return Err(format!("RPC error {}: {}", error.code, error.message));
@@ -110,7 +124,12 @@ pub async fn verify_avalanche_claim_tx(
     if let Some(result_str) = response.result {
         let result_json: serde_json::Value = serde_json::from_str(&result_str)
             .map_err(|e| format!("Failed to parse JSON result: {}", e))?;
-        verify_claim_transaction(&result_json, expected_session_id, expected_amount, expected_keys)?;
+        verify_claim_transaction(
+            &result_json,
+            expected_session_id,
+            expected_amount,
+            expected_keys,
+        )?;
 
         // Verify the transaction actually succeeded on-chain
         verify_transaction_receipt(tx_hash).await?;
@@ -140,7 +159,8 @@ fn verify_claim_transaction(
     if !to_address.eq_ignore_ascii_case(crate::config::VAULT_CONTRACT_ADDRESS) {
         return Err(format!(
             "Transaction 'to' address {} does not match vault {}",
-            to_address, crate::config::VAULT_CONTRACT_ADDRESS
+            to_address,
+            crate::config::VAULT_CONTRACT_ADDRESS
         ));
     }
 
@@ -273,7 +293,8 @@ fn parse_fee_input(tx_data: &serde_json::Value) -> Result<ParsedFee, String> {
     if !to_address.eq_ignore_ascii_case(crate::config::VAULT_CONTRACT_ADDRESS) {
         return Err(format!(
             "Fee tx 'to' {} does not match vault {}",
-            to_address, crate::config::VAULT_CONTRACT_ADDRESS
+            to_address,
+            crate::config::VAULT_CONTRACT_ADDRESS
         ));
     }
 
@@ -334,15 +355,23 @@ async fn verify_transaction_receipt(tx_hash: &str) -> Result<(), String> {
         id: 1,
     };
 
-    let (response,): (RpcResponse,) = call(evm_rpc_id, "request", (request, crate::config::AVALANCHE_CHAIN_ID))
-        .await
-        .map_err(|(code, msg)| format!("Receipt RPC call failed: {:?}: {}", code, msg))?;
+    let (response,): (RpcResponse,) = call(
+        evm_rpc_id,
+        "request",
+        (request, crate::config::AVALANCHE_CHAIN_ID),
+    )
+    .await
+    .map_err(|(code, msg)| format!("Receipt RPC call failed: {:?}: {}", code, msg))?;
 
     if let Some(error) = response.error {
-        return Err(format!("Receipt RPC error {}: {}", error.code, error.message));
+        return Err(format!(
+            "Receipt RPC error {}: {}",
+            error.code, error.message
+        ));
     }
 
-    let result_str = response.result
+    let result_str = response
+        .result
         .ok_or_else(|| "Transaction receipt not found (tx may be pending)".to_string())?;
 
     let receipt: serde_json::Value = serde_json::from_str(&result_str)
@@ -374,21 +403,24 @@ async fn build_withdrawal_tx(to_address: &str, amount: u64) -> Result<String, St
 
     // Step 3: Build ERC-20 transfer(address,uint256) calldata
     let recipient_hex = to_address.strip_prefix("0x").unwrap_or(to_address);
-    let recipient_bytes = hex::decode(recipient_hex)
-        .map_err(|e| format!("Invalid recipient address: {}", e))?;
+    let recipient_bytes =
+        hex::decode(recipient_hex).map_err(|e| format!("Invalid recipient address: {}", e))?;
     if recipient_bytes.len() != 20 {
-        return Err(format!("Recipient address must be 20 bytes, got {}", recipient_bytes.len()));
+        return Err(format!(
+            "Recipient address must be 20 bytes, got {}",
+            recipient_bytes.len()
+        ));
     }
     let amount_wei = BigUint::from(amount) * BigUint::from(10u64).pow(18);
     let amount_be = amount_wei.to_bytes_be();
 
     // ABI encode: selector (4) + address padded to 32 + uint256 padded to 32 = 68 bytes
     let mut calldata = Vec::with_capacity(68);
-    calldata.extend_from_slice(&TRANSFER_SELECTOR);           // 4 bytes
-    calldata.extend_from_slice(&[0u8; 12]);                   // left-pad address to 32 bytes
-    calldata.extend_from_slice(&recipient_bytes);              // 20 bytes
+    calldata.extend_from_slice(&TRANSFER_SELECTOR); // 4 bytes
+    calldata.extend_from_slice(&[0u8; 12]); // left-pad address to 32 bytes
+    calldata.extend_from_slice(&recipient_bytes); // 20 bytes
     let pad_len = 32usize.saturating_sub(amount_be.len());
-    calldata.extend_from_slice(&vec![0u8; pad_len]);           // left-pad amount to 32 bytes
+    calldata.extend_from_slice(&vec![0u8; pad_len]); // left-pad amount to 32 bytes
     calldata.extend_from_slice(&amount_be);
 
     let calldata_hex = format!("0x{}", hex::encode(&calldata));
@@ -410,7 +442,7 @@ async fn build_withdrawal_tx(to_address: &str, amount: u64) -> Result<String, St
     )
     .await
     .map(|g| g * 110 / 100) // 10% buffer
-    .unwrap_or(65_000);      // ERC-20 transfers typically need ~65k gas
+    .unwrap_or(65_000); // ERC-20 transfers typically need ~65k gas
 
     // Step 6: Build the unsigned transaction for signing (EIP-155)
     let mut rlp_stream = RlpStream::new();
@@ -418,12 +450,12 @@ async fn build_withdrawal_tx(to_address: &str, amount: u64) -> Result<String, St
     rlp_stream.append(&nonce);
     rlp_stream.append(&gas_price);
     rlp_stream.append(&gas_limit);
-    rlp_stream.append(&token_bytes);              // to = token contract
-    rlp_stream.append(&0u64);                     // value = 0 (no native AVAX)
-    rlp_stream.append(&calldata);                 // data = transfer() calldata
+    rlp_stream.append(&token_bytes); // to = token contract
+    rlp_stream.append(&0u64); // value = 0 (no native AVAX)
+    rlp_stream.append(&calldata); // data = transfer() calldata
     rlp_stream.append(&crate::config::AVALANCHE_CHAIN_ID);
-    rlp_stream.append(&0u8);                      // r = 0 for unsigned tx
-    rlp_stream.append(&0u8);                      // s = 0 for unsigned tx
+    rlp_stream.append(&0u8); // r = 0 for unsigned tx
+    rlp_stream.append(&0u8); // s = 0 for unsigned tx
 
     let unsigned_tx_bytes = rlp_stream.out().to_vec();
 
@@ -434,7 +466,9 @@ async fn build_withdrawal_tx(to_address: &str, amount: u64) -> Result<String, St
     let signature = sign_with_ecdsa(&tx_hash).await?;
 
     // Step 9: Extract r, s, v from signature (async — determines correct recovery ID)
-    let (r, s, v) = extract_signature_components(&signature, &tx_hash, crate::config::AVALANCHE_CHAIN_ID).await?;
+    let (r, s, v) =
+        extract_signature_components(&signature, &tx_hash, crate::config::AVALANCHE_CHAIN_ID)
+            .await?;
 
     // Step 10: Build the final signed transaction
     let mut signed_rlp = RlpStream::new();
@@ -442,9 +476,9 @@ async fn build_withdrawal_tx(to_address: &str, amount: u64) -> Result<String, St
     signed_rlp.append(&nonce);
     signed_rlp.append(&gas_price);
     signed_rlp.append(&gas_limit);
-    signed_rlp.append(&token_bytes);              // to = token contract
-    signed_rlp.append(&0u64);                     // value = 0
-    signed_rlp.append(&calldata);                 // data = transfer() calldata
+    signed_rlp.append(&token_bytes); // to = token contract
+    signed_rlp.append(&0u64); // value = 0
+    signed_rlp.append(&calldata); // data = transfer() calldata
     signed_rlp.append(&v);
     signed_rlp.append(&r);
     signed_rlp.append(&s);
@@ -472,17 +506,41 @@ pub async fn get_eth_address() -> Result<String, String> {
         .await
         .map_err(|e| format!("Failed to get ECDSA public key: {:?}", e))?;
 
-    // The public key is 65 bytes: 0x04 || x || y
-    // For Ethereum address: keccak256(x || y) and take last 20 bytes
+    // The IC returns SEC1-encoded public keys which may be either:
+    //   - Uncompressed (65 bytes): 0x04 || x || y
+    //   - Compressed   (33 bytes): 0x02/0x03 || x
+    // Use libsecp256k1 to parse either format and serialize to uncompressed.
     let public_key = &response.public_key;
-    if public_key.len() != 65 || public_key[0] != 0x04 {
-        return Err("Invalid public key format".to_string());
-    }
 
-    // Hash the x and y coordinates (skip the 0x04 prefix)
-    let hash = keccak256(&public_key[1..]);
+    let parsed_key = if public_key.len() == 33 {
+        libsecp256k1::PublicKey::parse_compressed(
+            public_key
+                .as_slice()
+                .try_into()
+                .map_err(|_| "Public key is not 33 bytes".to_string())?,
+        )
+        .map_err(|e| format!("Failed to parse compressed public key: {:?}", e))?
+    } else if public_key.len() == 65 {
+        libsecp256k1::PublicKey::parse(
+            public_key
+                .as_slice()
+                .try_into()
+                .map_err(|_| "Public key is not 65 bytes".to_string())?,
+        )
+        .map_err(|e| format!("Failed to parse uncompressed public key: {:?}", e))?
+    } else {
+        return Err(format!(
+            "Unexpected public key length: {} (expected 33 or 65)",
+            public_key.len()
+        ));
+    };
 
-    // Take the last 20 bytes as the Ethereum address
+    // Serialize to uncompressed form: 0x04 || x || y (65 bytes)
+    let uncompressed = parsed_key.serialize();
+
+    // For Ethereum address: keccak256(x || y) and take last 20 bytes
+    // Skip the 0x04 prefix byte
+    let hash = keccak256(&uncompressed[1..]);
     let address_bytes = &hash[12..];
     Ok(format!("0x{}", hex::encode(address_bytes)))
 }
@@ -503,9 +561,13 @@ async fn get_transaction_count(address: &str) -> Result<u64, String> {
         id: 3,
     };
 
-    let (response,): (RpcResponse,) = call(evm_rpc_id, "request", (request, crate::config::AVALANCHE_CHAIN_ID))
-        .await
-        .map_err(|(code, msg)| format!("EVM RPC call failed: {:?}: {}", code, msg))?;
+    let (response,): (RpcResponse,) = call(
+        evm_rpc_id,
+        "request",
+        (request, crate::config::AVALANCHE_CHAIN_ID),
+    )
+    .await
+    .map_err(|(code, msg)| format!("EVM RPC call failed: {:?}: {}", code, msg))?;
 
     if let Some(error) = response.error {
         return Err(format!("RPC error {}: {}", error.code, error.message));
@@ -546,10 +608,7 @@ pub async fn sign_with_ecdsa(message_hash: &[u8]) -> Result<Vec<u8>, String> {
 ///
 /// This is a shared helper used by both `extract_signature_components` (EIP-155
 /// transactions) and `generate_claim_signature` (EIP-191 personal signatures).
-pub async fn determine_recovery_id(
-    signature: &[u8],
-    message_hash: &[u8],
-) -> Result<u8, String> {
+pub async fn determine_recovery_id(signature: &[u8], message_hash: &[u8]) -> Result<u8, String> {
     if signature.len() != 64 {
         return Err(format!(
             "Invalid signature length: expected 64, got {}",
@@ -573,8 +632,7 @@ pub async fn determine_recovery_id(
         .map_err(|e| format!("Invalid signature: {:?}", e))?;
 
     for id in 0u8..2u8 {
-        let recid = RecoveryId::parse(id)
-            .map_err(|e| format!("Invalid recovery ID: {:?}", e))?;
+        let recid = RecoveryId::parse(id).map_err(|e| format!("Invalid recovery ID: {:?}", e))?;
         if let Ok(pubkey) = recover(&message, &sig, &recid) {
             let pubkey_serialized = pubkey.serialize();
             let recovered_addr = pubkey_to_eth_address(&pubkey_serialized[1..65]);
@@ -627,7 +685,10 @@ async fn extract_signature_components(
 pub async fn get_token_balance(wallet_address: &str) -> Result<u64, String> {
     // Anvil mock: return fake balance in local dev
     if crate::config::NETWORK_NAME == "anvil" {
-        crate::logging::log_debug("EvmRpc", &format!("ANVIL_MOCK: get_token_balance for {}", wallet_address));
+        crate::logging::log_debug(
+            "EvmRpc",
+            &format!("ANVIL_MOCK: get_token_balance for {}", wallet_address),
+        );
         return Ok(1000);
     }
 
@@ -651,15 +712,20 @@ pub async fn get_token_balance(wallet_address: &str) -> Result<u64, String> {
         id: 1,
     };
 
-    let (response,): (RpcResponse,) = call(evm_rpc_id, "request", (request, crate::config::AVALANCHE_CHAIN_ID))
-        .await
-        .map_err(|(code, msg)| format!("EVM RPC call failed: {:?}: {}", code, msg))?;
+    let (response,): (RpcResponse,) = call(
+        evm_rpc_id,
+        "request",
+        (request, crate::config::AVALANCHE_CHAIN_ID),
+    )
+    .await
+    .map_err(|(code, msg)| format!("EVM RPC call failed: {:?}: {}", code, msg))?;
 
     if let Some(error) = response.error {
         return Err(format!("RPC error {}: {}", error.code, error.message));
     }
 
-    let result_hex = response.result
+    let result_hex = response
+        .result
         .ok_or_else(|| "No result from eth_call".to_string())?;
 
     // Parse hex string — result is a raw hex-encoded uint256
@@ -673,7 +739,9 @@ pub async fn get_token_balance(wallet_address: &str) -> Result<u64, String> {
         .ok_or_else(|| format!("Failed to parse balance hex: {}", hex_clean))?;
     let one_token = BigUint::from(10u64).pow(18);
     let tokens = &wei / &one_token;
-    tokens.to_u64().ok_or_else(|| "Balance too large for u64".to_string())
+    tokens
+        .to_u64()
+        .ok_or_else(|| "Balance too large for u64".to_string())
 }
 
 /// Get current gas price from the network
@@ -692,9 +760,13 @@ pub async fn get_gas_price() -> Result<u64, String> {
         id: 1,
     };
 
-    let (response,): (RpcResponse,) = call(evm_rpc_id, "request", (request, crate::config::AVALANCHE_CHAIN_ID))
-        .await
-        .map_err(|(code, msg)| format!("eth_gasPrice failed: {:?}: {}", code, msg))?;
+    let (response,): (RpcResponse,) = call(
+        evm_rpc_id,
+        "request",
+        (request, crate::config::AVALANCHE_CHAIN_ID),
+    )
+    .await
+    .map_err(|(code, msg)| format!("eth_gasPrice failed: {:?}: {}", code, msg))?;
 
     if let Some(error) = response.error {
         return Err(format!("RPC error {}: {}", error.code, error.message));
@@ -707,7 +779,12 @@ pub async fn get_gas_price() -> Result<u64, String> {
 }
 
 /// Estimate gas for a transaction
-pub async fn estimate_gas(from: &str, to: &str, data: &str, value: Option<&str>) -> Result<u64, String> {
+pub async fn estimate_gas(
+    from: &str,
+    to: &str,
+    data: &str,
+    value: Option<&str>,
+) -> Result<u64, String> {
     if crate::config::NETWORK_NAME == "anvil" {
         return Ok(65_000);
     }
@@ -728,9 +805,13 @@ pub async fn estimate_gas(from: &str, to: &str, data: &str, value: Option<&str>)
         id: 1,
     };
 
-    let (response,): (RpcResponse,) = call(evm_rpc_id, "request", (request, crate::config::AVALANCHE_CHAIN_ID))
-        .await
-        .map_err(|(code, msg)| format!("eth_estimateGas failed: {:?}: {}", code, msg))?;
+    let (response,): (RpcResponse,) = call(
+        evm_rpc_id,
+        "request",
+        (request, crate::config::AVALANCHE_CHAIN_ID),
+    )
+    .await
+    .map_err(|(code, msg)| format!("eth_estimateGas failed: {:?}: {}", code, msg))?;
 
     if let Some(error) = response.error {
         return Err(format!("RPC error {}: {}", error.code, error.message));
