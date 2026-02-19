@@ -13,6 +13,7 @@ import type {Boss} from "@/lib/game/prefabs/Boss";
 import type {GameplayConfig} from "@/lib/game/scenes/MainScene";
 import {log} from "@/lib/utils/log";
 import {trackLevelComplete} from "@/lib/metrics/analytics";
+import {scaleCircleBody, scaleRectBody} from "@/lib/game/utils/physics";
 
 const COMPONENT_NAME = "SpawnManager";
 
@@ -182,7 +183,7 @@ export class SpawnManager {
           this.designHeight
         );
         enemy.setScale(enemyScale);
-        this.scaleCircleBody(enemy, this.config.entities.enemy.hitbox);
+        scaleCircleBody(enemy, this.config.entities.enemy.hitbox);
       }
     });
   }
@@ -241,7 +242,7 @@ export class SpawnManager {
         this.designHeight
       );
       bomb.setScale(bombScale);
-      this.scaleRectBody(bomb, this.config.entities.bomb.hitbox);
+      scaleRectBody(bomb, this.config.entities.bomb.hitbox);
     }
   }
 
@@ -475,25 +476,5 @@ export class SpawnManager {
     this.player = undefined;
     this.boss = undefined;
     this.tresrBot = undefined;
-  }
-
-  private scaleCircleBody(
-    entity: Phaser.Physics.Arcade.Sprite,
-    hitbox: {radius: number; offsetX: number; offsetY: number}
-  ) {
-    const body = entity.body as Phaser.Physics.Arcade.Body;
-    if (body) {
-      body.setCircle(hitbox.radius, hitbox.offsetX, hitbox.offsetY);
-    }
-  }
-
-  private scaleRectBody(
-    entity: Phaser.Physics.Arcade.Sprite,
-    hitbox: {width: number; height: number}
-  ) {
-    const body = entity.body as Phaser.Physics.Arcade.Body;
-    if (body) {
-      body.setSize(hitbox.width, hitbox.height);
-    }
   }
 }

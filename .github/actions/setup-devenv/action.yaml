@@ -18,6 +18,10 @@ inputs:
 runs:
   using: composite
   steps:
+    - id: free_disk_space
+      name: Free Disk Space
+      uses: ./.github/actions/free-disk-space
+
     - id: install_nix
       name: Install Nix
       uses: cachix/install-nix-action@v31
