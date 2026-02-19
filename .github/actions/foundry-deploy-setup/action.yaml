@@ -1,0 +1,180 @@
+---
+name: Foundry Deploy Setup
+description: >-
+  Common setup for Foundry contract deployments.
+  Must be called AFTER checkout, free-disk-space, and setup-devenv.
+
+inputs:
+  environment:
+    description: "Target environment (Testnet or Mainnet)"
+    required: true
+  oracle-address:
+    description: "Oracle address override (from Juno deploy)"
+    required: false
+    default: ""
+  deployer-private-key:
+    description: "Deployer wallet private key"
+    required: true
+  snowtrace-api-key:
+    description: "Snowtrace API key for contract verification"
+    required: true
+  min-deployer-balance:
+    description: "Minimum deployer balance in wei"
+    required: false
+    default: "100000000000000000"
+
+outputs:
+  network:
+    description: "Resolved network name (lowercase)"
+    value: ${{ steps.resolve_environment.outputs.network }}
+  RPC_URL:
+    description: "RPC URL from config"
+    value: ${{ steps.read_config.outputs.RPC_URL }}
+  CHAIN_ID:
+    description: "Chain ID from config"
+    value: ${{ steps.read_config.outputs.CHAIN_ID }}
+  TOKEN_ADDRESS:
+    description: "Token address from config"
+    value: ${{ steps.read_config.outputs.TOKEN_ADDRESS }}
+  ORACLE_ADDRESS:
+    description: "Oracle address from config"
+    value: ${{ steps.read_config.outputs.ORACLE_ADDRESS }}
+  ADMIN_ADDRESS:
+    description: "Admin/Safe address from config"
+    value: ${{ steps.read_config.outputs.ADMIN_ADDRESS }}
+  VAULT_ADDRESS:
+    description: "Vault address from config"
+    value: ${{ steps.read_config.outputs.VAULT_ADDRESS }}
+
+runs:
+  using: composite
+  steps:
+    - id: check_vars
+      name: Check Variables
+      shell: bash
+      env:
+        DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
+        SNOWTRACE_API_KEY: ${{ inputs.snowtrace-api-key }}
+      run: |
+        REQUIRED_VARS=(
+          DEPLOYER_PRIVATE_KEY
+          SNOWTRACE_API_KEY
+        )
+        for VAR in "${REQUIRED_VARS[@]}";
+        do
+          if [[ -z "${!VAR}" ]];
+          then
+            echo "::error::Required variable $VAR is not set"
+            exit 1
+          fi
+        done
+        echo "All required variables are set"
+
+    - id: cache_foundry
+      name: Cache Foundry
+      uses: ./.github/actions/cache-foundry
+
+    - id: resolve_environment
+      name: Resolve Environment
+      shell: bash
+      run: |
+        ENV="${{ inputs.environment }}"
+        if [[ -z "$ENV" ]]; then
+          ENV="Testnet"
+        fi
+        echo "network=$(echo "${ENV}" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+    - id: read_config
+      name: Read Config
+      shell: bash
+      run: |
+        NETWORK="${{ steps.resolve_environment.outputs.network }}"
+        {
+          echo "RPC_URL=$(yq ".client.blockchain.avalanche.${NETWORK}.rpc_url" config/tresr.yaml)"
+          echo "CHAIN_ID=$(yq ".client.blockchain.avalanche.${NETWORK}.chain_id" config/tresr.yaml)"
+          echo "TOKEN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.tresr_token_contract" config/tresr.yaml)"
+          echo "ORACLE_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.oracle_address" config/tresr.yaml)"
+          echo "ADMIN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.safe_address" config/tresr.yaml)"
+          echo "VAULT_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.vault_contract" config/tresr.yaml)"
+        } >> "$GITHUB_OUTPUT"
+
+    - id: validate_config
+      name: Validate Config
+      shell: bash
+      env:
+        RPC_URL: ${{ steps.read_config.outputs.RPC_URL }}
+        CHAIN_ID: ${{ steps.read_config.outputs.CHAIN_ID }}
+        TOKEN_ADDRESS: ${{ steps.read_config.outputs.TOKEN_ADDRESS }}
+        ORACLE_ADDRESS: ${{ steps.read_config.outputs.ORACLE_ADDRESS }}
+        ADMIN_ADDRESS: ${{ steps.read_config.outputs.ADMIN_ADDRESS }}
+      run: |
+        ERRORS=0
+        ZERO="0x0000000000000000000000000000000000000000"
+
+        # Required: pipeline cannot proceed without these
+        for VAR in RPC_URL CHAIN_ID ADMIN_ADDRESS; do
+          VAL="${!VAR}"
+          if [[ -z "$VAL" || "$VAL" == "null" ]]; then
+            echo "::error::Config value $VAR is empty or null"
+            ERRORS=$((ERRORS + 1))
+          else
+            echo "✓ $VAR=$VAL"
+          fi
+        done
+
+        # Informational: zero addresses are fine on first deploy
+        for VAR in TOKEN_ADDRESS ORACLE_ADDRESS; do
+          VAL="${!VAR}"
+          if [[ -z "$VAL" || "$VAL" == "null" ]]; then
+            echo "::error::Config value $VAR is empty or null"
+            ERRORS=$((ERRORS + 1))
+          elif [[ "$VAL" == "$ZERO" ]]; then
+            echo "::warning::$VAR is zero — vault deploy will be skipped"
+          else
+            echo "✓ $VAR=$VAL"
+          fi
+        done
+
+        if [[ $ERRORS -gt 0 ]]; then
+          echo "::error::$ERRORS config value(s) missing. Check tresr.yaml paths."
+          exit 1
+        fi
+
+    - id: check_balance
+      name: Check Deployer Balance
+      shell: devenv shell --quiet bash -- -e {0}
+      env:
+        RPC_URL: ${{ steps.read_config.outputs.RPC_URL }}
+        DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
+        MIN_DEPLOYER_BALANCE: ${{ inputs.min-deployer-balance }}
+      run: |
+        DEPLOYER_ADDR=$(cast wallet address "$DEPLOYER_PRIVATE_KEY")
+        BALANCE=$(cast balance "$DEPLOYER_ADDR" --rpc-url "$RPC_URL")
+        echo "Deployer: ${DEPLOYER_ADDR}"
+        echo "Balance:  ${BALANCE} wei"
+        if (( $(echo "$BALANCE < $MIN_DEPLOYER_BALANCE" | bc -l) )); then
+          echo "::error::Deployer balance too low (< 0.1 AVAX). Fund the wallet first."
+          exit 1
+        fi
+        echo "✅ Balance sufficient"
+
+    - id: build_contracts
+      name: Build Contracts
+      shell: devenv shell --quiet bash -- -e {0}
+      run: |
+        cd contracts
+        forge build
+
+    - id: normalize_key
+      name: Normalize Deployer Key
+      shell: bash
+      env:
+        DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
+      run: |
+        KEY="${DEPLOYER_PRIVATE_KEY}"
+        if [[ "$KEY" != 0x* ]];
+        then
+          echo "Normalizing deployer key"
+          KEY="0x${KEY}"
+        fi
+        echo "DEPLOYER_PRIVATE_KEY=${KEY}" >> "$GITHUB_ENV"

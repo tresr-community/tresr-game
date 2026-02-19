@@ -1,0 +1,155 @@
+---
+##################################################
+# Name: cd-foundry-mainnet.yaml
+# Description: Deploy Solidity contracts to Avalanche C-Chain (Mainnet)
+#
+# Called by: cd-release.yaml (deploy-foundry-mainnet job)
+# Also runnable via manual dispatch
+#
+# Deploys: Vault only (uses real TRESR token from tresr.yaml)
+# Does NOT deploy test token or faucet.
+##################################################
+
+name: Foundry Deploy (Mainnet)
+
+on:
+  workflow_call:
+    inputs:
+      oracle_address:
+        description: "Oracle address from Juno deploy"
+        type: string
+        required: false
+        default: ""
+    outputs:
+      vault_address:
+        value: ${{ jobs.deploy.outputs.vault_address }}
+      deployed:
+        value: ${{ jobs.detect-changes.outputs.deploy }}
+
+  workflow_dispatch: {}
+
+concurrency:
+  group: foundry-mainnet-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: read
+  pull-requests: read
+  statuses: write
+
+env:
+  NIXPKGS_ALLOW_UNFREE: 1
+  SECRETSPEC_PROVIDER: env
+  FOUNDRY_PROFILE: ci
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  ##################################################
+  # Detect contract changes
+  ##################################################
+
+  detect-changes:
+    name: Detect Contract Changes
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      deploy: ${{ steps.check.outputs.deploy }}
+
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: check
+        name: Check for Changes
+        uses: ./.github/actions/detect-foundry-changes
+        with:
+          workflow-file: cd-foundry-mainnet.yaml
+
+  ##################################################
+  # Deploy contracts (Mainnet)
+  ##################################################
+
+  deploy:
+    name: Deploy (Mainnet)
+
+    needs: detect-changes
+    if: needs.detect-changes.outputs.deploy == 'true'
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 60
+    continue-on-error: false
+
+    environment: Mainnet
+
+    outputs:
+      vault_address: ${{ steps.vault.outputs.vault_address }}
+
+    steps:
+      # --- Workflow-level prerequisites ---
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - id: free_disk_space
+        name: Free Disk Space
+        uses: ./.github/actions/free-disk-space
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      # --- Common setup (composite action) ---
+      - id: setup
+        name: Foundry Deploy Setup
+        uses: ./.github/actions/foundry-deploy-setup
+        with:
+          environment: Mainnet
+          oracle-address: ${{ inputs.oracle_address }}
+          deployer-private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          snowtrace-api-key: ${{ secrets.SNOWTRACE_API_KEY }}
+
+      # --- Vault deploy/upgrade (composite action) ---
+      # Mainnet uses the real TRESR token from config — no test token
+      - id: vault
+        name: Resolve Vault
+        uses: ./.github/actions/foundry-resolve-vault
+        with:
+          network: mainnet
+          rpc-url: ${{ steps.setup.outputs.RPC_URL }}
+          chain-id: ${{ steps.setup.outputs.CHAIN_ID }}
+          token-address: ${{ steps.setup.outputs.TOKEN_ADDRESS }}
+          oracle-address: ${{ inputs.oracle_address || steps.setup.outputs.ORACLE_ADDRESS }}
+          admin-address: ${{ steps.setup.outputs.ADMIN_ADDRESS }}
+          vault-address: ${{ steps.setup.outputs.VAULT_ADDRESS }}
+          deployer-private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          snowtrace-api-key: ${{ secrets.SNOWTRACE_API_KEY }}
+
+      # --- Deploy summary (composite action) ---
+      - id: summary
+        name: Deploy Summary
+        if: always()
+        uses: ./.github/actions/foundry-deploy-summary
+        with:
+          network: mainnet
+          chain-id: ${{ steps.setup.outputs.CHAIN_ID }}
+          oracle-address: ${{ inputs.oracle_address || steps.setup.outputs.ORACLE_ADDRESS }}
+          admin-address: ${{ steps.setup.outputs.ADMIN_ADDRESS }}
+          token-address: ${{ steps.setup.outputs.TOKEN_ADDRESS }}
+          vault-address: ${{ steps.vault.outputs.vault_address }}
+          workflow-name: cd-foundry-mainnet
