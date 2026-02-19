@@ -13,6 +13,7 @@ import {gameActions} from "@/lib/game/state";
 import {trackBossDefeated} from "@/lib/metrics/analytics";
 import MusicManager from "@/lib/game/MusicManager";
 import {log} from "@/lib/utils/log";
+import {scaleCircleBody} from "@/lib/game/utils/physics";
 
 const COMPONENT_NAME = "CombatManager";
 
@@ -642,7 +643,7 @@ export class CombatManager {
             this.designHeight
           );
           enemy.setScale(enemyScale);
-          this.scaleCircleBody(enemy, this.config.entities.enemy.hitbox);
+          scaleCircleBody(enemy, this.config.entities.enemy.hitbox);
         }
       });
     }
@@ -796,15 +797,5 @@ export class CombatManager {
     this.boss = undefined;
     this.chest = undefined;
     this.tresrBot = undefined;
-  }
-
-  private scaleCircleBody(
-    entity: Phaser.Physics.Arcade.Sprite,
-    hitbox: {radius: number; offsetX: number; offsetY: number}
-  ) {
-    const body = entity.body as Phaser.Physics.Arcade.Body;
-    if (body) {
-      body.setCircle(hitbox.radius, hitbox.offsetX, hitbox.offsetY);
-    }
   }
 }
