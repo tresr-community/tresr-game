@@ -3,8 +3,7 @@
 # Name: cd-foundry-testnet.yaml
 # Description: Deploy Solidity contracts to Avalanche Fuji (Testnet)
 #
-# Called by: cd-release.yaml (deploy-foundry-testnet job)
-# Also runnable via manual dispatch
+# Called by: cd-release-testnet.yaml (deploy-foundry-testnet job)
 #
 # Deploys: Test Token + Faucet + Vault (with upgrade path)
 ##################################################
@@ -28,8 +27,6 @@ on:
         value: ${{ jobs.deploy.outputs.faucet_address }}
       deployed:
         value: ${{ jobs.detect-changes.outputs.deploy }}
-
-  workflow_dispatch: {}
 
 concurrency:
   group: foundry-testnet-deploy-${{ github.ref }}
