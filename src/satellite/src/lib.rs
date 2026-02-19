@@ -1490,7 +1490,10 @@ async fn claim_authorize(
     let client_config_hash = extract_config_hash(&replay_inputs).map_err(|e| {
         logging::log_error(
             "AntiCheat",
-            &format!("Failed to parse replay payload for user {}: {}", caller_text, e),
+            &format!(
+                "Failed to parse replay payload for user {}: {}",
+                caller_text, e
+            ),
         );
         format!("Invalid replay payload: {}", e)
     })?;
@@ -1509,8 +1512,11 @@ async fn claim_authorize(
             "AntiCheat",
             &format!(
                 "CHEAT_DETECTED: config hash mismatch for user {}. Expected={}, got={}. Offence #{}, banned_until={:?}",
-                caller_text, config::CONFIG_HASH, client_config_hash,
-                user_profile.offence_count, user_profile.banned_until
+                caller_text,
+                config::CONFIG_HASH,
+                client_config_hash,
+                user_profile.offence_count,
+                user_profile.banned_until
             ),
         );
 
@@ -1722,8 +1728,7 @@ fn extract_config_hash(payload: &[u8]) -> Result<String, String> {
     }
 
     let hash_bytes = &payload[hash_start..hash_end];
-    let hash_str =
-        std::str::from_utf8(hash_bytes).map_err(|_| "Config hash is not valid UTF-8")?;
+    let hash_str = std::str::from_utf8(hash_bytes).map_err(|_| "Config hash is not valid UTF-8")?;
 
     // Validate hex format
     if !hash_str.chars().all(|c| c.is_ascii_hexdigit()) {
@@ -1743,6 +1748,17 @@ fn extract_config_hash(payload: &[u8]) -> Result<String, String> {
 #[unsafe(no_mangle)]
 fn juno_on_init_random_seed() {
     logging::log_info("Satellite", "RNG seeded — custom loggers ready");
+}
+
+// =============================================================================
+// Oracle Address Endpoint
+// =============================================================================
+
+/// Returns the satellite's Public Ethereum address derived from its threshold ECDSA key.
+/// This is the oracle address used for on-chain signature verification.
+#[update]
+async fn get_oracle_address() -> Result<String, String> {
+    evm_rpc::get_eth_address().await
 }
 
 // =============================================================================
