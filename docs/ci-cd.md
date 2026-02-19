@@ -1,52 +1,79 @@
 # CI/CD Architecture
 
-## Release Flow
+## Release Flow (Two-Pass)
+
+Contract addresses have a circular dependency between Juno (oracle) and
+Foundry (token, vault). The pipeline uses a **two-pass** approach:
+
+### Testnet (automatic on trunk push)
 
 ```mermaid
 graph TD
-    A["Push to trunk"] --> B["cd-release.yaml"]
-    C["Manual dispatch"] --> B
+    subgraph "1st pass — contract deploy"
+        A["Push to trunk"] --> B["pre-release"]
+        B --> C["deploy-juno </br> testnet"]
+        C -->|oracle_address| D["deploy-foundry </br> testnet"]
+        D -->|contract addresses| E["update-config </br> job"]
+        E --> F["Create PR with </br> new addresses"]
+    end
 
-    B --> D{"Environment?"}
-    D -->|"Testnet (auto/manual)"| E["pre-release job"]
-    D -->|"Mainnet (manual only)"| F["promote job"]
+    subgraph "2nd pass — config update"
+        F -->|merge PR| G["Push to trunk"]
+        G --> H["pre-release </br> (skipped - tag exists)"]
+        H --> I["deploy-juno-testnet </br> (redeploys with new config)"]
+        I --> J["deploy-foundry-testnet </br> (skipped - no changes)"]
+    end
+```
 
-    E --> G["Create GitHub Pre-Release<br/>(with convco changelog)"]
-    G --> H["cd-juno-testnet.yaml<br/>(workflow_call)"]
+### Mainnet (manual promotion)
 
-    F --> I["Auto-discover or validate tag"]
-    I --> J["Promote Pre-Release → Release<br/>(with convco changelog)"]
-    J --> K["cd-juno-mainnet.yaml<br/>(workflow_call)"]
+```mermaid
+graph TD
+    promote["promote </br> (manual dispatch)"] --> L["promote job"]
 
-    H --> L["Deploy Hosting + Functions + Config"]
-    K --> M["Deploy Hosting + Functions + Config"]
+    subgraph "1st pass — contract deploy"
+        L --> M["cd-juno </br> mainnet"]
+        M -->|oracle_address| N["cd-foundry </br> mainnet"]
+        N -->|contract addresses| O["update-config </br> mainnet job"]
+        O --> P["Create PR with </br> mainnet addresses"]
+    end
+
+    subgraph "2nd pass — config update"
+        P -->|merge PR| Q["Manual dispatch </br> (2nd run)"]
+        Q --> R["promote job </br> (re-run)"]
+        R --> S["cd-juno-mainnet </br> (redeploys with new config)"]
+        S --> T["cd-foundry-mainnet </br> (skipped - no changes)"]
+    end
 ```
 
 ## Developer Workflow
 
 ```mermaid
-graph LR
+graph TD
     A["Create branch"] --> B["Open PR"]
-    B --> C["CI runs<br/>(lint, test, build, security)"]
+    B --> C["CI runs </br> (lint, test, build, security)"]
     C --> D["PR approved"]
     D --> E["Merge queue"]
     E --> F["Merged to trunk"]
-    F --> G["Pre-release created<br/>(automatic)"]
+    F --> G["Pre-release created </br> (automatic)"]
     G --> H["Testnet deployed"]
     H --> I["UAT / QA"]
-    I --> J["Run cd-release<br/>(Mainnet)"]
-    J --> K["Promoted + deployed"]
+    I --> J["Run cd-release </br> (Mainnet — 1st run)"]
+    J --> K["Contracts deployed </br> + config PR created"]
+    K -->|merge PR| L["Run cd-release </br> (Mainnet — 2nd run)"]
+    L --> M["Config applied </br> + deployed"]
 ```
 
 ## Manually Runnable Workflows
 
 Only these workflows can be triggered manually via `workflow_dispatch`:
 
-| Workflow                   | Purpose                                           |
-| -------------------------- | ------------------------------------------------- |
-| `cd-release.yaml`          | Create pre-release (Testnet) or promote (Mainnet) |
-| `cd-foundry.yaml`          | Deploy Solidity contracts to Testnet or Mainnet   |
-| `chore-devenv-update.yaml` | Update devenv.lock, create PR                     |
+| Workflow                   | Purpose                                                |
+| -------------------------- | ------------------------------------------------------ |
+| `cd-release.yaml`          | Create pre-release (Testnet) or promote (Mainnet)      |
+| `cd-foundry-testnet.yaml`  | Deploy Solidity contracts to Testnet (also by release) |
+| `cd-foundry-mainnet.yaml`  | Deploy Solidity contracts to Mainnet (also by release) |
+| `chore-devenv-update.yaml` | Update devenv.lock, create PR                          |
 
 All other workflows are triggered automatically by events
 (PR, push, merge_group, schedule, workflow_call).
@@ -105,19 +132,45 @@ Lint, type-check, and build the Juno satellite:
 
 ## Foundry Deploy
 
-`cd-foundry.yaml` is a single parameterized workflow that handles
-both testnet and mainnet:
+Foundry deploys are split into two `workflow_call` workflows, each
+also available via `workflow_dispatch`:
 
-- **Push to trunk** (contracts/ changes) -- always deploys to Testnet
-- **Manual dispatch** -- choose Testnet or Mainnet
+| Workflow                  | Environment | Contracts deployed            |
+| ------------------------- | ----------- | ----------------------------- |
+| `cd-foundry-testnet.yaml` | Testnet     | Test Token, Faucet, Vault     |
+| `cd-foundry-mainnet.yaml` | Mainnet     | Vault only (real TRESR token) |
 
-Config values (RPC URL, addresses) are read dynamically from
-`config/tresr.yaml` based on the resolved network.
+Both receive `oracle_address` from the corresponding Juno deploy
+when called by `cd-release.yaml`.
+
+Shared logic is extracted into four composite actions under
+`.github/actions/`:
+
+| Action                   | Purpose                                          |
+| ------------------------ | ------------------------------------------------ |
+| `detect-foundry-changes` | Check contract source changes since last git tag |
+| `foundry-deploy-setup`   | Secret checks, caching, config, balance, build   |
+| `foundry-resolve-vault`  | Detect deploy/upgrade mode, run Forge scripts    |
+| `foundry-deploy-summary` | Generate GitHub Actions job summary              |
+
+### Change Detection
+
+A `detect-changes` job gates the deploy:
+
+| Trigger             | Behaviour                                              |
+| ------------------- | ------------------------------------------------------ |
+| `workflow_call`     | Compares `contracts/**` changes since previous git tag |
+| `workflow_dispatch` | Always deploys                                         |
 
 > [!NOTE]
-> Only changes inside `contracts/` trigger this workflow.
-> Config changes (e.g. `config/tresr.yaml`) do **not** trigger
-> a contract redeployment.
+> Config-only changes (e.g. `config/tresr.yaml`) do **not** trigger
+> a contract redeployment. The `detect-changes` job skips the deploy.
+
+### Wallet Balance Check
+
+Before any deployment, the pipeline checks the deployer wallet has at
+least **0.1 AVAX** (`MIN_DEPLOYER_BALANCE` env var, set in wei).
+If the balance is too low, the workflow fails early with a clear error.
 
 ### Token + Faucet (Testnet Only)
 
@@ -173,11 +226,10 @@ The pipeline auto-detects whether to do a **fresh deploy** or an
 4. Submit and collect required signatures
 5. Once executed, the proxy points to the new implementation
 
-> [!CAUTION]
-> After the very first deploy, you **must** update `config/tresr.yaml`
-> with the real proxy address before the next push to `contracts/`.
-> Otherwise the pipeline will deploy a brand new proxy, creating an
-> orphaned vault.
+> [!TIP]
+> After a successful deploy, the `update-config` job in `cd-release.yaml`
+> automatically creates a PR to update `config/tresr.yaml` with the new
+> contract addresses. Review and merge that PR to complete the cycle.
 
 ## Juno Deploy
 
@@ -271,16 +323,20 @@ client:
 
 ## Custom Actions
 
-| Action            | Purpose                                     |
-| ----------------- | ------------------------------------------- |
-| `cache-bun`       | Cache Bun package manager dependencies      |
-| `cache-cargo`     | Cache Cargo/Rust build artifacts            |
-| `cache-foundry`   | Cache Foundry build artifacts               |
-| `free-disk-space` | Free disk space on GitHub-hosted runners    |
-| `report-status`   | Report workflow status to commit checks     |
-| `setup-devenv`    | Install and configure devenv with Cachix    |
-| `setup-juno`      | Install Juno CLI                            |
-| `version`         | Manage version bumping across project files |
+| Action                   | Purpose                                          |
+| ------------------------ | ------------------------------------------------ |
+| `cache-bun`              | Cache Bun package manager dependencies           |
+| `cache-cargo`            | Cache Cargo/Rust build artifacts                 |
+| `cache-foundry`          | Cache Foundry build artifacts                    |
+| `detect-foundry-changes` | Check contract source changes since last git tag |
+| `foundry-deploy-setup`   | Secret checks, caching, config, balance, build   |
+| `foundry-deploy-summary` | Generate GitHub Actions job summary              |
+| `foundry-resolve-vault`  | Detect deploy/upgrade mode, run Forge scripts    |
+| `free-disk-space`        | Free disk space on GitHub-hosted runners         |
+| `report-status`          | Report workflow status to commit checks          |
+| `setup-devenv`           | Install and configure devenv with Cachix         |
+| `setup-juno`             | Install Juno CLI                                 |
+| `version`                | Manage version bumping across project files      |
 
 ## Workflow Inventory
 
@@ -289,7 +345,8 @@ client:
 | `cd-release.yaml`          | cd     | push to trunk, dispatch         | Create pre-release or promote to release |
 | `cd-juno-testnet.yaml`     | cd     | workflow_call only              | Deploy Juno to Testnet                   |
 | `cd-juno-mainnet.yaml`     | cd     | workflow_call only              | Deploy Juno to Mainnet                   |
-| `cd-foundry.yaml`          | cd     | push (contracts/), dispatch     | Deploy Solidity contracts                |
+| `cd-foundry-testnet.yaml`  | cd     | workflow_call, dispatch         | Deploy Solidity contracts to Testnet     |
+| `cd-foundry-mainnet.yaml`  | cd     | workflow_call, dispatch         | Deploy Solidity contracts to Mainnet     |
 | `ci-devenv.yaml`           | ci     | pull_request, merge_group       | Test devenv shell                        |
 | `ci-foundry.yaml`          | ci     | pull_request, merge_group       | Lint and check Solidity                  |
 | `ci-juno.yaml`             | ci     | pull_request, merge_group       | Build and check Juno                     |
