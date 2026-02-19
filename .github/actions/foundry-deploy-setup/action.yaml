@@ -148,6 +148,7 @@ runs:
         DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
         MIN_DEPLOYER_BALANCE: ${{ inputs.min-deployer-balance }}
       run: |
+        cd contracts
         DEPLOYER_ADDR=$(cast wallet address "$DEPLOYER_PRIVATE_KEY")
         BALANCE=$(cast balance "$DEPLOYER_ADDR" --rpc-url "$RPC_URL")
         echo "Deployer: ${DEPLOYER_ADDR}"

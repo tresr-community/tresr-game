@@ -195,6 +195,10 @@ jobs:
           # Safe: this is a read-only query, no cycles/ICP at risk
           DFX_WARNING: -mainnet_plaintext_identity
         run: |
+          # Create anonymous identity silently to prevent seed phrase from being printed
+          dfx identity new --storage-mode=plaintext anonymous-ci 2>/dev/null || true
+          dfx identity use anonymous-ci 2>/dev/null
+
           # Call the satellite canister to get the ECDSA-derived oracle address
           ORACLE=$(dfx canister call "$SATELLITE_ID" get_oracle_address '()' --ic 2>&1) || true
           # Parse the Ok variant: (variant { Ok = "0x..." })
