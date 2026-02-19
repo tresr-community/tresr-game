@@ -11,9 +11,13 @@ remappings = [
   "forge-std/=lib/forge-std/src/"
 ]
 
-[profile.ci]
+[profile.testnet]
+# Inherits [profile.default]. Used by cd-foundry-testnet.yaml.
+verbosity = 3
 
-# Inherit default profile for CI.
+[profile.mainnet]
+# Inherits [profile.default]. Used by cd-foundry-mainnet.yaml.
+verbosity = 2
 
 [rpc_endpoints]
 

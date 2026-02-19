@@ -188,7 +188,6 @@ jobs:
 
       - id: get_oracle_address
         name: Get Oracle Address
-        if: steps.detect_function_changes.outputs.changed == 'true'
         shell: devenv shell --quiet bash -- -e {0}
         env:
           SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
