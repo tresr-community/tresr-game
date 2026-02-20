@@ -128,34 +128,10 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
           <div class="flex items-center justify-center">
             <div
               id="hud-super-ring"
-              class="relative flex items-center justify-center"
-              style="width:36px;height:36px"
+              class="radial-progress text-error transition-all duration-200"
+              style="--value:0; --size:2.25rem; --thickness:3px;"
+              role="progressbar"
             >
-              <svg
-                viewBox="0 0 36 36"
-                class="absolute inset-0 h-full w-full -rotate-90"
-              >
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="15"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  class="text-base-content/10"></circle>
-                <circle
-                  id="hud-super-arc"
-                  cx="18"
-                  cy="18"
-                  r="15"
-                  fill="none"
-                  stroke-width="3"
-                  stroke-linecap="round"
-                  stroke-dasharray="94.25"
-                  stroke-dashoffset="94.25"
-                  class="transition-all duration-200"
-                  style="stroke:#ef4444"></circle>
-              </svg>
               <span id="hud-super-icon" class="text-xs select-none">⚡</span>
             </div>
           </div>
@@ -186,10 +162,22 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
             <span class="hidden sm:inline">System Clock</span>
           </div>
           <div
-            id="hud-timer"
-            class="stat-value text-error font-mono text-sm sm:text-lg lg:text-3xl"
+            id="hud-timer-wrapper"
+            class="stat-value text-error flex items-center justify-center font-mono text-sm sm:text-lg lg:text-3xl"
           >
-            {timerMin}:{timerSec}
+            <span class="countdown">
+              <span
+                id="hud-timer-min"
+                style={`--value:${timerMin};`}
+                aria-label={timerMin}></span>
+            </span>
+            :
+            <span class="countdown">
+              <span
+                id="hud-timer-sec"
+                style={`--value:${timerSec};`}
+                aria-label={timerSec}></span>
+            </span>
           </div>
         </div>
       </div>
@@ -267,7 +255,9 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
   const elHp = document.getElementById("hud-hp");
   const elScore = document.getElementById("hud-score");
   const elKeys = document.getElementById("hud-keys");
-  const elTimer = document.getElementById("hud-timer");
+  const elTimerWrapper = document.getElementById("hud-timer-wrapper");
+  const elTimerMin = document.getElementById("hud-timer-min");
+  const elTimerSec = document.getElementById("hud-timer-sec");
   const elPhase = document.getElementById("hud-phase-alert");
   const elLivesStat = document.getElementById("hud-lives-stat");
   const elLives = document.getElementById("hud-lives");
@@ -279,9 +269,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
   }
 
   // Super charge radial ring
-  const elSuperArc = document.getElementById("hud-super-arc");
   const elSuperRing = document.getElementById("hud-super-ring");
-  const CIRCUMFERENCE = 2 * Math.PI * 15; // ≈ 94.25
 
   // Boss HP elements
   const elBossBar = document.getElementById("hud-boss-bar");
@@ -301,36 +289,53 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
     if (elKeys) elKeys.innerText = state.keys.toString();
     if (elLives) elLives.innerText = state.lives.toString();
 
-    if (elTimer) {
+    if (elTimerMin && elTimerSec) {
       const min = Math.floor(state.timer / 60)
         .toString()
         .padStart(2, "0");
       const sec = (state.timer % 60).toString().padStart(2, "0");
-      elTimer.innerText = `${min}:${sec}`;
+      elTimerMin.style.setProperty("--value", min);
+      elTimerMin.setAttribute("aria-label", min);
+      elTimerSec.style.setProperty("--value", sec);
+      elTimerSec.setAttribute("aria-label", sec);
 
       // Flash timer during final 3 seconds
-      if (state.timer <= 3 && state.timer > 0) {
-        elTimer.classList.add("animate-pulse", "text-warning", "scale-110");
-      } else {
-        elTimer.classList.remove("animate-pulse", "text-warning", "scale-110");
+      if (elTimerWrapper) {
+        if (state.timer <= 3 && state.timer > 0) {
+          elTimerWrapper.classList.add(
+            "animate-pulse",
+            "text-warning",
+            "scale-110"
+          );
+        } else {
+          elTimerWrapper.classList.remove(
+            "animate-pulse",
+            "text-warning",
+            "scale-110"
+          );
+        }
       }
     }
 
     // Super charge radial ring update
-    if (elSuperArc) {
+    if (elSuperRing) {
       const pct = state.superCharge / maxCharge;
-      const offset = CIRCUMFERENCE * (1 - pct);
-      elSuperArc.setAttribute("stroke-dashoffset", offset.toString());
+      elSuperRing.style.setProperty("--value", String(pct * 100));
 
-      // Color gradient: red → orange → yellow → green → neon purple
-      let color: string;
-      if (pct < 0.25) color = "#ef4444";
-      else if (pct < 0.5) color = "#f97316";
-      else if (pct < 0.75) color = "#eab308";
-      else if (pct < 1) color = "#22c55e";
-      else color = "#a855f7"; // neon purple = READY!
-
-      elSuperArc.style.stroke = color;
+      // Color gradient via DaisyUI text-color classes
+      const colorClasses = [
+        "text-error",
+        "text-warning",
+        "text-accent",
+        "text-success",
+        "text-secondary",
+      ];
+      elSuperRing.classList.remove(...colorClasses);
+      if (pct < 0.25) elSuperRing.classList.add("text-error");
+      else if (pct < 0.5) elSuperRing.classList.add("text-warning");
+      else if (pct < 0.75) elSuperRing.classList.add("text-accent");
+      else if (pct < 1) elSuperRing.classList.add("text-success");
+      else elSuperRing.classList.add("text-secondary"); // neon purple = READY
     }
 
     // Pulse glow when super is fully charged

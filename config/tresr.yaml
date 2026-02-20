@@ -125,7 +125,7 @@ client:
       - Preparing to Rug...
       - Pumping Bags...
       - Stacking Sats...
-      - Steady on lads, deploying capital...
+      - Deploying more capital - steady lads...
       - Updating Roadmap...
       - Yield Farming...
     custom_notifications:
@@ -285,9 +285,9 @@ client:
         extreme: 2.0
     # Global physics (shared by all entities)
     physics:
-      gravity: 0.5
+      gravity: 0.8
       timestep: 0.01667 # 1/60 for 60 FPS
-      game_speed: 2.0 # Global simulation speed multiplier (2.0 = double speed)
+      game_speed: 1.5 # Global simulation speed multiplier (2.0 = double speed)
     # Global visuals
     visuals:
       shadow:
@@ -462,13 +462,13 @@ client:
             retarget_time: 4
             attack_damage: 10
           weights:
-            direct: 100 # TODO: Test
-            flanker: 0 # TODO: Test
-            cautious: 0 # TODO: Test
-            swarm: 0 # TODO: Test
-            erratic: 0 # TODO: Test
-            passive: 0 # TODO: Test
-            retardio: 0 # TODO: Test
+            direct: 25
+            flanker: 20
+            cautious: 15
+            swarm: 15
+            erratic: 10
+            passive: 10
+            retardio: 5
         animations:
           death_delay: 500 # Delay before kill() after hurt animation (ms)
         spawner:

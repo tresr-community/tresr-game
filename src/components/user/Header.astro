@@ -166,23 +166,22 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
 
     themes.forEach((theme: string) => {
       const li = document.createElement("li");
-      const a = document.createElement("a");
-      a.textContent = theme.charAt(0).toUpperCase() + theme.slice(1);
-      a.href = "#"; // Prevent jump
-      a.addEventListener("click", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+      const input = document.createElement("input");
+      input.type = "radio";
+      input.name = "theme-dropdown";
+      input.className =
+        "theme-controller w-full btn btn-sm btn-ghost justify-start";
+      input.setAttribute(
+        "aria-label",
+        theme.charAt(0).toUpperCase() + theme.slice(1)
+      );
+      input.setAttribute("value", theme);
+      if (theme === currentTheme) input.checked = true;
+      input.addEventListener("change", () => {
         setTheme(theme);
-        // Close dropdown (details/summary pattern)
-        const details = ul.closest("details.dropdown");
-        details?.removeAttribute("open");
+        ul.closest("details.dropdown")?.removeAttribute("open");
       });
-      if (theme === currentTheme) {
-        a.classList.add("active");
-        // Prepend checkmark to active theme
-        a.textContent = `✓ ${a.textContent}`;
-      }
-      li.appendChild(a);
+      li.appendChild(input);
       ul.appendChild(li);
     });
 
