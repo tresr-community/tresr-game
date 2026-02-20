@@ -4,7 +4,8 @@
  * so config hashes match regardless of platform.
  */
 export function canonicalStringify(obj: unknown): string {
-  if (obj === null || obj === undefined) return JSON.stringify(obj);
+  if (obj === undefined) return "null";
+  if (obj === null) return "null";
   if (typeof obj !== "object") return JSON.stringify(obj);
   if (Array.isArray(obj)) {
     return "[" + obj.map(canonicalStringify).join(",") + "]";

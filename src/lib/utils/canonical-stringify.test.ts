@@ -7,7 +7,7 @@ describe("canonicalStringify", () => {
   });
 
   test("handles undefined", () => {
-    expect(canonicalStringify(undefined)).toBe(undefined);
+    expect(canonicalStringify(undefined)).toBe("null");
   });
 
   test("handles strings", () => {
