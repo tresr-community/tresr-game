@@ -90,7 +90,7 @@ runs:
       run: |
         NETWORK="${{ steps.resolve_environment.outputs.network }}"
         {
-          echo "RPC_URL=$(yq ".client.blockchain.avalanche.${NETWORK}.rpc_url" config/tresr.yaml)"
+          echo "RPC_URL=$(yq ".client.blockchain.avalanche.${NETWORK}.rpc_urls[0]" config/tresr.yaml)"
           echo "CHAIN_ID=$(yq ".client.blockchain.avalanche.${NETWORK}.chain_id" config/tresr.yaml)"
           echo "TOKEN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.tresr_token_contract" config/tresr.yaml)"
           echo "ORACLE_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.oracle_address" config/tresr.yaml)"
