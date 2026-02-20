@@ -38,6 +38,16 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
   // Invincibility state (ticket #191 — respawn iframes)
   public isInvincible: boolean = false;
 
+  /**
+   * Resolution-independent speed multiplier (canvasHeight / designHeight).
+   * Stored in registry by MainScene each frame; all entities multiply
+   * velocities by this so movement covers the same screen-fraction
+   * regardless of viewport size.
+   */
+  protected get resolutionScale(): number {
+    return (this.scene?.registry?.get("resolution_scale") as number) || 1;
+  }
+
   // Timer tracking for cleanup on kill/destroy (ticket #195)
   protected pendingTimers: Phaser.Time.TimerEvent[] = [];
 
@@ -206,8 +216,17 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
    */
   protected updateShadow() {
     const s = this.config.gameplay.visuals.shadow;
-    this.shadow.setPosition(this.x + s.offset_x, this.groundY + s.offset_y);
+    const rs = this.resolutionScale;
+    this.shadow.setPosition(
+      this.x + s.offset_x * rs,
+      this.groundY + s.offset_y * rs
+    );
+    this.shadow.setScale(rs);
     this.shadow.setDepth(this.depth - 1);
+    // Apply directional angle if configured (simulates angled light source)
+    if (s.angle !== undefined) {
+      this.shadow.setAngle(s.angle);
+    }
   }
 
   /**
@@ -388,7 +407,7 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
     if (!this.active || this.hp <= 0) return;
 
     const dir = this.x >= attackerX ? 1 : -1;
-    this.setVelocityX(dir * force);
+    this.setVelocityX(dir * force * this.resolutionScale);
     this.isKnockedBack = true;
 
     this.trackTimer(

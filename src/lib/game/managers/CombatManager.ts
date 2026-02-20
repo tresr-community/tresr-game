@@ -634,6 +634,9 @@ export class CombatManager {
           textureKey
         ) as Enemy;
         if (enemy) {
+          // Hide immediately — group.get() makes the sprite visible at its old
+          // pool position. spawn() will reveal it after setup is complete.
+          enemy.setVisible(false);
           enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
           enemy.setTarget(this.player);
           const enemyScale = SpriteManager.getScaleFactor(

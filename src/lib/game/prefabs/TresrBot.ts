@@ -234,7 +234,7 @@ export class TresrBot extends BaseEntity {
         this.moveToward(
           this.target.x,
           this.target.groundY,
-          botConfig.speed,
+          botConfig.speed * this.resolutionScale,
           frameDt
         );
       }
@@ -251,7 +251,9 @@ export class TresrBot extends BaseEntity {
         this.moveToward(
           this.owner.x,
           this.owner.groundY,
-          botConfig.speed * botConfig.combat.follow_speed_mult,
+          botConfig.speed *
+            botConfig.combat.follow_speed_mult *
+            this.resolutionScale,
           frameDt
         );
       } else {

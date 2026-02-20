@@ -42,7 +42,12 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
     this.lootType = type;
     this.setPosition(x, y);
     this.setActive(true);
-    this.setVisible(true);
+    // Stay invisible until the body is fully locked and synced — prevents the
+    // one-frame snap where Phaser renders the drop at the stale pool body
+    // position before the tween takes over (visible as item "jumping" from
+    // the bottom of the screen). setVisible(true) is called below after
+    // body.updateFromGameObject().
+    this.setVisible(false);
     if (this.body) {
       const body = this.body as Phaser.Physics.Arcade.Body;
       body.enable = true;
@@ -97,6 +102,8 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
       // stays at the old position until the next physics step, causing
       // overlap detection to fail if checked before then.
       body.updateFromGameObject();
+      // Body is now locked and synced — safe to reveal the sprite.
+      this.setVisible(true);
     }
 
     // Stop previous bob tween if respawned before kill (ticket #253)
@@ -104,10 +111,12 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
       this.bobTween.stop();
     }
 
-    // Bobbing tween for visual feedback
+    // Centre the bob around the spawn point so the item oscillates
+    // equally above and below y, instead of always floating upward.
+    const halfBob = lootConfig.bob_distance / 2;
     this.bobTween = this.scene.tweens.add({
       targets: this,
-      y: y - lootConfig.bob_distance,
+      y: {from: y + halfBob, to: y - halfBob},
       duration: lootConfig.bob_duration,
       yoyo: true,
       repeat: -1,

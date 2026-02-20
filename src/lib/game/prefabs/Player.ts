@@ -126,7 +126,7 @@ export class Player extends BaseEntity {
     const gp = this.config.gameplay;
     const playerConfig = gp.entities.player;
     const gamepadDeadzone = playerConfig.input.gamepad_deadzone;
-    const speed = this.speed;
+    const speed = this.speed * this.resolutionScale;
     // Use real delta time from MainScene (falls back to reference timestep)
     const frameDt = dt ?? BaseEntity.REFERENCE_DT;
 

@@ -59,6 +59,8 @@ direnv
 direnvrc
 dotenv
 elif
+endent
+Resol
 endersonmenezes
 enviro
 esac

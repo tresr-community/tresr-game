@@ -287,7 +287,7 @@ client:
     physics:
       gravity: 0.8
       timestep: 0.01667 # 1/60 for 60 FPS
-      game_speed: 1.0 # Global simulation speed multiplier (2.0 = double speed)
+      game_speed: 1.5 # Global simulation speed multiplier (2.0 = double speed)
     # Global visuals
     visuals:
       shadow:
@@ -297,6 +297,7 @@ client:
         height: 16
         offset_x: 0 # Horizontal shadow offset (px) — 0 = directly under character
         offset_y: 2 # Vertical shadow offset (px) — small nudge so shadow sits at feet
+        angle: 10 # Shadow cast angle (degrees) — positive = cast right, simulates top-left light
       damage_tint_duration: 100 # Red tint flash duration (ms), applies to all entities
     # Scoring (cross-entity, stays flat)
     # Points awarded for each in-game action, used to calculate the player's final score.
@@ -392,6 +393,7 @@ client:
         health: 100
         damage: 10
         speed: 100
+        flee_speed_mult: 1.5 # Multiplier applied to base speed when fleeing off-screen
         knockback:
           force: 300 # Knockback impulse when hit by player
           stun_ms: 200 # Brief immobility during knockback recovery

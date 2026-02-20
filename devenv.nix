@@ -51,6 +51,7 @@ let
     claude-code
     gemini-cli
     tailwindcss_4
+    antigravity
   ];
 
   devPackages =

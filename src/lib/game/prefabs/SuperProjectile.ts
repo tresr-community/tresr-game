@@ -101,7 +101,9 @@ export class SuperProjectile extends Phaser.Physics.Arcade.Sprite {
 
     // Use real delta time from MainScene (falls back to reference timestep)
     const frameDt = dt ?? 0.01667;
-    const moveX = this.direction * this.speed * frameDt;
+    const resScale =
+      (this.scene?.registry?.get("resolution_scale") as number) || 1;
+    const moveX = this.direction * this.speed * resScale * frameDt;
     this.x += moveX;
     this.travelled += Math.abs(moveX);
 

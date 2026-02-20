@@ -1416,6 +1416,14 @@ export class MainScene extends Phaser.Scene {
     const gameSpeed = this.gameplayConfig.physics.game_speed;
     const dt = Math.min(delta / 1000, 0.05) * gameSpeed;
 
+    // Resolution-independent speed scaling.
+    // With Phaser.Scale.RESIZE the canvas matches the viewport, so absolute
+    // px/s speeds cover different screen fractions on different devices.
+    // Multiplying all velocities by canvasHeight/designHeight keeps movement
+    // proportional regardless of resolution (same ratio used for sprite scaling).
+    const resScale = this.cameras.main.height / this.designHeight;
+    this.registry.set("resolution_scale", resScale);
+
     if (this.background && this.player) {
       const {width, height} = this.cameras.main;
       // Subtle parallax drift — background shifts slightly opposite to player movement

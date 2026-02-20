@@ -106,6 +106,8 @@ export class Enemy extends BaseEntity {
   private safePlay(key: string, ignoreIfPlaying: boolean = true): void {
     if (this.scene.anims.exists(key)) {
       this.play(key, ignoreIfPlaying);
+    } else {
+      log.warn(COMPONENT_NAME, `Animation "${key}" not found, skipping`);
     }
   }
 
@@ -201,7 +203,7 @@ export class Enemy extends BaseEntity {
 
     // Handle walk-in from off-screen
     if (this.enterState === "walking_in") {
-      const walkSpeed = this.baseSpeed;
+      const walkSpeed = this.baseSpeed * this.resolutionScale;
       const dx = this.walkInTargetX - this.x;
       this.setFlipX(dx < 0);
       if (Math.abs(dx) < 5) {
@@ -219,7 +221,10 @@ export class Enemy extends BaseEntity {
 
     // Handle fleeing off-screen
     if (this.enterState === "fleeing") {
-      const fleeSpeed = this.baseSpeed * 1.5;
+      const fleeSpeed =
+        this.baseSpeed *
+        gp.entities.enemy.flee_speed_mult *
+        this.resolutionScale;
       const {width} = this.scene.cameras.main;
       // Run toward nearest edge
       const nearestEdge = this.x < width / 2 ? -100 : width + 100;
@@ -242,7 +247,9 @@ export class Enemy extends BaseEntity {
     if (this.aiType === "passive" && !this.provoked) {
       const {width} = this.scene.cameras.main;
       this.setFlipX(this.passiveDirection < 0);
-      this.setVelocityX(this.passiveDirection * this.speed);
+      this.setVelocityX(
+        this.passiveDirection * this.speed * this.resolutionScale
+      );
       this.setVelocityY(0);
       this.safePlay(this.animKeys.walk, true);
 
@@ -320,9 +327,12 @@ export class Enemy extends BaseEntity {
             }
           }
         } else {
-          this.setVelocityX(Math.cos(angle) * this.speed);
+          this.setVelocityX(
+            Math.cos(angle) * this.speed * this.resolutionScale
+          );
           this.setVelocityY(0);
-          this.groundY += Math.sin(angle) * this.speed * retDt;
+          this.groundY +=
+            Math.sin(angle) * this.speed * this.resolutionScale * retDt;
           if (this.walkableArea) {
             const clamped = this.walkableArea.clampToWalkable(
               this.x,
@@ -337,7 +347,9 @@ export class Enemy extends BaseEntity {
         // No enemies nearby — wander erratically (timer-gated like erratic AI)
         if (this.aiTimer > jitterTime) {
           this.setFlipX(this.rng.frac() < 0.5);
-          this.setVelocityX((this.rng.frac() - 0.5) * this.speed);
+          this.setVelocityX(
+            (this.rng.frac() - 0.5) * this.speed * this.resolutionScale
+          );
           this.aiTimer = 0;
         }
         this.setVelocityY(0);
@@ -383,9 +395,15 @@ export class Enemy extends BaseEntity {
             const orbitAngle = Math.atan2(dyOrbit, dxOrbit);
 
             this.setFlipX(this.target.x < this.x);
-            this.setVelocityX(Math.cos(orbitAngle) * this.speed);
+            this.setVelocityX(
+              Math.cos(orbitAngle) * this.speed * this.resolutionScale
+            );
             this.setVelocityY(0);
-            this.groundY += Math.sin(orbitAngle) * this.speed * chaseDt;
+            this.groundY +=
+              Math.sin(orbitAngle) *
+              this.speed *
+              this.resolutionScale *
+              chaseDt;
 
             if (this.walkableArea) {
               const clamped = this.walkableArea.clampToWalkable(
@@ -427,9 +445,15 @@ export class Enemy extends BaseEntity {
               this.x - this.target.x
             );
             this.setFlipX(this.target.x < this.x);
-            this.setVelocityX(Math.cos(retreatAngle) * this.speed);
+            this.setVelocityX(
+              Math.cos(retreatAngle) * this.speed * this.resolutionScale
+            );
             this.setVelocityY(0);
-            this.groundY += Math.sin(retreatAngle) * this.speed * chaseDt;
+            this.groundY +=
+              Math.sin(retreatAngle) *
+              this.speed *
+              this.resolutionScale *
+              chaseDt;
 
             if (this.walkableArea) {
               const clamped = this.walkableArea.clampToWalkable(
@@ -542,9 +566,15 @@ export class Enemy extends BaseEntity {
                 this.x - this.target.x
               );
               this.setFlipX(this.target.x < this.x);
-              this.setVelocityX(Math.cos(retreatAngle) * this.speed);
+              this.setVelocityX(
+                Math.cos(retreatAngle) * this.speed * this.resolutionScale
+              );
               this.setVelocityY(0);
-              this.groundY += Math.sin(retreatAngle) * this.speed * chaseDt;
+              this.groundY +=
+                Math.sin(retreatAngle) *
+                this.speed *
+                this.resolutionScale *
+                chaseDt;
 
               if (this.walkableArea) {
                 const clamped = this.walkableArea.clampToWalkable(
@@ -567,9 +597,10 @@ export class Enemy extends BaseEntity {
                 const perpX = (-dyP / dP) * this.cautiousStrafeDir;
                 const perpGY = (dxP / dP) * this.cautiousStrafeDir;
                 this.setFlipX(this.target.x < this.x);
-                this.setVelocityX(perpX * this.speed);
+                this.setVelocityX(perpX * this.speed * this.resolutionScale);
                 this.setVelocityY(0);
-                this.groundY += perpGY * this.speed * chaseDt;
+                this.groundY +=
+                  perpGY * this.speed * this.resolutionScale * chaseDt;
 
                 if (this.walkableArea) {
                   const clamped = this.walkableArea.clampToWalkable(
@@ -671,9 +702,10 @@ export class Enemy extends BaseEntity {
         this.setVelocityX(0);
         this.setVelocityY(0);
       } else {
-        this.setVelocityX(Math.cos(angle) * this.speed);
+        this.setVelocityX(Math.cos(angle) * this.speed * this.resolutionScale);
         this.setVelocityY(0);
-        this.groundY += Math.sin(angle) * this.speed * chaseDt;
+        this.groundY +=
+          Math.sin(angle) * this.speed * this.resolutionScale * chaseDt;
 
         // Clamp to walkable area (both X and groundY)
         if (this.walkableArea) {
@@ -754,10 +786,13 @@ export class Enemy extends BaseEntity {
   ) {
     this.rng = rng;
     this.setActive(true);
-    this.setVisible(true);
-    // Re-show shadow for recycled enemies
+    // Keep invisible until body is enabled and position is set — prevents
+    // Phaser rendering the recycled sprite at its stale pool position for
+    // one frame, which causes the "two enemies at once" ghost flicker.
+    // (shadow and visibility are restored below after setPosition)
+    this.setVisible(false);
     if (this.shadow) {
-      this.shadow.setVisible(true);
+      this.shadow.setVisible(false);
     }
     // Hide health bar until damaged
     this.showHealthBar = false;
@@ -795,6 +830,11 @@ export class Enemy extends BaseEntity {
     this.groundY = y;
     this.z = 0;
     this.setPosition(x, y);
+    // Body is enabled and position is set — safe to reveal the sprite now.
+    this.setVisible(true);
+    if (this.shadow) {
+      this.shadow.setVisible(true);
+    }
     this.hp = this.maxHp;
     this.setAlpha(1);
     this.clearTint();

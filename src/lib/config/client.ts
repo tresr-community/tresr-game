@@ -393,7 +393,7 @@ export const config: ConfigTypes = {
     "physics": {
       "gravity": 0.8,
       "timestep": 0.01667,
-      "game_speed": 1
+      "game_speed": 1.5
     },
     "visuals": {
       "shadow": {
@@ -402,7 +402,8 @@ export const config: ConfigTypes = {
         "width": 70,
         "height": 16,
         "offset_x": 0,
-        "offset_y": 2
+        "offset_y": 2,
+        "angle": 10
       },
       "damage_tint_duration": 100
     },
@@ -507,6 +508,7 @@ export const config: ConfigTypes = {
         "health": 100,
         "damage": 10,
         "speed": 100,
+        "flee_speed_mult": 1.5,
         "knockback": {
           "force": 300,
           "stun_ms": 200
@@ -1394,5 +1396,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "3b633606273a76e6984f1ec7c59fba6a1c32e011c6b1ca14a511152c5137f64b"
+  "configHash": "201404b9c8e9e4480a64367afcb6eff52c4589a37499c15438b6a5312a12efba"
 };
