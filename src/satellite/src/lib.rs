@@ -1243,11 +1243,17 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         }
     });
 
-    // Append to existing notifications array
+    // Append to existing notifications array, capping at most recent entries (ticket #190).
+    const MAX_NOTIFICATIONS: usize = 25;
     let notifications = match &winner_profile.notifications {
         Some(serde_json::Value::Array(arr)) => {
             let mut new_arr = arr.clone();
             new_arr.push(notification);
+            // Keep only the most recent MAX_NOTIFICATIONS entries
+            if new_arr.len() > MAX_NOTIFICATIONS {
+                let start = new_arr.len() - MAX_NOTIFICATIONS;
+                new_arr = new_arr.split_off(start);
+            }
             serde_json::Value::Array(new_arr)
         }
         _ => serde_json::Value::Array(vec![notification]),
