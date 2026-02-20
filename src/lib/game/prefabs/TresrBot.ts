@@ -22,6 +22,7 @@ export class TresrBot extends BaseEntity {
   private boss?: Boss;
   private specialRing?: Phaser.GameObjects.Arc;
   private specialRingTween?: Phaser.Tweens.Tween;
+  private lastTargetScanTime: number = 0;
 
   // Pre-computed animation keys
   private animKeys = {
@@ -200,7 +201,16 @@ export class TresrBot extends BaseEntity {
     const frameDt = dt ?? BaseEntity.REFERENCE_DT;
 
     // Find target — nearest active enemy or boss
-    this.findTarget();
+    // Gate with target_switch_ms to avoid scanning every frame
+    const targetDead =
+      !this.target || !this.target.active || this.target.hp <= 0;
+    if (
+      targetDead ||
+      now - this.lastTargetScanTime >= botConfig.combat.target_switch_ms
+    ) {
+      this.findTarget();
+      this.lastTargetScanTime = now;
+    }
 
     // AI Priority: special → melee → chase → follow → idle
     const enemiesInSpecialRange = this.countEnemiesInRadius(
@@ -313,10 +323,7 @@ export class TresrBot extends BaseEntity {
       }
     }
 
-    // Only switch target if we don't have one or current target is dead/inactive
-    if (!this.target || !this.target.active || this.target.hp <= 0) {
-      this.target = nearest;
-    }
+    this.target = nearest;
   }
 
   private countEnemiesInRadius(radius: number): number {
