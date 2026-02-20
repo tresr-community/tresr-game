@@ -404,6 +404,7 @@ export class MainScene extends Phaser.Scene {
       audio: gameplay.audio,
       vault: gameplay.vault,
       fee_gate: gameplay.fee_gate,
+      difficulty_escalation: gameplay.difficulty_escalation,
     };
     const criticalJson = canonicalStringify(criticalValues);
 
@@ -419,6 +420,23 @@ export class MainScene extends Phaser.Scene {
 
     // Compare with build-time hash
     const buildHash = fullConfig.configHash as string | undefined;
+
+    // DEBUG: Diagnose hash mismatches in development.
+    console.log("[DEBUG verifyConfigHash] buildHash:", buildHash);
+    console.log("[DEBUG verifyConfigHash] computedHash:", computedHash);
+    console.log(
+      "[DEBUG verifyConfigHash] criticalValues keys:",
+      Object.keys(criticalValues)
+    );
+    console.log(
+      "[DEBUG verifyConfigHash] criticalJson length:",
+      criticalJson.length
+    );
+    console.log(
+      "[DEBUG verifyConfigHash] criticalJson (first 500):",
+      criticalJson.slice(0, 500)
+    );
+
     if (buildHash && !timingSafeEqual(buildHash, computedHash)) {
       log.error(
         COMPONENT_NAME,
