@@ -45,6 +45,9 @@ outputs:
   VAULT_ADDRESS:
     description: "Vault address from config"
     value: ${{ steps.read_config.outputs.VAULT_ADDRESS }}
+  FAUCET_ADDRESS:
+    description: "Faucet address from config"
+    value: ${{ steps.read_config.outputs.FAUCET_ADDRESS }}
 
 runs:
   using: composite
@@ -96,6 +99,7 @@ runs:
           echo "ORACLE_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.oracle_address" config/tresr.yaml)"
           echo "ADMIN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.safe_address" config/tresr.yaml)"
           echo "VAULT_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.vault_contract" config/tresr.yaml)"
+          echo "FAUCET_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.faucet_contract" config/tresr.yaml)"
         } >> "$GITHUB_OUTPUT"
 
     - id: validate_config
