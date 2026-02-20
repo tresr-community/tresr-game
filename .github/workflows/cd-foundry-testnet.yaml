@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      deploy: ${{ steps.check.outputs.deploy }}
+      deploy: ${{ steps.detect_changes.outputs.deploy }}
 
     steps:
       - id: checkout_repository
@@ -68,8 +68,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - id: check
-        name: Check for Changes
+      - id: detect_changes
+        name: Detect Changes
         uses: ./.github/actions/detect-foundry-changes
         with:
           workflow-file: cd-foundry-testnet.yaml
@@ -79,7 +79,7 @@ jobs:
   ##################################################
 
   deploy:
-    name: Deploy (Testnet)
+    name: Deploy Contracts (Testnet)
 
     needs: detect-changes
     if: needs.detect-changes.outputs.deploy == 'true'
@@ -93,7 +93,7 @@ jobs:
 
     outputs:
       token_address: ${{ steps.resolve_token_address.outputs.token_address }}
-      vault_address: ${{ steps.vault.outputs.vault_address }}
+      vault_address: ${{ steps.resolve_vault.outputs.vault_address }}
       faucet_address: ${{ steps.resolve_faucet_address.outputs.faucet_address }}
 
     steps:
@@ -114,7 +114,7 @@ jobs:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       # --- Common setup (composite action) ---
-      - id: setup
+      - id: foundry_deploy_setup
         name: Foundry Deploy Setup
         uses: ./.github/actions/foundry-deploy-setup
         with:
@@ -133,7 +133,7 @@ jobs:
         run: |
           cd contracts
           forge script script/DeployToken.s.sol:DeployTestToken \
-            --rpc-url ${{ steps.setup.outputs.RPC_URL }} \
+            --rpc-url ${{ steps.foundry_deploy_setup.outputs.RPC_URL }} \
             --broadcast \
             --verify \
             --etherscan-api-key "$SNOWTRACE_API_KEY" \
@@ -143,8 +143,8 @@ jobs:
         name: Resolve Token Address
         if: always()
         run: |
-          CHAIN_ID="${{ steps.setup.outputs.CHAIN_ID }}"
-          CONFIG_TOKEN="${{ steps.setup.outputs.TOKEN_ADDRESS }}"
+          CHAIN_ID="${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}"
+          CONFIG_TOKEN="${{ steps.foundry_deploy_setup.outputs.TOKEN_ADDRESS }}"
           ZERO="0x0000000000000000000000000000000000000000"
           DEPLOYED_TOKEN=""
 
@@ -166,7 +166,7 @@ jobs:
         name: Resolve Faucet Address
         if: always()
         run: |
-          CHAIN_ID="${{ steps.setup.outputs.CHAIN_ID }}"
+          CHAIN_ID="${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}"
           DEPLOYED_FAUCET=""
 
           LATEST="contracts/broadcast/DeployToken.s.sol/${CHAIN_ID}/run-latest.json"
@@ -194,31 +194,31 @@ jobs:
           echo "✓ Deploy Test Token: ${OUTCOME:-n/a}"
 
       # --- Vault deploy/upgrade (composite action) ---
-      - id: vault
+      - id: resolve_vault
         name: Resolve Vault
         if: always() && steps.check_test_token.outcome != 'failure'
         uses: ./.github/actions/foundry-resolve-vault
         with:
           network: testnet
-          rpc-url: ${{ steps.setup.outputs.RPC_URL }}
-          chain-id: ${{ steps.setup.outputs.CHAIN_ID }}
+          rpc-url: ${{ steps.foundry_deploy_setup.outputs.RPC_URL }}
+          chain-id: ${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}
           token-address: ${{ steps.resolve_token_address.outputs.token_address }}
-          oracle-address: ${{ inputs.oracle_address || steps.setup.outputs.ORACLE_ADDRESS }}
-          admin-address: ${{ steps.setup.outputs.ADMIN_ADDRESS }}
-          vault-address: ${{ steps.setup.outputs.VAULT_ADDRESS }}
+          oracle-address: ${{ inputs.oracle_address || steps.foundry_deploy_setup.outputs.ORACLE_ADDRESS }}
+          admin-address: ${{ steps.foundry_deploy_setup.outputs.ADMIN_ADDRESS }}
+          vault-address: ${{ steps.foundry_deploy_setup.outputs.VAULT_ADDRESS }}
           deployer-private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
           snowtrace-api-key: ${{ secrets.SNOWTRACE_API_KEY }}
 
       # --- Deploy summary (composite action) ---
-      - id: summary
+      - id: deploy_summary
         name: Deploy Summary
         if: always()
         uses: ./.github/actions/foundry-deploy-summary
         with:
           network: testnet
-          chain-id: ${{ steps.setup.outputs.CHAIN_ID }}
-          oracle-address: ${{ inputs.oracle_address || steps.setup.outputs.ORACLE_ADDRESS }}
-          admin-address: ${{ steps.setup.outputs.ADMIN_ADDRESS }}
+          chain-id: ${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}
+          oracle-address: ${{ inputs.oracle_address || steps.foundry_deploy_setup.outputs.ORACLE_ADDRESS }}
+          admin-address: ${{ steps.foundry_deploy_setup.outputs.ADMIN_ADDRESS }}
           token-address: ${{ steps.resolve_token_address.outputs.token_address }}
-          vault-address: ${{ steps.vault.outputs.vault_address }}
+          vault-address: ${{ steps.resolve_vault.outputs.vault_address }}
           workflow-name: cd-foundry-testnet

@@ -13,7 +13,7 @@ const COMPONENT_NAME = "Avalanche";
 /**
  * Get the target chain based on environment.
  *
- * Builds the chain definition from config values (chain_id, rpc_url)
+ * Builds the chain definition from config values (chain_id, rpc_urls)
  * so each environment gets exactly the right chain ID and RPC.
  */
 export function getTargetChain(rpcUrl?: string): Chain {
@@ -27,7 +27,7 @@ export function getTargetChain(rpcUrl?: string): Chain {
     id: cc.chain_id,
     name: env === "anvil" ? "Anvil (Local)" : "Avalanche Fuji",
     nativeCurrency: {decimals: 18, name: "Avalanche", symbol: "AVAX"},
-    rpcUrls: {default: {http: [rpcUrl ?? cc.rpc_url]}},
+    rpcUrls: {default: {http: [rpcUrl ?? cc.rpc_urls[0]]}},
   } as Chain;
 }
 
@@ -76,7 +76,7 @@ export async function payFeeForGame(
   const config = await loadConfigAsync();
   const env = getEnvironmentKey();
   const chainConfig = config.blockchain.avalanche[env];
-  const chain = getTargetChain(chainConfig.rpc_url);
+  const chain = getTargetChain(chainConfig.rpc_urls[0]);
 
   // Use wagmi's managed public client for gas estimation
   const publicClient = getReadClient();
