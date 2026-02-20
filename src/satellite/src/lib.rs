@@ -755,41 +755,83 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
                 }
             };
 
-            // 4. Generate signature (include keys_collected for Vault.sol verification)
+            // 4. Mark session as claimed BEFORE signature generation (ticket #188).
+            // The Juno document version provides optimistic concurrency control:
+            // if two concurrent claims both try to write reward_claimed=true, the
+            // second set_doc_store will fail on version mismatch, preventing a
+            // double-claim during the async ECDSA signing yield point.
+            let sd = session_doc.as_ref().unwrap(); // Safe: matched Some above
+            let session_description = sd
+                .description
+                .clone()
+                .ok_or_else(|| "session description missing".to_string())?;
+            let session_version = sd
+                .version
+                .ok_or_else(|| "session version missing".to_string())?;
+            {
+                let mut claimed_session = session.clone();
+                claimed_session.reward_claimed = true;
+                update_session_doc(
+                    &context,
+                    &claimed_session,
+                    claim.game_session_id.clone(),
+                    session_description.clone(),
+                    session_version,
+                )
+                .await?;
+            }
+
+            // 5. Generate signature (include keys_collected for Vault.sol verification).
+            // If signing fails, attempt a best-effort rollback of reward_claimed.
             claim.keys_collected = session.keys_collected;
-            let signature = generate_claim_signature(
+            let signature = match generate_claim_signature(
                 &claim.game_session_id,
                 &wallet_addr,
                 claim.amount,
                 session.keys_collected,
             )
-            .await?;
+            .await
+            {
+                Ok(sig) => sig,
+                Err(e) => {
+                    // Best-effort rollback: re-read session and clear reward_claimed.
+                    // If rollback fails, manual intervention is needed but the session
+                    // is in a safe state (claimed=true with no signature issued).
+                    if let Ok(Some(rollback_doc)) = get_doc_store(
+                        context.caller,
+                        "game_sessions".to_string(),
+                        claim.game_session_id.clone(),
+                    ) {
+                        if let Ok(mut rb_session) =
+                            decode_doc_data::<GameSession>(&rollback_doc.data)
+                        {
+                            rb_session.reward_claimed = false;
+                            let rb_version = rollback_doc
+                                .version
+                                .unwrap_or(session_version.saturating_add(1));
+                            let rb_desc = rollback_doc
+                                .description
+                                .unwrap_or(session_description.clone());
+                            let _ = update_session_doc(
+                                &context,
+                                &rb_session,
+                                claim.game_session_id.clone(),
+                                rb_desc,
+                                rb_version,
+                            )
+                            .await;
+                        }
+                    }
+                    return update_claim_error(
+                        context,
+                        &mut claim,
+                        &format!("Signature generation failed: {}", e),
+                    )
+                    .await;
+                }
+            };
             claim.signature = Some(signature);
             claim.status = ClaimStatus::ReadyForChain;
-
-            // 5. Mark session as claimed IMMEDIATELY after signature generation (ticket #286).
-            // This prevents a race where a second claim could generate another valid
-            // signature before the first claim's on-chain tx is verified.
-            {
-                let mut claimed_session = session.clone();
-                claimed_session.reward_claimed = true;
-                let sd = session_doc.as_ref().unwrap(); // Safe: matched Some above
-                let description = sd
-                    .description
-                    .clone()
-                    .ok_or_else(|| "session description missing".to_string())?;
-                let version = sd
-                    .version
-                    .ok_or_else(|| "session version missing".to_string())?;
-                update_session_doc(
-                    &context,
-                    &claimed_session,
-                    claim.game_session_id.clone(),
-                    description,
-                    version,
-                )
-                .await?;
-            }
 
             update_claim_doc(&context, &claim).await?;
 
