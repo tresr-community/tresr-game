@@ -22,6 +22,8 @@ class PWA {
   private awaitingControllerChange: boolean = false;
   private handleUpdateFound: (() => void) | null = null;
   private handleControllerChange: (() => void) | null = null;
+  private handleAppInstalled: (() => void) | null = null;
+  private safetyReloadTimeout: ReturnType<typeof setTimeout> | null = null;
 
   private constructor() {}
 
@@ -112,10 +114,11 @@ class PWA {
     }
 
     // Track PWA install prompt
-    window.addEventListener("appinstalled", () => {
+    this.handleAppInstalled = () => {
       log.info(COMPONENT_NAME, "PWA installed");
       trackPwaInstall();
-    });
+    };
+    window.addEventListener("appinstalled", this.handleAppInstalled);
 
     // Start periodic checks — version poll works even without SW support
     this.startPeriodicUpdateCheck();
@@ -306,6 +309,14 @@ class PWA {
       );
       this.handleControllerChange = null;
     }
+    if (this.handleAppInstalled) {
+      window.removeEventListener("appinstalled", this.handleAppInstalled);
+      this.handleAppInstalled = null;
+    }
+    if (this.safetyReloadTimeout) {
+      clearTimeout(this.safetyReloadTimeout);
+      this.safetyReloadTimeout = null;
+    }
   }
 
   async showUpdatePrompt(): Promise<void> {
@@ -384,7 +395,8 @@ class PWA {
 
       // Safety timeout: if controllerchange never fires within 5s,
       // force a reload so the user isn't stuck.
-      setTimeout(() => {
+      this.safetyReloadTimeout = setTimeout(() => {
+        this.safetyReloadTimeout = null;
         if (this.awaitingControllerChange) {
           log.warn(
             COMPONENT_NAME,
