@@ -23,7 +23,7 @@ on:
       vault_address:
         value: ${{ jobs.deploy.outputs.vault_address }}
       deployed:
-        value: ${{ jobs.detect-changes.outputs.deploy }}
+        value: ${{ jobs.deploy.outputs.deployed }}
 
 concurrency:
   group: foundry-mainnet-deploy-${{ github.ref }}
@@ -47,39 +47,11 @@ defaults:
 
 jobs:
   ##################################################
-  # Detect contract changes
-  ##################################################
-
-  detect-changes:
-    name: Detect Contract Changes
-
-    runs-on: ubuntu-latest
-
-    outputs:
-      deploy: ${{ steps.detect_changes.outputs.deploy }}
-
-    steps:
-      - id: checkout_repository
-        name: Checkout Repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - id: detect_changes
-        name: Detect Changes
-        uses: ./.github/actions/detect-foundry-changes
-        with:
-          workflow-file: cd-foundry-mainnet.yaml
-
-  ##################################################
   # Deploy contracts (Mainnet)
   ##################################################
 
   deploy:
     name: Deploy Contracts (Mainnet)
-
-    needs: detect-changes
-    if: needs.detect-changes.outputs.deploy == 'true'
 
     runs-on: ubuntu-latest
 
@@ -90,6 +62,7 @@ jobs:
 
     outputs:
       vault_address: ${{ steps.resolve_vault.outputs.vault_address }}
+      deployed: ${{ steps.resolve_vault.outputs.deployed }}
 
     steps:
       # --- Workflow-level prerequisites ---
