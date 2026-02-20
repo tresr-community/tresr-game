@@ -669,7 +669,7 @@ export class CombatManager {
     } else if (data.type === "boss") {
       trackBossDefeated();
       this.playSound("explosion");
-      MusicManager.getInstance().stop();
+      void MusicManager.getInstance().stop();
 
       // Fire explosion VFX — 3-layer expanding circles
       const deathFx = this.config.entities.boss.death_effects;

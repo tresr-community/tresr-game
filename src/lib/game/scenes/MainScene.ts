@@ -1358,7 +1358,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     this.playSound("game_over");
-    MusicManager.getInstance().stop();
+    void MusicManager.getInstance().stop();
     this.uiManager.showPhaseAnnouncement("DEFEAT");
     const deathDuration = Math.round(
       this.gameplayConfig.time_limit_seconds - this.survivalTimer

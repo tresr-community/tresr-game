@@ -40,7 +40,7 @@ class MusicManager {
     const mode = gameState.get().music.playbackMode;
     switch (mode) {
       case "repeat-one":
-        this.replayCurrent();
+        void this.replayCurrent();
         break;
       case "shuffle":
         this.playRandom();
@@ -514,14 +514,14 @@ class MusicManager {
   /**
    * Replay the current track from the beginning (for repeat-one mode).
    */
-  private replayCurrent() {
+  private async replayCurrent() {
     if (!this.audio) return;
     this.audio.currentTime = 0;
-    this.safePlay();
+    await this.safePlay();
     gameActions.updateMusic({isPlaying: true});
   }
 
-  public stop() {
+  public async stop() {
     // Clean up any crossfade in progress
     if (this.fadeInterval) {
       clearInterval(this.fadeInterval);
@@ -537,7 +537,7 @@ class MusicManager {
       this.fadingOut = null;
     }
     if (!this.audio) return;
-    this.safePause();
+    await this.safePause();
     this.audio.currentTime = 0;
     gameActions.updateMusic({
       isPlaying: false,
@@ -565,7 +565,7 @@ class MusicManager {
     this.audio.currentTime = time;
   }
 
-  public destroy() {
+  public async destroy() {
     if (this.authUnsubscribe) {
       this.authUnsubscribe();
       this.authUnsubscribe = null;
@@ -586,7 +586,7 @@ class MusicManager {
       clearTimeout(this.saveTimeout);
       this.saveTimeout = null;
     }
-    this.stop();
+    await this.stop();
     // Remove listeners and release audio element media buffer (ticket #197, #227)
     if (this.audio) {
       this.audio.removeEventListener("timeupdate", this.handleTimeUpdate);
