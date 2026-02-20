@@ -71,7 +71,7 @@ export class CombatManager {
     this.superProjectiles = this.scene.physics.add.group({
       classType: SuperProjectile,
       maxSize: entities.player.super.max_projectiles,
-      runChildUpdate: true,
+      runChildUpdate: false,
     });
   }
 

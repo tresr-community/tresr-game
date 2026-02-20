@@ -47,7 +47,7 @@ export const config: ConfigTypes = {
   "app": {
     "name": "TRESR Game",
     "tagline": "Collect Keys. Fight Enemies. Claim the $TRESR.",
-    "footer_text": "Economy powered by the Avalanche Blockchain.",
+    "footer_text": "Powered by Avalanche 🔺",
     "narration_text": {
       "intro": "Most days, Ron Jay embraces the degenerate life\nfarming airdrops and apeing into meme coins.\n\nBut today?\n\nToday Ron chooses violence against the\ntyrannical bankers shackling crypto's future.\n\nWelcome, to the Crypto Cage...\n"
     },
@@ -1271,9 +1271,9 @@ export const config: ConfigTypes = {
     "permanent_after_offence": 4,
     "ban_reasons": [
       "config_hash_mismatch",
+      "is_a_sore_loser",
       "replay_validation_failure",
       "score_exceeds_maximum",
-      "is_a_sore_loser",
       "wallet_tampering"
     ]
   },
