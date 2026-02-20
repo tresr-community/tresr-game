@@ -192,6 +192,10 @@ in
     enable = true;
     mcpServers = {
       devenv = {
+        type = "http";
+        url = "https://mcp.devenv.sh";
+      };
+      devenv-cli = {
         type = "stdio";
         command = "devenv";
         args = [ "mcp" ];

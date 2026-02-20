@@ -270,21 +270,36 @@ import Loader from "@/components/game/Loader.astro";
 
     // Portrait detection — pause/resume game when orientation changes
     // (portrait overlay is handled globally by BaseLayout)
+    // Guard: only touch MainScene; skip if portrait state hasn't changed.
+    import {SCENE_KEYS} from "@/lib/game/constants";
+    let lastHandledPortrait: boolean | null = null;
     function handlePortraitChange(e: Event) {
       const {portrait} = (e as CustomEvent).detail;
+
+      // Deduplicate — BaseLayout already deduplicates, but guard here too in
+      // case other code dispatches the event independently.
+      if (portrait === lastHandledPortrait) {
+        log.debug(
+          COMPONENT_NAME,
+          "Portrait state unchanged, skipping scene transition"
+        );
+        return;
+      }
+      lastHandledPortrait = portrait;
+
       const game = (window as any).__phaserGame;
       if (!game) return;
 
+      // Only affect the main gameplay scene — never touch BootScene or Preloader.
+      const mainScene = game.scene.getScene(SCENE_KEYS.MAIN);
+      if (!mainScene) return;
+
       if (portrait) {
-        log.info(COMPONENT_NAME, "Portrait detected, pausing game scenes");
-        game.scene.scenes.forEach((s: any) => {
-          if (s.scene.isActive()) s.scene.pause();
-        });
+        log.info(COMPONENT_NAME, "Portrait detected, pausing MainScene");
+        if (mainScene.scene.isActive()) mainScene.scene.pause();
       } else {
-        log.info(COMPONENT_NAME, "Landscape detected, resuming game scenes");
-        game.scene.scenes.forEach((s: any) => {
-          if (s.scene.isPaused()) s.scene.resume();
-        });
+        log.info(COMPONENT_NAME, "Landscape detected, resuming MainScene");
+        if (mainScene.scene.isPaused()) mainScene.scene.resume();
       }
     }
     document.addEventListener("tresr:portrait-change", handlePortraitChange);
