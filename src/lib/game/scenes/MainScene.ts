@@ -1463,14 +1463,20 @@ export class MainScene extends Phaser.Scene {
     }
 
     // Cache group children once per frame to avoid repeated getChildren() allocations
+    const enemyChildren = this.spawnManager.enemies?.getChildren();
     const keyChildren = this.spawnManager.keys?.getChildren();
     const bombChildren = this.spawnManager.bombs?.getChildren();
 
-    // Manually update keys and bombs for Z-axis falling physics.
-    // These run here (in scene update, after Arcade physics step) rather than
-    // via runChildUpdate (which runs in preUpdate, before physics step).
-    // This matches Player/Boss update timing and prevents Arcade body.postUpdate
-    // from overwriting the Z-axis adjusted positions.
+    // Manually update enemies, keys, and bombs after the Arcade physics step.
+    // This ensures all entities receive the same game_speed-scaled dt and
+    // prevents Arcade body.postUpdate from overwriting Z-axis / X-axis
+    // adjusted positions (which caused enemy teleporting flicker).
+    if (enemyChildren) {
+      for (let i = 0; i < enemyChildren.length; i++) {
+        const child = enemyChildren[i];
+        if (child.active) (child as Enemy).update(dt);
+      }
+    }
     if (keyChildren) {
       for (let i = 0; i < keyChildren.length; i++) {
         const child = keyChildren[i];

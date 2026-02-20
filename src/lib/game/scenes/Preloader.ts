@@ -467,26 +467,9 @@ export class Preloader extends Phaser.Scene {
   private async startIntroNarration() {
     const auth = getAuthState();
 
-    if (auth.isAuthenticated && !auth.isGuest && auth.user) {
-      // Logged-in user — check their saved preference
-      try {
-        const doc = await getUserProfile(auth.user.key);
-        if (doc && doc.data.preferences.narration === false) {
-          log.info(COMPONENT_NAME, "Narration disabled by user preference");
-          this.introFinished = true;
-          this.typewriterDone = true;
-          window.dispatchEvent(new Event("tresr:narration-complete"));
-          return;
-        }
-      } catch {
-        log.warn(
-          COMPONENT_NAME,
-          "Failed to load narration preference, defaulting to enabled"
-        );
-      }
-    }
-    // Guest users always get narration, logged-in users get it unless disabled
-
+    // Start audio IMMEDIATELY to preserve the browser's user-gesture autoplay
+    // window. If the user preference (fetched async below) says to skip, we
+    // stop the already-playing audio afterward.
     this.introAudio = new Audio("/assets/audio/narration/intro.webm");
     this.introAudio.volume = 1.0;
     this.introEndedHandler = () => {
@@ -520,6 +503,24 @@ export class Preloader extends Phaser.Scene {
       this.typewriterDone = true; // skip typewriter if audio was blocked
       window.dispatchEvent(new Event("tresr:narration-complete"));
     });
+
+    // Check authenticated user's narration preference in parallel.
+    // If they've disabled narration, stop the already-playing audio.
+    if (auth.isAuthenticated && !auth.isGuest && auth.user) {
+      try {
+        const doc = await getUserProfile(auth.user.key);
+        if (doc && doc.data.preferences.narration === false) {
+          log.info(COMPONENT_NAME, "Narration disabled by user preference");
+          this.stopNarration();
+          return;
+        }
+      } catch {
+        log.warn(
+          COMPONENT_NAME,
+          "Failed to load narration preference, defaulting to enabled"
+        );
+      }
+    }
   }
 
   /**
@@ -628,6 +629,38 @@ export class Preloader extends Phaser.Scene {
         }
       },
     });
+  }
+
+  /**
+   * Stop narration that is already playing (or pending).
+   * Used when the user's saved preference says narration is disabled,
+   * but audio was started eagerly to preserve the autoplay gesture window.
+   */
+  private stopNarration() {
+    if (this.introAudio) {
+      this.introAudio.pause();
+      if (this.introEndedHandler)
+        this.introAudio.removeEventListener("ended", this.introEndedHandler);
+      if (this.introErrorHandler)
+        this.introAudio.removeEventListener("error", this.introErrorHandler);
+      if (this.introPlayingHandler)
+        this.introAudio.removeEventListener(
+          "playing",
+          this.introPlayingHandler
+        );
+      this.introAudio.src = "";
+      this.introAudio = null;
+    }
+    this.introEndedHandler = null;
+    this.introErrorHandler = null;
+    this.introPlayingHandler = null;
+    if (this.typewriterTimer) {
+      this.typewriterTimer.destroy();
+      this.typewriterTimer = undefined;
+    }
+    this.introFinished = true;
+    this.typewriterDone = true;
+    window.dispatchEvent(new Event("tresr:narration-complete"));
   }
 
   shutdown() {

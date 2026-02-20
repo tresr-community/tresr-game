@@ -391,9 +391,9 @@ export const config: ConfigTypes = {
       }
     },
     "physics": {
-      "gravity": 0.8,
+      "gravity": 0.5,
       "timestep": 0.01667,
-      "game_speed": 1.5
+      "game_speed": 2
     },
     "visuals": {
       "shadow": {
@@ -568,13 +568,13 @@ export const config: ConfigTypes = {
             "attack_damage": 10
           },
           "weights": {
-            "direct": 25,
-            "flanker": 20,
-            "cautious": 15,
-            "swarm": 15,
-            "erratic": 10,
-            "passive": 10,
-            "retardio": 5
+            "direct": 100,
+            "flanker": 0,
+            "cautious": 0,
+            "swarm": 0,
+            "erratic": 0,
+            "passive": 0,
+            "retardio": 0
           }
         },
         "animations": {
@@ -1396,5 +1396,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "95e74c207bf1d07e8ef6485d96ec52b0ac9089ee00b5c776213f83a186cd644c"
+  "configHash": "3a841f7f7fd2ca32652c8454fc0f6e5489c21718d0badc5a54a0252a3ee1b52b"
 };

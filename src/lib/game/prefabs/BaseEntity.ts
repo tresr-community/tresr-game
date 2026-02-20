@@ -255,6 +255,7 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
 
   update(dt?: number) {
     this.updateZ(dt);
+    this.syncBodyPosition();
     this.setDepth(this.groundY);
     this.updateShadow();
     this.updateHealthBar();

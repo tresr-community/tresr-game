@@ -88,7 +88,7 @@ export class SpawnManager {
       classType: Enemy,
       defaultKey: "enemy_1_idle",
       maxSize: entities.enemy.spawner.pool_size,
-      runChildUpdate: true,
+      runChildUpdate: false,
     });
     // Store in registry so swarm AI can find nearby allies
     this.scene.registry.set("enemy_group", this.enemies);
