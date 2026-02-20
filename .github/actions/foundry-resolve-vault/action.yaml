@@ -1,8 +1,8 @@
 ---
 name: Foundry Resolve Vault
 description: >-
-  Detect vault mode (skip/deploy/upgrade), execute deployment,
-  and resolve final vault address from broadcast.
+  Detect vault mode (skip/deploy/upgrade) using bytecode comparison
+  and forge dry-run, execute deployment, and resolve final vault address.
 
 inputs:
   network:
@@ -40,20 +40,29 @@ outputs:
   mode:
     description: "Vault deploy mode (skip/deploy/upgrade)"
     value: ${{ steps.detect_vault_mode.outputs.mode }}
+  deployed:
+    description: "Whether a deployment or upgrade was executed (true/false)"
+    value: ${{ steps.detect_vault_mode.outputs.deployed }}
 
 runs:
   using: composite
   steps:
     - id: detect_vault_mode
       name: Detect Vault Deploy Mode
-      shell: bash
+      shell: devenv shell --quiet bash -- -e {0}
+      env:
+        RPC_URL: ${{ inputs.rpc-url }}
+        VAULT_PROXY_ADDRESS: ${{ inputs.vault-address }}
+        DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
       run: |
         VAULT_ADDR="${{ inputs.vault-address }}"
         TOKEN_ADDR="${{ inputs.token-address }}"
         ORACLE_ADDR="${{ inputs.oracle-address }}"
         ZERO="0x0000000000000000000000000000000000000000"
 
-        # Vault needs a token and oracle to initialize — skip if either is missing
+        # ──────────────────────────────────────────────
+        # 1. Pre-requisite check: token + oracle needed
+        # ──────────────────────────────────────────────
         MISSING=()
         if [[ "$TOKEN_ADDR" == "$ZERO" || -z "$TOKEN_ADDR" || "$TOKEN_ADDR" == "null" ]]; then
           MISSING+=("TOKEN_ADDRESS")
@@ -64,15 +73,99 @@ runs:
 
         if [[ ${#MISSING[@]} -gt 0 ]]; then
           echo "mode=skip" >> "$GITHUB_OUTPUT"
+          echo "deployed=false" >> "$GITHUB_OUTPUT"
           echo "::warning::⏭️ Vault deploy SKIPPED — missing: ${MISSING[*]}"
           echo "Deploy Juno first to get the oracle address, then update tresr.yaml and re-run."
-        elif [[ "$VAULT_ADDR" == "$ZERO" || -z "$VAULT_ADDR" || "$VAULT_ADDR" == "null" ]]; then
-          echo "mode=deploy" >> "$GITHUB_OUTPUT"
-          echo "🆕 Vault mode: FRESH DEPLOY (no existing proxy)"
-        else
-          echo "mode=upgrade" >> "$GITHUB_OUTPUT"
-          echo "⬆️ Vault mode: UPGRADE (existing proxy at $VAULT_ADDR)"
+          exit 0
         fi
+
+        # ──────────────────────────────────────────────
+        # 2. First-deploy: vault address is zero/empty
+        # ──────────────────────────────────────────────
+        if [[ "$VAULT_ADDR" == "$ZERO" || -z "$VAULT_ADDR" || "$VAULT_ADDR" == "null" ]]; then
+          echo "mode=deploy" >> "$GITHUB_OUTPUT"
+          echo "deployed=true" >> "$GITHUB_OUTPUT"
+          echo "🆕 Vault mode: FRESH DEPLOY (no existing proxy)"
+          exit 0
+        fi
+
+        # ──────────────────────────────────────────────
+        # 3. Bytecode comparison: local vs on-chain
+        # ──────────────────────────────────────────────
+        echo "🔍 Comparing compiled bytecode against on-chain implementation..."
+
+        # ERC1967 implementation slot (EIP-1967)
+        IMPL_SLOT="0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+
+        # Fetch the implementation address from the proxy's storage
+        RAW_IMPL=$(cast storage "$VAULT_ADDR" "$IMPL_SLOT" --rpc-url "$RPC_URL" 2>/dev/null || true)
+        if [[ -z "$RAW_IMPL" || "$RAW_IMPL" == "0x0000000000000000000000000000000000000000000000000000000000000000" ]]; then
+          echo "::warning::Could not read implementation slot — treating as first deploy"
+          echo "mode=deploy" >> "$GITHUB_OUTPUT"
+          echo "deployed=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # Extract the 20-byte address from the 32-byte slot value
+        ON_CHAIN_IMPL="0x$(echo "$RAW_IMPL" | sed 's/0x//' | tail -c 41)"
+        echo "  On-chain implementation: $ON_CHAIN_IMPL"
+
+        # Fetch deployed (runtime) bytecode from the chain
+        ON_CHAIN_CODE=$(cast code "$ON_CHAIN_IMPL" --rpc-url "$RPC_URL" 2>/dev/null || true)
+        if [[ -z "$ON_CHAIN_CODE" || "$ON_CHAIN_CODE" == "0x" ]]; then
+          echo "::warning::On-chain implementation has no code — treating as upgrade needed"
+          echo "mode=upgrade" >> "$GITHUB_OUTPUT"
+          echo "deployed=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # Get locally compiled deployed (runtime) bytecode
+        ARTIFACT="contracts/out/Vault.sol/TresrVault.json"
+        if [[ ! -f "$ARTIFACT" ]]; then
+          echo "::error::Build artifact not found at $ARTIFACT — run forge build first"
+          exit 1
+        fi
+        LOCAL_CODE="0x$(jq -r '.deployedBytecode.object' "$ARTIFACT" | sed 's/^0x//')"
+
+        # Normalize both to lowercase for comparison
+        ON_CHAIN_NORM=$(echo "$ON_CHAIN_CODE" | tr '[:upper:]' '[:lower:]')
+        LOCAL_NORM=$(echo "$LOCAL_CODE" | tr '[:upper:]' '[:lower:]')
+
+        if [[ "$ON_CHAIN_NORM" == "$LOCAL_NORM" ]]; then
+          echo "✅ Bytecode MATCHES on-chain — no upgrade needed"
+          echo "mode=skip" >> "$GITHUB_OUTPUT"
+          echo "deployed=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        echo "⚡ Bytecode DIFFERS from on-chain — checking dry-run..."
+
+        # ──────────────────────────────────────────────
+        # 4. Forge dry-run gate: verify transactions
+        # ──────────────────────────────────────────────
+        cd contracts
+        DRY_RUN_LOG=$(mktemp)
+
+        set +e
+        forge script script/UpgradeVault.s.sol:UpgradeVault \
+          --rpc-url "$RPC_URL" \
+          --dry-run \
+          -vvvv 2>&1 | tee "$DRY_RUN_LOG"
+        DRY_EXIT=$?
+        set -e
+
+        # Check if dry-run produced any transactions
+        if [[ $DRY_EXIT -eq 0 ]] && grep -qiE "(CREATE|CALL|Transactions)" "$DRY_RUN_LOG"; then
+          echo "⬆️ Vault mode: UPGRADE (bytecode changed, dry-run confirmed transactions)"
+          echo "mode=upgrade" >> "$GITHUB_OUTPUT"
+          echo "deployed=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "::warning::Bytecode differs but dry-run produced no transactions — skipping"
+          echo "mode=skip" >> "$GITHUB_OUTPUT"
+          echo "deployed=false" >> "$GITHUB_OUTPUT"
+        fi
+
+        rm -f "$DRY_RUN_LOG"
 
     - id: deploy_vault
       name: Deploy Vault (Fresh Proxy)
