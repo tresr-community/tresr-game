@@ -114,24 +114,41 @@ fn assert_user_profile(context: &AssertSetDocContext) -> Result<(), String> {
                 );
             }
 
-            // Verify signature if provided (Client-Side Linking Verification)
-            if let (Some(sig), Some(msg)) =
-                (&data.verification_signature, &data.verification_message)
-            {
-                verify_wallet_signature(wallet, msg, sig)?;
-            }
+            // Require verification_signature AND verification_message when linking a wallet (ticket #189)
+            let sig = data.verification_signature.as_deref().ok_or(
+                "verification_signature is required when linking an EVM wallet".to_string(),
+            )?;
+            let msg = data
+                .verification_message
+                .as_deref()
+                .ok_or("verification_message is required when linking an EVM wallet".to_string())?;
+
+            // The document key in the "users" collection is the caller's principal
+            let caller_principal = &context.data.key;
+
+            verify_wallet_signature(wallet, msg, sig, caller_principal)?;
         }
     }
 
     Ok(())
 }
 
+/// Maximum age of a wallet-link message signature (5 minutes)
+const WALLET_LINK_MAX_AGE_SECS: u64 = 300;
+
+/// Domain separator that must appear as the first line of every wallet-link message.
+const WALLET_LINK_DOMAIN: &str = "TRESR Wallet Link";
+
 fn verify_wallet_signature(
     address: &str,
     message: &str,
     signature_hex: &str,
+    caller_principal: &str,
 ) -> Result<(), String> {
-    // 1. Decode hex signature
+    // ── 0. Validate message content (ticket #189) ────────────────────────
+    validate_wallet_link_message(message, caller_principal, address)?;
+
+    // ── 1. Decode hex signature ──────────────────────────────────────────
     let sig_hex = signature_hex.trim_start_matches("0x");
     let sig_bytes = hex::decode(sig_hex).map_err(|_| "Invalid signature format")?;
 
@@ -150,7 +167,7 @@ fn verify_wallet_signature(
     let signature = Signature::parse_standard_slice(&sig_bytes[0..64])
         .map_err(|_| "Invalid signature bytes")?;
 
-    // 2. Hash message (Ethereum Signed Message)
+    // ── 2. Hash message (EIP-191 personal_sign) ──────────────────────────
     let prefix = format!("\x19Ethereum Signed Message:\n{}", message.len());
     let mut keccak = Keccak::v256();
     keccak.update(prefix.as_bytes());
@@ -160,23 +177,93 @@ fn verify_wallet_signature(
 
     let message_struct = Message::parse(&hash);
 
-    // 3. Recover Public Key
+    // ── 3. Recover public key ────────────────────────────────────────────
     let pubkey =
         recover(&message_struct, &signature, &recid).map_err(|_| "Failed to recover public key")?;
 
-    // 4. Derive Address from Public Key
-    // Keccak256(pubkey[1..65]) -> last 20 bytes
+    // ── 4. Derive address ────────────────────────────────────────────────
     let mut pubkey_hash = [0u8; 32];
     let mut pubkey_keccak = Keccak::v256();
-    // Serialize uncompressed (65 bytes), skip first byte (0x04)
     pubkey_keccak.update(&pubkey.serialize()[1..65]);
     pubkey_keccak.finalize(&mut pubkey_hash);
 
     let recovered_address = hex::encode(&pubkey_hash[12..32]);
 
-    // 5. Compare
+    // ── 5. Compare recovered address with claimed address ────────────────
     if address.trim_start_matches("0x").to_lowercase() != recovered_address {
         return Err("Signature does not match address".to_string());
+    }
+
+    Ok(())
+}
+
+/// Parse and validate the structured wallet-link message.
+///
+/// Expected format (newline-separated):
+/// ```text
+/// TRESR Wallet Link
+/// Principal: {principal}
+/// Wallet: {address}
+/// Timestamp: {unix_secs}
+/// Nonce: {uuid}
+/// ```
+fn validate_wallet_link_message(
+    message: &str,
+    expected_principal: &str,
+    expected_address: &str,
+) -> Result<(), String> {
+    let lines: Vec<&str> = message.lines().collect();
+
+    if lines.len() < 5 {
+        return Err("Wallet link message has fewer than 5 lines".to_string());
+    }
+
+    // Line 0: domain separator
+    if lines[0] != WALLET_LINK_DOMAIN {
+        return Err(format!(
+            "Invalid domain separator: expected '{}'",
+            WALLET_LINK_DOMAIN
+        ));
+    }
+
+    // Line 1: principal binding
+    let msg_principal = lines[1]
+        .strip_prefix("Principal: ")
+        .ok_or("Missing 'Principal:' field in wallet link message")?;
+    if msg_principal != expected_principal {
+        return Err("Principal in message does not match caller".to_string());
+    }
+
+    // Line 2: wallet address binding
+    let msg_wallet = lines[2]
+        .strip_prefix("Wallet: ")
+        .ok_or("Missing 'Wallet:' field in wallet link message")?;
+    if msg_wallet.to_lowercase() != expected_address.to_lowercase() {
+        return Err("Wallet address in message does not match claimed address".to_string());
+    }
+
+    // Line 3: timestamp freshness
+    let ts_str = lines[3]
+        .strip_prefix("Timestamp: ")
+        .ok_or("Missing 'Timestamp:' field in wallet link message")?;
+    let ts: u64 = ts_str
+        .parse()
+        .map_err(|_| "Invalid timestamp in wallet link message")?;
+
+    let now_ns = ic_cdk::api::time(); // nanoseconds
+    let now_secs = now_ns / 1_000_000_000;
+
+    if ts > now_secs + 60 {
+        // allow 60 s clock skew into the future
+        return Err("Wallet link message timestamp is in the future".to_string());
+    }
+    if now_secs.saturating_sub(ts) > WALLET_LINK_MAX_AGE_SECS {
+        return Err("Wallet link message has expired (>5 minutes old)".to_string());
+    }
+
+    // Line 4: nonce (format check only — not stored server-side)
+    if !lines[4].starts_with("Nonce: ") {
+        return Err("Missing 'Nonce:' field in wallet link message".to_string());
     }
 
     Ok(())
