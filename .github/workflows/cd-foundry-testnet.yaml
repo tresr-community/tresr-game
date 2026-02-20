@@ -64,9 +64,9 @@ jobs:
     environment: Testnet
 
     outputs:
-      token_address: ${{ steps.resolve_token_address.outputs.token_address }}
+      token_address: ${{ steps.resolve_token.outputs.token_address }}
       vault_address: ${{ steps.resolve_vault.outputs.vault_address }}
-      faucet_address: ${{ steps.resolve_faucet_address.outputs.faucet_address }}
+      faucet_address: ${{ steps.resolve_token.outputs.faucet_address }}
       deployed: ${{ steps.resolve_vault.outputs.deployed }}
 
     steps:
@@ -96,86 +96,28 @@ jobs:
           deployer-private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
           snowtrace-api-key: ${{ secrets.SNOWTRACE_API_KEY }}
 
-      # --- Testnet-only: Deploy test token + faucet ---
-      - id: deploy_test_token
-        name: Deploy Test Token
-        continue-on-error: true
-        shell: devenv shell --quiet bash -- -e {0}
-        env:
-          SNOWTRACE_API_KEY: ${{ secrets.SNOWTRACE_API_KEY }}
-        run: |
-          cd contracts
-          forge script script/DeployToken.s.sol:DeployTestToken \
-            --rpc-url ${{ steps.foundry_deploy_setup.outputs.RPC_URL }} \
-            --broadcast \
-            --verify \
-            --etherscan-api-key "$SNOWTRACE_API_KEY" \
-            -vvvv
-
-      - id: resolve_token_address
-        name: Resolve Token Address
-        if: always()
-        run: |
-          CHAIN_ID="${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}"
-          CONFIG_TOKEN="${{ steps.foundry_deploy_setup.outputs.TOKEN_ADDRESS }}"
-          ZERO="0x0000000000000000000000000000000000000000"
-          DEPLOYED_TOKEN=""
-
-          # Try to extract freshly-deployed token from broadcast
-          LATEST="contracts/broadcast/DeployToken.s.sol/${CHAIN_ID}/run-latest.json"
-          if [[ -f "$LATEST" ]]; then
-            DEPLOYED_TOKEN=$(jq -r '.transactions[] | select(.transactionType == "CREATE" and .contractName == "RonToken") | .contractAddress' "$LATEST" 2>/dev/null | head -1)
-          fi
-
-          if [[ -n "$DEPLOYED_TOKEN" && ("$CONFIG_TOKEN" == "$ZERO" || -z "$CONFIG_TOKEN" || "$CONFIG_TOKEN" == "null") ]]; then
-            echo "token_address=${DEPLOYED_TOKEN}" >> "$GITHUB_OUTPUT"
-            echo "🔗 Using freshly-deployed token: ${DEPLOYED_TOKEN}"
-          else
-            echo "token_address=${CONFIG_TOKEN}" >> "$GITHUB_OUTPUT"
-            echo "🔗 Using config token: ${CONFIG_TOKEN}"
-          fi
-
-      - id: resolve_faucet_address
-        name: Resolve Faucet Address
-        if: always()
-        run: |
-          CHAIN_ID="${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}"
-          DEPLOYED_FAUCET=""
-
-          LATEST="contracts/broadcast/DeployToken.s.sol/${CHAIN_ID}/run-latest.json"
-          if [[ -f "$LATEST" ]]; then
-            DEPLOYED_FAUCET=$(jq -r '.transactions[] | select(.transactionType == "CREATE" and .contractName == "TresrFaucet") | .contractAddress' "$LATEST" 2>/dev/null | head -1)
-          fi
-
-          if [[ -n "$DEPLOYED_FAUCET" ]]; then
-            echo "faucet_address=${DEPLOYED_FAUCET}" >> "$GITHUB_OUTPUT"
-            echo "🔗 Faucet: ${DEPLOYED_FAUCET}"
-          else
-            echo "faucet_address=" >> "$GITHUB_OUTPUT"
-            echo "No faucet deployed this run"
-          fi
-
-      - id: check_test_token
-        name: Check Test Token Deploy
-        if: always()
-        run: |
-          OUTCOME="${{ steps.deploy_test_token.outcome }}"
-          if [[ "$OUTCOME" == "failure" ]]; then
-            echo "::error::Deploy Test Token failed"
-            exit 1
-          fi
-          echo "✓ Deploy Test Token: ${OUTCOME:-n/a}"
+      # --- Testnet-only: Token + Faucet (bytecode check + dry-run) ---
+      - id: resolve_token
+        name: Resolve Token + Faucet
+        uses: ./.github/actions/foundry-resolve-token
+        with:
+          rpc-url: ${{ steps.foundry_deploy_setup.outputs.RPC_URL }}
+          chain-id: ${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}
+          token-address: ${{ steps.foundry_deploy_setup.outputs.TOKEN_ADDRESS }}
+          faucet-address: ${{ steps.foundry_deploy_setup.outputs.FAUCET_ADDRESS }}
+          deployer-private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          snowtrace-api-key: ${{ secrets.SNOWTRACE_API_KEY }}
 
       # --- Vault deploy/upgrade (composite action) ---
       - id: resolve_vault
         name: Resolve Vault
-        if: always() && steps.check_test_token.outcome != 'failure'
+        if: always() && steps.resolve_token.outcome != 'failure'
         uses: ./.github/actions/foundry-resolve-vault
         with:
           network: testnet
           rpc-url: ${{ steps.foundry_deploy_setup.outputs.RPC_URL }}
           chain-id: ${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}
-          token-address: ${{ steps.resolve_token_address.outputs.token_address }}
+          token-address: ${{ steps.resolve_token.outputs.token_address }}
           oracle-address: ${{ inputs.oracle_address || steps.foundry_deploy_setup.outputs.ORACLE_ADDRESS }}
           admin-address: ${{ steps.foundry_deploy_setup.outputs.ADMIN_ADDRESS }}
           vault-address: ${{ steps.foundry_deploy_setup.outputs.VAULT_ADDRESS }}
@@ -192,6 +134,6 @@ jobs:
           chain-id: ${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}
           oracle-address: ${{ inputs.oracle_address || steps.foundry_deploy_setup.outputs.ORACLE_ADDRESS }}
           admin-address: ${{ steps.foundry_deploy_setup.outputs.ADMIN_ADDRESS }}
-          token-address: ${{ steps.resolve_token_address.outputs.token_address }}
+          token-address: ${{ steps.resolve_token.outputs.token_address }}
           vault-address: ${{ steps.resolve_vault.outputs.vault_address }}
           workflow-name: cd-foundry-testnet
