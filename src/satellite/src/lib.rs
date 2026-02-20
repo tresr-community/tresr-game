@@ -1566,8 +1566,8 @@ async fn claim_authorize(
     }
 
     // 4. Verify replay
-    // TODO: Replace with real deterministic replay verification engine
-    // Tracked in separate issue — for now, use stub that trusts reported values
+    // TODO(#171): Replace with real deterministic replay verification engine
+    // For now, use stub that trusts reported values
     let (verified_keys, boss_killed) = replay_verify_stub(
         &replay_inputs,
         vault_balance,
@@ -1688,8 +1688,8 @@ async fn claim_authorize(
 }
 
 /// Replay verification stub — trusts reported values until the real replay engine is implemented.
-/// TODO: Replace with deterministic game replay engine that parses `_inputs` to independently
-/// verify keys collected and boss defeat. See tracking issue for replay engine.
+/// TODO(#171): Replace with deterministic game replay engine that parses `_inputs` to independently
+/// verify keys collected and boss defeat.
 async fn replay_verify_stub(
     _inputs: &[u8],
     _pot: u128,
