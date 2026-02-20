@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      deploy: ${{ steps.check.outputs.deploy }}
+      deploy: ${{ steps.detect_changes.outputs.deploy }}
 
     steps:
       - id: checkout_repository
@@ -65,8 +65,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - id: check
-        name: Check for Changes
+      - id: detect_changes
+        name: Detect Changes
         uses: ./.github/actions/detect-foundry-changes
         with:
           workflow-file: cd-foundry-mainnet.yaml
@@ -89,7 +89,7 @@ jobs:
     environment: Mainnet
 
     outputs:
-      vault_address: ${{ steps.vault.outputs.vault_address }}
+      vault_address: ${{ steps.resolve_vault.outputs.vault_address }}
 
     steps:
       # --- Workflow-level prerequisites ---
@@ -109,7 +109,7 @@ jobs:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
       # --- Common setup (composite action) ---
-      - id: setup
+      - id: foundry_deploy_setup
         name: Foundry Deploy Setup
         uses: ./.github/actions/foundry-deploy-setup
         with:
@@ -120,30 +120,30 @@ jobs:
 
       # --- Vault deploy/upgrade (composite action) ---
       # Mainnet uses the real TRESR token from config — no test token
-      - id: vault
+      - id: resolve_vault
         name: Resolve Vault
         uses: ./.github/actions/foundry-resolve-vault
         with:
           network: mainnet
-          rpc-url: ${{ steps.setup.outputs.RPC_URL }}
-          chain-id: ${{ steps.setup.outputs.CHAIN_ID }}
-          token-address: ${{ steps.setup.outputs.TOKEN_ADDRESS }}
-          oracle-address: ${{ inputs.oracle_address || steps.setup.outputs.ORACLE_ADDRESS }}
-          admin-address: ${{ steps.setup.outputs.ADMIN_ADDRESS }}
-          vault-address: ${{ steps.setup.outputs.VAULT_ADDRESS }}
+          rpc-url: ${{ steps.foundry_deploy_setup.outputs.RPC_URL }}
+          chain-id: ${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}
+          token-address: ${{ steps.foundry_deploy_setup.outputs.TOKEN_ADDRESS }}
+          oracle-address: ${{ inputs.oracle_address || steps.foundry_deploy_setup.outputs.ORACLE_ADDRESS }}
+          admin-address: ${{ steps.foundry_deploy_setup.outputs.ADMIN_ADDRESS }}
+          vault-address: ${{ steps.foundry_deploy_setup.outputs.VAULT_ADDRESS }}
           deployer-private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
           snowtrace-api-key: ${{ secrets.SNOWTRACE_API_KEY }}
 
       # --- Deploy summary (composite action) ---
-      - id: summary
+      - id: deploy_summary
         name: Deploy Summary
         if: always()
         uses: ./.github/actions/foundry-deploy-summary
         with:
           network: mainnet
-          chain-id: ${{ steps.setup.outputs.CHAIN_ID }}
-          oracle-address: ${{ inputs.oracle_address || steps.setup.outputs.ORACLE_ADDRESS }}
-          admin-address: ${{ steps.setup.outputs.ADMIN_ADDRESS }}
-          token-address: ${{ steps.setup.outputs.TOKEN_ADDRESS }}
-          vault-address: ${{ steps.vault.outputs.vault_address }}
+          chain-id: ${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}
+          oracle-address: ${{ inputs.oracle_address || steps.foundry_deploy_setup.outputs.ORACLE_ADDRESS }}
+          admin-address: ${{ steps.foundry_deploy_setup.outputs.ADMIN_ADDRESS }}
+          token-address: ${{ steps.foundry_deploy_setup.outputs.TOKEN_ADDRESS }}
+          vault-address: ${{ steps.resolve_vault.outputs.vault_address }}
           workflow-name: cd-foundry-mainnet
