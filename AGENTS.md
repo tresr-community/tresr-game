@@ -263,6 +263,14 @@ Directives for AI Agents:
 
 Foundry LLM documentation is available locally at `docs/agents/foundry.txt` (run `juno-dev agent-docs` to download).
 
+### GitHub Actions
+
+- **Linting**: Always validate workflow and composite action YAML files before committing:
+  - `actionlint` — Lint workflow files (`.github/workflows/*.yaml`)
+  - `action-validator` — Validate composite actions (`.github/actions/*/action.yaml`)
+- **Step ID Convention**: Use `verb_noun` snake*case (e.g. `detect_changes`, `cache_nix`, `build_functions`). Prefix tool-specific cache steps with `cache*`(e.g.`cache_bun`, `cache_cargo`).
+- **CI/CD Documentation**: See `docs/ci-cd.md` for pipeline architecture.
+
 ## 🏗️ Architecture: Juno Satellite
 
 The application follows Juno's "One Repo, One App" architecture with a single satellite canister:

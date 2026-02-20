@@ -28,11 +28,11 @@ const COMPONENT_NAME = "Tx";
 function buildDirectClient(): PublicClient {
   const env = getEnvironmentKey();
   const chainConfig = config.blockchain.avalanche[env];
-  const chain = getTargetChain(chainConfig.rpc_url);
+  const chain = getTargetChain(chainConfig.rpc_urls[0]);
 
   return createPublicClient({
     chain,
-    transport: http(chainConfig.rpc_url),
+    transport: http(chainConfig.rpc_urls[0]),
   }) as PublicClient;
 }
 

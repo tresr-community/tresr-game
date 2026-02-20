@@ -82,7 +82,7 @@ jobs:
         if: steps.detect_changes.outputs.skip != 'true'
         uses: ./.github/actions/cache-foundry
 
-      - id: check_solidity
+      - id: check_contracts
         name: Check Solidity Contracts
         if: steps.detect_changes.outputs.skip != 'true'
         shell: devenv shell --quiet bash -- -e {0}
@@ -94,7 +94,7 @@ jobs:
         if: always()
         uses: ./.github/actions/report-status
         with:
-          result: ${{ steps.detect_changes.outputs.skip == 'true' && 'success' || steps.check_solidity.outcome }}
+          result: ${{ steps.detect_changes.outputs.skip == 'true' && 'success' || steps.check_contracts.outcome }}
           success-message: "Foundry CI passed: contract checks"
           failure-message: "Foundry CI failed"
           github-token: ${{ secrets.GITHUB_TOKEN }}

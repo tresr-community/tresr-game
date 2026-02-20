@@ -42,12 +42,16 @@ jobs:
     timeout-minutes: 60
     continue-on-error: false
 
+    defaults:
+      run:
+        shell: devenv shell --quiet bash -- -e {0}
+
     steps:
       - id: checkout_repository
         name: Checkout Repository
         uses: actions/checkout@v6
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           submodules: recursive
 
       - id: setup_devenv
@@ -68,19 +72,16 @@ jobs:
 
       - id: lint
         name: Lint
-        shell: devenv shell --quiet bash -- -e {0}
         run: |
           bun run lint
 
       - id: build_hosting
         name: Build Hosting
-        shell: devenv shell --quiet bash -- -e {0}
         run: |
           juno-dev build
 
-      - id: build_functions_dev
+      - id: build_functions
         name: Build Functions
-        shell: devenv shell --quiet bash -- -e {0}
         run: |
           cargo generate-lockfile
           juno-dev build-functions
