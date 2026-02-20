@@ -43,6 +43,7 @@ export class Preloader extends Phaser.Scene {
   private overlayEl?: HTMLDivElement;
   private overlayTextContainer?: HTMLDivElement;
   private domTypewriterTimeoutId?: number;
+  private removeVideoTimeoutId?: number;
 
   constructor() {
     super(SCENE_KEYS.PRELOADER);
@@ -196,7 +197,8 @@ export class Preloader extends Phaser.Scene {
 
       this.overlayEl.style.opacity = "0";
 
-      setTimeout(() => {
+      this.removeVideoTimeoutId = window.setTimeout(() => {
+        this.removeVideoTimeoutId = undefined;
         this.overlayEl?.remove();
         this.overlayEl = undefined;
         this.overlayTextContainer = undefined;
@@ -672,6 +674,10 @@ export class Preloader extends Phaser.Scene {
     }
 
     // Clean up video DOM overlay if still present
+    if (this.removeVideoTimeoutId) {
+      clearTimeout(this.removeVideoTimeoutId);
+      this.removeVideoTimeoutId = undefined;
+    }
     if (this.domTypewriterTimeoutId) {
       clearTimeout(this.domTypewriterTimeoutId);
       this.domTypewriterTimeoutId = undefined;
