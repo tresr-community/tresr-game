@@ -76,7 +76,7 @@ jobs:
   ##################################################
 
   deploy:
-    name: Deploy (Mainnet)
+    name: Deploy Contracts (Mainnet)
 
     needs: detect-changes
     if: needs.detect-changes.outputs.deploy == 'true'

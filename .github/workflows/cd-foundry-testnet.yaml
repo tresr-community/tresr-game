@@ -79,7 +79,7 @@ jobs:
   ##################################################
 
   deploy:
-    name: Deploy (Testnet)
+    name: Deploy Contracts (Testnet)
 
     needs: detect-changes
     if: needs.detect-changes.outputs.deploy == 'true'

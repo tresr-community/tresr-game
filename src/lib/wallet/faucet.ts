@@ -46,7 +46,7 @@ export async function claimFaucet(): Promise<`0x${string}`> {
   const config = await loadConfigAsync();
   const env = getEnvironmentKey();
   const chainConfig = config.blockchain.avalanche[env];
-  const chain = getTargetChain(chainConfig.rpc_url);
+  const chain = getTargetChain(chainConfig.rpc_urls[0]);
 
   const faucetAddress = (
     chainConfig as AvalancheEnvConfig & {faucet_contract?: string}

@@ -30,7 +30,7 @@ declare module "/config-client.json" {
     blockchain: {      avalanche: {        anvil: {          fee: number;
           burn_rate: number;
           chain_id: number;
-          rpc_url: string;
+          rpc_urls: string[];
           token_ticker: string;
           tresr_token_contract: string;
           deployer_address: string;
@@ -41,7 +41,7 @@ declare module "/config-client.json" {
         testnet: {          fee: number;
           burn_rate: number;
           chain_id: number;
-          rpc_url: string;
+          rpc_urls: string[];
           token_ticker: string;
           tresr_token_contract: string;
           oracle_address: string;
@@ -52,7 +52,7 @@ declare module "/config-client.json" {
         mainnet: {          fee: number;
           burn_rate: number;
           chain_id: number;
-          rpc_url: string;
+          rpc_urls: string[];
           token_ticker: string;
           tresr_token_contract: string;
           oracle_address: string;
@@ -704,7 +704,7 @@ declare module "../../../public/config-client.json" {
     blockchain: {      avalanche: {        anvil: {          fee: number;
           burn_rate: number;
           chain_id: number;
-          rpc_url: string;
+          rpc_urls: string[];
           token_ticker: string;
           tresr_token_contract: string;
           deployer_address: string;
@@ -715,7 +715,7 @@ declare module "../../../public/config-client.json" {
         testnet: {          fee: number;
           burn_rate: number;
           chain_id: number;
-          rpc_url: string;
+          rpc_urls: string[];
           token_ticker: string;
           tresr_token_contract: string;
           oracle_address: string;
@@ -726,7 +726,7 @@ declare module "../../../public/config-client.json" {
         mainnet: {          fee: number;
           burn_rate: number;
           chain_id: number;
-          rpc_url: string;
+          rpc_urls: string[];
           token_ticker: string;
           tresr_token_contract: string;
           oracle_address: string;

@@ -15,6 +15,7 @@
 //! - `balance_refresh`: Requests to sync balance from on-chain
 
 mod evm_rpc;
+mod evm_rpc_types;
 mod logging;
 mod types;
 

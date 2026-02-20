@@ -90,7 +90,9 @@ export const config: ConfigTypes = {
         "fee": 10,
         "burn_rate": 1000,
         "chain_id": 31337,
-        "rpc_url": "http://localhost:8545",
+        "rpc_urls": [
+          "http://localhost:8545"
+        ],
         "token_ticker": "tRON",
         "tresr_token_contract": "0x8198f5d8F8CfFE8f9C413d98a0A55aEB8ab9FbB7",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
@@ -102,7 +104,10 @@ export const config: ConfigTypes = {
         "fee": 10,
         "burn_rate": 1000,
         "chain_id": 43113,
-        "rpc_url": "https://api.avax-test.network/ext/bc/C/rpc",
+        "rpc_urls": [
+          "https://api.avax-test.network/ext/bc/C/rpc",
+          "https://avalanche-fuji-c-chain-rpc.publicnode.com"
+        ],
         "token_ticker": "tRON",
         "tresr_token_contract": "0x87b5bf6ddf1d31fc3fb875bcf725732b0da3eb63",
         "oracle_address": "0xf2ff695cae8cc886d3c03afd502a35fcee61b66f",
@@ -114,7 +119,11 @@ export const config: ConfigTypes = {
         "fee": 10,
         "burn_rate": 1000,
         "chain_id": 43114,
-        "rpc_url": "https://api.avax.network/ext/bc/C/rpc",
+        "rpc_urls": [
+          "https://api.avax.network/ext/bc/C/rpc",
+          "https://avalanche-c-chain-rpc.publicnode.com",
+          "https://avax.meowrpc.com"
+        ],
         "token_ticker": "TRESR",
         "tresr_token_contract": "0x9913BA363073Ca3e9eA0cD296E36B75aF9E40bef",
         "oracle_address": "0x0000000000000000000000000000000000000000",
