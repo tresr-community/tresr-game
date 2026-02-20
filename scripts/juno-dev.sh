@@ -539,6 +539,7 @@ AGENT_DOCS_DIR="docs/agents"
 # Map of documentation sources: "name|url"
 # Add new sources here - name will be lowercased for filename
 AGENT_DOC_SOURCES=(
+	"avalanche|https://build.avax.network/llms-full.txt"
 	"astro|https://docs.astro.build/llms-full.txt"
 	"cloudflare|https://developers.cloudflare.com/llms-full.txt"
 	"daisyui|https://daisyui.com/llms.txt"

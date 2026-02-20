@@ -351,9 +351,9 @@ export const config: ConfigTypes = {
     ]
   },
   "display": {
-    "width": 1280,
-    "height": 720,
-    "design_height": 720,
+    "width": 1920,
+    "height": 1080,
+    "design_height": 1080,
     "background_color": "#000000",
     "pixel_art": true
   },

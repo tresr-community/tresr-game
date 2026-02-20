@@ -192,6 +192,10 @@ in
   claude.code = {
     enable = true;
     mcpServers = {
+      avalanche = {
+        type = "http";
+        url = "https://build.avax.network/api/mcp";
+      };
       devenv = {
         type = "http";
         url = "https://mcp.devenv.sh";

@@ -244,9 +244,9 @@ client:
     sfx: []
   # Game display configuration
   display:
-    width: 1280
-    height: 720
-    design_height: 720 # Baseline height that all scaleFactor values are authored against
+    width: 1920
+    height: 1080
+    design_height: 1080 # Baseline height that all scaleFactor values are authored against
     background_color: "#000000"
     pixel_art: true # use nearest-neighbor scaling for pixel art
   gameplay:
