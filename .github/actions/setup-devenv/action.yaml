@@ -28,8 +28,11 @@ runs:
       with:
         github_access_token: ${{ inputs.github-token }}
         enable_kvm: true
+        extra_nix_config: |
+          keep-outputs = true
+          keep-derivations = true
 
-    - id: nix_cache
+    - id: cache_nix
       name: Cache Nix Store
       uses: nix-community/cache-nix-action@v7
       with:
@@ -37,8 +40,16 @@ runs:
         restore-prefixes-first-match: nix-${{ runner.os }}-
         gc-max-store-size-linux: 5G
         purge: true
-        purge-created: P7D
+        purge-created: P14D
+        purge-primary-key: never
         token: ${{ inputs.github-token }}
+
+    - id: cachix_devenv
+      name: Enable devenv Cachix (read-only)
+      uses: cachix/cachix-action@v16
+      with:
+        name: devenv
+        skipPush: true
 
     - id: enable_cachix
       name: Enable Cachix

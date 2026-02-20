@@ -183,11 +183,19 @@ pub struct UserProfile {
     pub wallet_proof: Option<String>,
 
     /// Signature for verification (optional, used during linking)
-    #[serde(default, rename = "verification_signature", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "verification_signature",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub verification_signature: Option<String>,
 
     /// Message signed (optional, used during linking)
-    #[serde(default, rename = "verification_message", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        rename = "verification_message",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub verification_message: Option<String>,
 
     /// Withdrawal address
@@ -199,11 +207,20 @@ pub struct UserProfile {
     pub notifications: Option<serde_json::Value>,
 
     /// Epoch ms timestamp until user is banned. None = not banned.
-    #[serde(default, rename = "banned_until", skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_flexible_option_u64")]
+    #[serde(
+        default,
+        rename = "banned_until",
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_flexible_option_u64"
+    )]
     pub banned_until: Option<u64>,
 
     /// Cumulative cheat detection count. Escalates ban duration.
-    #[serde(default, rename = "offence_count", deserialize_with = "deserialize_flexible_u64")]
+    #[serde(
+        default,
+        rename = "offence_count",
+        deserialize_with = "deserialize_flexible_u64"
+    )]
     pub offence_count: u64,
 }
 
@@ -284,9 +301,17 @@ pub struct LeaderboardEntry {
     // --- ACTIVE (decays) ---
     #[serde(default, deserialize_with = "deserialize_flexible_u64")]
     pub active_score: u64,
-    #[serde(default, skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_flexible_option_u64")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_flexible_option_u64"
+    )]
     pub scored_at: Option<u64>,
-    #[serde(default, skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_flexible_option_u64")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_flexible_option_u64"
+    )]
     pub expires_at: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
@@ -328,7 +353,11 @@ pub struct FeeRequest {
     pub status: FeeStatus,
 
     /// Timestamp when verified (if verified)
-    #[serde(skip_serializing_if = "Option::is_none", default, deserialize_with = "deserialize_flexible_option_u64")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "deserialize_flexible_option_u64"
+    )]
     pub verified_at: Option<u64>,
 
     /// Error message if failed
@@ -411,7 +440,11 @@ pub struct GameSession {
     pub started_at: u64,
 
     /// When the session ended (Unix timestamp ms)
-    #[serde(skip_serializing_if = "Option::is_none", default, deserialize_with = "deserialize_flexible_option_u64")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "deserialize_flexible_option_u64"
+    )]
     pub ended_at: Option<u64>,
 
     /// Number of keys collected
@@ -445,7 +478,11 @@ pub struct BalanceRefreshRequest {
     pub status: RefreshStatus,
 
     /// The refreshed balance (once complete)
-    #[serde(skip_serializing_if = "Option::is_none", default, deserialize_with = "deserialize_flexible_option_u64")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "deserialize_flexible_option_u64"
+    )]
     pub balance: Option<u64>,
 
     /// Error if failed
@@ -459,32 +496,4 @@ pub enum RefreshStatus {
     Pending,
     Completed,
     Failed,
-}
-
-// =============================================================================
-// EVM RPC Types (internal use)
-// =============================================================================
-
-/// JSON-RPC request structure for EVM calls
-#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
-pub struct RpcRequest {
-    pub jsonrpc: String,
-    pub method: String,
-    pub params: String,
-    pub id: u64,
-}
-
-/// JSON-RPC response structure from EVM calls
-#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
-pub struct RpcResponse {
-    pub jsonrpc: String,
-    pub result: Option<String>,
-    pub error: Option<RpcError>,
-    pub id: u64,
-}
-
-#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
-pub struct RpcError {
-    pub code: i32,
-    pub message: String,
 }

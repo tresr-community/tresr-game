@@ -49,7 +49,7 @@ function getTargetNetwork() {
       symbol: "AVAX",
     },
     rpcUrls: {
-      default: {http: [chainConfig.rpc_url]},
+      default: {http: [chainConfig.rpc_urls[0]]},
     },
   });
 }

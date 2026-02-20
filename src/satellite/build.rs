@@ -65,6 +65,7 @@ struct AvalancheNetwork {
     fee: u64,
     burn_rate: u64,
     chain_id: u64,
+    rpc_urls: Vec<String>,
     vault_contract: String,
     tresr_token_contract: String,
     token_ticker: String,
@@ -115,9 +116,7 @@ fn main() {
                 None
             }
         })
-        .unwrap_or_else(|| {
-            panic!("SERVER_CONFIG_HASH not found in server-constants.ts")
-        });
+        .unwrap_or_else(|| panic!("SERVER_CONFIG_HASH not found in server-constants.ts"));
     // Validate it looks like a SHA-256 hex digest
     assert!(
         config_hash.len() == 64 && config_hash.chars().all(|c| c.is_ascii_hexdigit()),
@@ -131,7 +130,10 @@ fn main() {
         "anvil" => &config.client.blockchain.avalanche.anvil,
         "testnet" => &config.client.blockchain.avalanche.testnet,
         "mainnet" => &config.client.blockchain.avalanche.mainnet,
-        other => panic!("Unknown SATELLITE_NETWORK: '{}'. Use anvil, testnet, or mainnet.", other),
+        other => panic!(
+            "Unknown SATELLITE_NETWORK: '{}'. Use anvil, testnet, or mainnet.",
+            other
+        ),
     };
 
     // Format ban durations as Rust array literal
@@ -141,6 +143,14 @@ fn main() {
         .ban_durations_hours
         .iter()
         .map(|d| d.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    // Format RPC URLs as Rust array literal
+    let rpc_urls = chain
+        .rpc_urls
+        .iter()
+        .map(|u| format!(r#""{}""#, u))
         .collect::<Vec<_>>()
         .join(", ");
 
@@ -184,6 +194,9 @@ pub const FEE: u64 = {fee};
 /// Burn rate in basis points, 1000 = 10% (from client.blockchain.avalanche.{network}.burn_rate)
 pub const BURN_RATE_BPS: u64 = {burn_rate};
 
+/// Avalanche RPC URLs for multi-provider consensus (from client.blockchain.avalanche.{network}.rpc_urls)
+pub const AVALANCHE_RPC_URLS: &[&str] = &[{rpc_urls}];
+
 /// Network name for conditional logic (anvil/testnet/mainnet)
 pub const NETWORK_NAME: &str = "{network}";
 
@@ -216,6 +229,7 @@ pub const CONFIG_HASH: &str = "{config_hash}";
         token_ticker = chain.token_ticker,
         fee = chain.fee,
         burn_rate = chain.burn_rate,
+        rpc_urls = rpc_urls,
         ecdsa_key_name = ecdsa_key_name,
         score_ttl_hours = config.server.highscore.score_ttl_hours,
         consolation_prize_percent = config.server.highscore.consolation_prize_percent,

@@ -1,4 +1,3 @@
-
 adist
 alltime
 alnum
@@ -9,14 +8,11 @@ apkt
 appinstalled
 appkit
 arrterian
-# Art and design
-# Art styles
 Assasian
 astro
 atal
 ator
 backg
-# Bash keywords
 bindgen
 bootup
 brrr
@@ -29,7 +25,6 @@ cdylib
 cheatcode
 chibi
 cmyk
-# Code and API names
 codescanning
 compl
 configur
@@ -39,9 +34,6 @@ cooldown
 cooldowns
 cript
 crossfade
-# Crypto and web3
-# Crypto tokens and addresses
-# cspell splits on hyphens and suffixes, producing these fragments
 cted
 culty
 cwebp
@@ -60,7 +52,6 @@ dencies
 despawn
 despawned
 desync
-# Dev and game terms
 devenv
 dfinity
 didc
@@ -74,7 +65,6 @@ esac
 esbenp
 ethe
 exte
-# External services
 extname
 fanfic
 ffset
@@ -82,10 +72,7 @@ filecom
 filecomplete
 Fiverr
 FOMO
-# Frameworks and libraries
 frontmatter
-# Game names and characters
-# Game terms
 Gensler
 gify
 giga
@@ -124,6 +111,7 @@ lootdrop
 ltrimstr
 MAHD
 mahdtech
+meowrpc
 mgmt
 micr
 midground
@@ -151,7 +139,6 @@ ontal
 openzep
 Orbitron
 oxalica
-# People and brands
 phaser
 Pickel
 pinage
@@ -167,7 +154,7 @@ prereleased
 priate
 prin
 produ
-# Project
+publicnode
 Rabby
 rboard
 rdist
@@ -197,20 +184,17 @@ scanlines
 scro
 Secp
 SECRETSPEC
-# Security
 selfdestruct
 serde
 shazow
 shellcheck
 SIWA
-# Slang and flavour text
 spritesheet
 spritesheets
 squircle
 startswith
 Suno
 synthwave
-# Technical terms
 tekumura
 temurin
 thumbsdown
@@ -218,7 +202,6 @@ thumbsup
 tilemaps
 timelock
 timonwong
-# Tools and infrastructure
 topup
 TRESR
 trivy
@@ -229,7 +212,6 @@ txns
 uncollectible
 unsub
 upserted
-# Usernames and paths
 ution
 UUPS
 vcodec
@@ -237,7 +219,6 @@ verif
 versionrc
 viem
 VITE
-# VS Code extension IDs and usernames
 vscodevim
 Waaaaaaa
 wagmi
@@ -248,6 +229,5 @@ WCAG
 webauthn
 webp
 webps
-# Word fragments from hyphenated compounds
 yoyo
 yzhang
