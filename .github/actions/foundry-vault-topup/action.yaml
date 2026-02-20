@@ -1,0 +1,125 @@
+---
+name: Foundry Vault Top-up
+description: Check the Vault's $tRON balance and mint tokens if below threshold.
+
+inputs:
+  vault-address:
+    description: "Vault contract address"
+    required: true
+  token-address:
+    description: "Token contract address"
+    required: true
+  rpc-url:
+    description: "RPC URL for the target network"
+    required: true
+  threshold:
+    description: "Minimum $tRON balance (in ether units) before top-up triggers"
+    required: false
+    default: "100000"
+  topup-amount:
+    description: "Amount of $tRON to mint (in ether units)"
+    required: false
+    default: "100000"
+
+outputs:
+  balance-before:
+    description: "Vault $tRON balance before top-up (ether)"
+    value: ${{ steps.check_balance.outputs.BALANCE_ETHER }}
+  balance-after:
+    description: "Vault $tRON balance after top-up (ether)"
+    value: ${{ steps.verify_balance.outputs.BALANCE_ETHER }}
+  skipped:
+    description: "Whether the top-up was skipped (balance already sufficient)"
+    value: ${{ steps.check_balance.outputs.SKIPPED }}
+  tx-hash:
+    description: "Transaction hash of the mint (empty if skipped)"
+    value: ${{ steps.mint_tokens.outputs.TX_HASH }}
+
+runs:
+  using: composite
+  steps:
+    # ------------------------------------------------------------------
+    # 1. Check current vault balance
+    # ------------------------------------------------------------------
+    - id: check_balance
+      name: Check Vault Balance
+      shell: devenv shell --quiet bash -- -e {0}
+      env:
+        RPC_URL: ${{ inputs.rpc-url }}
+        TOKEN_ADDRESS: ${{ inputs.token-address }}
+        VAULT_ADDRESS: ${{ inputs.vault-address }}
+        THRESHOLD: ${{ inputs.threshold }}
+      run: |
+        cd contracts
+
+        echo "Checking $tRON balance of Vault ${VAULT_ADDRESS}…"
+
+        BALANCE_WEI=$(cast call "$TOKEN_ADDRESS" \
+          "balanceOf(address)(uint256)" \
+          "$VAULT_ADDRESS" \
+          --rpc-url "$RPC_URL")
+
+        BALANCE_ETHER=$(cast to-unit "$BALANCE_WEI" ether)
+
+        echo "Vault balance: ${BALANCE_ETHER} $tRON"
+        echo "BALANCE_ETHER=${BALANCE_ETHER}" >> "$GITHUB_OUTPUT"
+
+        if (( $(echo "$BALANCE_ETHER >= $THRESHOLD" | bc -l) )); then
+          echo "✅ Balance is above threshold (${THRESHOLD}). Skipping top-up."
+          echo "SKIPPED=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "⚠️  Balance is below threshold (${THRESHOLD}). Top-up required."
+          echo "SKIPPED=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    # ------------------------------------------------------------------
+    # 2. Mint tokens to the vault (skipped if balance is sufficient)
+    # ------------------------------------------------------------------
+    - id: mint_tokens
+      name: Mint Tokens to Vault
+      if: steps.check_balance.outputs.SKIPPED == 'false'
+      shell: devenv shell --quiet bash -- -e {0}
+      env:
+        RPC_URL: ${{ inputs.rpc-url }}
+        TOKEN_ADDRESS: ${{ inputs.token-address }}
+        VAULT_ADDRESS: ${{ inputs.vault-address }}
+        TOPUP_AMOUNT: ${{ inputs.topup-amount }}
+      run: |
+        cd contracts
+
+        echo "Minting ${TOPUP_AMOUNT} $tRON to Vault ${VAULT_ADDRESS}…"
+
+        TX_HASH=$(cast send "$TOKEN_ADDRESS" \
+          "mint(address,uint256)" \
+          "$VAULT_ADDRESS" \
+          "$(cast to-wei "$TOPUP_AMOUNT" ether)" \
+          --rpc-url "$RPC_URL" \
+          --private-key "$DEPLOYER_PRIVATE_KEY" \
+          --json | jq -r '.transactionHash')
+
+        echo "✅ Mint tx: ${TX_HASH}"
+        echo "TX_HASH=${TX_HASH}" >> "$GITHUB_OUTPUT"
+
+    # ------------------------------------------------------------------
+    # 3. Verify new balance
+    # ------------------------------------------------------------------
+    - id: verify_balance
+      name: Verify Vault Balance
+      if: steps.check_balance.outputs.SKIPPED == 'false'
+      shell: devenv shell --quiet bash -- -e {0}
+      env:
+        RPC_URL: ${{ inputs.rpc-url }}
+        TOKEN_ADDRESS: ${{ inputs.token-address }}
+        VAULT_ADDRESS: ${{ inputs.vault-address }}
+      run: |
+        cd contracts
+
+        BALANCE_WEI=$(cast call "$TOKEN_ADDRESS" \
+          "balanceOf(address)(uint256)" \
+          "$VAULT_ADDRESS" \
+          --rpc-url "$RPC_URL")
+
+        BALANCE_ETHER=$(cast to-unit "$BALANCE_WEI" ether)
+
+        echo "✅ New vault balance: ${BALANCE_ETHER} $tRON"
+        echo "BALANCE_ETHER=${BALANCE_ETHER}" >> "$GITHUB_OUTPUT"
