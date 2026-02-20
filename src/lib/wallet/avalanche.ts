@@ -73,6 +73,11 @@ export async function payFeeForGame(
 ): Promise<`0x${string}`> {
   const walletClient = await getWalletClient();
   const accounts = await walletClient.getAddresses();
+  if (accounts.length === 0) {
+    throw new Error(
+      "No wallet accounts found. Please connect your wallet and try again."
+    );
+  }
   const config = await loadConfigAsync();
   const env = getEnvironmentKey();
   const chainConfig = config.blockchain.avalanche[env];
@@ -159,6 +164,11 @@ export async function claimWin(
   const walletClient = await getWalletClient();
 
   const accounts = await walletClient.getAddresses();
+  if (accounts.length === 0) {
+    throw new Error(
+      "No wallet accounts found. Please connect your wallet and try again."
+    );
+  }
   const hash = await walletClient.writeContract({
     account: accounts[0],
     address: chainConfig.vault_contract as `0x${string}`,
