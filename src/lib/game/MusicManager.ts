@@ -655,7 +655,7 @@ class MusicManager {
       return;
     }
     if (mode === "repeat-one") {
-      this.replayCurrent();
+      void this.replayCurrent();
       return;
     }
     const current = gameState.get().music.currentTrack;
