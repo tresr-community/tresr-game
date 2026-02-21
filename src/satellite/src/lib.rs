@@ -114,24 +114,41 @@ fn assert_user_profile(context: &AssertSetDocContext) -> Result<(), String> {
                 );
             }
 
-            // Verify signature if provided (Client-Side Linking Verification)
-            if let (Some(sig), Some(msg)) =
-                (&data.verification_signature, &data.verification_message)
-            {
-                verify_wallet_signature(wallet, msg, sig)?;
-            }
+            // Require verification_signature AND verification_message when linking a wallet (ticket #189)
+            let sig = data.verification_signature.as_deref().ok_or(
+                "verification_signature is required when linking an EVM wallet".to_string(),
+            )?;
+            let msg = data
+                .verification_message
+                .as_deref()
+                .ok_or("verification_message is required when linking an EVM wallet".to_string())?;
+
+            // The document key in the "users" collection is the caller's principal
+            let caller_principal = &context.data.key;
+
+            verify_wallet_signature(wallet, msg, sig, caller_principal)?;
         }
     }
 
     Ok(())
 }
 
+/// Maximum age of a wallet-link message signature (5 minutes)
+const WALLET_LINK_MAX_AGE_SECS: u64 = 300;
+
+/// Domain separator that must appear as the first line of every wallet-link message.
+const WALLET_LINK_DOMAIN: &str = "TRESR Wallet Link";
+
 fn verify_wallet_signature(
     address: &str,
     message: &str,
     signature_hex: &str,
+    caller_principal: &str,
 ) -> Result<(), String> {
-    // 1. Decode hex signature
+    // ── 0. Validate message content (ticket #189) ────────────────────────
+    validate_wallet_link_message(message, caller_principal, address)?;
+
+    // ── 1. Decode hex signature ──────────────────────────────────────────
     let sig_hex = signature_hex.trim_start_matches("0x");
     let sig_bytes = hex::decode(sig_hex).map_err(|_| "Invalid signature format")?;
 
@@ -150,7 +167,7 @@ fn verify_wallet_signature(
     let signature = Signature::parse_standard_slice(&sig_bytes[0..64])
         .map_err(|_| "Invalid signature bytes")?;
 
-    // 2. Hash message (Ethereum Signed Message)
+    // ── 2. Hash message (EIP-191 personal_sign) ──────────────────────────
     let prefix = format!("\x19Ethereum Signed Message:\n{}", message.len());
     let mut keccak = Keccak::v256();
     keccak.update(prefix.as_bytes());
@@ -160,23 +177,93 @@ fn verify_wallet_signature(
 
     let message_struct = Message::parse(&hash);
 
-    // 3. Recover Public Key
+    // ── 3. Recover public key ────────────────────────────────────────────
     let pubkey =
         recover(&message_struct, &signature, &recid).map_err(|_| "Failed to recover public key")?;
 
-    // 4. Derive Address from Public Key
-    // Keccak256(pubkey[1..65]) -> last 20 bytes
+    // ── 4. Derive address ────────────────────────────────────────────────
     let mut pubkey_hash = [0u8; 32];
     let mut pubkey_keccak = Keccak::v256();
-    // Serialize uncompressed (65 bytes), skip first byte (0x04)
     pubkey_keccak.update(&pubkey.serialize()[1..65]);
     pubkey_keccak.finalize(&mut pubkey_hash);
 
     let recovered_address = hex::encode(&pubkey_hash[12..32]);
 
-    // 5. Compare
+    // ── 5. Compare recovered address with claimed address ────────────────
     if address.trim_start_matches("0x").to_lowercase() != recovered_address {
         return Err("Signature does not match address".to_string());
+    }
+
+    Ok(())
+}
+
+/// Parse and validate the structured wallet-link message.
+///
+/// Expected format (newline-separated):
+/// ```text
+/// TRESR Wallet Link
+/// Principal: {principal}
+/// Wallet: {address}
+/// Timestamp: {unix_secs}
+/// Nonce: {uuid}
+/// ```
+fn validate_wallet_link_message(
+    message: &str,
+    expected_principal: &str,
+    expected_address: &str,
+) -> Result<(), String> {
+    let lines: Vec<&str> = message.lines().collect();
+
+    if lines.len() < 5 {
+        return Err("Wallet link message has fewer than 5 lines".to_string());
+    }
+
+    // Line 0: domain separator
+    if lines[0] != WALLET_LINK_DOMAIN {
+        return Err(format!(
+            "Invalid domain separator: expected '{}'",
+            WALLET_LINK_DOMAIN
+        ));
+    }
+
+    // Line 1: principal binding
+    let msg_principal = lines[1]
+        .strip_prefix("Principal: ")
+        .ok_or("Missing 'Principal:' field in wallet link message")?;
+    if msg_principal != expected_principal {
+        return Err("Principal in message does not match caller".to_string());
+    }
+
+    // Line 2: wallet address binding
+    let msg_wallet = lines[2]
+        .strip_prefix("Wallet: ")
+        .ok_or("Missing 'Wallet:' field in wallet link message")?;
+    if msg_wallet.to_lowercase() != expected_address.to_lowercase() {
+        return Err("Wallet address in message does not match claimed address".to_string());
+    }
+
+    // Line 3: timestamp freshness
+    let ts_str = lines[3]
+        .strip_prefix("Timestamp: ")
+        .ok_or("Missing 'Timestamp:' field in wallet link message")?;
+    let ts: u64 = ts_str
+        .parse()
+        .map_err(|_| "Invalid timestamp in wallet link message")?;
+
+    let now_ns = ic_cdk::api::time(); // nanoseconds
+    let now_secs = now_ns / 1_000_000_000;
+
+    if ts > now_secs + 60 {
+        // allow 60 s clock skew into the future
+        return Err("Wallet link message timestamp is in the future".to_string());
+    }
+    if now_secs.saturating_sub(ts) > WALLET_LINK_MAX_AGE_SECS {
+        return Err("Wallet link message has expired (>5 minutes old)".to_string());
+    }
+
+    // Line 4: nonce (format check only — not stored server-side)
+    if !lines[4].starts_with("Nonce: ") {
+        return Err("Missing 'Nonce:' field in wallet link message".to_string());
     }
 
     Ok(())
@@ -755,41 +842,83 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
                 }
             };
 
-            // 4. Generate signature (include keys_collected for Vault.sol verification)
+            // 4. Mark session as claimed BEFORE signature generation (ticket #188).
+            // The Juno document version provides optimistic concurrency control:
+            // if two concurrent claims both try to write reward_claimed=true, the
+            // second set_doc_store will fail on version mismatch, preventing a
+            // double-claim during the async ECDSA signing yield point.
+            let sd = session_doc.as_ref().unwrap(); // Safe: matched Some above
+            let session_description = sd
+                .description
+                .clone()
+                .ok_or_else(|| "session description missing".to_string())?;
+            let session_version = sd
+                .version
+                .ok_or_else(|| "session version missing".to_string())?;
+            {
+                let mut claimed_session = session.clone();
+                claimed_session.reward_claimed = true;
+                update_session_doc(
+                    &context,
+                    &claimed_session,
+                    claim.game_session_id.clone(),
+                    session_description.clone(),
+                    session_version,
+                )
+                .await?;
+            }
+
+            // 5. Generate signature (include keys_collected for Vault.sol verification).
+            // If signing fails, attempt a best-effort rollback of reward_claimed.
             claim.keys_collected = session.keys_collected;
-            let signature = generate_claim_signature(
+            let signature = match generate_claim_signature(
                 &claim.game_session_id,
                 &wallet_addr,
                 claim.amount,
                 session.keys_collected,
             )
-            .await?;
+            .await
+            {
+                Ok(sig) => sig,
+                Err(e) => {
+                    // Best-effort rollback: re-read session and clear reward_claimed.
+                    // If rollback fails, manual intervention is needed but the session
+                    // is in a safe state (claimed=true with no signature issued).
+                    if let Ok(Some(rollback_doc)) = get_doc_store(
+                        context.caller,
+                        "game_sessions".to_string(),
+                        claim.game_session_id.clone(),
+                    ) {
+                        if let Ok(mut rb_session) =
+                            decode_doc_data::<GameSession>(&rollback_doc.data)
+                        {
+                            rb_session.reward_claimed = false;
+                            let rb_version = rollback_doc
+                                .version
+                                .unwrap_or(session_version.saturating_add(1));
+                            let rb_desc = rollback_doc
+                                .description
+                                .unwrap_or(session_description.clone());
+                            let _ = update_session_doc(
+                                &context,
+                                &rb_session,
+                                claim.game_session_id.clone(),
+                                rb_desc,
+                                rb_version,
+                            )
+                            .await;
+                        }
+                    }
+                    return update_claim_error(
+                        context,
+                        &mut claim,
+                        &format!("Signature generation failed: {}", e),
+                    )
+                    .await;
+                }
+            };
             claim.signature = Some(signature);
             claim.status = ClaimStatus::ReadyForChain;
-
-            // 5. Mark session as claimed IMMEDIATELY after signature generation (ticket #286).
-            // This prevents a race where a second claim could generate another valid
-            // signature before the first claim's on-chain tx is verified.
-            {
-                let mut claimed_session = session.clone();
-                claimed_session.reward_claimed = true;
-                let sd = session_doc.as_ref().unwrap(); // Safe: matched Some above
-                let description = sd
-                    .description
-                    .clone()
-                    .ok_or_else(|| "session description missing".to_string())?;
-                let version = sd
-                    .version
-                    .ok_or_else(|| "session version missing".to_string())?;
-                update_session_doc(
-                    &context,
-                    &claimed_session,
-                    claim.game_session_id.clone(),
-                    description,
-                    version,
-                )
-                .await?;
-            }
 
             update_claim_doc(&context, &claim).await?;
 
@@ -1201,11 +1330,17 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         }
     });
 
-    // Append to existing notifications array
+    // Append to existing notifications array, capping at most recent entries (ticket #190).
+    const MAX_NOTIFICATIONS: usize = 25;
     let notifications = match &winner_profile.notifications {
         Some(serde_json::Value::Array(arr)) => {
             let mut new_arr = arr.clone();
             new_arr.push(notification);
+            // Keep only the most recent MAX_NOTIFICATIONS entries
+            if new_arr.len() > MAX_NOTIFICATIONS {
+                let start = new_arr.len() - MAX_NOTIFICATIONS;
+                new_arr = new_arr.split_off(start);
+            }
             serde_json::Value::Array(new_arr)
         }
         _ => serde_json::Value::Array(vec![notification]),
@@ -1566,8 +1701,8 @@ async fn claim_authorize(
     }
 
     // 4. Verify replay
-    // TODO: Replace with real deterministic replay verification engine
-    // Tracked in separate issue — for now, use stub that trusts reported values
+    // TODO(#171): Replace with real deterministic replay verification engine
+    // For now, use stub that trusts reported values
     let (verified_keys, boss_killed) = replay_verify_stub(
         &replay_inputs,
         vault_balance,
@@ -1688,8 +1823,8 @@ async fn claim_authorize(
 }
 
 /// Replay verification stub — trusts reported values until the real replay engine is implemented.
-/// TODO: Replace with deterministic game replay engine that parses `_inputs` to independently
-/// verify keys collected and boss defeat. See tracking issue for replay engine.
+/// TODO(#171): Replace with deterministic game replay engine that parses `_inputs` to independently
+/// verify keys collected and boss defeat.
 async fn replay_verify_stub(
     _inputs: &[u8],
     _pot: u128,

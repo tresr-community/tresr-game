@@ -46,7 +46,7 @@ export class Player extends BaseEntity {
     this.speed = playerConfig.speed;
     this.jumpForce = playerConfig.jump_force;
     this.superMaxCharge = playerConfig.super.max_charge;
-    this.gravity = gp.physics.gravity;
+    // gravity is read from config in BaseEntity constructor
     log.info(
       COMPONENT_NAME,
       `Config loaded: HP=${this.hp}, Speed=${this.speed}, Gravity=${this.gravity}, Jump=${this.jumpForce}`
@@ -126,9 +126,9 @@ export class Player extends BaseEntity {
     const gp = this.config.gameplay;
     const playerConfig = gp.entities.player;
     const gamepadDeadzone = playerConfig.input.gamepad_deadzone;
-    const speed = this.speed;
+    const speed = this.speed * this.resolutionScale;
     // Use real delta time from MainScene (falls back to reference timestep)
-    const frameDt = dt ?? BaseEntity.REFERENCE_DT;
+    const frameDt = dt ?? this.referenceDt;
 
     let vx = 0;
     let moveY = 0; // Depth movement (not Arcade velocity)

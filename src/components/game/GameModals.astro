@@ -160,26 +160,6 @@
   </div>
 </dialog>
 
-<dialog id="modal-tampered" class="modal modal-middle">
-  <div class="modal-box border-warning/30 bg-base-300 border text-center">
-    <h3
-      class="text-warning font-display text-4xl font-black tracking-widest uppercase"
-    >
-      Integrity Failure
-    </h3>
-    <p class="py-4 opacity-70">
-      Game configuration has been modified. Gameplay and claims are disabled.
-    </p>
-
-    <div class="modal-action flex-col gap-2">
-      <button
-        onclick="window.location.href='/'"
-        class="btn btn-warning btn-block">Return to Base</button
-      >
-    </div>
-  </div>
-</dialog>
-
 <script>
   import {gameState, type GameState} from "@/lib/game/state";
   import {clearFeePaid, getSessionId} from "@/lib/game/fee-gate";
@@ -194,9 +174,6 @@
     "modal-victory"
   ) as HTMLDialogElement;
   const modalLost = document.getElementById("modal-lost") as HTMLDialogElement;
-  const modalTampered = document.getElementById(
-    "modal-tampered"
-  ) as HTMLDialogElement;
   const btnClaim = document.getElementById("btn-claim");
   const btnRetry = document.getElementById("btn-retry-mission");
 
@@ -353,12 +330,6 @@
   }
 
   const unsub = gameState.subscribe((state) => {
-    // Config tampering takes priority over all other modals
-    if (state.configTampered) {
-      if (!modalTampered.open) modalTampered.showModal();
-      return;
-    }
-
     if (state.phase === "victory") {
       if (!modalVictory.open) {
         const rewardEl = document.getElementById("modal-victory-reward")!;

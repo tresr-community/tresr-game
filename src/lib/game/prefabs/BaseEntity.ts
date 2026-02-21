@@ -38,6 +38,16 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
   // Invincibility state (ticket #191 — respawn iframes)
   public isInvincible: boolean = false;
 
+  /**
+   * Resolution-independent speed multiplier (canvasHeight / designHeight).
+   * Stored in registry by MainScene each frame; all entities multiply
+   * velocities by this so movement covers the same screen-fraction
+   * regardless of viewport size.
+   */
+  protected get resolutionScale(): number {
+    return (this.scene?.registry?.get("resolution_scale") as number) || 1;
+  }
+
   // Timer tracking for cleanup on kill/destroy (ticket #195)
   protected pendingTimers: Phaser.Time.TimerEvent[] = [];
 
@@ -47,8 +57,11 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
   // 2.5D Physics
   public z: number = 0;
   public vz: number = 0;
-  public gravity: number = 0.8;
+  public gravity!: number; // Set from YAML config in constructor — no hardcoded default
   public groundY: number = 0;
+
+  /** Reference timestep for frame-rate-independent Z-axis physics. */
+  protected referenceDt!: number;
 
   // Air drop state (set by startAirDrop, consumed by onGroundHit)
   protected _airDropLanding: AirDropLandingConfig | null = null;
@@ -79,6 +92,12 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
 
     // Cache config once - it doesn't change mid-game
     this.config = scene.registry.get("full_config") as ConfigTypes;
+
+    // Read reference timestep from config (zero hardcoded values policy)
+    this.referenceDt = this.config.gameplay.physics.timestep;
+
+    // Read global gravity from config (subclasses can override if needed)
+    this.gravity = this.config.gameplay.physics.gravity;
 
     // Feet-anchored origin: x-center, y-bottom.
     // groundY represents where the character's feet touch the ground.
@@ -206,8 +225,17 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
    */
   protected updateShadow() {
     const s = this.config.gameplay.visuals.shadow;
-    this.shadow.setPosition(this.x + s.offset_x, this.groundY + s.offset_y);
+    const rs = this.resolutionScale;
+    this.shadow.setPosition(
+      this.x + s.offset_x * rs,
+      this.groundY + s.offset_y * rs
+    );
+    this.shadow.setScale(rs);
     this.shadow.setDepth(this.depth - 1);
+    // Apply directional angle if configured (simulates angled light source)
+    if (s.angle !== undefined) {
+      this.shadow.setAngle(s.angle);
+    }
   }
 
   /**
@@ -241,18 +269,19 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
     this.updateHealthBar();
   }
 
-  /** Reference timestep (1/60s) that gravity/vz values were originally tuned for. */
-  protected static readonly REFERENCE_DT = 0.01667;
-
   protected updateZ(dt?: number) {
     if (this.z > 0 || this.vz !== 0) {
       // Scale gravity by the ratio of actual dt to the reference timestep.
       // This preserves Symplectic-Euler jump height/feel at any frame rate.
-      const step = dt ?? BaseEntity.REFERENCE_DT;
-      const gravityScale = step / BaseEntity.REFERENCE_DT;
+      const step = dt ?? this.referenceDt;
+      const gravityScale = step / this.referenceDt;
+      const resScale = this.resolutionScale;
       const gravityStep = this.gravity * gravityScale;
 
-      this.z += this.vz;
+      // Position is resolution-scaled so jump height stays proportional to
+      // walking speed across different screen sizes.  Velocity is NOT scaled —
+      // this keeps the same time-in-air but adjusts peak height by resScale.
+      this.z += this.vz * gravityScale * resScale;
       this.vz -= gravityStep;
 
       // Cap max jump height so visual Y never goes above the top of the canvas.
@@ -388,7 +417,7 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
     if (!this.active || this.hp <= 0) return;
 
     const dir = this.x >= attackerX ? 1 : -1;
-    this.setVelocityX(dir * force);
+    this.setVelocityX(dir * force * this.resolutionScale);
     this.isKnockedBack = true;
 
     this.trackTimer(

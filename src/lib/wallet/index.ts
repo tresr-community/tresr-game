@@ -7,6 +7,7 @@
 // Unified wallet connection (primary interface)
 export {
   connectWallet,
+  cancelConnectWallet,
   getWalletClient,
   isConnected,
   getConnectedAddress,

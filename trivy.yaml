@@ -20,13 +20,14 @@ scan:
   # Skip directories
   skip-dirs:
     - .devenv
+    - .dfx
     - .direnv
     - .dist
     - .git
     - .juno
+    - docs/agents
     - node_modules
     - target
-    - .dfx
 
   # Skip files
   skip-files:

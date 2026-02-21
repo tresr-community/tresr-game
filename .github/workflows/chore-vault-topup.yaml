@@ -1,0 +1,145 @@
+---
+name: "Chore: Vault Top-up"
+
+on:
+  schedule:
+    # Daily at 00:00 UTC
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  ENVIRONMENT: Testnet
+
+jobs:
+  vault-topup:
+    name: Vault Top-up
+    runs-on: ubuntu-latest
+    environment: testnet
+    steps:
+      # ----------------------------------------------------------------
+      # Setup
+      # ----------------------------------------------------------------
+      - id: checkout
+        name: Checkout
+        uses: actions/checkout@v4
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: cache_foundry
+        name: Cache Foundry
+        uses: ./.github/actions/cache-foundry
+
+      # ----------------------------------------------------------------
+      # Read config
+      # ----------------------------------------------------------------
+      - id: read_config
+        name: Read Config
+        shell: bash
+        run: |
+          NETWORK="testnet"
+          {
+            echo "RPC_URL=$(yq ".client.blockchain.avalanche.${NETWORK}.rpc_urls[0]" config/tresr.yaml)"
+            echo "TOKEN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.tresr_token_contract" config/tresr.yaml)"
+            echo "VAULT_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.vault_contract" config/tresr.yaml)"
+          } >> "$GITHUB_OUTPUT"
+
+      - id: validate_config
+        name: Validate Config
+        shell: bash
+        env:
+          RPC_URL: ${{ steps.read_config.outputs.RPC_URL }}
+          TOKEN_ADDRESS: ${{ steps.read_config.outputs.TOKEN_ADDRESS }}
+          VAULT_ADDRESS: ${{ steps.read_config.outputs.VAULT_ADDRESS }}
+        run: |
+          ERRORS=0
+          ZERO="0x0000000000000000000000000000000000000000"
+
+          for VAR in RPC_URL TOKEN_ADDRESS VAULT_ADDRESS; do
+            VAL="${!VAR}"
+            if [[ -z "$VAL" || "$VAL" == "null" || "$VAL" == "$ZERO" ]]; then
+              echo "::error::Config value $VAR is empty, null, or zero"
+              ERRORS=$((ERRORS + 1))
+            else
+              echo "✓ $VAR=$VAL"
+            fi
+          done
+
+          if [[ $ERRORS -gt 0 ]]; then
+            echo "::error::$ERRORS config value(s) missing. Check tresr.yaml paths."
+            exit 1
+          fi
+
+      # ----------------------------------------------------------------
+      # Top-up
+      # ----------------------------------------------------------------
+      - id: vault_topup
+        name: Vault Top-up
+        uses: ./.github/actions/foundry-vault-topup
+        env:
+          DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+        with:
+          vault-address: ${{ steps.read_config.outputs.VAULT_ADDRESS }}
+          token-address: ${{ steps.read_config.outputs.TOKEN_ADDRESS }}
+          rpc-url: ${{ steps.read_config.outputs.RPC_URL }}
+
+      # ----------------------------------------------------------------
+      # Summary
+      # ----------------------------------------------------------------
+      - id: job_summary
+        name: Job Summary
+        if: always()
+        shell: bash
+        env:
+          BALANCE_BEFORE: ${{ steps.vault_topup.outputs.balance-before }}
+          BALANCE_AFTER: ${{ steps.vault_topup.outputs.balance-after }}
+          SKIPPED: ${{ steps.vault_topup.outputs.skipped }}
+          TX_HASH: ${{ steps.vault_topup.outputs.tx-hash }}
+          VAULT_ADDRESS: ${{ steps.read_config.outputs.VAULT_ADDRESS }}
+        run: |
+          {
+            echo "## 🏦 Vault Top-up Summary"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Vault | \`${VAULT_ADDRESS}\` |"
+            echo "| Balance before | ${BALANCE_BEFORE:-N/A} \$tRON |"
+
+            if [[ "$SKIPPED" == "true" ]]; then
+              echo "| Status | ✅ Skipped — balance sufficient |"
+            elif [[ -n "$TX_HASH" ]]; then
+              echo "| Balance after | ${BALANCE_AFTER} \$tRON |"
+              echo "| Status | ✅ Topped up |"
+              echo "| Tx | [\`${TX_HASH:0:10}…\`](https://testnet.snowtrace.io/tx/${TX_HASH}) |"
+            else
+              echo "| Status | ❌ Failed |"
+            fi
+
+            echo ""
+            echo "---"
+            echo "_${GITHUB_WORKFLOW} • $(date -u '+%Y-%m-%d %H:%M:%S UTC')_"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ----------------------------------------------------------------
+      # Failure notification
+      # ----------------------------------------------------------------
+      - id: create_issue
+        name: Create Issue on Failure
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "🚨 Vault top-up failed ($(date -u '+%Y-%m-%d'))" \
+            --body "The scheduled vault top-up workflow failed. [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})." \
+            --label "bug"

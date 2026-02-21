@@ -17,7 +17,7 @@
     "strict": true,
     "lib": ["ESNext", "DOM", "WebWorker"],
     "baseUrl": ".",
-    "types": ["vite/client", "@junobuild/core"],
+    "types": ["bun-types", "vite/client", "@junobuild/core"],
     "paths": {
       "@/*": ["src/*"]
     }

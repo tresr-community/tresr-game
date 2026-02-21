@@ -42,14 +42,11 @@
           >Clear All</button
         >
       </div>
-      <div
-        class="max-h-96 space-y-2 overflow-y-auto p-2"
-        id="notification-list"
-      >
-        <div class="text-base-content/50 py-4 text-center italic">
+      <ul class="list max-h-96 overflow-y-auto" id="notification-list">
+        <li class="text-base-content/50 py-4 text-center italic">
           No notifications
-        </div>
-      </div>
+        </li>
+      </ul>
     </div>
   </div>
 </details>
@@ -146,56 +143,42 @@
         customNotifications[
           Math.floor(Math.random() * customNotifications.length)
         ];
-      const emptyDiv = document.createElement("div");
-      emptyDiv.className =
+      const emptyLi = document.createElement("li");
+      emptyLi.className =
         "text-center py-4 text-base-content/50 italic font-mono text-xs";
-      emptyDiv.textContent = randomMessage;
-      listContainer.appendChild(emptyDiv);
+      emptyLi.textContent = randomMessage;
+      listContainer.appendChild(emptyLi);
       return;
     }
 
     for (const n of notifications) {
       const isSnoozed = n.data.snoozeUntil && n.data.snoozeUntil > now;
-      const card = document.createElement("div");
-      card.className = `flex flex-col gap-1 p-3 bg-base-200 rounded-lg border-l-4 ${isSnoozed ? "opacity-50 border-base-300" : getUrgencyClass(n.data.urgency)} group relative`;
+      const card = document.createElement("li");
+      card.className = `list-row border-l-4 ${isSnoozed ? "opacity-50 border-base-300" : getUrgencyClass(n.data.urgency)}`;
 
-      // Header row
-      const headerRow = document.createElement("div");
-      headerRow.className = "flex justify-between items-start gap-2";
+      // Urgency indicator (list-row child 1)
+      const indicator = document.createElement("div");
+      indicator.className = "text-xs select-none";
+      indicator.textContent =
+        n.data.urgency === "urgent"
+          ? "\u{1F534}"
+          : n.data.urgency === "non-urgent"
+            ? "\u{1F7E0}"
+            : "\u{1F535}";
+      card.appendChild(indicator);
 
+      // Content area (list-row child 2 — auto-grow)
+      const content = document.createElement("div");
       const msgSpan = document.createElement("span");
       msgSpan.className = "font-bold text-xs tracking-tighter";
       msgSpan.textContent = n.data.message + (isSnoozed ? " \u{1F4A4}" : "");
-      headerRow.appendChild(msgSpan);
+      content.appendChild(msgSpan);
 
-      const btnGroup = document.createElement("div");
-      btnGroup.className = "flex gap-1";
-      if (!isSnoozed) {
-        const snoozeBtn = document.createElement("button");
-        snoozeBtn.className = "btn btn-xs btn-ghost snooze-btn p-0 px-1";
-        snoozeBtn.title = "Snooze 24h";
-        snoozeBtn.textContent = "\u{1F4A4}";
-        snoozeBtn.addEventListener("click", () =>
-          notificationManager.snooze(n.key)
-        );
-        btnGroup.appendChild(snoozeBtn);
-      }
-      const dismissBtn = document.createElement("button");
-      dismissBtn.className = "btn btn-xs btn-ghost dismiss-btn p-0 px-1";
-      dismissBtn.textContent = "\u2715";
-      dismissBtn.addEventListener("click", () =>
-        notificationManager.dismiss(n.key)
-      );
-      btnGroup.appendChild(dismissBtn);
-      headerRow.appendChild(btnGroup);
-      card.appendChild(headerRow);
-
-      // Details
       if (n.data.details) {
         const detailsP = document.createElement("p");
         detailsP.className = "text-[10px] opacity-70 leading-tight";
         detailsP.textContent = n.data.details;
-        card.appendChild(detailsP);
+        content.appendChild(detailsP);
       }
 
       // Upgrade button for app updates
@@ -207,14 +190,37 @@
           notificationManager.dismiss(n.key);
           PWA.getInstance().applyUpdate();
         });
-        card.appendChild(upgradeBtn);
+        content.appendChild(upgradeBtn);
       }
 
-      // Timestamp
       const timeSpan = document.createElement("span");
-      timeSpan.className = "text-[9px] opacity-30 font-mono mt-1";
+      timeSpan.className = "text-[9px] opacity-30 font-mono";
       timeSpan.textContent = new Date(n.data.timestamp).toLocaleTimeString();
-      card.appendChild(timeSpan);
+      content.appendChild(timeSpan);
+
+      card.appendChild(content);
+
+      // Action buttons (list-row child 3)
+      const btnGroup = document.createElement("div");
+      btnGroup.className = "flex gap-1";
+      if (!isSnoozed) {
+        const snoozeBtn = document.createElement("button");
+        snoozeBtn.className = "btn btn-xs btn-ghost p-0 px-1";
+        snoozeBtn.title = "Snooze 24h";
+        snoozeBtn.textContent = "\u{1F4A4}";
+        snoozeBtn.addEventListener("click", () =>
+          notificationManager.snooze(n.key)
+        );
+        btnGroup.appendChild(snoozeBtn);
+      }
+      const dismissBtn = document.createElement("button");
+      dismissBtn.className = "btn btn-xs btn-ghost p-0 px-1";
+      dismissBtn.textContent = "\u2715";
+      dismissBtn.addEventListener("click", () =>
+        notificationManager.dismiss(n.key)
+      );
+      btnGroup.appendChild(dismissBtn);
+      card.appendChild(btnGroup);
 
       listContainer.appendChild(card);
     }
