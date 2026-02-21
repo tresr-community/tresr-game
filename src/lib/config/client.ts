@@ -830,7 +830,7 @@ export const config: ConfigTypes = {
       "frameHeight": 512
     },
     "hero": {
-      "scaleFactor": 1.1,
+      "scaleFactor": 1.5,
       "anims": [
         {
           "name": "idle",
@@ -903,7 +903,7 @@ export const config: ConfigTypes = {
       ]
     },
     "boss": {
-      "scaleFactor": 1.85,
+      "scaleFactor": 2,
       "anims": [
         {
           "name": "idle",
@@ -953,7 +953,7 @@ export const config: ConfigTypes = {
       ]
     },
     "enemies": {
-      "scaleFactor": 1.1,
+      "scaleFactor": 1.5,
       "count": 5,
       "anims": [
         {
@@ -1004,7 +1004,7 @@ export const config: ConfigTypes = {
       ]
     },
     "tresr_bot": {
-      "scaleFactor": 1.1,
+      "scaleFactor": 1.5,
       "anims": [
         {
           "name": "idle",
@@ -1046,7 +1046,7 @@ export const config: ConfigTypes = {
     },
     "items": {
       "key": {
-        "scaleFactor": 0.375,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1060,7 +1060,7 @@ export const config: ConfigTypes = {
         ]
       },
       "bomb": {
-        "scaleFactor": 0.375,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1088,7 +1088,7 @@ export const config: ConfigTypes = {
         ]
       },
       "chest": {
-        "scaleFactor": 0.75,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1120,7 +1120,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_1": {
-        "scaleFactor": 0.375,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1134,7 +1134,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_2": {
-        "scaleFactor": 0.375,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1148,7 +1148,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_3": {
-        "scaleFactor": 0.375,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1162,7 +1162,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_4": {
-        "scaleFactor": 0.375,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1176,7 +1176,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_5": {
-        "scaleFactor": 0.375,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1190,7 +1190,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_1": {
-        "scaleFactor": 0.375,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1204,7 +1204,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_2": {
-        "scaleFactor": 0.375,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1218,7 +1218,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_3": {
-        "scaleFactor": 0.375,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1232,7 +1232,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_4": {
-        "scaleFactor": 0.375,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1246,7 +1246,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_5": {
-        "scaleFactor": 0.375,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
