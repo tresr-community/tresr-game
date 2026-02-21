@@ -25,6 +25,8 @@
   const COMPONENT_NAME = "UpdatePrompt";
 
   let modal: HTMLDialogElement | null = null;
+  let handleUpdateNow: (() => void) | null = null;
+  let handleUpdateLater: (() => void) | null = null;
 
   function openUpdatePrompt(version: string) {
     if (window.location.pathname.includes("/game")) {
@@ -50,19 +52,21 @@
     const laterBtn = document.getElementById("btn-update-later");
 
     if (updateBtn) {
-      updateBtn.addEventListener("click", async () => {
+      handleUpdateNow = async () => {
         trackPwaUpdate("applied");
         await PWA.getInstance().applyUpdate();
         closeUpdatePrompt();
-      });
+      };
+      updateBtn.addEventListener("click", handleUpdateNow);
     }
 
     if (laterBtn) {
-      laterBtn.addEventListener("click", () => {
+      handleUpdateLater = () => {
         trackPwaUpdate("dismissed");
         PWA.getInstance().dismissUpdateNotification();
         closeUpdatePrompt();
-      });
+      };
+      laterBtn.addEventListener("click", handleUpdateLater);
     }
   });
 
@@ -79,6 +83,16 @@
     "astro:before-preparation",
     () => {
       window.removeEventListener("pwa-update-ready", handlePwaUpdateReady);
+      const updateBtn = document.getElementById("btn-update-now");
+      const laterBtn = document.getElementById("btn-update-later");
+      if (updateBtn && handleUpdateNow) {
+        updateBtn.removeEventListener("click", handleUpdateNow);
+        handleUpdateNow = null;
+      }
+      if (laterBtn && handleUpdateLater) {
+        laterBtn.removeEventListener("click", handleUpdateLater);
+        handleUpdateLater = null;
+      }
     },
     {once: true}
   );

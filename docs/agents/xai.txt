@@ -5228,6 +5228,48 @@ You can provide the source image as:
 * A **public URL** pointing to an image
 * A **base64-encoded data URI** (e.g., `data:image/jpeg;base64,...`)
 
+## Editing with Multiple Images
+
+You can add up to three images for editing. You can specify the images in the order they are sent in the request. **The aspect ratio of the output image will follow the aspect ratio of the first input image.**
+
+```python customLanguage="pythonXAI"
+import xai_sdk
+
+client = xai_sdk.Client()
+
+response = client.image.sample(
+    prompt="Add the Starships from the second image to the moon landscape in the first image",
+    model="grok-imagine-image",
+    image_urls=[
+        "https://science.nasa.gov/wp-content/uploads/2023/03/2-apollo-15-on-moon-1.jpg",
+        "https://www.spacex.com/assets/images/vehicles/starship/starship_carousel2_card4_d.jpg",
+    ],
+)
+
+print(response.url)
+```
+
+```bash
+# Using a public URL as the source image
+curl -X POST https://api.x.ai/v1/images/edits \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -d '{
+    "model": "grok-imagine-image",
+    "prompt": "Add the Starships from the second image to the moon landscape in the first image",
+    "images": [
+      {
+        "url": "https://science.nasa.gov/wp-content/uploads/2023/03/2-apollo-15-on-moon-1.jpg",
+        "type": "image_url"
+      },
+      {
+        "url": "https://www.spacex.com/assets/images/vehicles/starship/starship_carousel2_card4_d.jpg",
+        "type": "image_url"
+      }
+    ]
+  }'
+```
+
 ## Multi-Turn Editing
 
 Chain multiple edits together by using each output as the input for the next. This enables iterative refinement — start with a base image and progressively add details, adjust styles, or make corrections.
@@ -8788,8 +8830,6 @@ For full pricing details on the `grok-imagine-video` model, see the [model page]
 
 An overview of our models' capabilities and their associated pricing.
 
-## Model Pricing
-
 | Model | Modalities | Capabilities | Context | Rate Limits | Pricing [in (cached in) / out] |
 | --- | --- | --- | --- | --- | --- |
 | grok-4-1-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
@@ -8807,16 +8847,16 @@ An overview of our models' capabilities and their associated pricing.
 | grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 480 RPM | $0.30 ($0.07) / $0.50 |
 | grok-2-image-1212 | text → image | - | - | 300 RPM | $0.07/image |
 | grok-2-image-1212 | text → image | - | - | 300 RPM | $0.07/image |
+| grok-2-vision-1212 | text, image → text | functions, structured | 32,768 | 600 RPM | $2.00 ($0.00) / $10.00 |
+| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
+| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
 | grok-2-vision-1212 | text, image → text | functions, structured | 32,768 | 600 RPM | $2.00 ($0.00) / $10.00 |
 | grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-2-vision-1212 | text, image → text | functions, structured | 32,768 | 600 RPM | $2.00 ($0.00) / $10.00 |
 | grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
 | grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
-| grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
 | grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
+| grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
 | grok-imagine-video | text, image, video → video | - | - | 60 RPM | $0.050/sec |
 | grok-imagine-video | text, image, video → video | - | - | 60 RPM | $0.050/sec |
 

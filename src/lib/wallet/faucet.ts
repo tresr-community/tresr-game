@@ -43,6 +43,11 @@ export function isFaucetDeployed(cfg: ConfigTypes): boolean {
 export async function claimFaucet(): Promise<`0x${string}`> {
   const walletClient = await getWalletClient();
   const accounts = await walletClient.getAddresses();
+  if (accounts.length === 0) {
+    throw new Error(
+      "No wallet accounts found. Please connect your wallet and try again."
+    );
+  }
   const config = await loadConfigAsync();
   const env = getEnvironmentKey();
   const chainConfig = config.blockchain.avalanche[env];
@@ -50,7 +55,10 @@ export async function claimFaucet(): Promise<`0x${string}`> {
 
   const faucetAddress = (
     chainConfig as AvalancheEnvConfig & {faucet_contract?: string}
-  ).faucet_contract as `0x${string}`;
+  ).faucet_contract as `0x${string}` | undefined;
+  if (!faucetAddress || faucetAddress === ZERO_ADDRESS) {
+    throw new Error("Faucet contract is not deployed for this environment.");
+  }
 
   // Use wagmi's managed public client — its transport is shared with the
   // wallet provider, avoiding receipt hangs on Anvil.
@@ -100,7 +108,10 @@ export async function getFaucetCooldownStatus(
   const chainConfig = cfg.blockchain.avalanche[env];
   const faucetAddress = (
     chainConfig as AvalancheEnvConfig & {faucet_contract?: string}
-  ).faucet_contract as `0x${string}`;
+  ).faucet_contract as `0x${string}` | undefined;
+  if (!faucetAddress || faucetAddress === ZERO_ADDRESS) {
+    throw new Error("Faucet contract is not deployed for this environment.");
+  }
 
   const publicClient = getReadClient();
 
@@ -141,7 +152,10 @@ export async function getFaucetDripAmount(): Promise<bigint> {
   const chainConfig = cfg.blockchain.avalanche[env];
   const faucetAddress = (
     chainConfig as AvalancheEnvConfig & {faucet_contract?: string}
-  ).faucet_contract as `0x${string}`;
+  ).faucet_contract as `0x${string}` | undefined;
+  if (!faucetAddress || faucetAddress === ZERO_ADDRESS) {
+    throw new Error("Faucet contract is not deployed for this environment.");
+  }
 
   const publicClient = getReadClient();
 

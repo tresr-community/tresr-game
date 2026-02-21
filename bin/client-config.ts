@@ -383,6 +383,7 @@ interface PendingWrite {
         audio: gameplay.audio,
         vault: gameplay.vault,
         fee_gate: gameplay.fee_gate,
+        difficulty_escalation: gameplay.difficulty_escalation,
       };
       const criticalJson = canonicalStringify(criticalValues);
       const configHash = crypto

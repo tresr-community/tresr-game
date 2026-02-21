@@ -404,6 +404,7 @@ export class MainScene extends Phaser.Scene {
       audio: gameplay.audio,
       vault: gameplay.vault,
       fee_gate: gameplay.fee_gate,
+      difficulty_escalation: gameplay.difficulty_escalation,
     };
     const criticalJson = canonicalStringify(criticalValues);
 
@@ -419,6 +420,23 @@ export class MainScene extends Phaser.Scene {
 
     // Compare with build-time hash
     const buildHash = fullConfig.configHash as string | undefined;
+
+    // DEBUG: Diagnose hash mismatches in development.
+    console.log("[DEBUG verifyConfigHash] buildHash:", buildHash);
+    console.log("[DEBUG verifyConfigHash] computedHash:", computedHash);
+    console.log(
+      "[DEBUG verifyConfigHash] criticalValues keys:",
+      Object.keys(criticalValues)
+    );
+    console.log(
+      "[DEBUG verifyConfigHash] criticalJson length:",
+      criticalJson.length
+    );
+    console.log(
+      "[DEBUG verifyConfigHash] criticalJson (first 500):",
+      criticalJson.slice(0, 500)
+    );
+
     if (buildHash && !timingSafeEqual(buildHash, computedHash)) {
       log.error(
         COMPONENT_NAME,
@@ -485,6 +503,15 @@ export class MainScene extends Phaser.Scene {
     const fullConfig = this.registry.get("full_config");
     this.gameplayConfig = fullConfig.gameplay as GameplayConfig;
     this.designHeight = fullConfig.display?.design_height ?? 720;
+
+    // Apply game_speed as a true global speed multiplier.
+    // Phaser's world.timeScale DIVIDES the physics delta, so 1/speed = faster.
+    // This scales all Arcade velocities (setVelocityX/Y) uniformly.
+    const gameSpeed = this.gameplayConfig.physics.game_speed;
+    if (gameSpeed !== 1) {
+      this.physics.world.timeScale = 1 / gameSpeed;
+      this.anims.globalTimeScale = gameSpeed; // Speed up animations proportionally
+    }
 
     // Initialize survival timer from config
     this.survivalTimer = this.gameplayConfig.time_limit_seconds;
@@ -876,12 +903,31 @@ export class MainScene extends Phaser.Scene {
     }
 
     if (queued > 0) {
+      // Log deferred SFX load failures instead of silent failure
+      this.load.on("loaderror", (file: Phaser.Loader.File) => {
+        log.warn(
+          COMPONENT_NAME,
+          `Failed to load deferred SFX: ${file.key} (${file.url})`
+        );
+      });
       this.load.start();
       log.info(COMPONENT_NAME, `Queued ${queued} deferred SFX for loading`);
     }
   }
 
   private playSound(type: string) {
+    // Drop SFX when tab is hidden — Chrome suspends the AudioContext but game
+    // logic keeps firing (throttled). Without this guard the queued sounds all
+    // flush at once on refocus, producing a loud burst (ticket #sfx-burst).
+    if (document.hidden) return;
+
+    // Skip SFX if the AudioContext is suspended (e.g. mobile Safari before gesture)
+    const ctx = (this.sound as Phaser.Sound.WebAudioSoundManager).context;
+    if (ctx?.state === "suspended") {
+      log.debug(COMPONENT_NAME, "AudioContext suspended, SFX skipped");
+      return;
+    }
+
     const sfxVariants = this.gameplayConfig.audio.sfx_variants;
     const count = sfxVariants[type];
     if (!count || count <= 0) {
@@ -1153,7 +1199,7 @@ export class MainScene extends Phaser.Scene {
 
     this.combatManager.triggerFlash();
     this.playSound("explosion"); // Arrival sound
-    this.uiManager.showPhaseAnnouncement("BOSS PHASE");
+    this.uiManager.showPhaseAnnouncement("BULL MARKET");
     trackBossSpawned();
   }
 
@@ -1358,7 +1404,7 @@ export class MainScene extends Phaser.Scene {
     }
 
     this.playSound("game_over");
-    MusicManager.getInstance().stop();
+    void MusicManager.getInstance().stop();
     this.uiManager.showPhaseAnnouncement("DEFEAT");
     const deathDuration = Math.round(
       this.gameplayConfig.time_limit_seconds - this.survivalTimer
@@ -1413,8 +1459,20 @@ export class MainScene extends Phaser.Scene {
 
     // Compute frame-rate independent delta time (seconds), scaled by game_speed.
     // Phaser gives `delta` in milliseconds; clamp to avoid spiral-of-death on tab-switch.
+    // game_speed is ALSO applied to Arcade via physics.world.timeScale (set in init),
+    // but the raw `delta` here is NOT scaled by world.timeScale, so we must apply
+    // game_speed to keep Z-axis physics (jumps, gravity, depth movement) in sync
+    // with Arcade horizontal movement.
     const gameSpeed = this.gameplayConfig.physics.game_speed;
     const dt = Math.min(delta / 1000, 0.05) * gameSpeed;
+
+    // Resolution-independent speed scaling.
+    // With Phaser.Scale.RESIZE the canvas matches the viewport, so absolute
+    // px/s speeds cover different screen fractions on different devices.
+    // Multiplying all velocities by canvasHeight/designHeight keeps movement
+    // proportional regardless of resolution (same ratio used for sprite scaling).
+    const resScale = this.cameras.main.height / this.designHeight;
+    this.registry.set("resolution_scale", resScale);
 
     if (this.background && this.player) {
       const {width, height} = this.cameras.main;
@@ -1437,14 +1495,20 @@ export class MainScene extends Phaser.Scene {
     }
 
     // Cache group children once per frame to avoid repeated getChildren() allocations
+    const enemyChildren = this.spawnManager.enemies?.getChildren();
     const keyChildren = this.spawnManager.keys?.getChildren();
     const bombChildren = this.spawnManager.bombs?.getChildren();
 
-    // Manually update keys and bombs for Z-axis falling physics.
-    // These run here (in scene update, after Arcade physics step) rather than
-    // via runChildUpdate (which runs in preUpdate, before physics step).
-    // This matches Player/Boss update timing and prevents Arcade body.postUpdate
-    // from overwriting the Z-axis adjusted positions.
+    // Manually update enemies, keys, and bombs after the Arcade physics step.
+    // This ensures all entities receive the same game_speed-scaled dt and
+    // prevents Arcade body.postUpdate from overwriting Z-axis / X-axis
+    // adjusted positions (which caused enemy teleporting flicker).
+    if (enemyChildren) {
+      for (let i = 0; i < enemyChildren.length; i++) {
+        const child = enemyChildren[i];
+        if (child.active) (child as Enemy).update(dt);
+      }
+    }
     if (keyChildren) {
       for (let i = 0; i < keyChildren.length; i++) {
         const child = keyChildren[i];

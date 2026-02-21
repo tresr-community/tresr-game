@@ -698,6 +698,8 @@ Intro voiceover played during the Preloader loading screen. Uses `HTMLAudioEleme
 2. **Zero Hardcoded Values**: If a value influences gameplay, scoring, physics, visuals, audio, or UI, it MUST be defined in `tresr.yaml`.
    The codebase reads config at runtime or receives it as build-time constants. Fallback defaults in code
    (e.g., `config?.value ?? 100`) exist only as crash-prevention safety nets and MUST match the YAML values exactly.
+   This explicitly includes physics constants like `timestep`, `gravity`, and movement speeds — these must be
+   read from config, never defined as magic numbers or `static readonly` constants in code.
 
 3. **Security Through Layered Defence**: The client must have config values to run the game, but any value the client can read, the client
    can also modify via DevTools. This is a fundamental browser limitation. Security is achieved through layered defences, not by hiding values.

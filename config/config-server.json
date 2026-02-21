@@ -60,9 +60,9 @@
     "permanent_after_offence": 4,
     "ban_reasons": [
       "config_hash_mismatch",
+      "is_a_sore_loser",
       "replay_validation_failure",
       "score_exceeds_maximum",
-      "is_a_sore_loser",
       "wallet_tampering"
     ]
   },

@@ -26,6 +26,7 @@ export class Preloader extends Phaser.Scene {
   private spriteManager: SpriteManager;
   private spritesConfig!: SpritesConfig;
   private introAudio: HTMLAudioElement | null = null;
+  private introPlayPromise: Promise<void> | null = null;
   private introFinished: boolean = false;
   // Named listener refs for cleanup (ticket #197, #290)
   private introEndedHandler: (() => void) | null = null;
@@ -43,6 +44,13 @@ export class Preloader extends Phaser.Scene {
   private overlayEl?: HTMLDivElement;
   private overlayTextContainer?: HTMLDivElement;
   private domTypewriterTimeoutId?: number;
+  private removeVideoTimeoutId?: number;
+  // Skip narration state
+  private assetsLoaded: boolean = false;
+  private skipText?: Phaser.GameObjects.Text;
+  private skipDomEl?: HTMLDivElement;
+  private skipNarrationHandler?: () => void;
+  private overlayClickHandler?: () => void;
 
   constructor() {
     super(SCENE_KEYS.PRELOADER);
@@ -90,6 +98,14 @@ export class Preloader extends Phaser.Scene {
 
     // Load sprites with config (now available from BootScene)
     this.spriteManager.preloadSprites(this.spritesConfig);
+
+    // Log any asset load failures (SFX, images, etc.) instead of silent failure
+    this.load.on("loaderror", (file: Phaser.Loader.File) => {
+      log.warn(
+        COMPONENT_NAME,
+        `Failed to load asset: ${file.key} (${file.url})`
+      );
+    });
 
     // Load audio and wallpapers from config
     this.loadConfigAssets();
@@ -196,7 +212,8 @@ export class Preloader extends Phaser.Scene {
 
       this.overlayEl.style.opacity = "0";
 
-      setTimeout(() => {
+      this.removeVideoTimeoutId = window.setTimeout(() => {
+        this.removeVideoTimeoutId = undefined;
         this.overlayEl?.remove();
         this.overlayEl = undefined;
         this.overlayTextContainer = undefined;
@@ -465,26 +482,9 @@ export class Preloader extends Phaser.Scene {
   private async startIntroNarration() {
     const auth = getAuthState();
 
-    if (auth.isAuthenticated && !auth.isGuest && auth.user) {
-      // Logged-in user — check their saved preference
-      try {
-        const doc = await getUserProfile(auth.user.key);
-        if (doc && doc.data.preferences.narration === false) {
-          log.info(COMPONENT_NAME, "Narration disabled by user preference");
-          this.introFinished = true;
-          this.typewriterDone = true;
-          window.dispatchEvent(new Event("tresr:narration-complete"));
-          return;
-        }
-      } catch {
-        log.warn(
-          COMPONENT_NAME,
-          "Failed to load narration preference, defaulting to enabled"
-        );
-      }
-    }
-    // Guest users always get narration, logged-in users get it unless disabled
-
+    // Start audio IMMEDIATELY to preserve the browser's user-gesture autoplay
+    // window. If the user preference (fetched async below) says to skip, we
+    // stop the already-playing audio afterward.
     this.introAudio = new Audio("/assets/audio/narration/intro.webm");
     this.introAudio.volume = 1.0;
     this.introEndedHandler = () => {
@@ -512,12 +512,38 @@ export class Preloader extends Phaser.Scene {
       once: true,
     });
 
-    this.introAudio.play().catch((e) => {
+    this.introPlayPromise = this.introAudio.play().catch((e) => {
+      // AbortError is expected when stopNarration() races with play() — suppress it
+      if (e instanceof DOMException && e.name === "AbortError") {
+        log.debug(
+          COMPONENT_NAME,
+          "Intro play() aborted (expected during skip)"
+        );
+        return;
+      }
       log.warn(COMPONENT_NAME, "Intro voiceover autoplay blocked:", e);
       this.introFinished = true;
       this.typewriterDone = true; // skip typewriter if audio was blocked
       window.dispatchEvent(new Event("tresr:narration-complete"));
     });
+
+    // Check authenticated user's narration preference in parallel.
+    // If they've disabled narration, stop the already-playing audio.
+    if (auth.isAuthenticated && !auth.isGuest && auth.user) {
+      try {
+        const doc = await getUserProfile(auth.user.key);
+        if (doc && doc.data.preferences.narration === false) {
+          log.info(COMPONENT_NAME, "Narration disabled by user preference");
+          this.stopNarration();
+          return;
+        }
+      } catch {
+        log.warn(
+          COMPONENT_NAME,
+          "Failed to load narration preference, defaulting to enabled"
+        );
+      }
+    }
   }
 
   /**
@@ -603,8 +629,154 @@ export class Preloader extends Phaser.Scene {
 
   create() {
     log.info(COMPONENT_NAME, "Assets loaded. Waiting for intro to finish...");
+    this.assetsLoaded = true;
+
+    // Show "skip" prompt now that assets are fully loaded
+    this.showSkipPrompt();
+    this.registerSkipListeners();
 
     this.checkReadyForTransition();
+  }
+
+  /**
+   * Show a pulsing "Tap to skip" prompt once assets are loaded.
+   * Sprite mode: Phaser text below the spinner.
+   * Video mode: DOM element in the glassmorphism overlay.
+   */
+  private showSkipPrompt() {
+    // Don't show if narration already finished (preference disabled, autoplay blocked, etc.)
+    if (this.introFinished && this.typewriterDone) return;
+
+    const skipLabel = "Tap to skip ▸";
+
+    if (this.loaderMode === "video" && this.overlayEl) {
+      // Video mode: inject a DOM skip prompt into the overlay
+      const skipEl = document.createElement("div");
+      skipEl.textContent = skipLabel;
+      skipEl.style.cssText = `
+        position: absolute;
+        top: 16px;
+        right: 20px;
+        color: rgba(255, 255, 255, 0.7);
+        font-family: 'Inter', sans-serif;
+        font-size: clamp(12px, 2vw, 16px);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        text-shadow: 0 0 8px rgba(0, 255, 136, 0.4), 0 2px 6px rgba(0, 0, 0, 0.8);
+        cursor: pointer;
+        z-index: 10;
+        animation: skip-pulse 1.5s ease-in-out infinite;
+      `;
+
+      // Inject keyframes for the pulse animation
+      if (!document.getElementById("skip-pulse-style")) {
+        const style = document.createElement("style");
+        style.id = "skip-pulse-style";
+        style.textContent = `
+          @keyframes skip-pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      this.overlayEl.appendChild(skipEl);
+      this.skipDomEl = skipEl;
+    } else {
+      // Sprite mode: Phaser text below spinner
+      const {width, height} = this.cameras.main;
+      const yPos = this.spinner
+        ? this.spinner.y + this.spinner.displayHeight / 2 + 40
+        : height / 2 + 80;
+
+      this.skipText = this.add
+        .text(width / 2, yPos, skipLabel, {
+          fontFamily: "Inter, sans-serif",
+          fontSize: "16px",
+          color: "#d4ffd4",
+          align: "center",
+          shadow: {
+            offsetX: 0,
+            offsetY: 1,
+            color: "#000000",
+            blur: 4,
+            fill: true,
+          },
+        })
+        .setOrigin(0.5)
+        .setDepth(200)
+        .setAlpha(0.5);
+
+      // Pulsing animation
+      this.tweens.add({
+        targets: this.skipText,
+        alpha: {from: 0.5, to: 1},
+        duration: 750,
+        ease: "Sine.easeInOut",
+        yoyo: true,
+        repeat: -1,
+      });
+    }
+  }
+
+  /**
+   * Register input listeners for skipping narration.
+   * Pointer (tap/click) + keyboard (Space/Enter/Escape).
+   * Video mode also uses a direct DOM click on the overlay.
+   */
+  private registerSkipListeners() {
+    // Don't register if narration already finished
+    if (this.introFinished && this.typewriterDone) return;
+
+    const handleSkip = () => {
+      if (!this.assetsLoaded || (this.introFinished && this.typewriterDone)) {
+        return; // Assets not ready or narration already done
+      }
+      log.info(COMPONENT_NAME, "Narration skipped by user");
+      this.removeSkipPrompt();
+      this.stopNarration();
+    };
+
+    // Phaser pointer input (works in sprite mode; blocked by DOM overlay in video mode)
+    this.input.once("pointerdown", handleSkip);
+
+    // Keyboard: Space, Enter, Escape
+    if (this.input.keyboard) {
+      const skipKeys = ["SPACE", "ENTER", "ESC"];
+      for (const key of skipKeys) {
+        this.input.keyboard.once(`keydown-${key}`, handleSkip);
+      }
+    }
+
+    // Video mode: DOM click on overlay (since overlay blocks Phaser pointer events)
+    if (this.loaderMode === "video" && this.overlayEl) {
+      this.overlayClickHandler = handleSkip;
+      this.overlayEl.addEventListener("click", this.overlayClickHandler, {
+        once: true,
+      });
+    }
+
+    // External event (for future extensibility)
+    this.skipNarrationHandler = handleSkip;
+    window.addEventListener("tresr:skip-narration", this.skipNarrationHandler, {
+      once: true,
+    });
+  }
+
+  /**
+   * Remove the skip prompt UI elements.
+   */
+  private removeSkipPrompt() {
+    if (this.skipText) {
+      this.tweens.killTweensOf(this.skipText);
+      this.skipText.destroy();
+      this.skipText = undefined;
+    }
+    if (this.skipDomEl) {
+      this.skipDomEl.remove();
+      this.skipDomEl = undefined;
+    }
   }
 
   private checkReadyForTransition() {
@@ -626,6 +798,52 @@ export class Preloader extends Phaser.Scene {
         }
       },
     });
+  }
+
+  /**
+   * Stop narration that is already playing (or pending).
+   * Used when the user's saved preference says narration is disabled,
+   * but audio was started eagerly to preserve the autoplay gesture window.
+   */
+  private stopNarration() {
+    // Set flags immediately so checkReadyForTransition can proceed
+    this.introFinished = true;
+    this.typewriterDone = true;
+
+    const cleanupAudio = () => {
+      if (this.introAudio) {
+        this.introAudio.pause();
+        if (this.introEndedHandler)
+          this.introAudio.removeEventListener("ended", this.introEndedHandler);
+        if (this.introErrorHandler)
+          this.introAudio.removeEventListener("error", this.introErrorHandler);
+        if (this.introPlayingHandler)
+          this.introAudio.removeEventListener(
+            "playing",
+            this.introPlayingHandler
+          );
+        this.introAudio.src = "";
+        this.introAudio = null;
+      }
+      this.introEndedHandler = null;
+      this.introErrorHandler = null;
+      this.introPlayingHandler = null;
+    };
+
+    // Wait for the play() promise to settle before calling pause()
+    // to avoid Chrome AbortError (play interrupted by pause)
+    if (this.introPlayPromise) {
+      this.introPlayPromise.then(cleanupAudio).catch(cleanupAudio);
+      this.introPlayPromise = null;
+    } else {
+      cleanupAudio();
+    }
+
+    if (this.typewriterTimer) {
+      this.typewriterTimer.destroy();
+      this.typewriterTimer = undefined;
+    }
+    window.dispatchEvent(new Event("tresr:narration-complete"));
   }
 
   shutdown() {
@@ -665,6 +883,23 @@ export class Preloader extends Phaser.Scene {
     );
     this.cameras.main.off("camerafadeoutcomplete");
 
+    // Clean up skip narration listeners and UI
+    this.removeSkipPrompt();
+    if (this.skipNarrationHandler) {
+      window.removeEventListener(
+        "tresr:skip-narration",
+        this.skipNarrationHandler
+      );
+      this.skipNarrationHandler = undefined;
+    }
+    if (this.overlayClickHandler && this.overlayEl) {
+      this.overlayEl.removeEventListener("click", this.overlayClickHandler);
+      this.overlayClickHandler = undefined;
+    }
+    // Remove injected skip-pulse style element
+    const skipStyle = document.getElementById("skip-pulse-style");
+    if (skipStyle) skipStyle.remove();
+
     // Clean up textures no longer needed after Preloader (OOM fix)
     // Loader spinner is only used in Preloader — free its GPU texture
     if (this.loaderMode === "sprite" && this.textures.exists("loader")) {
@@ -672,6 +907,10 @@ export class Preloader extends Phaser.Scene {
     }
 
     // Clean up video DOM overlay if still present
+    if (this.removeVideoTimeoutId) {
+      clearTimeout(this.removeVideoTimeoutId);
+      this.removeVideoTimeoutId = undefined;
+    }
     if (this.domTypewriterTimeoutId) {
       clearTimeout(this.domTypewriterTimeoutId);
       this.domTypewriterTimeoutId = undefined;

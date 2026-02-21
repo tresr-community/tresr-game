@@ -17,9 +17,13 @@ import type {WalletClient} from "viem";
 import {
   getWagmiConfig,
   connectWallet as appKitConnectWallet,
+  cancelConnectWallet,
   disconnect as appKitDisconnect,
   isConnected as appKitIsConnected,
 } from "./appkit";
+
+// Re-export for external callers
+export {cancelConnectWallet};
 import {config} from "../config/client";
 import {getEnvironmentKey} from "../config/constants";
 import {log} from "../utils/log";

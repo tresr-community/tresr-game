@@ -71,7 +71,7 @@ export class CombatManager {
     this.superProjectiles = this.scene.physics.add.group({
       classType: SuperProjectile,
       maxSize: entities.player.super.max_projectiles,
-      runChildUpdate: true,
+      runChildUpdate: false,
     });
   }
 
@@ -634,6 +634,9 @@ export class CombatManager {
           textureKey
         ) as Enemy;
         if (enemy) {
+          // Hide immediately — group.get() makes the sprite visible at its old
+          // pool position. spawn() will reveal it after setup is complete.
+          enemy.setVisible(false);
           enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
           enemy.setTarget(this.player);
           const enemyScale = SpriteManager.getScaleFactor(
@@ -666,7 +669,7 @@ export class CombatManager {
     } else if (data.type === "boss") {
       trackBossDefeated();
       this.playSound("explosion");
-      MusicManager.getInstance().stop();
+      void MusicManager.getInstance().stop();
 
       // Fire explosion VFX — 3-layer expanding circles
       const deathFx = this.config.entities.boss.death_effects;

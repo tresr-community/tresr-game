@@ -346,21 +346,14 @@ async function doInitAuth(): Promise<void> {
   document.addEventListener("junoSignOutAuthTimer", signOutTimerHandler);
 
   // Clean up auth timer listener and stale subscribers on Astro page navigation
-  document.addEventListener(
-    "astro:before-preparation",
-    () => {
-      if (signOutTimerHandler) {
-        document.removeEventListener(
-          "junoSignOutAuthTimer",
-          signOutTimerHandler
-        );
-        signOutTimerHandler = null;
-      }
-      // Clear stale auth change callbacks from previous page components
-      authChangeCallbacks = [];
-    },
-    {once: true}
-  );
+  document.addEventListener("astro:before-preparation", () => {
+    if (signOutTimerHandler) {
+      document.removeEventListener("junoSignOutAuthTimer", signOutTimerHandler);
+      signOutTimerHandler = null;
+    }
+    // Clear stale auth change callbacks from previous page components
+    authChangeCallbacks = [];
+  });
 
   // Restore guest session if present (initial load sync check)
   const isGuest = sessionStorage.getItem(STORAGE_KEY_GUEST) === "true";

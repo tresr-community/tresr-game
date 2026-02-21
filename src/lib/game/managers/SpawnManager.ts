@@ -88,7 +88,7 @@ export class SpawnManager {
       classType: Enemy,
       defaultKey: "enemy_1_idle",
       maxSize: entities.enemy.spawner.pool_size,
-      runChildUpdate: true,
+      runChildUpdate: false,
     });
     // Store in registry so swarm AI can find nearby allies
     this.scene.registry.set("enemy_group", this.enemies);
@@ -174,6 +174,9 @@ export class SpawnManager {
       if (!this.enemies || !this.player) return;
       const enemy = this.enemies.get(spawnX, groundY, textureKey) as Enemy;
       if (enemy) {
+        // Hide immediately — group.get() makes the sprite visible at its old
+        // pool position. spawn() will reveal it after setup is complete.
+        enemy.setVisible(false);
         enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
         enemy.setTarget(this.player);
         const enemyScale = SpriteManager.getScaleFactor(

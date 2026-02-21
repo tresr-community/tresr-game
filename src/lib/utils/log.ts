@@ -92,6 +92,10 @@ export function showToast(
  * Robust centralized logging utility.
  * Uses showToast for unified behavior.
  */
+// Reentrancy guard: prevents infinite loops when trackError() itself
+// encounters an error and calls log.error() internally.
+let _trackingError = false;
+
 export const log = {
   debug: (component: string, message: string, ...args: unknown[]) => {
     showToast(component, "debug", message, args.join(" "));
@@ -116,5 +120,21 @@ export const log = {
           : "Unknown error";
     const details = `${errorStr} ${args.join(" ")}`.trim();
     showToast(component, "error", message, details || undefined);
+
+    // Fire-and-forget analytics tracking for every log.error() call.
+    // Uses dynamic import to break circular dependency (analytics → log → analytics).
+    if (!_trackingError && isBrowser) {
+      _trackingError = true;
+      import("@/lib/metrics/analytics")
+        .then(({trackError}) =>
+          trackError(component, `${message} ${details}`.trim())
+        )
+        .catch(() => {
+          // Best-effort — analytics may not be initialized yet
+        })
+        .finally(() => {
+          _trackingError = false;
+        });
+    }
   },
 };

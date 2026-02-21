@@ -50,14 +50,15 @@ export class Key extends BaseEntity {
 
     const gp = this.config.gameplay;
     // Use real delta time from MainScene (falls back to reference timestep)
-    const frameDt = dt ?? BaseEntity.REFERENCE_DT;
+    const frameDt = dt ?? this.referenceDt;
     const offscreenKillDistance = gp.entities.key.offscreen_kill_distance;
 
     // --- Z-axis falling (inline, not via BaseEntity.updateZ) ---
     // Scale gravity by dt ratio for frame-rate independence.
-    const gravityScale = frameDt / BaseEntity.REFERENCE_DT;
+    const gravityScale = frameDt / this.referenceDt;
+    const resScale = this.resolutionScale;
     if (this.z > 0 || this.vz !== 0) {
-      this.z += this.vz;
+      this.z += this.vz * gravityScale * resScale;
       this.vz -= this.gravity * gravityScale;
 
       if (this.z <= 0) {

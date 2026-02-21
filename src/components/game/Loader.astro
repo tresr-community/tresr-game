@@ -8,11 +8,8 @@ interface Props {
 
 const {minTime = 1500, id = "loader"} = Astro.props;
 
+// Pass the full array to the client — randomization happens at runtime, not build time
 const messages = config.app.loader_messages;
-const message =
-  messages.length > 0
-    ? messages[Math.floor(Math.random() * messages.length)]
-    : "Loading...";
 ---
 
 <div
@@ -22,14 +19,21 @@ const message =
   <div class="text-center">
     <span class="loading loading-bars loading-lg text-primary"></span>
     <p
+      id={`${id}-message`}
       class="text-primary font-display mt-4 animate-pulse tracking-widest uppercase"
     >
-      {message}
+      Loading...
     </p>
   </div>
 </div>
 
-<script is:inline define:vars={{id, minTime}}>
+<script is:inline define:vars={{id, minTime, messages}}>
+  // Pick a random message on each page load (not at build time)
+  const msgEl = document.getElementById(id + "-message");
+  if (msgEl && messages.length > 0) {
+    msgEl.textContent = messages[Math.floor(Math.random() * messages.length)];
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     const start = window.startTime || Date.now();
     const elapsed = Date.now() - start;

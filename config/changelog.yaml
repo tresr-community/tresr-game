@@ -10,9 +10,10 @@ versions:
       - "Unit tests included to catch dem sneaky regressions"
 
   - version: "0.2.0"
-    date: "2026-02-18"
+    date: "2026-02-21"
     title: "Mobile Friendly"
     notes:
+      - "Game speed set to 1.5, because degens have no patience"
       - "Mobile support so you can beat-up bankers from the toilet"
       - "PWA Mobile support for that poor-man native app feel"
       - "Portrait mode blocked — forced landscape, no vertical charts allowed"
