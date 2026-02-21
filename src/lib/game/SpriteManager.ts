@@ -428,6 +428,30 @@ export class SpriteManager {
   }
 
   /**
+   * Clean up tracking state and pending event listeners.
+   * Call from MainScene.shutdown() alongside other manager shutdowns.
+   */
+  shutdown(): void {
+    // Remove in-flight filecomplete listeners for any pending enemy loads
+    for (const variantIndex of this.pendingEnemyLoads.keys()) {
+      const spriteConfig = this.config;
+      if (spriteConfig?.enemies) {
+        const entityKey = `enemy_${variantIndex}`;
+        for (const anim of spriteConfig.enemies.anims) {
+          const key = `${entityKey}_${anim.name}`;
+          // cspell:disable-next-line -- Phaser loader event name
+          this.scene.load.removeAllListeners(`filecomplete-spritesheet-${key}`);
+        }
+      }
+    }
+
+    this.pendingEnemyLoads.clear();
+    this.loadedEnemyVariants.clear();
+
+    log.info(COMPONENT_NAME, "Shutdown complete");
+  }
+
+  /**
    * Get animation key for an entity
    */
   static getAnimKey(textureKey: string, animName: string): string {
