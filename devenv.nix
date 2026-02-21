@@ -111,6 +111,9 @@ let
       ffmpeg
       # Image processing for Sharp
       vips
+
+      # Video Editing
+      shotcut
     ]
     ++ ic-nix-packages;
 
