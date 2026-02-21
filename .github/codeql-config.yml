@@ -10,10 +10,11 @@
 name: "TRESR Game CodeQL Configuration"
 
 paths-ignore:
-  - "node_modules/**"
-  - "contracts/lib/**"
   - "contracts/cache/**"
+  - "contracts/lib/**"
   - "contracts/out/**"
   - "dist/**"
+  - "docs/agents/**"
+  - "node_modules/**"
   - "public/workers/**"
   - "target/**"
