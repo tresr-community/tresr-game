@@ -167,11 +167,14 @@ jobs:
         with:
           args: hosting deploy --mode staging
 
-      - id: apply_config
-        name: Apply Configuration
-        uses: junobuild/juno-action@main
-        with:
-          args: config apply --force --mode staging
+      # NOTE: config apply requires Admin controller access.
+      # OIDC automation keys are Editor/Submitter only.
+      # Apply config changes locally: juno config apply --mode staging
+      # - id: apply_config
+      #   name: Apply Configuration
+      #   uses: junobuild/juno-action@main
+      #   with:
+      #     args: config apply --force --mode staging
 
       - id: publish_functions
         name: Publish Functions
