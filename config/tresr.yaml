@@ -105,7 +105,7 @@ client:
     narration_text:
       intro: |
         Most days, Ron Jay embraces the degenerate life
-        farming airdrops and apeing into meme coins.
+        farming airdrops and aping into meme coins.
 
         But today?
 
@@ -114,7 +114,7 @@ client:
 
         Welcome, to the Crypto Cage...
     loader_messages:
-      - Apeing In...
+      - Aping In...
       - Boarding Yacht...
       - Bridging Assets...
       - Checking Mempool...
@@ -258,8 +258,8 @@ client:
       interval_seconds: 60 # Escalate every N seconds
       enemy_spawn_multiplier: 0.85 # Multiply enemy spawn delay by this each step
       bomb_spawn_multiplier: 0.90 # Multiply bomb spawn delay by this each step
-      min_enemy_spawn_ms: 800 # Floor for enemy spawn delay
-      min_bomb_spawn_ms: 2000 # Floor for bomb spawn delay
+      min_enemy_spawn_ms: 750 # Floor for enemy spawn delay
+      min_bomb_spawn_ms: 2500 # Floor for bomb spawn delay
     # Guest rate limiting
     guest:
       enabled: true # Enable/Disable the "normie mode"
@@ -272,7 +272,7 @@ client:
     # Reference: docs/fomo.md
     vault:
       # Below this cap, paid mode is locked out.
-      minimum_cap: 500
+      minimum_cap: 1000
       tiers:
         # 500 - 5,000 TRESR
         easy: 5000
@@ -282,24 +282,24 @@ client:
         hard: 100000
         # > 100,000 = extreme
       difficulty_multipliers:
-        easy: 0.6
+        easy: 0.5
         normal: 1.0
         hard: 1.5
         extreme: 2.0
     # Global physics (shared by all entities)
     physics:
-      gravity: 0.8
+      gravity: 1.0
       timestep: 0.01667 # 1/60 for 60 FPS
-      game_speed: 1.5 # Global simulation speed multiplier (2.0 = double speed)
+      game_speed: 1.0 # Global simulation speed multiplier (2.0 = double speed)
     # Global visuals
     visuals:
       shadow:
         color: 0x000000
         opacity: 0.35
-        width: 70
-        height: 16
+        width: 105
+        height: 24
         offset_x: 0 # Horizontal shadow offset (px) — 0 = directly under character
-        offset_y: 2 # Vertical shadow offset (px) — small nudge so shadow sits at feet
+        offset_y: -45 # Negative to pull shadow UP into sprite — compensates for transparent padding below drawn feet in 512px frames
         angle: 10 # Shadow cast angle (degrees) — positive = cast right, simulates top-left light
       damage_tint_duration: 100 # Red tint flash duration (ms), applies to all entities
     # Scoring (cross-entity, stays flat)
@@ -316,9 +316,9 @@ client:
         medium: 0.50
         low: 0.25
         critical: 0.10
-      width: 40
-      height: 4
-      offset_y: -10
+      width: 60
+      height: 6
+      offset_y: -15
       background_color: 0x000000
       colors:
         high: 0x00ff00
@@ -331,9 +331,9 @@ client:
     # Original reference: 1280×720 → top_y=600 (0.833), bottom_y=700 (0.972)
     walkable_area:
       # Set top_y_ratio smaller to walk higher on the screen.
-      top_y_ratio: 0.833
+      top_y_ratio: 0.8.0
       # Set bottom_y_ratio larger to walk lower on the screen.
-      bottom_y_ratio: 0.972
+      bottom_y_ratio: 0.95
       left_x_ratio: 0.0
       right_x_ratio: 1.0
     # ─── Entities ───
@@ -465,13 +465,13 @@ client:
             retarget_time: 4
             attack_damage: 10
           weights:
-            direct: 25
-            flanker: 20
-            cautious: 15
-            swarm: 15
-            erratic: 10
-            passive: 10
-            retardio: 5
+            direct: 100 # TODO: Test
+            flanker: 0 # TODO: Test
+            cautious: 0 # TODO: Test
+            swarm: 0
+            erratic: 0 # TODO: Test
+            passive: 0 # TODO: Test
+            retardio: 0 # TODO: Test
         animations:
           death_delay: 500 # Delay before kill() after hurt animation (ms)
         spawner:
@@ -696,7 +696,7 @@ client:
 
     # Hero character (Ron Jay)
     hero:
-      scaleFactor: 0.75
+      scaleFactor: 1.10
       anims:
         - name: idle
           frames: 6
@@ -742,7 +742,7 @@ client:
           frameHeight: 512
     # Super Attack Projectile (spinning coin hadouken)
     super:
-      scaleFactor: 0.50
+      scaleFactor: 0.75
       anims:
         - name: spin
           frames: 5
@@ -753,7 +753,7 @@ client:
           frameHeight: 512
     # Boss character (Gary Gensler)
     boss:
-      scaleFactor: 1.25
+      scaleFactor: 1.85
       anims:
         - name: idle
           frames: 6
@@ -794,7 +794,7 @@ client:
     # Each one uses the same animations/mechanics.
     # Per-anim paths use {i} placeholder for variant number.
     enemies:
-      scaleFactor: 0.75
+      scaleFactor: 1.10
       count: 5
       anims:
         - name: idle
@@ -844,7 +844,7 @@ client:
           frameHeight: 512
     # TRESR-BOT companion (AI ally spawned from powerup pickup)
     tresr_bot:
-      scaleFactor: 0.75
+      scaleFactor: 1.10
       anims:
         - name: idle
           frames: 6
@@ -877,7 +877,7 @@ client:
     # Items (per-animation sheets)
     items:
       key:
-        scaleFactor: 0.25
+        scaleFactor: 0.375
         anims:
           - name: idle
             frames: 5
@@ -887,7 +887,7 @@ client:
             frameWidth: 256
             frameHeight: 512
       bomb:
-        scaleFactor: 0.25
+        scaleFactor: 0.375
         anims:
           - name: idle
             frames: 5
@@ -897,7 +897,7 @@ client:
             frameWidth: 256
             frameHeight: 512
       loader:
-        scaleFactor: 1.0
+        scaleFactor: 1.5
         anims:
           - name: idle
             frames: 5
@@ -907,7 +907,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       chest:
-        scaleFactor: 0.5
+        scaleFactor: 0.75
         anims:
           - name: idle
             frames: 5
@@ -931,7 +931,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_1:
-        scaleFactor: 0.25
+        scaleFactor: 0.375
         anims:
           - name: idle
             frames: 4
@@ -941,7 +941,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_2:
-        scaleFactor: 0.25
+        scaleFactor: 0.375
         anims:
           - name: idle
             frames: 4
@@ -951,7 +951,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_3:
-        scaleFactor: 0.25
+        scaleFactor: 0.375
         anims:
           - name: idle
             frames: 4
@@ -961,7 +961,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_4:
-        scaleFactor: 0.25
+        scaleFactor: 0.375
         anims:
           - name: idle
             frames: 4
@@ -971,7 +971,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_5:
-        scaleFactor: 0.25
+        scaleFactor: 0.375
         anims:
           - name: idle
             frames: 4
@@ -981,7 +981,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_1:
-        scaleFactor: 0.25
+        scaleFactor: 0.375
         anims:
           - name: idle
             frames: 4
@@ -991,7 +991,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_2:
-        scaleFactor: 0.25
+        scaleFactor: 0.375
         anims:
           - name: idle
             frames: 4
@@ -1001,7 +1001,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_3:
-        scaleFactor: 0.25
+        scaleFactor: 0.375
         anims:
           - name: idle
             frames: 4
@@ -1011,7 +1011,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_4:
-        scaleFactor: 0.25
+        scaleFactor: 0.375
         anims:
           - name: idle
             frames: 4
@@ -1021,7 +1021,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_5:
-        scaleFactor: 0.25
+        scaleFactor: 0.375
         anims:
           - name: idle
             frames: 4

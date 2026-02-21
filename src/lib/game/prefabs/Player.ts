@@ -128,7 +128,7 @@ export class Player extends BaseEntity {
     const gamepadDeadzone = playerConfig.input.gamepad_deadzone;
     const speed = this.speed * this.resolutionScale;
     // Use real delta time from MainScene (falls back to reference timestep)
-    const frameDt = dt ?? BaseEntity.REFERENCE_DT;
+    const frameDt = dt ?? this.referenceDt;
 
     let vx = 0;
     let moveY = 0; // Depth movement (not Arcade velocity)

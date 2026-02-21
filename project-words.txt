@@ -33,7 +33,6 @@ alltime
 alnum
 amannn
 anims
-apeing
 apkt
 appinstalled
 appkit

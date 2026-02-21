@@ -281,6 +281,15 @@ function cmd_typecheck() {
 	log_success "Type check passed."
 }
 
+function cmd_test() {
+	log_info "Running unit tests..."
+	bun test || {
+		log_error "Unit tests failed."
+		return 1
+	}
+	log_success "All tests passed."
+}
+
 function cmd_cleanup() {
 	log_info "Cleaning artifacts..."
 	rm -rf dist .astro node_modules/.vite .cache || {
@@ -819,6 +828,14 @@ lint)
 	}
 	;;
 
+# Run unit tests
+test)
+	cmd_test || {
+		log_error "Unit tests failed."
+		exit 21
+	}
+	;;
+
 # TypeScript type check
 typecheck | tsc)
 	cmd_typecheck || {
@@ -878,6 +895,10 @@ oneshot | loop)
 	cmd_lint || {
 		log_error "Could not lint the code."
 		exit 7
+	}
+	cmd_test || {
+		log_error "Unit tests failed."
+		exit 21
 	}
 	cmd_typecheck || {
 		log_error "TypeScript type check failed."
@@ -943,7 +964,7 @@ update | upgrade)
 	;;
 
 *)
-	echo "Usage: $0 {build|build-functions|deploy [dev/prod]|deploy-functions|start|stop|logs|lint|typecheck|cleanup|rebuild|candid|setup|topup|topup-wallet|agent-docs|update|clear-satellite|nuke-juno|loop|oneshot}"
+	echo "Usage: $0 {build|build-functions|deploy [dev/prod]|deploy-functions|start|stop|logs|lint|test|typecheck|cleanup|rebuild|candid|setup|topup|topup-wallet|agent-docs|update|clear-satellite|nuke-juno|loop|oneshot}"
 	exit 1
 	;;
 esac

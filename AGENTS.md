@@ -99,6 +99,8 @@ Directives: Use TypeScript for type safety in all codebases where applicable. En
 
 - **Single Source of Truth**: All game and application configuration **must** be defined in `config/tresr.yaml`.
 - Do NOT scatter configuration across multiple files or hardcode magic numbers in source code.
+  This includes physics constants (gravity, timestep, speeds), scoring multipliers, entity stats,
+  and any other tunable value. If it affects gameplay, it belongs in `tresr.yaml`.
 - **Type Generation**: All TypeScript types for the configuration are auto-generated from the YAML file.
 - After modifying `config/tresr.yaml`, run `bun run client-config` to regenerate `src/types/config.ts` and related files.
 - Never edit the generated files manually.

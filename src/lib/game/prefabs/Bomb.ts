@@ -96,11 +96,12 @@ export class Bomb extends BaseEntity {
     // --- Z-axis falling (inline, not via BaseEntity.updateZ) ---
     // We inline this so we can skip the Arcade body sync entirely.
     // Scale gravity by dt ratio for frame-rate independence.
-    const frameDt = dt ?? BaseEntity.REFERENCE_DT;
-    const gravityScale = frameDt / BaseEntity.REFERENCE_DT;
+    const frameDt = dt ?? this.referenceDt;
+    const gravityScale = frameDt / this.referenceDt;
+    const resScale = this.resolutionScale;
     if (this.z > 0) {
-      this.z += this.vz; // update position first (Symplectic Euler)
-      this.vz -= this.gravity * gravityScale; // then apply scaled gravity
+      this.z += this.vz * gravityScale * resScale; // position scaled by resolution
+      this.vz -= this.gravity * gravityScale; // velocity NOT scaled — same time-in-air
 
       if (this.z <= 0) {
         this.z = 0;

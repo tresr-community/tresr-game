@@ -199,7 +199,7 @@ export class Enemy extends BaseEntity {
     const gp = this.config.gameplay;
     const aiConfig = gp.entities.enemy.ai;
     // Use real delta time from MainScene (falls back to reference timestep)
-    const frameDt = dt ?? BaseEntity.REFERENCE_DT;
+    const frameDt = dt ?? this.referenceDt;
 
     // Handle walk-in from off-screen
     if (this.enterState === "walking_in") {

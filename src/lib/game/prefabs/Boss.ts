@@ -105,7 +105,7 @@ export class Boss extends BaseEntity {
 
     const gp = this.config.gameplay;
     // Use real delta time from MainScene (falls back to reference timestep)
-    const frameDt = dt ?? BaseEntity.REFERENCE_DT;
+    const frameDt = dt ?? this.referenceDt;
     const bossConfig = gp.entities.boss;
     const descentSpeed = bossConfig.descent.speed * this.resolutionScale;
 

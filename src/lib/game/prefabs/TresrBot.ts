@@ -198,7 +198,7 @@ export class TresrBot extends BaseEntity {
 
     const botConfig = this.config.gameplay.entities.tresr_bot;
     const now = time ?? this.scene.time.now;
-    const frameDt = dt ?? BaseEntity.REFERENCE_DT;
+    const frameDt = dt ?? this.referenceDt;
 
     // Find target — nearest active enemy or boss
     // Gate with target_switch_ms to avoid scanning every frame

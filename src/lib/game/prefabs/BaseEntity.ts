@@ -60,6 +60,9 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
   public gravity: number = 0.8;
   public groundY: number = 0;
 
+  /** Reference timestep for frame-rate-independent Z-axis physics. */
+  protected referenceDt!: number;
+
   // Air drop state (set by startAirDrop, consumed by onGroundHit)
   protected _airDropLanding: AirDropLandingConfig | null = null;
   protected _isAirDropping: boolean = false;
@@ -89,6 +92,9 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
 
     // Cache config once - it doesn't change mid-game
     this.config = scene.registry.get("full_config") as ConfigTypes;
+
+    // Read reference timestep from config (zero hardcoded values policy)
+    this.referenceDt = this.config.gameplay.physics.timestep;
 
     // Feet-anchored origin: x-center, y-bottom.
     // groundY represents where the character's feet touch the ground.
@@ -260,18 +266,19 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
     this.updateHealthBar();
   }
 
-  /** Reference timestep (1/60s) that gravity/vz values were originally tuned for. */
-  protected static readonly REFERENCE_DT = 0.01667;
-
   protected updateZ(dt?: number) {
     if (this.z > 0 || this.vz !== 0) {
       // Scale gravity by the ratio of actual dt to the reference timestep.
       // This preserves Symplectic-Euler jump height/feel at any frame rate.
-      const step = dt ?? BaseEntity.REFERENCE_DT;
-      const gravityScale = step / BaseEntity.REFERENCE_DT;
+      const step = dt ?? this.referenceDt;
+      const gravityScale = step / this.referenceDt;
+      const resScale = this.resolutionScale;
       const gravityStep = this.gravity * gravityScale;
 
-      this.z += this.vz;
+      // Position is resolution-scaled so jump height stays proportional to
+      // walking speed across different screen sizes.  Velocity is NOT scaled —
+      // this keeps the same time-in-air but adjusts peak height by resScale.
+      this.z += this.vz * gravityScale * resScale;
       this.vz -= gravityStep;
 
       // Cap max jump height so visual Y never goes above the top of the canvas.

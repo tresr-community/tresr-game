@@ -504,6 +504,15 @@ export class MainScene extends Phaser.Scene {
     this.gameplayConfig = fullConfig.gameplay as GameplayConfig;
     this.designHeight = fullConfig.display?.design_height ?? 720;
 
+    // Apply game_speed as a true global speed multiplier.
+    // Phaser's world.timeScale DIVIDES the physics delta, so 1/speed = faster.
+    // This scales all Arcade velocities (setVelocityX/Y) uniformly.
+    const gameSpeed = this.gameplayConfig.physics.game_speed;
+    if (gameSpeed !== 1) {
+      this.physics.world.timeScale = 1 / gameSpeed;
+      this.anims.globalTimeScale = gameSpeed; // Speed up animations proportionally
+    }
+
     // Initialize survival timer from config
     this.survivalTimer = this.gameplayConfig.time_limit_seconds;
 
@@ -1431,6 +1440,10 @@ export class MainScene extends Phaser.Scene {
 
     // Compute frame-rate independent delta time (seconds), scaled by game_speed.
     // Phaser gives `delta` in milliseconds; clamp to avoid spiral-of-death on tab-switch.
+    // game_speed is ALSO applied to Arcade via physics.world.timeScale (set in init),
+    // but the raw `delta` here is NOT scaled by world.timeScale, so we must apply
+    // game_speed to keep Z-axis physics (jumps, gravity, depth movement) in sync
+    // with Arcade horizontal movement.
     const gameSpeed = this.gameplayConfig.physics.game_speed;
     const dt = Math.min(delta / 1000, 0.05) * gameSpeed;
 
