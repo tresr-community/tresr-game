@@ -25,10 +25,23 @@ export default defineConfig(({mode}) => ({
       production: satelliteId,
     },
     source: "dist",
+    automation: {
+      github: {
+        repositories: [
+          {
+            owner: "tresr-community",
+            name: "tresr-game",
+            refs: [],
+          },
+        ],
+      },
+    },
     // Pass the mode to Astro so import.meta.env.MODE reflects the deployment target.
     //  --mode development => import.meta.env.DEV = true
     //  --mode production => import.meta.env.PROD = true
-    predeploy: [`bun run build -- --mode ${mode}`],
+    // In CI the workflow builds before deploying; locally juno-dev handles it.
+    // The juno-action Docker image doesn't ship bun so predeploy must be skipped.
+    ...(process.env.CI ? {} : {predeploy: [`bun run build -- --mode ${mode}`]}),
     collections: junoConfig.collections,
   },
   orbiter: {

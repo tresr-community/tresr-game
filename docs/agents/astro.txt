@@ -18160,12 +18160,6 @@ See our [CMS Guides](/en/guides/cms/) for full details on integrating Astro with
 
   Static
 
-* ![](/logos/kinsta.svg)
-
-  ### [Kinsta](/en/guides/deploy/kinsta/)
-
-  On demand Static
-
 * ![](/logos/microsoft-azure.svg)
 
   ### [Microsoft Azure](/en/guides/deploy/microsoft-azure/)
@@ -18195,6 +18189,12 @@ See our [CMS Guides](/en/guides/cms/) for full details on integrating Astro with
   ### [Seenode](/en/guides/deploy/seenode/)
 
   On demand
+
+* ![](/logos/sevalla.svg)
+
+  ### [Sevalla](/en/guides/deploy/sevalla/)
+
+  On demand Static
 
 * ![](/logos/stormkit.svg)
 
@@ -20806,129 +20806,6 @@ Quickly scaffold a website with a ready-made Astro template.
   yarn create juno -- --template astro-starter
   ```
 
-# Deploy your Astro Site to Kinsta Application Hosting
-
-> How to deploy your Astro site to the web on Kinsta Application Hosting.
-
-You can use [Kinsta Application Hosting](https://kinsta.com/application-hosting/) to host an Astro site on their cloud hosting.
-
-## Configuring your Astro project
-
-[Section titled “Configuring your Astro project”](#configuring-your-astro-project)
-
-### Static hosting
-
-[Section titled “Static hosting”](#static-hosting)
-
-Looking for an example?
-
-Check out [the official Kinsta Application Hosting Starter project for Astro](https://github.com/kinsta/hello-world-astro)!
-
-To host your project on **Kinsta Application Hosting**, you need to:
-
-* Include a `name` field in your `package.json`. (This can be anything, and will not affect your deployment.)
-* Include a `build` script in your `package.json`. (Your Astro project should already include this.)
-* Install the [`serve`](https://www.npmjs.com/package/serve) package and set the `start` script to `serve dist/`.
-
-Here are the necessary lines in your `package.json` file:
-
-package.json
-
-```diff
-{
-  "name": "anything", // This is required, but the value does not matter.
-  "scripts": {
-    "dev": "astro dev",
-    "start": "serve dist/",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro"
-  },
-  "dependencies": {
-    "astro": "^2.2.0",
-    +"serve": "^14.0.1"
-  },
-}
-```
-
-### SSR
-
-[Section titled “SSR”](#ssr)
-
-Looking for an example?
-
-Check out [the official Kinsta Application Hosting Starter project for Astro SSR](https://github.com/kinsta/hello-world-astro-ssr)!
-
-To host your project on **Kinsta Application Hosting**, you need to:
-
-* Include a `name` field in your `package.json`. (This can be anything, and will not affect your deployment.)
-* Include a `build` script in your `package.json`. (Your Astro project should already include this.)
-* Install the [`@astrojs/node`](https://www.npmjs.com/package/@astrojs/node) package and set the `start` script to `node ./dist/server/entry.mjs`.
-* Set the `astro.config.mjs` to use `@astrojs/node` and to use `host: true`.
-
-Here are the necessary lines in your `package.json` file:
-
-package.json
-
-```diff
-{
-  "name": "anything", // This is required, but the value does not matter.
-  "scripts": {
-    "dev": "astro dev",
-    "start": "node ./dist/server/entry.mjs",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro"
-  },
-  "dependencies": {
-    "astro": "^2.2.0",
-    +"@astrojs/node": "^5.1.1"
-  },
-}
-```
-
-Here are the necessary lines in your `astro.config.mjs` file:
-
-astro.config.mjs
-
-```js
-  import { defineConfig } from 'astro/config';
-  import node from "@astrojs/node";
-
-
-  export default defineConfig({
-    output: 'server',
-    adapter: node({
-      mode: "standalone"
-    }),
-    server: {
-      host: true
-    }
-  });
-```
-
-## How to deploy
-
-[Section titled “How to deploy”](#how-to-deploy)
-
-Once your project’s GitHub repository is connected, you can trigger manual deploys to Kinsta Application Hosting in the **MyKinsta Admin Panel**. You can also set up automatic deployments in your admin panel.
-
-### Configuring a new Kinsta application
-
-[Section titled “Configuring a new Kinsta application”](#configuring-a-new-kinsta-application)
-
-1. Go to the [My Kinsta](https://my.kinsta.com/) admin panel.
-
-2. Go to the **Applications** tab.
-
-3. Connect your GitHub repository.
-
-4. Press the **Add service** > **Application** button.
-
-5. Follow the wizard steps.
-
-6. Your application is deployed.
-
 # Deploy your Astro Site to Microsoft Azure
 
 > How to deploy your Astro site to the web using Microsoft Azure.
@@ -21314,6 +21191,114 @@ You can deploy to Seenode through the web interface by connecting your Git repos
 * [Seenode Documentation](https://seenode.com/docs) — complete platform documentation
 * [Seenode Astro Guide](https://seenode.com/docs/frameworks/javascript/astro/) — detailed deployment guide and troubleshooting
 * [Seenode Astro Template](https://github.com/seenode/example-astro) — pre-configured starter template
+
+# Deploy your Astro Site to Sevalla
+
+> How to deploy your Astro site to the web using Sevalla.
+
+[Sevalla](https://sevalla.com/) is an all-in-one hosting and management platform for static sites, applications, and databases.
+
+This guide details how to deploy your Astro project to Sevalla.
+
+## Prerequisites
+
+[Section titled “Prerequisites”](#prerequisites)
+
+* A [**Sevalla** account](https://sevalla.com/signup/).
+* Your Astro project pushed to a [public or supported private Git repository](https://docs.sevalla.com/applications/git/overview) (GitHub, GitLab, or Bitbucket).
+
+## Static Site Deployment
+
+[Section titled “Static Site Deployment”](#static-site-deployment)
+
+Sevalla’s Static Site Hosting deploys your site directly to a global edge network.
+
+1. Create a new [**Static Site**](https://docs.sevalla.com/static-sites/get-started/add-a-static-site) in the Sevalla dashboard.
+
+2. Connect your Git repository (GitHub, GitLab, or Bitbucket).
+
+3. Select your repository and branch (e.g., `main`).
+
+4. Configure the build settings:
+
+   * **Build command:** `npm run build`
+   * **Publish directory:** `dist`
+
+5. Click **Create Static Site** to deploy.
+
+Note
+
+Astro defaults to `output: 'static'`, so no additional configuration is required for static deployment.
+
+## SSR Deployment
+
+[Section titled “SSR Deployment”](#ssr-deployment)
+
+Sevalla’s Application Hosting supports full-stack applications. You can deploy Astro projects using [on-demand rendering](/en/guides/on-demand-rendering/) (server-side rendering) via the Node.js adapter.
+
+1. Add the [`@astrojs/node` adapter](/en/guides/integrations-guide/node/) to your Astro project.
+
+   ```bash
+   npx astro add node
+   ```
+
+2. Configure the adapter in `astro.config.mjs`. Set `mode: 'standalone'` and ensure `host: true` is set so the server listens on all addresses (required for containerized environments).
+
+   astro.config.mjs
+
+   ```js
+   import { defineConfig } from 'astro/config';
+   import node from '@astrojs/node';
+
+
+   export default defineConfig({
+     output: 'server',
+     adapter: node({
+       mode: 'standalone'
+     }),
+     server: {
+       host: true
+     }
+   });
+   ```
+
+3. Ensure your `package.json` has a `start` script that runs the built server:
+
+   package.json
+
+   ```json
+   "scripts": {
+     "start": "node ./dist/server/entry.mjs"
+   }
+   ```
+
+4. Create a new [**Application**](https://docs.sevalla.com/applications/get-started/add-an-application) in the Sevalla dashboard.
+
+5. Connect your Git repository.
+
+6. Configure the build settings:
+
+   * **Build Method:** Sevalla automatically detects Node.js projects (via Nixpacks).
+   * **Build command:** `npm run build`
+   * **Start command:** `npm run start`
+
+7. Click **Create Application** to deploy.
+
+## Troubleshooting
+
+[Section titled “Troubleshooting”](#troubleshooting)
+
+### Build Failures
+
+[Section titled “Build Failures”](#build-failures)
+
+Check the [**Build Logs**](https://docs.sevalla.com/applications/runtime-logs) in the Sevalla dashboard for error messages. Ensure all dependencies are in `dependencies` (not `devDependencies` if needed at runtime).
+
+### Node Version
+
+[Section titled “Node Version”](#node-version)
+
+Ensure the Node.js version selected in Sevalla matches your local development version (check `node -v`).
 
 # Deploy your Astro Site to Stormkit
 
@@ -23180,13 +23165,13 @@ Find even more [community-maintained framework integrations](https://astro.build
 
   ### [@astrojs/​alpinejs](/en/guides/integrations-guide/alpinejs/)
 
-* ![](/logos/react.svg)
-
-  ### [@astrojs/​react](/en/guides/integrations-guide/react/)
-
 * ![](/logos/preact.svg)
 
   ### [@astrojs/​preact](/en/guides/integrations-guide/preact/)
+
+* ![](/logos/react.svg)
+
+  ### [@astrojs/​react](/en/guides/integrations-guide/react/)
 
 * ![](/logos/solid.svg)
 
@@ -24749,13 +24734,13 @@ The following integrations are maintained by Astro.
 
   ### [@astrojs/​alpinejs](/en/guides/integrations-guide/alpinejs/)
 
-* ![](/logos/react.svg)
-
-  ### [@astrojs/​react](/en/guides/integrations-guide/react/)
-
 * ![](/logos/preact.svg)
 
   ### [@astrojs/​preact](/en/guides/integrations-guide/preact/)
+
+* ![](/logos/react.svg)
+
+  ### [@astrojs/​react](/en/guides/integrations-guide/react/)
 
 * ![](/logos/solid.svg)
 
@@ -24797,13 +24782,13 @@ The following integrations are maintained by Astro.
 
   ### [@astrojs/​markdoc](/en/guides/integrations-guide/markdoc/)
 
-* ![](/logos/mdx.svg)
-
-  ### [@astrojs/​mdx](/en/guides/integrations-guide/mdx/)
-
 * ![](/logos/partytown.svg)
 
   ### [@astrojs/​partytown](/en/guides/integrations-guide/partytown/)
+
+* ![](/logos/mdx.svg)
+
+  ### [@astrojs/​mdx](/en/guides/integrations-guide/mdx/)
 
 * ![](/logos/sitemap.svg)
 
@@ -46445,6 +46430,10 @@ Astro’s official recipes are short, focused how-to guides that walk a reader t
 
   Build a remark plugin to add reading time to your Markdown or MDX files.
 
+* ### [Share state between Astro components](/en/recipes/sharing-state/)
+
+  Learn how to share state across Astro components with Nano Stores.
+
 * ### [Add an RSS feed](/en/recipes/rss/)
 
   Add an RSS feed to your Astro site to let users subscribe to your content.
@@ -46452,10 +46441,6 @@ Astro’s official recipes are short, focused how-to guides that walk a reader t
 * ### [Share state between islands](/en/recipes/sharing-state-islands/)
 
   Learn how to share state across framework components with Nano Stores.
-
-* ### [Share state between Astro components](/en/recipes/sharing-state/)
-
-  Learn how to share state across Astro components with Nano Stores.
 
 * ### [Using streaming to improve page performance](/en/recipes/streaming-improve-page-performance/)
 

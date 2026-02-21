@@ -415,6 +415,9 @@ function cmd_topup() {
 # =============================================================================
 
 function cmd_setup() {
+	log_info "Pulling latest Skylab image..."
+	docker pull junobuild/skylab:latest || log_warn "Could not pull latest Skylab image (continuing with cached)"
+
 	# Clear logs at the start of setup
 	log_info "Clearing old logs..."
 	rm -f "$JUNO_LOG_DIR"/*.log
@@ -612,16 +615,52 @@ function cmd_agent_docs() {
 }
 
 # =============================================================================
-# Update: Update all packages to latest versions with pinned versions
+# Update: Update all dependencies (Frontend + Satellite)
 # =============================================================================
 
-function cmd_update_packages() {
-	log_info "📦 Updating packages to latest versions..."
+function cmd_update() {
+	log_info "📦 Updating all dependencies..."
+
+	local failed=0
+
+	# ---- Cargo (Satellite / Rust) ----
+	log_info ""
+	log_info "🦀 Updating Cargo (Rust) dependencies..."
+
+	if [[ -f "Cargo.toml" ]]; then
+		if command -v cargo &>/dev/null; then
+			# --breaking updates beyond semver range (e.g. 0.4.0 → 0.5.0)
+			# Without it, cargo update only finds patch updates within the range.
+			# Requires Rust 1.84+; falls back to regular update if unsupported.
+			if cargo update --breaking 2>&1; then
+				log_success "Cargo dependencies updated (including breaking versions)."
+			elif cargo update 2>&1; then
+				log_warn "cargo update --breaking not supported (Rust <1.84). Used regular update."
+				log_warn "To get major version bumps, upgrade Rust or edit Cargo.toml manually."
+			else
+				log_error "cargo update failed"
+				failed=$((failed + 1))
+			fi
+		else
+			log_warn "cargo not found — skipping Rust dependencies"
+		fi
+	else
+		log_warn "No Cargo.toml found — skipping Rust dependencies"
+	fi
+
+	# ---- Bun (Frontend / Astro) ----
+	log_info ""
+	log_info "🧁 Updating Bun (frontend) dependencies..."
 
 	# Check if package.json exists
 	if [[ ! -f "package.json" ]]; then
 		log_error "package.json not found in current directory"
-		return 1
+		failed=$((failed + 1))
+		if [[ $failed -gt 0 ]]; then
+			log_error "Some updates failed ($failed failures)"
+			return 1
+		fi
+		return 0
 	fi
 
 	# Check if bun is available
@@ -643,62 +682,67 @@ function cmd_update_packages() {
 	outdated_output=$(bun outdated 2>/dev/null || true)
 
 	if [[ -z $outdated_output ]] || [[ $outdated_output == *"All packages are up to date"* ]]; then
-		log_success "All packages are already up to date!"
-		return 0
-	fi
-
-	echo "$outdated_output"
-	echo ""
-
-	log_info "Updating all packages to latest versions..."
-
-	# Update all packages to their latest versions (ignoring semver ranges)
-	# --latest flag updates beyond the semver range in package.json
-	if ! bun update --latest; then
-		log_error "bun update failed"
-		return 1
-	fi
-
-	log_info "Pinning package versions (removing ^ and ~ prefixes)..."
-
-	# Create backup
-	cp package.json package.json.bak
-
-	# Remove ^ and ~ from version strings in dependencies and devDependencies
-	# This pins versions to exact versions
-	if jq '
-		.dependencies = (.dependencies // {} | with_entries(
-			if .value | type == "string" and (startswith("^") or startswith("~"))
-			then .value = (.value | ltrimstr("^") | ltrimstr("~"))
-			else .
-			end
-		)) |
-		.devDependencies = (.devDependencies // {} | with_entries(
-			if .value | type == "string" and (startswith("^") or startswith("~"))
-			then .value = (.value | ltrimstr("^") | ltrimstr("~"))
-			else .
-			end
-		))
-	' package.json >package.json.tmp; then
-		mv package.json.tmp package.json
-		rm -f package.json.bak
-		log_success "Package versions pinned successfully"
+		log_success "All bun packages are already up to date!"
 	else
-		log_error "Failed to pin versions, restoring backup"
-		mv package.json.bak package.json
+		echo "$outdated_output"
+		echo ""
+
+		log_info "Updating all packages to latest versions..."
+
+		# Update all packages to their latest versions (ignoring semver ranges)
+		# --latest flag updates beyond the semver range in package.json
+		if ! bun update --latest; then
+			log_error "bun update failed"
+			failed=$((failed + 1))
+		else
+			log_info "Pinning package versions (removing ^ and ~ prefixes)..."
+
+			# Create backup
+			cp package.json package.json.bak
+
+			# Remove ^ and ~ from version strings in dependencies and devDependencies
+			# This pins versions to exact versions
+			if jq '
+				.dependencies = (.dependencies // {} | with_entries(
+					if .value | type == "string" and (startswith("^") or startswith("~"))
+					then .value = (.value | ltrimstr("^") | ltrimstr("~"))
+					else .
+					end
+				)) |
+				.devDependencies = (.devDependencies // {} | with_entries(
+					if .value | type == "string" and (startswith("^") or startswith("~"))
+					then .value = (.value | ltrimstr("^") | ltrimstr("~"))
+					else .
+					end
+				))
+			' package.json >package.json.tmp; then
+				mv package.json.tmp package.json
+				rm -f package.json.bak
+				log_success "Package versions pinned successfully"
+			else
+				log_error "Failed to pin versions, restoring backup"
+				mv package.json.bak package.json
+				failed=$((failed + 1))
+			fi
+
+			# Reinstall with pinned versions to update lockfile
+			log_info "Reinstalling with pinned versions..."
+			if ! bun install; then
+				log_error "bun install failed after pinning versions"
+				failed=$((failed + 1))
+			fi
+		fi
+	fi
+
+	# ---- Summary ----
+	echo ""
+	if [[ $failed -gt 0 ]]; then
+		log_error "Update completed with $failed failure(s)"
 		return 1
 	fi
 
-	# Reinstall with pinned versions to update lockfile
-	log_info "Reinstalling with pinned versions..."
-	if ! bun install; then
-		log_error "bun install failed after pinning versions"
-		return 1
-	fi
-
-	log_success "All packages updated and pinned to exact versions!"
-	log_info ""
-	log_info "Review changes with: git diff package.json"
+	log_success "All dependencies updated!"
+	log_info "Review changes with: git diff package.json Cargo.lock"
 }
 
 # =============================================================================
@@ -955,10 +999,10 @@ agent-docs | docs)
 	}
 	;;
 
-# Update packages to latest versions with pinned versions
+# Update all dependencies (frontend + satellite)
 update | upgrade)
-	cmd_update_packages || {
-		log_error "Could not update packages."
+	cmd_update || {
+		log_error "Could not update dependencies."
 		exit 19
 	}
 	;;
