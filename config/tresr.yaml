@@ -288,9 +288,9 @@ client:
         extreme: 2.0
     # Global physics (shared by all entities)
     physics:
-      gravity: 1.0
+      gravity: 0.75
       timestep: 0.01667 # 1/60 for 60 FPS
-      game_speed: 1.0 # Global simulation speed multiplier (2.0 = double speed)
+      game_speed: 1.5 # Global simulation speed multiplier (2.0 = double speed)
     # Global visuals
     visuals:
       shadow:
@@ -325,15 +325,13 @@ client:
         medium: 0xffff00
         low: 0xff8800
         critical: 0xff0000
-    # TODO: Get these right, need to test on many maps.
     # Walkable ground plane — the street area where characters walk
     # Values are ratios (0.0–1.0) of canvas dimensions so they scale dynamically.
-    # Original reference: 1280×720 → top_y=600 (0.833), bottom_y=700 (0.972)
     walkable_area:
-      # Set top_y_ratio smaller to walk higher on the screen.
-      top_y_ratio: 0.80
-      # Set bottom_y_ratio larger to walk lower on the screen.
-      bottom_y_ratio: 0.95
+      # Set top_y_ratio lower to walk higher on the screen.
+      top_y_ratio: 0.85
+      # Set bottom_y_ratio higher to walk lower on the screen.
+      bottom_y_ratio: 1.0
       left_x_ratio: 0.0
       right_x_ratio: 1.0
     # ─── Entities ───
@@ -341,8 +339,8 @@ client:
       player:
         health: 1000
         damage: 25
-        speed: 250
-        jump_force: 12
+        speed: 300
+        jump_force: 25
         knockback:
           force: 200 # Knockback impulse when hit
           stun_ms: 300 # Brief immobility during knockback recovery

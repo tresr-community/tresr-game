@@ -391,9 +391,9 @@ export const config: ConfigTypes = {
       }
     },
     "physics": {
-      "gravity": 1,
+      "gravity": 0.75,
       "timestep": 0.01667,
-      "game_speed": 1
+      "game_speed": 1.5
     },
     "visuals": {
       "shadow": {
@@ -432,8 +432,8 @@ export const config: ConfigTypes = {
       }
     },
     "walkable_area": {
-      "top_y_ratio": 0.8,
-      "bottom_y_ratio": 0.95,
+      "top_y_ratio": 0.85,
+      "bottom_y_ratio": 1,
       "left_x_ratio": 0,
       "right_x_ratio": 1
     },
@@ -441,8 +441,8 @@ export const config: ConfigTypes = {
       "player": {
         "health": 1000,
         "damage": 25,
-        "speed": 250,
-        "jump_force": 12,
+        "speed": 300,
+        "jump_force": 25,
         "knockback": {
           "force": 200,
           "stun_ms": 300
@@ -1359,9 +1359,10 @@ export const config: ConfigTypes = {
       },
       {
         "version": "0.2.0",
-        "date": "2026-02-18",
+        "date": "2026-02-21",
         "title": "Mobile Friendly",
         "notes": [
+          "Game speed set to 1.5, because degens have no patience",
           "Mobile support so you can beat-up bankers from the toilet",
           "PWA Mobile support for that poor-man native app feel",
           "Portrait mode blocked — forced landscape, no vertical charts allowed",
@@ -1396,5 +1397,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "91071b450d238dd83939fe0425d8b993f1024ef6057c950981f8574a2eb4e4d5"
+  "configHash": "0aa967310213ec0dcc4f5b57999cde678a7e6566c5c111a6668fca730a6cc3dc"
 };

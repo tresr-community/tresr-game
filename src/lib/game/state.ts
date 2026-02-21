@@ -32,6 +32,7 @@ export interface GameState {
   phase: "survival" | "boss" | "victory" | "lost";
   isPaused: boolean;
   configTampered: boolean;
+  criticalError: string | null;
   superCharge: number;
   bossHp: number;
   bossMaxHp: number;
@@ -48,6 +49,7 @@ const INITIAL_STATE: GameState = {
   phase: "survival",
   isPaused: false,
   configTampered: false,
+  criticalError: null,
   superCharge: 0,
   bossHp: 0,
   bossMaxHp: 0,
@@ -134,6 +136,15 @@ export const gameActions = {
   /** Mark config as tampered (one-way, cannot be un-tampered) */
   setConfigTampered() {
     store.setKey("configTampered", true);
+    store.setKey(
+      "criticalError",
+      "Game configuration has been modified. Gameplay and claims are disabled."
+    );
+  },
+
+  /** Set a critical error message — aborts the game and shows the error dialog */
+  setCriticalError(message: string) {
+    store.setKey("criticalError", message);
   },
 
   /** Set super charge (clamped 0 to max) */

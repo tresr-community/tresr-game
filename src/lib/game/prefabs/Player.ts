@@ -46,7 +46,7 @@ export class Player extends BaseEntity {
     this.speed = playerConfig.speed;
     this.jumpForce = playerConfig.jump_force;
     this.superMaxCharge = playerConfig.super.max_charge;
-    this.gravity = gp.physics.gravity;
+    // gravity is read from config in BaseEntity constructor
     log.info(
       COMPONENT_NAME,
       `Config loaded: HP=${this.hp}, Speed=${this.speed}, Gravity=${this.gravity}, Jump=${this.jumpForce}`

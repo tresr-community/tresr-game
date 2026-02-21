@@ -12,118 +12,89 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
 ---
 
 <div
-  class="pointer-events-none absolute inset-0 flex flex-col justify-between p-2 sm:p-4"
+  class="hud-desktop:p-4 pointer-events-none absolute inset-0 flex flex-col justify-between p-2"
   style="padding-top: max(0.5rem, var(--safe-top)); padding-left: max(0.5rem, var(--safe-left)); padding-right: max(0.5rem, var(--safe-right)); padding-bottom: max(0.5rem, var(--safe-bottom));"
 >
   <!-- Top Bar -->
-  <div class="grid w-full grid-cols-3 items-start gap-1 sm:gap-4">
+  <div class="hud-desktop:gap-4 grid w-full grid-cols-3 items-start gap-1">
     <!-- Left: Stats -->
     <div class="flex justify-start">
       <div
         class="stats bg-base-300/80 border-primary/20 pointer-events-auto border shadow-lg backdrop-blur"
       >
-        <div class="stat p-1 px-2 sm:p-2 sm:px-4">
+        <div class="stat hud-desktop:p-2 hud-desktop:px-4 p-1 px-2">
           <div
-            class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
+            class="stat-title hud-desktop:text-[10px] text-[8px] uppercase opacity-50"
           >
-            <!-- Icon on mobile, text on desktop -->
-            <svg
-              class="inline h-3 w-3 sm:hidden"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-              ></path>
-            </svg>
-            <span class="hidden sm:inline">HP</span>
+            <!-- Emoji on mobile (short viewport), text on desktop (tall viewport) -->
+            <span class="hud-emoji">❤️</span>
+            <span class="hud-label">HP</span>
           </div>
           <div
             id="hud-hp"
-            class="stat-value text-error text-center font-mono text-sm sm:text-xl"
+            class="stat-value text-error hud-desktop:text-xl text-center font-mono text-sm"
           >
             {playerHealth}
           </div>
         </div>
-        <div class="stat border-primary/10 border-l p-1 px-2 sm:p-2 sm:px-4">
+        <div
+          class="stat border-primary/10 hud-desktop:p-2 hud-desktop:px-4 border-l p-1 px-2"
+        >
           <div
-            class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
+            class="stat-title hud-desktop:text-[10px] text-[8px] uppercase opacity-50"
           >
-            <svg
-              class="inline h-3 w-3 sm:hidden"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <polygon
-                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
-              ></polygon>
-            </svg>
-            <span class="hidden sm:inline">Score</span>
+            <span class="hud-emoji">⭐</span>
+            <span class="hud-label">Score</span>
           </div>
           <div
             id="hud-score"
-            class="stat-value text-primary text-center font-mono text-sm sm:text-xl"
+            class="stat-value text-primary hud-desktop:text-xl text-center font-mono text-sm"
           >
             0
           </div>
         </div>
-        <div class="stat border-primary/10 border-l p-1 px-2 sm:p-2 sm:px-4">
+        <div
+          class="stat border-primary/10 hud-desktop:p-2 hud-desktop:px-4 border-l p-1 px-2"
+        >
           <div
-            class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
+            class="stat-title hud-desktop:text-[10px] text-[8px] uppercase opacity-50"
           >
-            <svg
-              class="inline h-3 w-3 sm:hidden"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"
-              ></path>
-            </svg>
-            <span class="hidden sm:inline">Keys</span>
+            <span class="hud-emoji">🔑</span>
+            <span class="hud-label">Keys</span>
           </div>
           <div
             id="hud-keys"
-            class="stat-value text-secondary text-center font-mono text-sm sm:text-xl"
+            class="stat-value text-secondary hud-desktop:text-xl text-center font-mono text-sm"
           >
             0
           </div>
         </div>
         <div
           id="hud-lives-stat"
-          class="stat border-primary/10 hidden border-l p-1 px-2 sm:p-2 sm:px-4"
+          class="stat border-primary/10 hud-desktop:p-2 hud-desktop:px-4 hidden border-l p-1 px-2"
         >
           <div
-            class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
+            class="stat-title hud-desktop:text-[10px] text-[8px] uppercase opacity-50"
           >
-            <svg
-              class="inline h-3 w-3 sm:hidden"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"
-              ></path>
-            </svg>
-            <span class="hidden sm:inline">Lives</span>
+            <span class="hud-emoji">🛡️</span>
+            <span class="hud-label">Lives</span>
           </div>
           <div
             id="hud-lives"
-            class="stat-value text-warning font-mono text-sm sm:text-xl"
+            class="stat-value text-warning hud-desktop:text-xl font-mono text-sm"
           >
             1
           </div>
         </div>
         <!-- Super Charge Radial Ring -->
-        <div class="stat border-primary/10 border-l p-1 px-2 sm:p-2 sm:px-3">
+        <div
+          class="stat border-primary/10 hud-desktop:p-2 hud-desktop:px-3 border-l p-1 px-2"
+        >
           <div
-            class="stat-title text-[8px] uppercase opacity-50 sm:text-[10px]"
+            class="stat-title hud-desktop:text-[10px] text-[8px] uppercase opacity-50"
           >
-            <span class="hidden sm:inline">Super</span>
+            <span class="hud-emoji">⚡</span>
+            <span class="hud-label">Super</span>
           </div>
           <div class="flex items-center justify-center">
             <div
@@ -144,38 +115,28 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
       <div
         class="stats bg-base-300/80 border-error/20 pointer-events-auto border shadow-lg backdrop-blur"
       >
-        <div class="stat p-1 px-3 sm:p-2 sm:px-6">
+        <div class="stat hud-desktop:p-2 hud-desktop:px-6 p-1 px-3">
           <div
-            class="stat-title text-center text-[8px] uppercase opacity-50 sm:text-[10px]"
+            class="stat-title hud-desktop:text-[10px] text-center text-[8px] uppercase opacity-50"
           >
-            <svg
-              class="inline h-3 w-3 sm:hidden"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-            <span class="hidden sm:inline">System Clock</span>
+            <span class="hud-emoji">🕐</span>
+            <span class="hud-label">System Clock</span>
           </div>
           <div
             id="hud-timer-wrapper"
-            class="stat-value text-error flex items-center justify-center font-mono text-sm sm:text-lg lg:text-3xl"
+            class="stat-value text-error hud-desktop:text-lg hud-tall:text-3xl flex items-center justify-center font-mono text-sm"
           >
             <span class="countdown">
               <span
                 id="hud-timer-min"
-                style={`--value:${timerMin};`}
+                style={`--value:${timerMin}; --digits:2;`}
                 aria-label={timerMin}></span>
             </span>
             :
             <span class="countdown">
               <span
                 id="hud-timer-sec"
-                style={`--value:${timerSec};`}
+                style={`--value:${timerSec}; --digits:2;`}
                 aria-label={timerSec}></span>
             </span>
           </div>
@@ -183,11 +144,27 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
       </div>
     </div>
 
-    <!-- Right: Pause Button -->
-    <div class="flex justify-end">
+    <!-- Right: empty (pause moved to bottom center) -->
+    <div></div>
+  </div>
+
+  <!-- Bottom HUD Area: 3-column grid with min-w-0 on sides to guarantee true centering -->
+  <div class="grid w-full grid-cols-3 items-end">
+    <div class="min-w-0"></div>
+
+    <!-- Center: Pause Button + Phase Alerts -->
+    <div
+      class="hud-desktop:gap-2 hud-desktop:pb-4 flex flex-col items-center gap-1 pb-2"
+    >
+      <div
+        id="hud-phase-alert"
+        class="badge badge-primary hud-desktop:badge-lg hud-desktop:text-xs hidden text-[10px] font-bold tracking-widest uppercase"
+      >
+        BOSS INCOMING
+      </div>
       <button
         id="btn-hud-pause"
-        class="btn btn-circle btn-primary btn-sm sm:btn-md pointer-events-auto min-h-[48px] min-w-[48px] border-2 border-white/10 shadow-xl"
+        class="btn btn-circle btn-primary btn-sm hud-desktop:btn-md pointer-events-auto min-h-[48px] min-w-[48px] border-2 border-white/10 shadow-xl"
         title="Pause Mission (ESC)"
       >
         <svg
@@ -202,27 +179,12 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
         </svg>
       </button>
     </div>
-  </div>
-
-  <!-- Bottom HUD Area: 3-column grid with min-w-0 on sides to guarantee true centering -->
-  <div class="grid w-full grid-cols-3 items-end">
-    <div class="min-w-0"></div>
-
-    <!-- Center: Phase Alerts -->
-    <div class="flex flex-col items-center gap-1 pb-2 sm:gap-2 sm:pb-4">
-      <div
-        id="hud-phase-alert"
-        class="badge badge-primary sm:badge-lg hidden text-[10px] font-bold tracking-widest uppercase sm:text-xs"
-      >
-        BOSS INCOMING
-      </div>
-    </div>
 
     <!-- Right: Boss HP Bar (only visible during boss phase) -->
     <div class="flex min-w-0 flex-col items-end justify-end gap-2">
       <div
         id="hud-boss-bar"
-        class="bg-base-300/80 border-error/30 pointer-events-auto hidden w-28 rounded-lg border p-1 shadow-lg backdrop-blur sm:w-40 sm:p-1.5 lg:w-48"
+        class="bg-base-300/80 border-error/30 hud-desktop:w-40 hud-desktop:p-1.5 hud-tall:w-48 pointer-events-auto hidden w-28 rounded-lg border p-1 shadow-lg backdrop-blur"
       >
         <div class="flex items-center justify-between">
           <span class="text-error text-[9px] font-bold uppercase opacity-80"
@@ -407,3 +369,92 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
     {once: true}
   );
 </script>
+
+<style>
+  /*
+   * Height-based responsive breakpoints for landscape-only game.
+   * Mobile landscape: viewport height ≤ ~500px → show emoji labels
+   * Desktop/tablet:   viewport height ≥ 520px  → show text labels
+   */
+  .hud-emoji {
+    display: inline;
+  }
+  .hud-label {
+    display: none;
+  }
+
+  @media (min-height: 520px) {
+    .hud-emoji {
+      display: none;
+    }
+    .hud-label {
+      display: inline;
+    }
+
+    /* Upsize padding, text, gaps at desktop height */
+    .hud-desktop\:p-2 {
+      padding: 0.5rem;
+    }
+    .hud-desktop\:p-4 {
+      padding: 1rem;
+    }
+    .hud-desktop\:px-3 {
+      padding-left: 0.75rem;
+      padding-right: 0.75rem;
+    }
+    .hud-desktop\:px-4 {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+    .hud-desktop\:px-6 {
+      padding-left: 1.5rem;
+      padding-right: 1.5rem;
+    }
+    .hud-desktop\:gap-2 {
+      gap: 0.5rem;
+    }
+    .hud-desktop\:gap-4 {
+      gap: 1rem;
+    }
+    .hud-desktop\:pb-4 {
+      padding-bottom: 1rem;
+    }
+    .hud-desktop\:text-\[10px\] {
+      font-size: 10px;
+    }
+    .hud-desktop\:text-xs {
+      font-size: 0.75rem;
+      line-height: 1rem;
+    }
+    .hud-desktop\:text-lg {
+      font-size: 1.125rem;
+      line-height: 1.75rem;
+    }
+    .hud-desktop\:text-xl {
+      font-size: 1.25rem;
+      line-height: 1.75rem;
+    }
+    .hud-desktop\:w-40 {
+      width: 10rem;
+    }
+    .hud-desktop\:p-1\.5 {
+      padding: 0.375rem;
+    }
+    .hud-desktop\:badge-lg {
+      /* daisyUI badge-lg */
+    }
+    .hud-desktop\:btn-md {
+      /* daisyUI btn-md */
+    }
+  }
+
+  @media (min-height: 768px) {
+    .hud-tall\:text-3xl {
+      font-size: 1.875rem;
+      line-height: 2.25rem;
+    }
+    .hud-tall\:w-48 {
+      width: 12rem;
+    }
+  }
+</style>

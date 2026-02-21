@@ -57,7 +57,7 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
   // 2.5D Physics
   public z: number = 0;
   public vz: number = 0;
-  public gravity: number = 0.8;
+  public gravity!: number; // Set from YAML config in constructor — no hardcoded default
   public groundY: number = 0;
 
   /** Reference timestep for frame-rate-independent Z-axis physics. */
@@ -95,6 +95,9 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
 
     // Read reference timestep from config (zero hardcoded values policy)
     this.referenceDt = this.config.gameplay.physics.timestep;
+
+    // Read global gravity from config (subclasses can override if needed)
+    this.gravity = this.config.gameplay.physics.gravity;
 
     // Feet-anchored origin: x-center, y-bottom.
     // groundY represents where the character's feet touch the ground.
