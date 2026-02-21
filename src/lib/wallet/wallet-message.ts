@@ -28,13 +28,18 @@
  */
 export function buildWalletLinkMessage(
   principalId: string,
-  address: string
+  address: string,
+  domain?: string
 ): string {
   const timestamp = Math.floor(Date.now() / 1000);
   const nonce = crypto.randomUUID();
+  const origin =
+    domain ??
+    (typeof window !== "undefined" ? window.location.origin : "unknown");
 
   return [
     "TRESR Wallet Link",
+    `Domain: ${origin}`,
     `Principal: ${principalId}`,
     `Wallet: ${address}`,
     `Timestamp: ${timestamp}`,
