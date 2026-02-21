@@ -202,6 +202,7 @@ fn verify_wallet_signature(
 /// Expected format (newline-separated):
 /// ```text
 /// TRESR Wallet Link
+/// Domain: {origin}
 /// Principal: {principal}
 /// Wallet: {address}
 /// Timestamp: {unix_secs}
@@ -214,8 +215,8 @@ fn validate_wallet_link_message(
 ) -> Result<(), String> {
     let lines: Vec<&str> = message.lines().collect();
 
-    if lines.len() < 5 {
-        return Err("Wallet link message has fewer than 5 lines".to_string());
+    if lines.len() < 6 {
+        return Err("Wallet link message has fewer than 6 lines".to_string());
     }
 
     // Line 0: domain separator
@@ -226,24 +227,35 @@ fn validate_wallet_link_message(
         ));
     }
 
-    // Line 1: principal binding
-    let msg_principal = lines[1]
+    // Line 1: origin domain binding
+    let msg_domain = lines[1]
+        .strip_prefix("Domain: ")
+        .ok_or("Missing 'Domain:' field in wallet link message")?;
+    if !config::ALLOWED_ORIGINS.contains(&msg_domain) {
+        return Err(format!(
+            "Origin '{}' is not in the allowed origins list",
+            msg_domain
+        ));
+    }
+
+    // Line 2: principal binding
+    let msg_principal = lines[2]
         .strip_prefix("Principal: ")
         .ok_or("Missing 'Principal:' field in wallet link message")?;
     if msg_principal != expected_principal {
         return Err("Principal in message does not match caller".to_string());
     }
 
-    // Line 2: wallet address binding
-    let msg_wallet = lines[2]
+    // Line 3: wallet address binding
+    let msg_wallet = lines[3]
         .strip_prefix("Wallet: ")
         .ok_or("Missing 'Wallet:' field in wallet link message")?;
     if msg_wallet.to_lowercase() != expected_address.to_lowercase() {
         return Err("Wallet address in message does not match claimed address".to_string());
     }
 
-    // Line 3: timestamp freshness
-    let ts_str = lines[3]
+    // Line 4: timestamp freshness
+    let ts_str = lines[4]
         .strip_prefix("Timestamp: ")
         .ok_or("Missing 'Timestamp:' field in wallet link message")?;
     let ts: u64 = ts_str
@@ -261,8 +273,8 @@ fn validate_wallet_link_message(
         return Err("Wallet link message has expired (>5 minutes old)".to_string());
     }
 
-    // Line 4: nonce (format check only — not stored server-side)
-    if !lines[4].starts_with("Nonce: ") {
+    // Line 5: nonce (format check only — not stored server-side)
+    if !lines[5].starts_with("Nonce: ") {
         return Err("Missing 'Nonce:' field in wallet link message".to_string());
     }
 

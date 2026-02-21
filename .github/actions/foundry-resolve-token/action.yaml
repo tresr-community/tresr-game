@@ -68,7 +68,10 @@ runs:
         # ──────────────────────────────────────────────
         echo "🔍 Comparing RonToken bytecode (local vs on-chain)..."
 
-        ON_CHAIN_TOKEN_CODE=$(cast code "$TOKEN_ADDR" --rpc-url "$RPC_URL" 2>/dev/null || true)
+        ON_CHAIN_TOKEN_CODE=$(cast code "$TOKEN_ADDR" --rpc-url "$RPC_URL" --block finalized 2>&1) || {
+          echo "::warning::cast code failed for token: $ON_CHAIN_TOKEN_CODE"
+          ON_CHAIN_TOKEN_CODE=""
+        }
         if [[ -z "$ON_CHAIN_TOKEN_CODE" || "$ON_CHAIN_TOKEN_CODE" == "0x" ]]; then
           echo "::warning::Token address has no on-chain code — treating as first deploy"
           echo "mode=deploy" >> "$GITHUB_OUTPUT"
@@ -105,7 +108,10 @@ runs:
         else
           echo "🔍 Comparing TresrFaucet bytecode (local vs on-chain)..."
 
-          ON_CHAIN_FAUCET_CODE=$(cast code "$FAUCET_ADDR" --rpc-url "$RPC_URL" 2>/dev/null || true)
+          ON_CHAIN_FAUCET_CODE=$(cast code "$FAUCET_ADDR" --rpc-url "$RPC_URL" --block finalized 2>&1) || {
+            echo "::warning::cast code failed for faucet: $ON_CHAIN_FAUCET_CODE"
+            ON_CHAIN_FAUCET_CODE=""
+          }
           if [[ -z "$ON_CHAIN_FAUCET_CODE" || "$ON_CHAIN_FAUCET_CODE" == "0x" ]]; then
             echo "::warning::Faucet address has no on-chain code — treating as deploy needed"
             FAUCET_MATCH=false
@@ -150,7 +156,7 @@ runs:
         set +e
         forge script script/DeployToken.s.sol:DeployTestToken \
           --rpc-url "$RPC_URL" \
-          --dry-run \
+          --skip-simulation \
           -vvvv 2>&1 | tee "$DRY_RUN_LOG"
         DRY_EXIT=$?
         set -e
@@ -179,6 +185,8 @@ runs:
         forge script script/DeployToken.s.sol:DeployTestToken \
           --rpc-url ${{ inputs.rpc-url }} \
           --broadcast \
+          --slow \
+          --skip-simulation \
           --verify \
           --etherscan-api-key "$SNOWTRACE_API_KEY" \
           -vvvv
