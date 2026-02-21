@@ -31,6 +31,7 @@ declare module "/config-client.json" {
           burn_rate: number;
           chain_id: number;
           rpc_urls: string[];
+          allowed_origins: string[];
           token_ticker: string;
           tresr_token_contract: string;
           deployer_address: string;
@@ -42,6 +43,7 @@ declare module "/config-client.json" {
           burn_rate: number;
           chain_id: number;
           rpc_urls: string[];
+          allowed_origins: string[];
           token_ticker: string;
           tresr_token_contract: string;
           oracle_address: string;
@@ -53,6 +55,7 @@ declare module "/config-client.json" {
           burn_rate: number;
           chain_id: number;
           rpc_urls: string[];
+          allowed_origins: string[];
           token_ticker: string;
           tresr_token_contract: string;
           oracle_address: string;
@@ -707,6 +710,7 @@ declare module "../../../public/config-client.json" {
           burn_rate: number;
           chain_id: number;
           rpc_urls: string[];
+          allowed_origins: string[];
           token_ticker: string;
           tresr_token_contract: string;
           deployer_address: string;
@@ -718,6 +722,7 @@ declare module "../../../public/config-client.json" {
           burn_rate: number;
           chain_id: number;
           rpc_urls: string[];
+          allowed_origins: string[];
           token_ticker: string;
           tresr_token_contract: string;
           oracle_address: string;
@@ -729,6 +734,7 @@ declare module "../../../public/config-client.json" {
           burn_rate: number;
           chain_id: number;
           rpc_urls: string[];
+          allowed_origins: string[];
           token_ticker: string;
           tresr_token_contract: string;
           oracle_address: string;
