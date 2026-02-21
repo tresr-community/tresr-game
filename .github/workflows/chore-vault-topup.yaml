@@ -15,6 +15,7 @@ env:
   NIXPKGS_ALLOW_UNFREE: 1
   SECRETSPEC_PROVIDER: env
   ENVIRONMENT: Testnet
+  FOUNDRY_DISABLE_NIGHTLY_WARNING: 1
 
 jobs:
   vault-topup:
@@ -89,6 +90,7 @@ jobs:
         uses: ./.github/actions/foundry-vault-topup
         env:
           DEPLOYER_PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          SNOWTRACE_API_KEY: ${{ secrets.SNOWTRACE_API_KEY }}
         with:
           vault-address: ${{ steps.read_config.outputs.VAULT_ADDRESS }}
           token-address: ${{ steps.read_config.outputs.TOKEN_ADDRESS }}

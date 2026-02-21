@@ -95,6 +95,7 @@ runs:
           "$(cast to-wei "$TOPUP_AMOUNT" ether)" \
           --rpc-url "$RPC_URL" \
           --private-key "$DEPLOYER_PRIVATE_KEY" \
+          --confirmations 2 \
           --json | jq -r '.transactionHash')
 
         echo "✅ Mint tx: ${TX_HASH}"
@@ -114,12 +115,31 @@ runs:
       run: |
         cd contracts
 
-        BALANCE_WEI=$(cast call "$TOKEN_ADDRESS" \
-          "balanceOf(address)(uint256)" \
-          "$VAULT_ADDRESS" \
-          --rpc-url "$RPC_URL")
+        echo "Waiting for balance to reflect the mint…"
 
-        BALANCE_ETHER=$(cast to-unit "$BALANCE_WEI" ether)
+        MAX_ATTEMPTS=30
+        SLEEP_SECONDS=10
 
-        echo "✅ New vault balance: ${BALANCE_ETHER} $tRON"
-        echo "BALANCE_ETHER=${BALANCE_ETHER}" >> "$GITHUB_OUTPUT"
+        for ((i=1; i<=MAX_ATTEMPTS; i++)); do
+          BALANCE_WEI=$(cast call "$TOKEN_ADDRESS" \
+            "balanceOf(address)(uint256)" \
+            "$VAULT_ADDRESS" \
+            --rpc-url "$RPC_URL")
+
+          BALANCE_ETHER=$(cast to-unit "$BALANCE_WEI" ether)
+
+          if (( $(echo "$BALANCE_ETHER > 0" | bc -l) )); then
+            echo "✅ New vault balance: ${BALANCE_ETHER} $tRON"
+            echo "BALANCE_ETHER=${BALANCE_ETHER}" >> "$GITHUB_OUTPUT"
+            break
+          fi
+
+          echo "⏳ Attempt ${i}/${MAX_ATTEMPTS}: balance still ${BALANCE_ETHER}, retrying in ${SLEEP_SECONDS}s…"
+          sleep "$SLEEP_SECONDS"
+        done
+
+        if (( $(echo "$BALANCE_ETHER <= 0" | bc -l) )); then
+          echo "❌ Balance did not update after $((MAX_ATTEMPTS * SLEEP_SECONDS))s"
+          echo "BALANCE_ETHER=${BALANCE_ETHER}" >> "$GITHUB_OUTPUT"
+          exit 1
+        fi
