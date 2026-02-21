@@ -155,24 +155,29 @@ jobs:
           cargo generate-lockfile
           juno functions build
 
+      - id: build_hosting
+        name: Build Hosting
+        shell: devenv shell --quiet bash -- -e {0}
+        run: bun run build -- --mode production
+
       - id: deploy_hosting
         name: Deploy Hosting
-        shell: devenv shell --quiet bash -- -e {0}
-        run: |
-          juno hosting deploy --mode production
+        uses: junobuild/juno-action@main
+        with:
+          args: hosting deploy --mode production
 
       - id: apply_config
         name: Apply Configuration
-        shell: devenv shell --quiet bash -- -e {0}
-        run: |
-          juno config apply --force --mode production
+        uses: junobuild/juno-action@main
+        with:
+          args: config apply --force --mode production
 
       - id: publish_functions
         name: Publish Functions
         if: steps.detect_function_changes.outputs.changed == 'true'
-        shell: devenv shell --quiet bash -- -e {0}
-        run: |
-          juno functions publish --mode production
+        uses: junobuild/juno-action@full
+        with:
+          args: functions publish --mode production
 
       - id: get_oracle_address
         name: Get Oracle Address
