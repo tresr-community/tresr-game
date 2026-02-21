@@ -251,20 +251,62 @@ export function subscribeToProvider(
   });
 }
 
+// Track the active connection attempt for external cancellation.
+// Only one connection attempt can be active at a time.
+let pendingConnect: {
+  timeoutId: ReturnType<typeof setTimeout>;
+  unsubscribe: () => void;
+  reject: (reason: Error) => void;
+  navigationCleanup: (() => void) | null;
+} | null = null;
+
+/**
+ * Cancel any pending connectWallet() attempt.
+ *
+ * Clears the timeout, unsubscribes from AppKit events, removes the
+ * navigation listener, and rejects the pending Promise.
+ * Safe to call even if no connection is pending (no-op).
+ */
+export function cancelConnectWallet(): void {
+  if (!pendingConnect) return;
+  const {timeoutId, unsubscribe, reject, navigationCleanup} = pendingConnect;
+  pendingConnect = null;
+  clearTimeout(timeoutId);
+  unsubscribe();
+  if (navigationCleanup) navigationCleanup();
+  reject(new Error("Connection cancelled"));
+}
+
+/**
+ * Clear the pendingConnect tracker without rejecting.
+ * Used internally when the Promise resolves or rejects normally.
+ */
+function clearPendingConnect(): void {
+  if (!pendingConnect) return;
+  const {timeoutId, unsubscribe, navigationCleanup} = pendingConnect;
+  pendingConnect = null;
+  clearTimeout(timeoutId);
+  unsubscribe();
+  if (navigationCleanup) navigationCleanup();
+}
+
 /**
  * Wait for the user to connect a wallet.
  *
  * Opens the modal and returns a promise that resolves when connected
- * or rejects if the user cancels.
+ * or rejects if the user cancels or navigates away.
  */
 export function connectWallet(): Promise<string> {
+  // Cancel any previous pending attempt
+  cancelConnectWallet();
+
   return new Promise((resolve, reject) => {
     const appKit = getAppKit();
 
     // Timeout after 5 minutes — always reject to avoid hanging forever
     const timeoutId = setTimeout(
       () => {
-        unsubscribe();
+        clearPendingConnect();
         reject(new Error("Connection timeout"));
       },
       5 * 60 * 1000
@@ -275,9 +317,8 @@ export function connectWallet(): Promise<string> {
       log.debug(COMPONENT_NAME, "Connection event:", event);
 
       if (event.data.event === "CONNECT_SUCCESS") {
-        clearTimeout(timeoutId);
-        unsubscribe();
         const address = appKit.getAddressByChainNamespace("eip155");
+        clearPendingConnect();
         if (address) {
           log.info(COMPONENT_NAME, `Connected: ${address}`);
           trackWalletConnect(address);
@@ -288,8 +329,7 @@ export function connectWallet(): Promise<string> {
       } else if (event.data.event === "MODAL_CLOSE") {
         // Check if we're connected after modal closes
         const address = appKit.getAddressByChainNamespace("eip155");
-        clearTimeout(timeoutId);
-        unsubscribe();
+        clearPendingConnect();
         if (address) {
           log.info(COMPONENT_NAME, `Connected: ${address}`);
           resolve(address);
@@ -299,10 +339,24 @@ export function connectWallet(): Promise<string> {
       }
     });
 
+    // Register self-cleaning navigation listener so Astro page transitions
+    // automatically cancel the pending connection attempt.
+    let navigationCleanup: (() => void) | null = null;
+    if (typeof document !== "undefined") {
+      const onNavigate = () => cancelConnectWallet();
+      document.addEventListener("astro:before-preparation", onNavigate, {
+        once: true,
+      });
+      navigationCleanup = () =>
+        document.removeEventListener("astro:before-preparation", onNavigate);
+    }
+
+    // Store handles for external cancellation
+    pendingConnect = {timeoutId, unsubscribe, reject, navigationCleanup};
+
     // Open the modal
     appKit.open().catch((err) => {
-      clearTimeout(timeoutId);
-      unsubscribe();
+      clearPendingConnect();
       reject(err);
     });
   });

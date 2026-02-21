@@ -111,6 +111,7 @@ declare module "/config-client.json" {
           height: number;
           offset_x: number;
           offset_y: number;
+          angle: number;
         };
         damage_tint_duration: number;
       };
@@ -196,6 +197,7 @@ declare module "/config-client.json" {
         enemy: {          health: number;
           damage: number;
           speed: number;
+          flee_speed_mult: number;
           knockback: {            force: number;
             stun_ms: number;
           };
@@ -785,6 +787,7 @@ declare module "../../../public/config-client.json" {
           height: number;
           offset_x: number;
           offset_y: number;
+          angle: number;
         };
         damage_tint_duration: number;
       };
@@ -870,6 +873,7 @@ declare module "../../../public/config-client.json" {
         enemy: {          health: number;
           damage: number;
           speed: number;
+          flee_speed_mult: number;
           knockback: {            force: number;
             stun_ms: number;
           };

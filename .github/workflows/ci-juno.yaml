@@ -75,6 +75,11 @@ jobs:
         run: |
           bun run lint
 
+      - id: test
+        name: Test
+        run: |
+          bun test
+
       - id: build_hosting
         name: Build Hosting
         run: |
@@ -92,7 +97,7 @@ jobs:
         uses: ./.github/actions/report-status
         with:
           result: ${{ steps.build_hosting.outcome }}
-          success-message: "Juno CI passed: lint, type-check, build"
+          success-message: "Juno CI passed: lint, test, type-check, build"
           failure-message: "Juno CI failed"
           github-token: ${{ secrets.GITHUB_TOKEN }}
           workflow-name: ${{ github.workflow }}

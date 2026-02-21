@@ -51,6 +51,7 @@ let
     claude-code
     gemini-cli
     tailwindcss_4
+    antigravity
   ];
 
   devPackages =
@@ -191,7 +192,15 @@ in
   claude.code = {
     enable = true;
     mcpServers = {
+      avalanche = {
+        type = "http";
+        url = "https://build.avax.network/api/mcp";
+      };
       devenv = {
+        type = "http";
+        url = "https://mcp.devenv.sh";
+      };
+      devenv-cli = {
         type = "stdio";
         command = "devenv";
         args = [ "mcp" ];

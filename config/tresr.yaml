@@ -40,13 +40,16 @@ server:
           write: "managed"
           memory: "stable"
   anti_cheat:
-    ban_durations_hours: [24, 72, 168]
+    ban_durations_hours:
+      - 24
+      - 72
+      - 168
     permanent_after_offence: 4
     ban_reasons:
       - config_hash_mismatch
+      - is_a_sore_loser
       - replay_validation_failure
       - score_exceeds_maximum
-      - is_a_sore_loser
       - wallet_tampering
   highscore:
     score_ttl_hours: 24
@@ -98,11 +101,11 @@ client:
     name: TRESR Game
     tagline: Collect Keys. Fight Enemies. Claim the $TRESR.
     #footer_text: Powered by the Internet Computer and Avalanche Blockchain.
-    footer_text: Economy powered by the Avalanche Blockchain.
+    footer_text: Powered by Avalanche 🔺
     narration_text:
       intro: |
         Most days, Ron Jay embraces the degenerate life
-        farming airdrops and apeing into meme coins.
+        farming airdrops and aping into meme coins.
 
         But today?
 
@@ -111,7 +114,7 @@ client:
 
         Welcome, to the Crypto Cage...
     loader_messages:
-      - Apeing In...
+      - Aping In...
       - Boarding Yacht...
       - Bridging Assets...
       - Checking Mempool...
@@ -125,7 +128,7 @@ client:
       - Preparing to Rug...
       - Pumping Bags...
       - Stacking Sats...
-      - Steady on lads, deploying capital...
+      - Deploying more capital - steady lads...
       - Updating Roadmap...
       - Yield Farming...
     custom_notifications:
@@ -241,13 +244,13 @@ client:
     sfx: []
   # Game display configuration
   display:
-    width: 1280
-    height: 720
-    design_height: 720 # Baseline height that all scaleFactor values are authored against
+    width: 1920
+    height: 1080
+    design_height: 1080 # Baseline height that all scaleFactor values are authored against
     background_color: "#000000"
     pixel_art: true # use nearest-neighbor scaling for pixel art
   gameplay:
-    time_limit_seconds: 300
+    time_limit_seconds: 180 # 3 minutes of Bear Market until Bull Market
     max_keys: 150
     # Difficulty escalation — scales spawn rates over the survival phase
     difficulty_escalation:
@@ -255,8 +258,8 @@ client:
       interval_seconds: 60 # Escalate every N seconds
       enemy_spawn_multiplier: 0.85 # Multiply enemy spawn delay by this each step
       bomb_spawn_multiplier: 0.90 # Multiply bomb spawn delay by this each step
-      min_enemy_spawn_ms: 800 # Floor for enemy spawn delay
-      min_bomb_spawn_ms: 2000 # Floor for bomb spawn delay
+      min_enemy_spawn_ms: 750 # Floor for enemy spawn delay
+      min_bomb_spawn_ms: 2500 # Floor for bomb spawn delay
     # Guest rate limiting
     guest:
       enabled: true # Enable/Disable the "normie mode"
@@ -269,7 +272,7 @@ client:
     # Reference: docs/fomo.md
     vault:
       # Below this cap, paid mode is locked out.
-      minimum_cap: 500
+      minimum_cap: 1000
       tiers:
         # 500 - 5,000 TRESR
         easy: 5000
@@ -279,24 +282,25 @@ client:
         hard: 100000
         # > 100,000 = extreme
       difficulty_multipliers:
-        easy: 0.6
+        easy: 0.5
         normal: 1.0
         hard: 1.5
         extreme: 2.0
     # Global physics (shared by all entities)
     physics:
-      gravity: 0.8
+      gravity: 0.75
       timestep: 0.01667 # 1/60 for 60 FPS
-      game_speed: 1.0 # Global simulation speed multiplier (2.0 = double speed)
+      game_speed: 1.5 # Global simulation speed multiplier (2.0 = double speed)
     # Global visuals
     visuals:
       shadow:
         color: 0x000000
         opacity: 0.35
-        width: 70
-        height: 16
+        width: 105
+        height: 24
         offset_x: 0 # Horizontal shadow offset (px) — 0 = directly under character
-        offset_y: 2 # Vertical shadow offset (px) — small nudge so shadow sits at feet
+        offset_y: -45 # Negative to pull shadow UP into sprite — compensates for transparent padding below drawn feet in 512px frames
+        angle: 10 # Shadow cast angle (degrees) — positive = cast right, simulates top-left light
       damage_tint_duration: 100 # Red tint flash duration (ms), applies to all entities
     # Scoring (cross-entity, stays flat)
     # Points awarded for each in-game action, used to calculate the player's final score.
@@ -312,24 +316,22 @@ client:
         medium: 0.50
         low: 0.25
         critical: 0.10
-      width: 40
-      height: 4
-      offset_y: -10
+      width: 60
+      height: 6
+      offset_y: -15
       background_color: 0x000000
       colors:
         high: 0x00ff00
         medium: 0xffff00
         low: 0xff8800
         critical: 0xff0000
-    # TODO: Get these right, need to test on many maps.
     # Walkable ground plane — the street area where characters walk
     # Values are ratios (0.0–1.0) of canvas dimensions so they scale dynamically.
-    # Original reference: 1280×720 → top_y=600 (0.833), bottom_y=700 (0.972)
     walkable_area:
-      # Set top_y_ratio smaller to walk higher on the screen.
-      top_y_ratio: 0.833
-      # Set bottom_y_ratio larger to walk lower on the screen.
-      bottom_y_ratio: 0.972
+      # Set top_y_ratio lower to walk higher on the screen.
+      top_y_ratio: 0.85
+      # Set bottom_y_ratio higher to walk lower on the screen.
+      bottom_y_ratio: 1.0
       left_x_ratio: 0.0
       right_x_ratio: 1.0
     # ─── Entities ───
@@ -337,8 +339,8 @@ client:
       player:
         health: 1000
         damage: 25
-        speed: 250
-        jump_force: 12
+        speed: 300
+        jump_force: 25
         knockback:
           force: 200 # Knockback impulse when hit
           stun_ms: 300 # Brief immobility during knockback recovery
@@ -392,6 +394,7 @@ client:
         health: 100
         damage: 10
         speed: 100
+        flee_speed_mult: 1.5 # Multiplier applied to base speed when fleeing off-screen
         knockback:
           force: 300 # Knockback impulse when hit by player
           stun_ms: 200 # Brief immobility during knockback recovery
@@ -460,13 +463,13 @@ client:
             retarget_time: 4
             attack_damage: 10
           weights:
-            direct: 25
-            flanker: 20
-            cautious: 15
-            swarm: 15
-            erratic: 10
-            passive: 10
-            retardio: 5
+            direct: 100 # TODO: Test
+            flanker: 0 # TODO: Test
+            cautious: 0 # TODO: Test
+            swarm: 0
+            erratic: 0 # TODO: Test
+            passive: 0 # TODO: Test
+            retardio: 0 # TODO: Test
         animations:
           death_delay: 500 # Delay before kill() after hurt animation (ms)
         spawner:
@@ -691,7 +694,7 @@ client:
 
     # Hero character (Ron Jay)
     hero:
-      scaleFactor: 0.75
+      scaleFactor: 1.5
       anims:
         - name: idle
           frames: 6
@@ -737,7 +740,7 @@ client:
           frameHeight: 512
     # Super Attack Projectile (spinning coin hadouken)
     super:
-      scaleFactor: 0.50
+      scaleFactor: 0.75
       anims:
         - name: spin
           frames: 5
@@ -748,7 +751,7 @@ client:
           frameHeight: 512
     # Boss character (Gary Gensler)
     boss:
-      scaleFactor: 1.25
+      scaleFactor: 2.0
       anims:
         - name: idle
           frames: 6
@@ -789,7 +792,7 @@ client:
     # Each one uses the same animations/mechanics.
     # Per-anim paths use {i} placeholder for variant number.
     enemies:
-      scaleFactor: 0.75
+      scaleFactor: 1.5
       count: 5
       anims:
         - name: idle
@@ -839,7 +842,7 @@ client:
           frameHeight: 512
     # TRESR-BOT companion (AI ally spawned from powerup pickup)
     tresr_bot:
-      scaleFactor: 0.75
+      scaleFactor: 1.5
       anims:
         - name: idle
           frames: 6
@@ -872,7 +875,7 @@ client:
     # Items (per-animation sheets)
     items:
       key:
-        scaleFactor: 0.25
+        scaleFactor: 0.5
         anims:
           - name: idle
             frames: 5
@@ -882,7 +885,7 @@ client:
             frameWidth: 256
             frameHeight: 512
       bomb:
-        scaleFactor: 0.25
+        scaleFactor: 0.5
         anims:
           - name: idle
             frames: 5
@@ -892,7 +895,7 @@ client:
             frameWidth: 256
             frameHeight: 512
       loader:
-        scaleFactor: 1.0
+        scaleFactor: 1.5
         anims:
           - name: idle
             frames: 5
@@ -902,7 +905,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       chest:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 5
@@ -926,7 +929,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_1:
-        scaleFactor: 0.25
+        scaleFactor: 0.5
         anims:
           - name: idle
             frames: 4
@@ -936,7 +939,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_2:
-        scaleFactor: 0.25
+        scaleFactor: 0.5
         anims:
           - name: idle
             frames: 4
@@ -946,7 +949,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_3:
-        scaleFactor: 0.25
+        scaleFactor: 0.5
         anims:
           - name: idle
             frames: 4
@@ -956,7 +959,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_4:
-        scaleFactor: 0.25
+        scaleFactor: 0.5
         anims:
           - name: idle
             frames: 4
@@ -966,7 +969,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_5:
-        scaleFactor: 0.25
+        scaleFactor: 0.5
         anims:
           - name: idle
             frames: 4
@@ -976,7 +979,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_1:
-        scaleFactor: 0.25
+        scaleFactor: 0.5
         anims:
           - name: idle
             frames: 4
@@ -986,7 +989,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_2:
-        scaleFactor: 0.25
+        scaleFactor: 0.5
         anims:
           - name: idle
             frames: 4
@@ -996,7 +999,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_3:
-        scaleFactor: 0.25
+        scaleFactor: 0.5
         anims:
           - name: idle
             frames: 4
@@ -1006,7 +1009,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_4:
-        scaleFactor: 0.25
+        scaleFactor: 0.5
         anims:
           - name: idle
             frames: 4
@@ -1016,7 +1019,7 @@ client:
             frameWidth: 512
             frameHeight: 512
       powerup_5:
-        scaleFactor: 0.25
+        scaleFactor: 0.5
         anims:
           - name: idle
             frames: 4

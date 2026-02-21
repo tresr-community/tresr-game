@@ -62,9 +62,13 @@ const {title, description = "A 2.5D platformer for the Tresr Community"} =
     <script is:inline>
       // Portrait detection — runs immediately, no module loading needed.
       // Uses both matchMedia AND dimension check for reliability across all devices.
+      // Debounced + deduplicated: only fires tresr:portrait-change when state actually changes.
       (function () {
         var warning = document.getElementById("portrait-warning");
         if (!warning) return;
+
+        var lastPortrait = null; // null = not yet determined
+        var debounceTimer = null;
 
         function isTouchDevice() {
           return "ontouchstart" in window || navigator.maxTouchPoints > 0;
@@ -84,29 +88,36 @@ const {title, description = "A 2.5D platformer for the Tresr Community"} =
           return false;
         }
 
-        function check() {
-          if (isPortrait()) {
+        function applyPortrait(portrait) {
+          // Deduplicate: skip if state hasn't changed
+          if (portrait === lastPortrait) return;
+          lastPortrait = portrait;
+
+          if (portrait) {
             warning.classList.remove("hidden");
             warning.classList.add("flex");
-            document.dispatchEvent(
-              new CustomEvent("tresr:portrait-change", {
-                detail: {portrait: true},
-              })
-            );
           } else {
             warning.classList.add("hidden");
             warning.classList.remove("flex");
-            document.dispatchEvent(
-              new CustomEvent("tresr:portrait-change", {
-                detail: {portrait: false},
-              })
-            );
           }
+          document.dispatchEvent(
+            new CustomEvent("tresr:portrait-change", {detail: {portrait}})
+          );
         }
 
-        // Check on load, resize, and orientation change
+        function check() {
+          applyPortrait(isPortrait());
+        }
+
+        // Debounced resize handler — coalesces rapid resize events into one call
+        function debouncedCheck() {
+          if (debounceTimer !== null) clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(check, 150);
+        }
+
+        // Check immediately on load (no debounce needed for initial state)
         check();
-        window.addEventListener("resize", check);
+        window.addEventListener("resize", debouncedCheck);
         window.addEventListener("orientationchange", function () {
           // Delay slightly — some browsers update dimensions after the event
           setTimeout(check, 100);

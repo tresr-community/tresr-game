@@ -105,9 +105,9 @@ export class Boss extends BaseEntity {
 
     const gp = this.config.gameplay;
     // Use real delta time from MainScene (falls back to reference timestep)
-    const frameDt = dt ?? BaseEntity.REFERENCE_DT;
+    const frameDt = dt ?? this.referenceDt;
     const bossConfig = gp.entities.boss;
-    const descentSpeed = bossConfig.descent.speed;
+    const descentSpeed = bossConfig.descent.speed * this.resolutionScale;
 
     if (this.bossState === "descending") {
       this.groundY += descentSpeed;
@@ -173,7 +173,7 @@ export class Boss extends BaseEntity {
   private updateChase(dt: number) {
     if (!this.target) return;
 
-    const speed = this.speed;
+    const speed = this.speed * this.resolutionScale;
     const targetGroundY =
       "groundY" in this.target
         ? (this.target as BaseEntity).groundY
@@ -296,7 +296,10 @@ export class Boss extends BaseEntity {
     const bossConfig = this.config.gameplay.entities.boss;
 
     if (this.currentAttack === "charge") {
-      const chargeSpeed = this.baseSpeed * bossConfig.attacks.charge.speed_mult;
+      const chargeSpeed =
+        this.baseSpeed *
+        bossConfig.attacks.charge.speed_mult *
+        this.resolutionScale;
       this.x += this.chargeDirection.x * chargeSpeed * dt;
       this.groundY += this.chargeDirection.y * chargeSpeed * dt;
 

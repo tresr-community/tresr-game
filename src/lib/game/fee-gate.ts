@@ -22,6 +22,16 @@ let hmacKey: CryptoKey | null = null;
 let feeGateResolve: (() => void) | null = null;
 let feeGateReject: ((reason: Error) => void) | null = null;
 
+// Module-level timer ID so all cleanup paths can clear it
+let feeGateTimerId: ReturnType<typeof setTimeout> | null = null;
+
+function clearFeeGateTimer(): void {
+  if (feeGateTimerId !== null) {
+    clearTimeout(feeGateTimerId);
+    feeGateTimerId = null;
+  }
+}
+
 async function generateHmacKey(): Promise<CryptoKey> {
   const raw = crypto.getRandomValues(new Uint8Array(32));
   return crypto.subtle.importKey(
@@ -61,6 +71,7 @@ export async function isFeePaid(): Promise<boolean> {
 }
 
 export function clearFeePaid(): void {
+  clearFeeGateTimer();
   sessionStorage.removeItem(SESSION_KEY);
   sessionStorage.removeItem(SIG_KEY);
   sessionStorage.removeItem(TX_KEY);
@@ -94,13 +105,15 @@ export function getSessionId(): string | null {
 export function showFeeGate(timeoutMs: number = 60000): Promise<void> {
   // Reject any pending fee gate before starting a new one
   if (feeGateReject) {
+    clearFeeGateTimer();
     feeGateReject(new Error("Fee gate superseded by new request"));
     feeGateResolve = null;
     feeGateReject = null;
   }
 
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
+    feeGateTimerId = setTimeout(() => {
+      feeGateTimerId = null;
       feeGateResolve = null;
       feeGateReject = null;
       reject(
@@ -109,11 +122,11 @@ export function showFeeGate(timeoutMs: number = 60000): Promise<void> {
     }, timeoutMs);
 
     feeGateResolve = () => {
-      clearTimeout(timer);
+      clearFeeGateTimer();
       resolve();
     };
     feeGateReject = (reason: Error) => {
-      clearTimeout(timer);
+      clearFeeGateTimer();
       reject(reason);
     };
     document.dispatchEvent(new CustomEvent("tresr:fee-gate-open"));

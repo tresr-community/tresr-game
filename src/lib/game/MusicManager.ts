@@ -36,11 +36,22 @@ class MusicManager {
     }
   };
 
+  /** Handle media errors (corrupt file, 404, codec unsupported) by skipping. */
+  private handleError = () => {
+    const code = this.audio?.error?.code;
+    const msg = this.audio?.error?.message ?? "unknown";
+    log.warn(
+      COMPONENT_NAME,
+      `Audio error (MediaError code ${code}: ${msg}), skipping to next track`
+    );
+    this.next();
+  };
+
   private handleEnded = () => {
     const mode = gameState.get().music.playbackMode;
     switch (mode) {
       case "repeat-one":
-        this.replayCurrent();
+        void this.replayCurrent();
         break;
       case "shuffle":
         this.playRandom();
@@ -66,6 +77,7 @@ class MusicManager {
 
       this.audio.addEventListener("timeupdate", this.handleTimeUpdate);
       this.audio.addEventListener("ended", this.handleEnded);
+      this.audio.addEventListener("error", this.handleError);
 
       // Wait for gameplay to actually start before starting music playback.
       // MainScene dispatches this event after the countdown completes.
@@ -350,6 +362,7 @@ class MusicManager {
     if (this.audio) {
       this.audio.removeEventListener("timeupdate", this.handleTimeUpdate);
       this.audio.removeEventListener("ended", this.handleEnded);
+      this.audio.removeEventListener("error", this.handleError);
     }
 
     // Clear any active fade-in interval (ticket #227)
@@ -366,6 +379,7 @@ class MusicManager {
     // Attach named handlers to new audio element
     this.audio.addEventListener("timeupdate", this.handleTimeUpdate);
     this.audio.addEventListener("ended", this.handleEnded);
+    this.audio.addEventListener("error", this.handleError);
 
     // Fade out old audio
     const fadeOut = this.fadingOut;
@@ -514,14 +528,14 @@ class MusicManager {
   /**
    * Replay the current track from the beginning (for repeat-one mode).
    */
-  private replayCurrent() {
+  private async replayCurrent() {
     if (!this.audio) return;
     this.audio.currentTime = 0;
-    this.safePlay();
+    await this.safePlay();
     gameActions.updateMusic({isPlaying: true});
   }
 
-  public stop() {
+  public async stop() {
     // Clean up any crossfade in progress
     if (this.fadeInterval) {
       clearInterval(this.fadeInterval);
@@ -537,7 +551,7 @@ class MusicManager {
       this.fadingOut = null;
     }
     if (!this.audio) return;
-    this.safePause();
+    await this.safePause();
     this.audio.currentTime = 0;
     gameActions.updateMusic({
       isPlaying: false,
@@ -546,16 +560,18 @@ class MusicManager {
 
   public setVolume(vol: number, persist: boolean = true) {
     if (!this.audio) return;
-    this.audio.volume = vol;
+    const clamped = Math.max(0, Math.min(1, vol));
+    this.audio.volume = clamped;
     gameActions.updateMusic({
-      musicVolume: vol,
+      musicVolume: clamped,
     });
     if (persist) this.persistPreferences();
   }
 
   public setSfxVolume(vol: number, persist: boolean = true) {
+    const clamped = Math.max(0, Math.min(1, vol));
     gameActions.updateMusic({
-      sfxVolume: vol,
+      sfxVolume: clamped,
     });
     if (persist) this.persistPreferences();
   }
@@ -565,7 +581,7 @@ class MusicManager {
     this.audio.currentTime = time;
   }
 
-  public destroy() {
+  public async destroy() {
     if (this.authUnsubscribe) {
       this.authUnsubscribe();
       this.authUnsubscribe = null;
@@ -586,11 +602,12 @@ class MusicManager {
       clearTimeout(this.saveTimeout);
       this.saveTimeout = null;
     }
-    this.stop();
+    await this.stop();
     // Remove listeners and release audio element media buffer (ticket #197, #227)
     if (this.audio) {
       this.audio.removeEventListener("timeupdate", this.handleTimeUpdate);
       this.audio.removeEventListener("ended", this.handleEnded);
+      this.audio.removeEventListener("error", this.handleError);
       this.audio.src = "";
       this.audio = null;
     }
@@ -655,7 +672,7 @@ class MusicManager {
       return;
     }
     if (mode === "repeat-one") {
-      this.replayCurrent();
+      void this.replayCurrent();
       return;
     }
     const current = gameState.get().music.currentTrack;

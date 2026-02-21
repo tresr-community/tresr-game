@@ -2124,7 +2124,7 @@ Visit [Astro’s GitHub profile](https://github.com/withastro) to find the repos
 
 * The [Astro compiler](https://github.com/withastro/compiler), written in Go, distributed as WASM.
 
-* Astro’s [language tools](https://github.com/withastro/language-tools), the editor tooling required for the Astro language (`.astro` files).
+* Astro’s [language tools](https://github.com/withastro/astro/tree/main/packages/language-tools), the editor tooling required for the Astro language (`.astro` files).
 
 * [Starlight](https://github.com/withastro/starlight), Astro’s official documentation framework.
 
@@ -23180,13 +23180,13 @@ Find even more [community-maintained framework integrations](https://astro.build
 
   ### [@astrojs/​alpinejs](/en/guides/integrations-guide/alpinejs/)
 
-* ![](/logos/preact.svg)
-
-  ### [@astrojs/​preact](/en/guides/integrations-guide/preact/)
-
 * ![](/logos/react.svg)
 
   ### [@astrojs/​react](/en/guides/integrations-guide/react/)
+
+* ![](/logos/preact.svg)
+
+  ### [@astrojs/​preact](/en/guides/integrations-guide/preact/)
 
 * ![](/logos/solid.svg)
 
@@ -24749,13 +24749,13 @@ The following integrations are maintained by Astro.
 
   ### [@astrojs/​alpinejs](/en/guides/integrations-guide/alpinejs/)
 
-* ![](/logos/preact.svg)
-
-  ### [@astrojs/​preact](/en/guides/integrations-guide/preact/)
-
 * ![](/logos/react.svg)
 
   ### [@astrojs/​react](/en/guides/integrations-guide/react/)
+
+* ![](/logos/preact.svg)
+
+  ### [@astrojs/​preact](/en/guides/integrations-guide/preact/)
 
 * ![](/logos/solid.svg)
 
@@ -24775,13 +24775,13 @@ The following integrations are maintained by Astro.
 
   ### [@astrojs/​cloudflare](/en/guides/integrations-guide/cloudflare/)
 
-* ![](/logos/node.svg)
-
-  ### [@astrojs/​node](/en/guides/integrations-guide/node/)
-
 * ![](/logos/netlify.svg)
 
   ### [@astrojs/​netlify](/en/guides/integrations-guide/netlify/)
+
+* ![](/logos/node.svg)
+
+  ### [@astrojs/​node](/en/guides/integrations-guide/node/)
 
 * ![](/logos/vercel.svg)
 
@@ -36920,13 +36920,13 @@ You may also wish to add an adapter even if your site is entirely static and you
 
   ### [@astrojs/​cloudflare](/en/guides/integrations-guide/cloudflare/)
 
-* ![](/logos/node.svg)
-
-  ### [@astrojs/​node](/en/guides/integrations-guide/node/)
-
 * ![](/logos/netlify.svg)
 
   ### [@astrojs/​netlify](/en/guides/integrations-guide/netlify/)
+
+* ![](/logos/node.svg)
+
+  ### [@astrojs/​node](/en/guides/integrations-guide/node/)
 
 * ![](/logos/vercel.svg)
 
@@ -58781,6 +58781,8 @@ The following reference is a complete list of the errors you may encounter while
   Missing image dimensions
 * [**FailedToFetchRemoteImageDimensions**](/en/reference/errors/failed-to-fetch-remote-image-dimensions/)\
   Failed to retrieve remote image dimensions
+* [**RemoteImageNotAllowed**](/en/reference/errors/remote-image-not-allowed/)\
+  Remote image is not allowed
 * [**UnsupportedImageFormat**](/en/reference/errors/unsupported-image-format/)\
   Unsupported image format
 * [**UnsupportedImageConversion**](/en/reference/errors/unsupported-image-conversion/)\
@@ -60649,6 +60651,16 @@ A redirect must be given a location with the `Location` header.
 **See Also:**
 
 * [Astro.redirect](/en/reference/api-reference/#redirect)
+
+# Remote image is not allowed
+
+> Remote image `IMAGE_URL` is not allowed by your image configuration.
+
+## What went wrong?
+
+[Section titled “What went wrong?”](#what-went-wrong)
+
+The remote image URL does not match your configured `image.domains` or `image.remotePatterns`.
 
 # Attempted to render an undefined content collection entry.
 
@@ -77967,7 +77979,7 @@ This guide covers how to update your version of Astro and related dependencies, 
 
 [Section titled “What has changed?”](#what-has-changed)
 
-The latest release of Astro is v5.17.2.
+The latest release of Astro is v5.17.3.
 
 You can find an exhaustive list of all changes in [Astro’s changelog](https://github.com/withastro/astro/blob/main/packages/astro/CHANGELOG.md), and important instructions for upgrading to each new [major version](#major-changes) in our [upgrade guides](#upgrade-guides).
 

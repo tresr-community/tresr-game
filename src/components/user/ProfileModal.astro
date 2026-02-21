@@ -242,6 +242,7 @@
     saveUserProfile,
     createDefaultProfile,
     genNickName,
+    enqueueProfileWrite,
   } from "@/lib/user";
   import {uploadAvatar} from "@/lib/user/avatar";
   import {
@@ -249,6 +250,7 @@
     getWalletClient,
     disconnectWallet,
   } from "@/lib/wallet/connection";
+  import {buildWalletLinkMessage} from "@/lib/wallet/wallet-message";
   import {shortenAddress} from "@/lib/wallet/avalanche";
   import type {UserProfile} from "@/types/backend";
   import {log} from "@/lib/utils/log";
@@ -456,31 +458,23 @@
       return;
     }
 
+    const newEmail = emailInput.value.trim();
+
     saveBtn.classList.add("loading");
     try {
-      // Re-fetch latest doc to get authoritative version.
-      // Prevents version_outdated_or_future errors when avatar upload
-      // or other operations have bumped the version since we loaded.
-      const latestDoc = await getUserProfile(auth.user.key);
-      if (latestDoc) {
-        currentVersion = latestDoc.version;
-        // Merge server-side data we don't control (e.g. avatar set by upload)
-        currentProfile = {...latestDoc.data};
-      }
+      await enqueueProfileWrite(auth.user.key, (profile) => ({
+        ...profile,
+        nickname: newNickname,
+        email: newEmail,
+      }));
 
+      // Update local state to reflect saved values
       currentProfile.nickname = newNickname;
-      currentProfile.email = emailInput.value.trim();
-
-      const savedDoc = await saveUserProfile(
-        auth.user.key,
-        currentProfile,
-        currentVersion
-      );
-      currentVersion = savedDoc.version;
+      currentProfile.email = newEmail;
 
       window.dispatchEvent(
         new CustomEvent("tresr:profile-updated", {
-          detail: {nickname: currentProfile.nickname},
+          detail: {nickname: newNickname},
         })
       );
       // Update the profile store so LoginButton's subscription picks up the new nickname
@@ -490,15 +484,10 @@
       log.info(COMPONENT_NAME, "Profile saved successfully.", currentProfile);
     } catch (error) {
       log.error(COMPONENT_NAME, "Failed to save profile:", error);
-      const msg = (error as Error).message || "";
-      if (msg.includes("version")) {
-        window.showErrorToast(
-          "Profile was modified elsewhere",
-          "Please close and reopen the modal to refresh."
-        );
-      } else {
-        window.showErrorToast("Failed to save profile", msg);
-      }
+      window.showErrorToast(
+        "Failed to save profile",
+        (error as Error).message || ""
+      );
     } finally {
       saveBtn.classList.remove("loading");
     }
@@ -514,25 +503,36 @@
       const {address} = await connectWallet();
       const walletClient = await getWalletClient();
 
+      const auth = getAuthState();
+      if (!auth.user) throw new Error("Not authenticated");
+
+      // Build standardized replay-protected message (ticket #189)
+      const message = buildWalletLinkMessage(auth.user.key, address);
+
       // Verify ownership: sign message
       const sig = await walletClient.signMessage({
         account: address,
-        message: `Link wallet ${address} to TRESR principal ${getAuthState().user?.key.slice(0, 10)}...`,
+        message,
       });
 
       if (currentProfile) {
-        currentProfile.evmWallet = address;
-        currentProfile.walletProof = sig;
-        currentProfile.wallet.evmWalletLinked = true;
-        const auth = getAuthState();
         if (auth.user) {
-          const savedDoc = await saveUserProfile(
-            auth.user.key,
-            currentProfile,
-            currentVersion
-          );
-          currentVersion = savedDoc.version;
+          await enqueueProfileWrite(auth.user.key, (profile) => ({
+            ...profile,
+            evmWallet: address,
+            verification_signature: sig,
+            verification_message: message,
+            wallet: {
+              ...profile.wallet,
+              evmWalletLinked: true,
+            },
+          }));
         }
+        // Update local state
+        currentProfile.evmWallet = address;
+        currentProfile.verification_signature = sig;
+        currentProfile.verification_message = message;
+        currentProfile.wallet.evmWalletLinked = true;
         updateWalletUI();
         trackWalletLink();
         window.showInfoToast("Neural link established");
@@ -560,18 +560,22 @@
     try {
       await disconnectWallet();
       if (currentProfile) {
+        const auth = getAuthState();
+        if (auth.user) {
+          await enqueueProfileWrite(auth.user.key, (profile) => ({
+            ...profile,
+            evmWallet: undefined,
+            walletProof: undefined,
+            wallet: {
+              ...profile.wallet,
+              evmWalletLinked: false,
+            },
+          }));
+        }
+        // Update local state
         currentProfile.wallet.evmWalletLinked = false;
         currentProfile.evmWallet = undefined;
         currentProfile.walletProof = undefined;
-        const auth = getAuthState();
-        if (auth.user) {
-          const savedDoc = await saveUserProfile(
-            auth.user.key,
-            currentProfile,
-            currentVersion
-          );
-          currentVersion = savedDoc.version;
-        }
         updateWalletUI();
         trackWalletUnlink();
         window.showInfoToast("Neural link severed");
@@ -666,22 +670,21 @@
     try {
       const url = await uploadAvatar(file, auth.user.key);
 
-      // Update profile with new avatar URL
+      // Save avatar URL via the write queue to avoid version conflicts
+      await enqueueProfileWrite(auth.user.key, (profile) => ({
+        ...profile,
+        preferences: {
+          ...profile.preferences,
+          avatarUrl: url,
+        },
+      }));
+
+      // Update local state and display
       currentProfile.preferences = currentProfile.preferences || {
         theme: "synthwave",
         has_read_instructions: false,
       };
       currentProfile.preferences.avatarUrl = url;
-
-      // Save profile
-      const savedDoc = await saveUserProfile(
-        auth.user.key,
-        currentProfile,
-        currentVersion
-      );
-      currentVersion = savedDoc.version;
-
-      // Update display
       renderAvatar(currentProfile);
       profileStore.set({...currentProfile});
       trackAvatarUpload();

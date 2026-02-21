@@ -47,12 +47,12 @@ export const config: ConfigTypes = {
   "app": {
     "name": "TRESR Game",
     "tagline": "Collect Keys. Fight Enemies. Claim the $TRESR.",
-    "footer_text": "Economy powered by the Avalanche Blockchain.",
+    "footer_text": "Powered by Avalanche 🔺",
     "narration_text": {
-      "intro": "Most days, Ron Jay embraces the degenerate life\nfarming airdrops and apeing into meme coins.\n\nBut today?\n\nToday Ron chooses violence against the\ntyrannical bankers shackling crypto's future.\n\nWelcome, to the Crypto Cage...\n"
+      "intro": "Most days, Ron Jay embraces the degenerate life\nfarming airdrops and aping into meme coins.\n\nBut today?\n\nToday Ron chooses violence against the\ntyrannical bankers shackling crypto's future.\n\nWelcome, to the Crypto Cage...\n"
     },
     "loader_messages": [
-      "Apeing In...",
+      "Aping In...",
       "Boarding Yacht...",
       "Bridging Assets...",
       "Checking Mempool...",
@@ -66,7 +66,7 @@ export const config: ConfigTypes = {
       "Preparing to Rug...",
       "Pumping Bags...",
       "Stacking Sats...",
-      "Steady on lads, deploying capital...",
+      "Deploying more capital - steady lads...",
       "Updating Roadmap...",
       "Yield Farming..."
     ],
@@ -351,22 +351,22 @@ export const config: ConfigTypes = {
     ]
   },
   "display": {
-    "width": 1280,
-    "height": 720,
-    "design_height": 720,
+    "width": 1920,
+    "height": 1080,
+    "design_height": 1080,
     "background_color": "#000000",
     "pixel_art": true
   },
   "gameplay": {
-    "time_limit_seconds": 300,
+    "time_limit_seconds": 180,
     "max_keys": 150,
     "difficulty_escalation": {
       "enabled": true,
       "interval_seconds": 60,
       "enemy_spawn_multiplier": 0.85,
       "bomb_spawn_multiplier": 0.9,
-      "min_enemy_spawn_ms": 800,
-      "min_bomb_spawn_ms": 2000
+      "min_enemy_spawn_ms": 750,
+      "min_bomb_spawn_ms": 2500
     },
     "guest": {
       "enabled": true,
@@ -377,32 +377,33 @@ export const config: ConfigTypes = {
       "transaction_timeout_ms": 300000
     },
     "vault": {
-      "minimum_cap": 500,
+      "minimum_cap": 1000,
       "tiers": {
         "easy": 5000,
         "normal": 25000,
         "hard": 100000
       },
       "difficulty_multipliers": {
-        "easy": 0.6,
+        "easy": 0.5,
         "normal": 1,
         "hard": 1.5,
         "extreme": 2
       }
     },
     "physics": {
-      "gravity": 0.8,
+      "gravity": 0.75,
       "timestep": 0.01667,
-      "game_speed": 1
+      "game_speed": 1.5
     },
     "visuals": {
       "shadow": {
         "color": 0,
         "opacity": 0.35,
-        "width": 70,
-        "height": 16,
+        "width": 105,
+        "height": 24,
         "offset_x": 0,
-        "offset_y": 2
+        "offset_y": -45,
+        "angle": 10
       },
       "damage_tint_duration": 100
     },
@@ -419,9 +420,9 @@ export const config: ConfigTypes = {
         "low": 0.25,
         "critical": 0.1
       },
-      "width": 40,
-      "height": 4,
-      "offset_y": -10,
+      "width": 60,
+      "height": 6,
+      "offset_y": -15,
       "background_color": 0,
       "colors": {
         "high": 65280,
@@ -431,8 +432,8 @@ export const config: ConfigTypes = {
       }
     },
     "walkable_area": {
-      "top_y_ratio": 0.833,
-      "bottom_y_ratio": 0.972,
+      "top_y_ratio": 0.85,
+      "bottom_y_ratio": 1,
       "left_x_ratio": 0,
       "right_x_ratio": 1
     },
@@ -440,8 +441,8 @@ export const config: ConfigTypes = {
       "player": {
         "health": 1000,
         "damage": 25,
-        "speed": 250,
-        "jump_force": 12,
+        "speed": 300,
+        "jump_force": 25,
         "knockback": {
           "force": 200,
           "stun_ms": 300
@@ -507,6 +508,7 @@ export const config: ConfigTypes = {
         "health": 100,
         "damage": 10,
         "speed": 100,
+        "flee_speed_mult": 1.5,
         "knockback": {
           "force": 300,
           "stun_ms": 200
@@ -566,13 +568,13 @@ export const config: ConfigTypes = {
             "attack_damage": 10
           },
           "weights": {
-            "direct": 25,
-            "flanker": 20,
-            "cautious": 15,
-            "swarm": 15,
-            "erratic": 10,
-            "passive": 10,
-            "retardio": 5
+            "direct": 100,
+            "flanker": 0,
+            "cautious": 0,
+            "swarm": 0,
+            "erratic": 0,
+            "passive": 0,
+            "retardio": 0
           }
         },
         "animations": {
@@ -828,7 +830,7 @@ export const config: ConfigTypes = {
       "frameHeight": 512
     },
     "hero": {
-      "scaleFactor": 0.75,
+      "scaleFactor": 1.5,
       "anims": [
         {
           "name": "idle",
@@ -887,7 +889,7 @@ export const config: ConfigTypes = {
       ]
     },
     "super": {
-      "scaleFactor": 0.5,
+      "scaleFactor": 0.75,
       "anims": [
         {
           "name": "spin",
@@ -901,7 +903,7 @@ export const config: ConfigTypes = {
       ]
     },
     "boss": {
-      "scaleFactor": 1.25,
+      "scaleFactor": 2,
       "anims": [
         {
           "name": "idle",
@@ -951,7 +953,7 @@ export const config: ConfigTypes = {
       ]
     },
     "enemies": {
-      "scaleFactor": 0.75,
+      "scaleFactor": 1.5,
       "count": 5,
       "anims": [
         {
@@ -1002,7 +1004,7 @@ export const config: ConfigTypes = {
       ]
     },
     "tresr_bot": {
-      "scaleFactor": 0.75,
+      "scaleFactor": 1.5,
       "anims": [
         {
           "name": "idle",
@@ -1044,7 +1046,7 @@ export const config: ConfigTypes = {
     },
     "items": {
       "key": {
-        "scaleFactor": 0.25,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1058,7 +1060,7 @@ export const config: ConfigTypes = {
         ]
       },
       "bomb": {
-        "scaleFactor": 0.25,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1072,7 +1074,7 @@ export const config: ConfigTypes = {
         ]
       },
       "loader": {
-        "scaleFactor": 1,
+        "scaleFactor": 1.5,
         "anims": [
           {
             "name": "idle",
@@ -1086,7 +1088,7 @@ export const config: ConfigTypes = {
         ]
       },
       "chest": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1118,7 +1120,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_1": {
-        "scaleFactor": 0.25,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1132,7 +1134,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_2": {
-        "scaleFactor": 0.25,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1146,7 +1148,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_3": {
-        "scaleFactor": 0.25,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1160,7 +1162,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_4": {
-        "scaleFactor": 0.25,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1174,7 +1176,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_5": {
-        "scaleFactor": 0.25,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1188,7 +1190,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_1": {
-        "scaleFactor": 0.25,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1202,7 +1204,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_2": {
-        "scaleFactor": 0.25,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1216,7 +1218,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_3": {
-        "scaleFactor": 0.25,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1230,7 +1232,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_4": {
-        "scaleFactor": 0.25,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1244,7 +1246,7 @@ export const config: ConfigTypes = {
         ]
       },
       "powerup_5": {
-        "scaleFactor": 0.25,
+        "scaleFactor": 0.5,
         "anims": [
           {
             "name": "idle",
@@ -1269,9 +1271,9 @@ export const config: ConfigTypes = {
     "permanent_after_offence": 4,
     "ban_reasons": [
       "config_hash_mismatch",
+      "is_a_sore_loser",
       "replay_validation_failure",
       "score_exceeds_maximum",
-      "is_a_sore_loser",
       "wallet_tampering"
     ]
   },
@@ -1357,9 +1359,10 @@ export const config: ConfigTypes = {
       },
       {
         "version": "0.2.0",
-        "date": "2026-02-18",
+        "date": "2026-02-21",
         "title": "Mobile Friendly",
         "notes": [
+          "Game speed set to 1.5, because degens have no patience",
           "Mobile support so you can beat-up bankers from the toilet",
           "PWA Mobile support for that poor-man native app feel",
           "Portrait mode blocked — forced landscape, no vertical charts allowed",
@@ -1394,5 +1397,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "3b633606273a76e6984f1ec7c59fba6a1c32e011c6b1ca14a511152c5137f64b"
+  "configHash": "73dc969b3be1029705313bb19a0232491c236826072074cb987290edf42bdeaf"
 };
