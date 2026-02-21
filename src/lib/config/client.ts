@@ -358,7 +358,7 @@ export const config: ConfigTypes = {
     "pixel_art": true
   },
   "gameplay": {
-    "time_limit_seconds": 300,
+    "time_limit_seconds": 180,
     "max_keys": 150,
     "difficulty_escalation": {
       "enabled": true,
@@ -1397,5 +1397,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "0aa967310213ec0dcc4f5b57999cde678a7e6566c5c111a6668fca730a6cc3dc"
+  "configHash": "73dc969b3be1029705313bb19a0232491c236826072074cb987290edf42bdeaf"
 };

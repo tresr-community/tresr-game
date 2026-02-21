@@ -903,12 +903,31 @@ export class MainScene extends Phaser.Scene {
     }
 
     if (queued > 0) {
+      // Log deferred SFX load failures instead of silent failure
+      this.load.on("loaderror", (file: Phaser.Loader.File) => {
+        log.warn(
+          COMPONENT_NAME,
+          `Failed to load deferred SFX: ${file.key} (${file.url})`
+        );
+      });
       this.load.start();
       log.info(COMPONENT_NAME, `Queued ${queued} deferred SFX for loading`);
     }
   }
 
   private playSound(type: string) {
+    // Drop SFX when tab is hidden — Chrome suspends the AudioContext but game
+    // logic keeps firing (throttled). Without this guard the queued sounds all
+    // flush at once on refocus, producing a loud burst (ticket #sfx-burst).
+    if (document.hidden) return;
+
+    // Skip SFX if the AudioContext is suspended (e.g. mobile Safari before gesture)
+    const ctx = (this.sound as Phaser.Sound.WebAudioSoundManager).context;
+    if (ctx?.state === "suspended") {
+      log.debug(COMPONENT_NAME, "AudioContext suspended, SFX skipped");
+      return;
+    }
+
     const sfxVariants = this.gameplayConfig.audio.sfx_variants;
     const count = sfxVariants[type];
     if (!count || count <= 0) {
@@ -1180,7 +1199,7 @@ export class MainScene extends Phaser.Scene {
 
     this.combatManager.triggerFlash();
     this.playSound("explosion"); // Arrival sound
-    this.uiManager.showPhaseAnnouncement("BOSS PHASE");
+    this.uiManager.showPhaseAnnouncement("BULL MARKET");
     trackBossSpawned();
   }
 

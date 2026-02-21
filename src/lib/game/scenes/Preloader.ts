@@ -99,6 +99,14 @@ export class Preloader extends Phaser.Scene {
     // Load sprites with config (now available from BootScene)
     this.spriteManager.preloadSprites(this.spritesConfig);
 
+    // Log any asset load failures (SFX, images, etc.) instead of silent failure
+    this.load.on("loaderror", (file: Phaser.Loader.File) => {
+      log.warn(
+        COMPONENT_NAME,
+        `Failed to load asset: ${file.key} (${file.url})`
+      );
+    });
+
     // Load audio and wallpapers from config
     this.loadConfigAssets();
 

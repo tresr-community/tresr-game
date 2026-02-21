@@ -250,7 +250,7 @@ client:
     background_color: "#000000"
     pixel_art: true # use nearest-neighbor scaling for pixel art
   gameplay:
-    time_limit_seconds: 300
+    time_limit_seconds: 180 # 3 minutes of Bear Market until Bull Market
     max_keys: 150
     # Difficulty escalation — scales spawn rates over the survival phase
     difficulty_escalation:

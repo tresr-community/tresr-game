@@ -268,6 +268,28 @@ import Loader from "@/components/game/Loader.astro";
       document.dispatchEvent(new CustomEvent("tresr:start-game-engine"));
     }
 
+    // Keyboard capture release — Phaser's KeyboardPlugin listens on `window`,
+    // so registered keys (Enter, Space, arrows, etc.) call preventDefault()
+    // globally, even when the user switches to another tab/window. Toggle the
+    // plugin off when the page is hidden so OS / browser shortcuts work again.
+    function handleKeyboardVisibility() {
+      const game = (window as any).__phaserGame;
+      if (!game) return;
+
+      const kb = game.input.keyboard;
+      if (!kb) return;
+
+      if (document.hidden) {
+        kb.resetKeys(); // release any held keys
+        kb.enabled = false;
+        log.debug(COMPONENT_NAME, "Keyboard capture disabled (tab hidden)");
+      } else {
+        kb.enabled = true;
+        log.debug(COMPONENT_NAME, "Keyboard capture re-enabled (tab visible)");
+      }
+    }
+    document.addEventListener("visibilitychange", handleKeyboardVisibility);
+
     // Portrait detection — pause/resume game when orientation changes
     // (portrait overlay is handled globally by BaseLayout)
     // Guard: only touch MainScene; skip if portrait state hasn't changed.
@@ -313,6 +335,10 @@ import Loader from "@/components/game/Loader.astro";
         document.removeEventListener(
           "tresr:portrait-change",
           handlePortraitChange
+        );
+        document.removeEventListener(
+          "visibilitychange",
+          handleKeyboardVisibility
         );
         document.removeEventListener("touchstart", resumeAudioContext);
         document.removeEventListener("click", resumeAudioContext);

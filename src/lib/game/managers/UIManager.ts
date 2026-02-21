@@ -57,13 +57,15 @@ export class UIManager {
         .setScale(3)
         .setAlpha(1);
 
-      // Play countdown SFX
-      try {
-        this.scene.sound.play("countdown_1", {
-          volume: gameState.get().music.sfxVolume,
-        });
-      } catch {
-        // SFX may not be ready yet
+      // Play countdown SFX (skip when tab hidden to avoid burst on refocus)
+      if (!document.hidden) {
+        try {
+          this.scene.sound.play("countdown_1", {
+            volume: gameState.get().music.sfxVolume,
+          });
+        } catch {
+          // SFX may not be ready yet
+        }
       }
 
       // Each beat lasts 1 second: tween animates out over 800ms,
@@ -112,7 +114,7 @@ export class UIManager {
 
     if (text === "DEFEAT" || text === "SYSTEM CRITICAL") {
       overlay.setColor("#ff0000");
-    } else if (text === "BOSS PHASE") {
+    } else if (text === "BULL MARKET") {
       overlay.setColor("#ffaa00");
     }
 
