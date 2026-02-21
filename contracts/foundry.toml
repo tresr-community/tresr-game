@@ -18,6 +18,7 @@ verbosity = 3
 [profile.testnet]
 # Inherits [profile.default]. Used by cd-foundry-testnet.yaml.
 verbosity = 3
+evm_version = 'shanghai'
 
 [profile.mainnet]
 # Inherits [profile.default]. Used by cd-foundry-mainnet.yaml.

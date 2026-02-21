@@ -66,6 +66,8 @@ struct AvalancheNetwork {
     burn_rate: u64,
     chain_id: u64,
     rpc_urls: Vec<String>,
+    #[serde(default)]
+    allowed_origins: Vec<String>,
     vault_contract: String,
     tresr_token_contract: String,
     token_ticker: String,
@@ -154,6 +156,14 @@ fn main() {
         .collect::<Vec<_>>()
         .join(", ");
 
+    // Format allowed origins as Rust array literal
+    let allowed_origins = chain
+        .allowed_origins
+        .iter()
+        .map(|u| format!(r#""{}""#, u))
+        .collect::<Vec<_>>()
+        .join(", ");
+
     // Generate Rust constants
     let ecdsa_key_name = match network.as_str() {
         "mainnet" => "key_1",
@@ -197,6 +207,9 @@ pub const BURN_RATE_BPS: u64 = {burn_rate};
 /// Avalanche RPC URLs for multi-provider consensus (from client.blockchain.avalanche.{network}.rpc_urls)
 pub const AVALANCHE_RPC_URLS: &[&str] = &[{rpc_urls}];
 
+/// Allowed browser origins for wallet-link domain binding (from client.blockchain.avalanche.{network}.allowed_origins)
+pub const ALLOWED_ORIGINS: &[&str] = &[{allowed_origins}];
+
 /// Network name for conditional logic (anvil/testnet/mainnet)
 pub const NETWORK_NAME: &str = "{network}";
 
@@ -230,6 +243,7 @@ pub const CONFIG_HASH: &str = "{config_hash}";
         fee = chain.fee,
         burn_rate = chain.burn_rate,
         rpc_urls = rpc_urls,
+        allowed_origins = allowed_origins,
         ecdsa_key_name = ecdsa_key_name,
         score_ttl_hours = config.server.highscore.score_ttl_hours,
         consolation_prize_percent = config.server.highscore.consolation_prize_percent,

@@ -93,6 +93,10 @@ export const config: ConfigTypes = {
         "rpc_urls": [
           "http://localhost:8545"
         ],
+        "allowed_origins": [
+          "http://localhost:5173",
+          "http://localhost:4943"
+        ],
         "token_ticker": "tRON",
         "tresr_token_contract": "0x8198f5d8F8CfFE8f9C413d98a0A55aEB8ab9FbB7",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
@@ -108,6 +112,9 @@ export const config: ConfigTypes = {
           "https://api.avax-test.network/ext/bc/C/rpc",
           "https://avalanche-fuji-c-chain-rpc.publicnode.com"
         ],
+        "allowed_origins": [
+          "https://game-testnet.tresr.community"
+        ],
         "token_ticker": "tRON",
         "tresr_token_contract": "0x04fd42a3ab3e287019489e3bdac934e344779e36",
         "oracle_address": "0xf2ff695cae8cc886d3c03afd502a35fcee61b66f",
@@ -121,8 +128,10 @@ export const config: ConfigTypes = {
         "chain_id": 43114,
         "rpc_urls": [
           "https://api.avax.network/ext/bc/C/rpc",
-          "https://avalanche-c-chain-rpc.publicnode.com",
-          "https://avax.meowrpc.com"
+          "https://avalanche-c-chain-rpc.publicnode.com"
+        ],
+        "allowed_origins": [
+          "https://game.tresr.community"
         ],
         "token_ticker": "TRESR",
         "tresr_token_contract": "0x9913BA363073Ca3e9eA0cD296E36B75aF9E40bef",

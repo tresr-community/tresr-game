@@ -98,7 +98,10 @@ runs:
         IMPL_SLOT="0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
 
         # Fetch the implementation address from the proxy's storage
-        RAW_IMPL=$(cast storage "$VAULT_ADDR" "$IMPL_SLOT" --rpc-url "$RPC_URL" 2>/dev/null || true)
+        RAW_IMPL=$(cast storage "$VAULT_ADDR" "$IMPL_SLOT" --rpc-url "$RPC_URL" --block finalized 2>&1) || {
+          echo "::warning::cast storage failed for vault: $RAW_IMPL"
+          RAW_IMPL=""
+        }
         if [[ -z "$RAW_IMPL" || "$RAW_IMPL" == "0x0000000000000000000000000000000000000000000000000000000000000000" ]]; then
           echo "::warning::Could not read implementation slot — treating as first deploy"
           echo "mode=deploy" >> "$GITHUB_OUTPUT"
@@ -111,7 +114,10 @@ runs:
         echo "  On-chain implementation: $ON_CHAIN_IMPL"
 
         # Fetch deployed (runtime) bytecode from the chain
-        ON_CHAIN_CODE=$(cast code "$ON_CHAIN_IMPL" --rpc-url "$RPC_URL" 2>/dev/null || true)
+        ON_CHAIN_CODE=$(cast code "$ON_CHAIN_IMPL" --rpc-url "$RPC_URL" --block finalized 2>&1) || {
+          echo "::warning::cast code failed for vault impl: $ON_CHAIN_CODE"
+          ON_CHAIN_CODE=""
+        }
         if [[ -z "$ON_CHAIN_CODE" || "$ON_CHAIN_CODE" == "0x" ]]; then
           echo "::warning::On-chain implementation has no code — treating as upgrade needed"
           echo "mode=upgrade" >> "$GITHUB_OUTPUT"
@@ -149,7 +155,7 @@ runs:
         set +e
         forge script script/UpgradeVault.s.sol:UpgradeVault \
           --rpc-url "$RPC_URL" \
-          --dry-run \
+          --skip-simulation \
           -vvvv 2>&1 | tee "$DRY_RUN_LOG"
         DRY_EXIT=$?
         set -e
@@ -182,6 +188,8 @@ runs:
         forge script script/Vault.s.sol:DeployVault \
           --rpc-url ${{ inputs.rpc-url }} \
           --broadcast \
+          --slow \
+          --skip-simulation \
           --verify \
           --etherscan-api-key "$SNOWTRACE_API_KEY" \
           -vvvv
@@ -199,6 +207,8 @@ runs:
         forge script script/UpgradeVault.s.sol:UpgradeVault \
           --rpc-url ${{ inputs.rpc-url }} \
           --broadcast \
+          --slow \
+          --skip-simulation \
           --verify \
           --etherscan-api-key "$SNOWTRACE_API_KEY" \
           -vvvv

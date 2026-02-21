@@ -12,6 +12,8 @@ permissions:
   issues: write
 
 env:
+  NIXPKGS_ALLOW_UNFREE: 1
+  SECRETSPEC_PROVIDER: env
   ENVIRONMENT: Testnet
 
 jobs:
