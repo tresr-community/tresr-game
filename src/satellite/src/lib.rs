@@ -114,19 +114,33 @@ fn assert_user_profile(context: &AssertSetDocContext) -> Result<(), String> {
                 );
             }
 
-            // Require verification_signature AND verification_message when linking a wallet (ticket #189)
-            let sig = data.verification_signature.as_deref().ok_or(
-                "verification_signature is required when linking an EVM wallet".to_string(),
-            )?;
-            let msg = data
-                .verification_message
-                .as_deref()
-                .ok_or("verification_message is required when linking an EVM wallet".to_string())?;
+            // Read the current document to check if the wallet is actually changing
+            let current_wallet = get_doc_store(
+                context.caller,
+                "users".to_string(),
+                context.data.key.clone(),
+            )
+            .ok()
+            .flatten()
+            .and_then(|doc| decode_doc_data::<UserProfile>(&doc.data).ok())
+            .and_then(|p| p.evm_wallet);
 
-            // The document key in the "users" collection is the caller's principal
-            let caller_principal = &context.data.key;
+            let wallet_is_changing = current_wallet.as_deref() != Some(wallet.as_str());
 
-            verify_wallet_signature(wallet, msg, sig, caller_principal)?;
+            if wallet_is_changing {
+                // Require verification only when linking/changing a wallet (ticket #189)
+                let sig = data.verification_signature.as_deref().ok_or(
+                    "verification_signature is required when linking an EVM wallet".to_string(),
+                )?;
+                let msg = data.verification_message.as_deref().ok_or(
+                    "verification_message is required when linking an EVM wallet".to_string(),
+                )?;
+
+                // The document key in the "users" collection is the caller's principal
+                let caller_principal = &context.data.key;
+
+                verify_wallet_signature(wallet, msg, sig, caller_principal)?;
+            }
         }
     }
 

@@ -62,11 +62,8 @@ jobs:
     steps:
       - id: check_vars
         name: Check Variables
-        env:
-          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
         run: |
           REQUIRED_VARS=(
-            JUNO_TOKEN
             VITE_ASTRO_SITE_URL
             VITE_SATELLITE_ID
             VITE_ORBITER_ID
@@ -160,16 +157,12 @@ jobs:
 
       - id: deploy_hosting
         name: Deploy Hosting
-        env:
-          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           juno hosting deploy --mode staging
 
       - id: apply_config
         name: Apply Configuration
-        env:
-          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           juno config apply --force --mode staging
@@ -177,8 +170,6 @@ jobs:
       - id: publish_functions
         name: Publish Functions
         if: steps.detect_function_changes.outputs.changed == 'true'
-        env:
-          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           juno functions publish --mode staging

@@ -24,10 +24,10 @@
         "rust-analyzer-src": "rust-analyzer-src"
       },
       "locked": {
-        "lastModified": 1771571526,
+        "lastModified": 1771657407,
         "owner": "nix-community",
         "repo": "fenix",
-        "rev": "f677bc93ec72abced2828e2c7720df0f9c25f825",
+        "rev": "6d86ae5186ba275b7874d02908505fc658448658",
         "type": "github"
       },
       "original": {
@@ -76,10 +76,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1771572006,
+        "lastModified": 1771657939,
         "owner": "shazow",
         "repo": "foundry.nix",
-        "rev": "939fd255b959aebc4e6f72156e78d9b421ae8e62",
+        "rev": "04345eb9067b9a7c2588bd4ff71f390acbfdff79",
         "type": "github"
       },
       "original": {
