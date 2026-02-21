@@ -24,6 +24,7 @@ export class SuperProjectile extends Phaser.Physics.Arcade.Sprite {
   private config: ConfigTypes;
 
   // Direct references to collision targets (set by MainScene for performance)
+  private referenceDt: number;
   private enemyGroup?: Phaser.Physics.Arcade.Group;
   private bossRef?: Boss;
 
@@ -39,6 +40,7 @@ export class SuperProjectile extends Phaser.Physics.Arcade.Sprite {
     this.speed = superConfig.speed;
     this.maxRange = superConfig.max_range;
     this.damage = superConfig.damage;
+    this.referenceDt = this.config.gameplay.physics.timestep;
 
     // Disable arcade gravity — projectile travels horizontally
     if (this.body) {
@@ -100,7 +102,7 @@ export class SuperProjectile extends Phaser.Physics.Arcade.Sprite {
       this.config.gameplay.entities.player.super.hitbox.offscreen_margin;
 
     // Use real delta time from MainScene (falls back to reference timestep)
-    const frameDt = dt ?? 0.01667;
+    const frameDt = dt ?? this.referenceDt;
     const resScale =
       (this.scene?.registry?.get("resolution_scale") as number) || 1;
     const moveX = this.direction * this.speed * resScale * frameDt;
