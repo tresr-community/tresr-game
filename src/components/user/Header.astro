@@ -412,7 +412,7 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
       });
     });
   } else {
-    console.warn("[Header] Toolbar init: headerIcons element NOT FOUND");
+    log.warn(COMPONENT_NAME, "Toolbar init: headerIcons element NOT FOUND");
   }
 
   // Auto-collapse when clicking outside (mobile/tablet only)

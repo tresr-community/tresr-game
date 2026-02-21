@@ -47,28 +47,29 @@
     }
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const updateBtn = document.getElementById("btn-update-now");
-    const laterBtn = document.getElementById("btn-update-later");
+  // Attach button handlers directly — Astro re-runs component scripts on
+  // every navigation, so the DOM is already available (DOMContentLoaded
+  // only fires on initial full-page load and breaks after view transitions).
+  const updateBtn = document.getElementById("btn-update-now");
+  const laterBtn = document.getElementById("btn-update-later");
 
-    if (updateBtn) {
-      handleUpdateNow = async () => {
-        trackPwaUpdate("applied");
-        await PWA.getInstance().applyUpdate();
-        closeUpdatePrompt();
-      };
-      updateBtn.addEventListener("click", handleUpdateNow);
-    }
+  if (updateBtn) {
+    handleUpdateNow = async () => {
+      trackPwaUpdate("applied");
+      await PWA.getInstance().applyUpdate();
+      closeUpdatePrompt();
+    };
+    updateBtn.addEventListener("click", handleUpdateNow);
+  }
 
-    if (laterBtn) {
-      handleUpdateLater = () => {
-        trackPwaUpdate("dismissed");
-        PWA.getInstance().dismissUpdateNotification();
-        closeUpdatePrompt();
-      };
-      laterBtn.addEventListener("click", handleUpdateLater);
-    }
-  });
+  if (laterBtn) {
+    handleUpdateLater = () => {
+      trackPwaUpdate("dismissed");
+      PWA.getInstance().dismissUpdateNotification();
+      closeUpdatePrompt();
+    };
+    laterBtn.addEventListener("click", handleUpdateLater);
+  }
 
   // Global handler for custom event
   function handlePwaUpdateReady(event: Event) {
