@@ -331,7 +331,7 @@ client:
     # Original reference: 1280×720 → top_y=600 (0.833), bottom_y=700 (0.972)
     walkable_area:
       # Set top_y_ratio smaller to walk higher on the screen.
-      top_y_ratio: 0.8.0
+      top_y_ratio: 0.80
       # Set bottom_y_ratio larger to walk lower on the screen.
       bottom_y_ratio: 0.95
       left_x_ratio: 0.0

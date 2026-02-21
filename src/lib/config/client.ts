@@ -432,7 +432,7 @@ export const config: ConfigTypes = {
       }
     },
     "walkable_area": {
-      "top_y_ratio": "0.8.0",
+      "top_y_ratio": 0.8,
       "bottom_y_ratio": 0.95,
       "left_x_ratio": 0,
       "right_x_ratio": 1
@@ -1396,5 +1396,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "15e848b5dae10affbfa7691690b701eb019a13f0cc2300ca95f33fd2068bb6f8"
+  "configHash": "91071b450d238dd83939fe0425d8b993f1024ef6057c950981f8574a2eb4e4d5"
 };

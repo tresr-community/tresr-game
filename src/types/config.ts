@@ -128,7 +128,7 @@ export interface ConfigTypes {  daisyui: {    themes: string[];
         critical: number;
       };
     };
-    walkable_area: {      top_y_ratio: string;
+    walkable_area: {      top_y_ratio: number;
       bottom_y_ratio: number;
       left_x_ratio: number;
       right_x_ratio: number;
