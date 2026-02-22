@@ -585,7 +585,7 @@ function cmd_agent_docs() {
 		log_info "[$current/$total] Downloading ${name} docs from ${url}..."
 
 		# Use -f to fail on HTTP errors, wrap in subshell to prevent set -e exit
-		if (curl -s --connect-timeout 10 --max-time 120 -f -o "$filepath" "$url" 2>/dev/null); then
+		if (curl -s --location --connect-timeout 10 --max-time 120 -f -o "$filepath" "$url" 2>/dev/null); then
 			# Check if file has content
 			if [[ -s $filepath ]]; then
 				local size
