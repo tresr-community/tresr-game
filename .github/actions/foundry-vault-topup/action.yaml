@@ -52,10 +52,13 @@ runs:
       run: |
         echo "Checking $tRON balance of Vault ${VAULT_ADDRESS}…"
 
-        BALANCE_WEI=$(cast erc20-token balance \
+        # NOTE: cast erc20-token balance returns "<wei> [<sci>]" (e.g. "1000 [1e3]").
+        # Strip the "[…]" suffix with bash parameter expansion.
+        BALANCE_RAW=$(cast erc20-token balance \
           "$TOKEN_ADDRESS" \
           "$VAULT_ADDRESS" \
           --rpc-url "$RPC_URL")
+        BALANCE_WEI=${BALANCE_RAW%% \[*}
 
         BALANCE_ETHER=$(cast from-wei "$BALANCE_WEI")
 
@@ -116,10 +119,11 @@ runs:
         SLEEP_SECONDS=10
 
         for ((i=1; i<=MAX_ATTEMPTS; i++)); do
-          BALANCE_WEI=$(cast erc20-token balance \
+          BALANCE_RAW=$(cast erc20-token balance \
             "$TOKEN_ADDRESS" \
             "$VAULT_ADDRESS" \
             --rpc-url "$RPC_URL")
+          BALANCE_WEI=${BALANCE_RAW%% \[*}
 
           BALANCE_ETHER=$(cast from-wei "$BALANCE_WEI")
 
