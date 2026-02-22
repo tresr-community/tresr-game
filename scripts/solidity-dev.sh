@@ -683,8 +683,10 @@ function query_token_balance() {
 		"$ANVIL_TOKEN_ADDRESS" \
 		"$address" \
 		--rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "0")
+	local wei
+	wei=$(echo "$raw" | awk '{print $1}')
 	local human
-	human=$(cast from-wei "$raw" 2>/dev/null || echo "0")
+	human=$(cast from-wei "$wei" 2>/dev/null || echo "0")
 	printf "%'.2f" "$human"
 }
 

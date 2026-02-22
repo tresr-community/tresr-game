@@ -58,7 +58,7 @@ runs:
           "$TOKEN_ADDRESS" \
           "$VAULT_ADDRESS" \
           --rpc-url "$RPC_URL")
-        BALANCE_WEI=${BALANCE_RAW%% \[*}
+        BALANCE_WEI=$(echo "$BALANCE_RAW" | awk '{print $1}')
 
         BALANCE_ETHER=$(cast from-wei "$BALANCE_WEI")
 
@@ -123,7 +123,7 @@ runs:
             "$TOKEN_ADDRESS" \
             "$VAULT_ADDRESS" \
             --rpc-url "$RPC_URL")
-          BALANCE_WEI=${BALANCE_RAW%% \[*}
+          BALANCE_WEI=$(echo "$BALANCE_RAW" | awk '{print $1}')
 
           BALANCE_ETHER=$(cast from-wei "$BALANCE_WEI")
 
