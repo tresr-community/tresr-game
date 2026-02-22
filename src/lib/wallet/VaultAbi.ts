@@ -54,6 +54,14 @@ export const VaultAbi = [
     stateMutability: "view",
     type: "function",
   },
+  // Session paid flag — mapping(bytes32 => bool)
+  {
+    inputs: [{internalType: "bytes32", name: "", type: "bytes32"}],
+    name: "paidSessions",
+    outputs: [{internalType: "bool", name: "", type: "bool"}],
+    stateMutability: "view",
+    type: "function",
+  },
   // Claim event — emitted when a player wins and claims rewards
   {
     anonymous: false,
