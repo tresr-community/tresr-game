@@ -98,10 +98,10 @@ export const config: ConfigTypes = {
           "http://localhost:4943"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0x8198f5d8F8CfFE8f9C413d98a0A55aEB8ab9FbB7",
+        "tresr_token_contract": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0xD84379CEae14AA33C123Af12424A37803F885889",
-        "faucet_contract": "0xf4B146FbA71F41E0592668ffbF264F1D186b2Ca8",
+        "vault_contract": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
+        "faucet_contract": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       },
       "testnet": {

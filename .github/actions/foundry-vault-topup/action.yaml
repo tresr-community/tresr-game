@@ -50,16 +50,14 @@ runs:
         VAULT_ADDRESS: ${{ inputs.vault-address }}
         THRESHOLD: ${{ inputs.threshold }}
       run: |
-        cd contracts
-
         echo "Checking $tRON balance of Vault ${VAULT_ADDRESS}…"
 
-        BALANCE_WEI=$(cast call "$TOKEN_ADDRESS" \
-          "balanceOf(address)(uint256)" \
+        BALANCE_WEI=$(cast erc20-token balance \
+          "$TOKEN_ADDRESS" \
           "$VAULT_ADDRESS" \
           --rpc-url "$RPC_URL")
 
-        BALANCE_ETHER=$(cast to-unit "$BALANCE_WEI" ether)
+        BALANCE_ETHER=$(cast from-wei "$BALANCE_WEI")
 
         echo "Vault balance: ${BALANCE_ETHER} $tRON"
         echo "BALANCE_ETHER=${BALANCE_ETHER}" >> "$GITHUB_OUTPUT"
@@ -85,14 +83,12 @@ runs:
         VAULT_ADDRESS: ${{ inputs.vault-address }}
         TOPUP_AMOUNT: ${{ inputs.topup-amount }}
       run: |
-        cd contracts
-
         echo "Minting ${TOPUP_AMOUNT} $tRON to Vault ${VAULT_ADDRESS}…"
 
-        TX_HASH=$(cast send "$TOKEN_ADDRESS" \
-          "mint(address,uint256)" \
+        TX_HASH=$(cast erc20-token mint \
+          "$TOKEN_ADDRESS" \
           "$VAULT_ADDRESS" \
-          "$(cast to-wei "$TOPUP_AMOUNT" ether)" \
+          "$(cast to-wei "$TOPUP_AMOUNT")" \
           --rpc-url "$RPC_URL" \
           --private-key "$DEPLOYER_PRIVATE_KEY" \
           --confirmations 2 \
@@ -112,34 +108,33 @@ runs:
         RPC_URL: ${{ inputs.rpc-url }}
         TOKEN_ADDRESS: ${{ inputs.token-address }}
         VAULT_ADDRESS: ${{ inputs.vault-address }}
+        THRESHOLD: ${{ inputs.threshold }}
       run: |
-        cd contracts
-
         echo "Waiting for balance to reflect the mint…"
 
         MAX_ATTEMPTS=30
         SLEEP_SECONDS=10
 
         for ((i=1; i<=MAX_ATTEMPTS; i++)); do
-          BALANCE_WEI=$(cast call "$TOKEN_ADDRESS" \
-            "balanceOf(address)(uint256)" \
+          BALANCE_WEI=$(cast erc20-token balance \
+            "$TOKEN_ADDRESS" \
             "$VAULT_ADDRESS" \
             --rpc-url "$RPC_URL")
 
-          BALANCE_ETHER=$(cast to-unit "$BALANCE_WEI" ether)
+          BALANCE_ETHER=$(cast from-wei "$BALANCE_WEI")
 
-          if (( $(echo "$BALANCE_ETHER > 0" | bc -l) )); then
-            echo "✅ New vault balance: ${BALANCE_ETHER} $tRON"
+          if (( $(echo "$BALANCE_ETHER >= $THRESHOLD" | bc -l) )); then
+            echo "✅ New vault balance: ${BALANCE_ETHER} $tRON (threshold: ${THRESHOLD})"
             echo "BALANCE_ETHER=${BALANCE_ETHER}" >> "$GITHUB_OUTPUT"
             break
           fi
 
-          echo "⏳ Attempt ${i}/${MAX_ATTEMPTS}: balance still ${BALANCE_ETHER}, retrying in ${SLEEP_SECONDS}s…"
+          echo "⏳ Attempt ${i}/${MAX_ATTEMPTS}: balance ${BALANCE_ETHER} < threshold ${THRESHOLD}, retrying in ${SLEEP_SECONDS}s…"
           sleep "$SLEEP_SECONDS"
         done
 
-        if (( $(echo "$BALANCE_ETHER <= 0" | bc -l) )); then
-          echo "❌ Balance did not update after $((MAX_ATTEMPTS * SLEEP_SECONDS))s"
+        if (( $(echo "$BALANCE_ETHER < $THRESHOLD" | bc -l) )); then
+          echo "❌ Balance (${BALANCE_ETHER}) still below threshold (${THRESHOLD}) after $((MAX_ATTEMPTS * SLEEP_SECONDS))s"
           echo "BALANCE_ETHER=${BALANCE_ETHER}" >> "$GITHUB_OUTPUT"
           exit 1
         fi

@@ -313,24 +313,24 @@ function fund_wallet() {
 	# Mint to vault
 	if [[ $vault_deployed == true && $vault_amount != "0" ]]; then
 		log_info "Minting → vault (${vault_amount} wei)..."
-		cast send \
+		cast erc20-token mint \
 			"$ANVIL_TOKEN_ADDRESS" \
-			"mint(address,uint256)" \
 			"$vault_address" \
 			"$vault_amount" \
 			--private-key "$DEPLOYER_PRIVATE_KEY" \
-			--rpc-url "$ANVIL_RPC_URL" >/dev/null
+			--rpc-url "$ANVIL_RPC_URL" \
+			--quiet >/dev/null
 	fi
 
 	# Mint to wallet
 	log_info "Minting → wallet (${wallet_amount} wei)..."
-	cast send \
+	cast erc20-token mint \
 		"$ANVIL_TOKEN_ADDRESS" \
-		"mint(address,uint256)" \
 		"$wallet_address" \
 		"$wallet_amount" \
 		--private-key "$DEPLOYER_PRIVATE_KEY" \
-		--rpc-url "$ANVIL_RPC_URL" >/dev/null
+		--rpc-url "$ANVIL_RPC_URL" \
+		--quiet >/dev/null
 
 	# Fund wallet with native AVAX for gas (add 10 AVAX to current balance)
 	local current_avax_balance
@@ -679,14 +679,10 @@ function run_stop() {
 function query_token_balance() {
 	local address="$1"
 	local raw
-	raw=$(
-		cast call \
-			"$ANVIL_TOKEN_ADDRESS" \
-			"balanceOf(address)(uint256)" \
-			"$address" \
-			--rpc-url "$ANVIL_RPC_URL" 2>/dev/null
-	)
-	raw=$(echo "$raw" | awk '{print $1}')
+	raw=$(cast erc20-token balance \
+		"$ANVIL_TOKEN_ADDRESS" \
+		"$address" \
+		--rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "0")
 	local human
 	human=$(cast from-wei "$raw" 2>/dev/null || echo "0")
 	printf "%'.2f" "$human"
@@ -694,14 +690,8 @@ function query_token_balance() {
 
 function query_avax_balance() {
 	local address="$1"
-	local raw
-	raw=$(
-		cast balance \
-			"$address" \
-			--rpc-url "$ANVIL_RPC_URL" 2>/dev/null
-	)
 	local human
-	human=$(cast from-wei "$raw" 2>/dev/null || echo "0")
+	human=$(cast balance "$address" --ether --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "0")
 	printf "%'.2f" "$human"
 }
 
@@ -836,13 +826,8 @@ function run_health() {
 	else
 		# Confirm receipt
 		local receipt_status
-		receipt_status=$(
-			cast receipt \
-				"$tx_hash" \
-				--rpc-url "$ANVIL_RPC_URL" \
-				--json 2>/dev/null | jq -r '.status'
-		)
-		if [[ $receipt_status == "0x1" ]]; then
+		receipt_status=$(cast receipt "$tx_hash" status --rpc-url "$ANVIL_RPC_URL" 2>/dev/null | awk '{print $1}')
+		if [[ $receipt_status == "1" || $receipt_status == "0x1" ]]; then
 			log_info "  ${GREEN}✓${NC} Tx sent and receipt confirmed: ${tx_hash:0:18}..."
 			((pass++)) || true
 		else
@@ -858,7 +843,7 @@ function run_health() {
 
 	if [[ -n $token_address && $token_address != "$ZERO_ADDRESS" ]]; then
 		local token_name
-		token_name=$(cast call "$token_address" "name()(string)" --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "")
+		token_name=$(cast erc20-token name "$token_address" --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "")
 		if [[ -n $token_name ]]; then
 			log_info "  ${GREEN}✓${NC} Token contract responds: ${token_name}"
 			((pass++)) || true
