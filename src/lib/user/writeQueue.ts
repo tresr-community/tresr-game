@@ -124,7 +124,13 @@ async function doWrite(
         await delay(backoff);
         continue;
       }
-      log.error(COMPONENT_NAME, "Profile write failed for", principal, e);
+      // Use log.info to avoid recursive loop: log.error → showErrorToast → addNotification → enqueueProfileWrite → fail → log.error
+      log.info(
+        COMPONENT_NAME,
+        "Profile write failed for",
+        principal,
+        e instanceof Error ? e.message : String(e)
+      );
       throw e;
     }
   }

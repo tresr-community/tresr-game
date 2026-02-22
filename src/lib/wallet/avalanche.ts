@@ -1,4 +1,4 @@
-import {encodeFunctionData, type Chain} from "viem";
+import {encodeFunctionData, formatUnits, type Chain} from "viem";
 import {avalanche} from "viem/chains";
 import {loadConfigAsync} from "../config";
 import {JUNO_ENVIRONMENT, getEnvironmentKey} from "../config/constants";
@@ -115,29 +115,66 @@ export async function payFeeForGame(
   // will see allowance=0 and revert with ERC20InsufficientAllowance.
   await confirmReceipt(approveHash, {component: COMPONENT_NAME});
 
+  // --- Pre-flight checks for actionable error messages ---
+  const vaultAddr = chainConfig.vault_contract as `0x${string}`;
+  const tokenAddr = chainConfig.tresr_token_contract as `0x${string}`;
+  const sid = sessionId as `0x${string}`;
+
+  const balance = await publicClient.readContract({
+    address: tokenAddr,
+    abi: ERC20Abi,
+    functionName: "balanceOf",
+    args: [accounts[0]],
+  });
+  const allowance = await publicClient.readContract({
+    address: tokenAddr,
+    abi: ERC20Abi,
+    functionName: "allowance",
+    args: [accounts[0], vaultAddr],
+  });
+  const alreadyPaid = await publicClient.readContract({
+    address: vaultAddr,
+    abi: VaultAbi,
+    functionName: "paidSessions",
+    args: [sid],
+  });
+
+  log.info(
+    COMPONENT_NAME,
+    `payFee pre-flight — user: ${accounts[0]}, session: ${sid}, amount: ${formatUnits(amount, 18)}, balance: ${formatUnits(balance, 18)}, allowance: ${formatUnits(allowance, 18)}, alreadyPaid: ${alreadyPaid}`
+  );
+
+  if (alreadyPaid) {
+    throw new Error(
+      "This session has already been paid for. Please start a new game."
+    );
+  }
+  if (balance < amount) {
+    throw new Error(
+      `Insufficient token balance: have ${formatUnits(balance, 18)} but need ${formatUnits(amount, 18)} TRESR.`
+    );
+  }
+  if (allowance < amount) {
+    throw new Error(
+      `Insufficient token allowance: approved ${formatUnits(allowance, 18)} but need ${formatUnits(amount, 18)} TRESR. The approve transaction may not have confirmed yet.`
+    );
+  }
+
   // --- Pay fee to the Vault ---
   log.info(COMPONENT_NAME, "Paying fee to vault for session:", sessionId);
 
-  const payFeeData = encodeFunctionData({
+  // simulateContract decodes Solidity revert reasons (unlike raw estimateGas)
+  const {request: payFeeRequest} = await publicClient.simulateContract({
+    account: accounts[0],
+    address: vaultAddr,
     abi: VaultAbi,
     functionName: "payFee",
-    args: [amount, sessionId as `0x${string}`],
-  });
-
-  const payFeeGas = await publicClient.estimateGas({
-    account: accounts[0],
-    to: chainConfig.vault_contract as `0x${string}`,
-    data: payFeeData,
+    args: [amount, sid],
   });
 
   const hash = await walletClient.writeContract({
-    account: accounts[0],
-    address: chainConfig.vault_contract as `0x${string}`,
-    abi: VaultAbi,
-    functionName: "payFee",
-    args: [amount, sessionId as `0x${string}`],
+    ...payFeeRequest,
     chain,
-    gas: payFeeGas,
   });
 
   return hash;
