@@ -196,10 +196,10 @@
     "rust-analyzer-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1771585531,
+        "lastModified": 1771639390,
         "owner": "rust-lang",
         "repo": "rust-analyzer",
-        "rev": "46a214b5d35f2e2a02c0b278d9287b20760821eb",
+        "rev": "af68fc6e782f218c262a8e7e5718ce7276f697a2",
         "type": "github"
       },
       "original": {
@@ -216,10 +216,10 @@
         ]
       },
       "locked": {
-        "lastModified": 1771642886,
+        "lastModified": 1771729765,
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "85078369717bdbe1f266c9eaad5e66956fb6feea",
+        "rev": "be926cb1a76e8450ab2b92121b2e88d09fa4d41c",
         "type": "github"
       },
       "original": {
