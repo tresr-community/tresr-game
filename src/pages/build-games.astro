@@ -1,0 +1,148 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Build Games | TRESR">
+  <div class="min-h-screen pt-20 pb-10">
+    <div class="container mx-auto max-w-3xl px-4 text-center">
+      <h1
+        class="text-primary font-display mb-4 text-5xl font-black tracking-widest drop-shadow-[0_0_10px_rgba(var(--primary),0.8)]"
+      >
+        BUILD GAMES 2026
+      </h1>
+      <p class="mb-12 font-mono text-sm opacity-60">
+        Avalanche Build Games &middot; $1,000,000 Prize Pool &middot; 6 Weeks
+      </p>
+
+      <div class="flex flex-col gap-16">
+        <!-- Stage 1: Idea -->
+        <section>
+          <div class="mb-4 flex items-center justify-center gap-3">
+            <span class="badge badge-primary badge-lg font-mono">STAGE 1</span>
+            <span class="badge badge-success badge-outline badge-lg font-mono"
+              >SUBMITTED</span
+            >
+          </div>
+          <h2
+            class="text-secondary mb-2 font-mono text-2xl tracking-widest uppercase"
+          >
+            Idea
+          </h2>
+          <p class="mb-2 font-mono text-xs opacity-50">
+            Deadline: February 25, 2026
+          </p>
+          <p class="mb-6 text-sm opacity-70">
+            1-minute video pitch explaining the project idea, target problem,
+            solution approach, and value proposition.
+          </p>
+
+          <div
+            class="card bg-base-200/50 border-primary/20 overflow-hidden border"
+          >
+            <figure class="px-4 pt-4">
+              <video
+                src="/assets/videos/stage-1.webm"
+                controls
+                playsinline
+                preload="metadata"
+                class="w-full rounded-lg"
+              >
+                Your browser does not support WebM video.
+              </video>
+            </figure>
+            <div class="card-body items-center text-center">
+              <p class="font-mono text-xs opacity-50">Stage 1 Pitch</p>
+            </div>
+          </div>
+        </section>
+
+        <div class="divider divider-primary font-mono text-xs opacity-30">
+          UPCOMING
+        </div>
+
+        <!-- Stage 2: MVP -->
+        <section class="opacity-40">
+          <div class="mb-4 flex items-center justify-center gap-3">
+            <span class="badge badge-neutral badge-lg font-mono">STAGE 2</span>
+            <span class="badge badge-ghost badge-outline badge-lg font-mono"
+              >PENDING</span
+            >
+          </div>
+          <h2
+            class="text-secondary mb-2 font-mono text-2xl tracking-widest uppercase"
+          >
+            MVP
+          </h2>
+          <p class="mb-2 font-mono text-xs opacity-50">
+            Deadline: March 9, 2026
+          </p>
+          <p class="text-sm opacity-70">
+            Functional prototype, GitHub repository, technical documentation,
+            and product walkthrough video.
+          </p>
+        </section>
+
+        <!-- Stage 3: GTM & Vision -->
+        <section class="opacity-40">
+          <div class="mb-4 flex items-center justify-center gap-3">
+            <span class="badge badge-neutral badge-lg font-mono">STAGE 3</span>
+            <span class="badge badge-ghost badge-outline badge-lg font-mono"
+              >PENDING</span
+            >
+          </div>
+          <h2
+            class="text-secondary mb-2 font-mono text-2xl tracking-widest uppercase"
+          >
+            GTM & Vision
+          </h2>
+          <p class="mb-2 font-mono text-xs opacity-50">
+            Deadline: March 19, 2026
+          </p>
+          <p class="text-sm opacity-70">
+            Go-to-market plan, growth strategy, user personas, competitive
+            analysis, and long-term vision.
+          </p>
+        </section>
+
+        <!-- Stage 4: Finals -->
+        <section class="opacity-40">
+          <div class="mb-4 flex items-center justify-center gap-3">
+            <span class="badge badge-neutral badge-lg font-mono">STAGE 4</span>
+            <span class="badge badge-ghost badge-outline badge-lg font-mono"
+              >PENDING</span
+            >
+          </div>
+          <h2
+            class="text-secondary mb-2 font-mono text-2xl tracking-widest uppercase"
+          >
+            Finals
+          </h2>
+          <p class="mb-2 font-mono text-xs opacity-50">
+            Deadline: March 27, 2026
+          </p>
+          <p class="text-sm opacity-70">
+            Final pitch deck, live product demo, complete documentation, and Q&A
+            with judges.
+          </p>
+        </section>
+      </div>
+
+      <div class="mt-16 font-mono text-xs opacity-50">
+        Avalanche Build Games 2026 &middot; <a
+          href="https://build.avax.network/build-games"
+          target="_blank"
+          class="link link-primary">build.avax.network</a
+        >
+      </div>
+
+      <div class="mt-4">
+        <a
+          href="/"
+          class="btn btn-outline btn-primary font-mono tracking-widest"
+        >
+          RETURN TO BASE
+        </a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
