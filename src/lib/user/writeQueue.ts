@@ -100,10 +100,12 @@ async function doWrite(
       // the explicit wallet-link flow (WalletLink.astro / ProfileModal.astro).
       // Leaving them in causes the satellite to require re-verification
       // on every profile write that round-trips the evm_wallet field.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const profileAny = updatedProfile as any;
-      delete profileAny.verification_signature;
-      delete profileAny.verification_message;
+      // We only strip them if the evmWallet HAS NOT changed in this update.
+      const profileAny = updatedProfile as unknown as Record<string, unknown>;
+      if (updatedProfile.evmWallet === currentProfile.evmWallet) {
+        delete profileAny.verification_signature;
+        delete profileAny.verification_message;
+      }
 
       await setDoc<UserProfile>({
         collection: COLLECTION_USERS,
