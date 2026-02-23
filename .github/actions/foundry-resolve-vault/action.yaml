@@ -55,6 +55,9 @@ runs:
         VAULT_PROXY_ADDRESS: ${{ inputs.vault-address }}
         DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
       run: |
+        # Run from contracts/ so FOUNDRY_PROFILE can resolve foundry.toml
+        cd contracts
+
         VAULT_ADDR="${{ inputs.vault-address }}"
         TOKEN_ADDR="${{ inputs.token-address }}"
         ORACLE_ADDR="${{ inputs.oracle-address }}"
@@ -126,7 +129,7 @@ runs:
         fi
 
         # Get locally compiled deployed (runtime) bytecode
-        ARTIFACT="contracts/out/Vault.sol/TresrVault.json"
+        ARTIFACT="out/Vault.sol/TresrVault.json"
         if [[ ! -f "$ARTIFACT" ]]; then
           echo "::error::Build artifact not found at $ARTIFACT — run forge build first"
           exit 1
@@ -149,7 +152,6 @@ runs:
         # ──────────────────────────────────────────────
         # 4. Forge dry-run gate: verify transactions
         # ──────────────────────────────────────────────
-        cd contracts
         DRY_RUN_LOG=$(mktemp)
 
         set +e
