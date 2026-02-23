@@ -227,13 +227,15 @@ export class Enemy extends BaseEntity {
         this.resolutionScale;
       const {width} = this.scene.cameras.main;
       // Run toward nearest edge
-      const nearestEdge = this.x < width / 2 ? -100 : width + 100;
+      const fleeMargin = gp.entities.enemy.flee_margin_px || 50;
+      const nearestEdge =
+        this.x < width / 2 ? -fleeMargin * 2 : width + fleeMargin * 2;
       this.setFlipX(nearestEdge < this.x);
       this.setVelocityX(Math.sign(nearestEdge - this.x) * fleeSpeed);
       this.setVelocityY(0);
       this.safePlay(this.animKeys.walk, true);
       // Kill once off-screen
-      if (this.x < -50 || this.x > width + 50) {
+      if (this.x < -fleeMargin || this.x > width + fleeMargin) {
         this.kill();
         return;
       }
@@ -254,7 +256,12 @@ export class Enemy extends BaseEntity {
       this.safePlay(this.animKeys.walk, true);
 
       // Walk off-screen → self-destruct (no kill event, just disappears)
-      if (this.x < -50 || this.x > width + 50) {
+      const offscreenKillDistance =
+        gp.entities.enemy.offscreen_kill_distance_px || 50;
+      if (
+        this.x < -offscreenKillDistance ||
+        this.x > width + offscreenKillDistance
+      ) {
         this.kill();
         return;
       }
@@ -293,8 +300,8 @@ export class Enemy extends BaseEntity {
         // Add some erratic jitter
         if (this.aiTimer > jitterTime) {
           this.erraticOffset = {
-            x: (this.rng.frac() - 0.5) * 80,
-            y: (this.rng.frac() - 0.5) * 40,
+            x: (this.rng.frac() - 0.5) * (aiConfig.erratic?.jitter_x || 80),
+            y: (this.rng.frac() - 0.5) * (aiConfig.erratic?.jitter_y || 40),
           };
           this.aiTimer = 0;
         }
@@ -319,7 +326,11 @@ export class Enemy extends BaseEntity {
           // Actually deal damage to the target enemy
           if (this.retardioTarget.active && this.retardioTarget.hp > 0) {
             // Damage every ~0.5s
-            if (this.retardioTimer > 0.5 || this.retardioTimer === 0) {
+            const attackCooldown = aiConfig.retardio?.attack_cooldown_s ?? 0.5;
+            if (
+              this.retardioTimer > attackCooldown ||
+              this.retardioTimer === 0
+            ) {
               this.retardioTarget.takeDamage(
                 aiConfig.retardio?.attack_damage ?? 10
               );
@@ -511,7 +522,8 @@ export class Enemy extends BaseEntity {
 
           // Count nearby allies every 10 frames
           this.cautiousCheckCounter++;
-          if (this.cautiousCheckCounter >= 10) {
+          const checkInterval = cautiousConfig.check_frame_interval || 10;
+          if (this.cautiousCheckCounter >= checkInterval) {
             this.cautiousCheckCounter = 0;
             let nearbyCount = 0;
             if (this.enemyGroup) {
@@ -625,7 +637,8 @@ export class Enemy extends BaseEntity {
           // Speed boost from nearby allies (re-evaluate every 10 frames)
           const swarmConfig = aiConfig.swarm;
           this.swarmCheckCounter++;
-          if (this.swarmCheckCounter >= 10) {
+          const checkInterval = swarmConfig.check_frame_interval || 10;
+          if (this.swarmCheckCounter >= checkInterval) {
             this.swarmCheckCounter = 0;
             let nearbyCount = 0;
             if (this.enemyGroup) {
@@ -742,7 +755,12 @@ export class Enemy extends BaseEntity {
     super.takeDamage(amount);
     // Show health bar after damage applied, but not for dead enemies
     if (!this.showHealthBar && this.hp > 0 && this.hp < this.maxHp) {
-      this.enableHealthBar(30, 4, -5);
+      const enemyConfig = this.config.gameplay.entities.enemy;
+      this.enableHealthBar(
+        enemyConfig.health_bar?.width || 30,
+        enemyConfig.health_bar?.height || 4,
+        enemyConfig.health_bar?.offset_y || -5
+      );
     }
     if (this.hp > 0 && this.anims) {
       this.safePlay(this.animKeys.hurt, true);
@@ -874,7 +892,17 @@ export class Enemy extends BaseEntity {
     // Walk-in state: enemy walks from off-screen to target position
     if (walkInTargetX !== undefined) {
       this.enterState = "walking_in";
-      this.walkInTargetX = walkInTargetX;
+
+      // Calculate walk in limit
+      const margin =
+        this.config.gameplay.entities.enemy.walk_in_boundary_margin_px || 5;
+      const {width} = this.scene.cameras.main;
+
+      // Clamp the walk-in target to within allowed bounds
+      this.walkInTargetX = Math.min(
+        Math.max(walkInTargetX, margin),
+        width - margin
+      );
     } else {
       this.enterState = "active";
     }

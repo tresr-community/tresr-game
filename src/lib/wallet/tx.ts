@@ -72,7 +72,7 @@ export async function confirmReceipt(
   hash: `0x${string}`,
   options?: {timeout?: number; component?: string}
 ): Promise<TransactionReceipt> {
-  const timeout = options?.timeout ?? 30_000;
+  const timeout = options?.timeout ?? config.wallet?.tx_timeout_ms ?? 30_000;
   const component = options?.component ?? COMPONENT_NAME;
 
   const env = getEnvironmentKey();
@@ -93,7 +93,7 @@ export async function confirmReceipt(
   const receipt = await client.waitForTransactionReceipt({
     hash,
     timeout,
-    pollingInterval: 1_000,
+    pollingInterval: config.wallet?.tx_polling_interval_ms ?? 1_000,
     confirmations,
   });
 

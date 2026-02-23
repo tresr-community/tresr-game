@@ -46,6 +46,9 @@ export const config: ConfigTypes = {
   },
   "app": {
     "name": "TRESR Game",
+    "description": "Decentralized treasure hunting game on Avalanche",
+    "url": "https://game.tresr.community",
+    "icon": "https://game.tresr.community/favicon.ico",
     "tagline": "Collect Keys. Fight Enemies. Claim the $TRESR.",
     "footer_text": "Powered by Avalanche 🔺",
     "narration_text": {
@@ -147,7 +150,10 @@ export const config: ConfigTypes = {
     }
   },
   "wallet": {
-    "balance_refresh_cooldown_ms": 30000
+    "balance_refresh_cooldown_ms": 30000,
+    "connect_timeout_ms": 300000,
+    "tx_timeout_ms": 30000,
+    "tx_polling_interval_ms": 1000
   },
   "assets": {
     "music": [
@@ -387,6 +393,10 @@ export const config: ConfigTypes = {
     "fee_gate": {
       "transaction_timeout_ms": 300000
     },
+    "claim_retries": {
+      "max_attempts": 3,
+      "base_delay_ms": 100
+    },
     "vault": {
       "minimum_cap": 1000,
       "tiers": {
@@ -402,6 +412,7 @@ export const config: ConfigTypes = {
       }
     },
     "physics": {
+      "fps": 60,
       "gravity": 0.75,
       "timestep": 0.01667,
       "game_speed": 1.5
@@ -492,6 +503,11 @@ export const config: ConfigTypes = {
             "explosion_expand_duration": 300
           }
         },
+        "health_bar": {
+          "width": 50,
+          "height": 6,
+          "offset_y": -5
+        },
         "effects": {
           "attack_shake_duration": 100,
           "attack_shake_intensity": 0.01,
@@ -520,6 +536,9 @@ export const config: ConfigTypes = {
         "damage": 10,
         "speed": 100,
         "flee_speed_mult": 1.5,
+        "flee_margin_px": 50,
+        "offscreen_kill_distance_px": 100,
+        "walk_in_boundary_margin_px": 5,
         "knockback": {
           "force": 300,
           "stun_ms": 200
@@ -552,12 +571,15 @@ export const config: ConfigTypes = {
             "pack_threshold": 2,
             "charge_speed_mult": 1.3,
             "strafe_speed_mult": 0.9,
-            "strafe_switch_time": 2
+            "strafe_switch_time": 2,
+            "check_frame_interval": 10
           },
           "erratic": {
             "speed_mult": 1.2,
             "zigzag_frequency": 3,
-            "zigzag_amplitude": 80
+            "zigzag_amplitude": 80,
+            "jitter_x": 80,
+            "jitter_y": 40
           },
           "swarm": {
             "speed_mult": 1,
@@ -565,7 +587,8 @@ export const config: ConfigTypes = {
             "speed_bonus_per_ally": 0.15,
             "max_speed_mult": 2,
             "rush_threshold": 3,
-            "rush_tint": 65416
+            "rush_tint": 65416,
+            "check_frame_interval": 10
           },
           "passive": {
             "speed_mult": 0.5,
@@ -576,7 +599,8 @@ export const config: ConfigTypes = {
             "speed_mult": 1.1,
             "jitter_time": 0.3,
             "retarget_time": 4,
-            "attack_damage": 10
+            "attack_damage": 10,
+            "attack_cooldown_s": 0.5
           },
           "weights": {
             "direct": 100,
@@ -587,6 +611,11 @@ export const config: ConfigTypes = {
             "passive": 0,
             "retardio": 0
           }
+        },
+        "health_bar": {
+          "width": 30,
+          "height": 4,
+          "offset_y": -5
         },
         "animations": {
           "death_delay": 500
@@ -622,6 +651,7 @@ export const config: ConfigTypes = {
         "speed": 150,
         "knockback": {
           "force": 50,
+          "force_mult": 0.5,
           "stun_ms": 100
         },
         "hitbox": {
@@ -641,7 +671,8 @@ export const config: ConfigTypes = {
         "phases": {
           "enrage_threshold": 0.5,
           "phase2_speed_mult": 2,
-          "phase2_damage_mult": 2
+          "phase2_damage_mult": 2,
+          "enrage_tint": 16711680
         },
         "attacks": {
           "ground_pound": {
@@ -680,6 +711,11 @@ export const config: ConfigTypes = {
           "flash_g": 200,
           "flash_b": 100
         },
+        "health_bar": {
+          "width": 80,
+          "height": 8,
+          "offset_y": -10
+        },
         "animations": {
           "death_delay": 1000
         }
@@ -716,7 +752,11 @@ export const config: ConfigTypes = {
         },
         "effects": {
           "shake_duration": 150,
-          "shake_intensity": 0.015
+          "shake_intensity": 0.015,
+          "explosion_scale": 0.2,
+          "explosion_duration": 300,
+          "explosion_tint": 16737792,
+          "explosion_alpha": 0.5
         },
         "spawner": {
           "pool_size": 10,
@@ -728,6 +768,7 @@ export const config: ConfigTypes = {
         }
       },
       "chest": {
+        "fallback_tint": 65280,
         "combat": {
           "interact_range": 100
         },
@@ -1408,5 +1449,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "73dc969b3be1029705313bb19a0232491c236826072074cb987290edf42bdeaf"
+  "configHash": "197e129e35c0055b3ab03b29a80fe101c5fe66dde1f0b6a04a0bb10e7bedb7c6"
 };

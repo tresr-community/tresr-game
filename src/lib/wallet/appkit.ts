@@ -93,16 +93,20 @@ export function getAppKit(): AppKit {
 
   // Application metadata
   const metadata = {
-    name: "TRESR Game",
-    description: "Decentralized treasure hunting game on Avalanche",
+    name: config.app.name,
+    description:
+      config.app.description ||
+      "Decentralized treasure hunting game on Avalanche",
     url:
-      typeof window !== "undefined"
+      config.app.url ||
+      (typeof window !== "undefined"
         ? window.location.origin
-        : "https://tresr.game",
+        : "https://tresr.game"),
     icons: [
-      typeof window !== "undefined"
-        ? `${window.location.origin}/favicon.ico`
-        : "https://tresr.game/favicon.ico",
+      config.app.icon ||
+        (typeof window !== "undefined"
+          ? `${window.location.origin}/favicon.ico`
+          : "https://tresr.game/favicon.ico"),
     ],
   };
 
@@ -312,14 +316,12 @@ export function connectWallet(): Promise<string> {
   return new Promise((resolve, reject) => {
     const appKit = getAppKit();
 
-    // Timeout after 5 minutes — always reject to avoid hanging forever
-    const timeoutId = setTimeout(
-      () => {
-        clearPendingConnect();
-        reject(new Error("Connection timeout"));
-      },
-      5 * 60 * 1000
-    );
+    // Timeout — always reject to avoid hanging forever
+    const timeoutMs = config.wallet?.connect_timeout_ms || 300000;
+    const timeoutId = setTimeout(() => {
+      clearPendingConnect();
+      reject(new Error("Connection timeout"));
+    }, timeoutMs);
 
     // Subscribe to events to detect connection
     const unsubscribe = appKit.subscribeEvents((event) => {

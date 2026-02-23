@@ -50,6 +50,7 @@ export interface GameplayConfig {
     min_bomb_spawn_ms: number;
   };
   physics: {
+    fps: number;
     gravity: number;
     timestep: number;
     game_speed: number;
@@ -63,6 +64,10 @@ export interface GameplayConfig {
     enemy_kill: number;
     boss_hit: number;
     super_hit: number;
+  };
+  claim_retries: {
+    max_attempts: number;
+    base_delay_ms: number;
   };
   entities: {
     player: {
@@ -352,7 +357,7 @@ export class MainScene extends Phaser.Scene {
     // Initialize seeded RNG for reproducible gameplay
     this.seed = data.seed || Date.now();
     this.rng = new Phaser.Math.RandomDataGenerator([this.seed.toString()]);
-    this.physics.world.setFPS(60); // Fixed physics step for determinism
+    this.physics.world.setFPS(this.gameplayConfig.physics.fps || 60); // Fixed physics step for determinism
 
     this.recorder.reset();
     this.configTampered = false;
@@ -1327,10 +1332,9 @@ export class MainScene extends Phaser.Scene {
    * hook, which writes to the leaderboard. Retries on version conflict.
    */
   private async saveGameSession(bossDefeated: boolean) {
-    if (!this.sessionId || this.sessionId.startsWith("guest-")) return;
-
-    const MAX_ATTEMPTS = 3;
-    const BASE_DELAY_MS = 100;
+    const claimRetries = this.gameplayConfig.claim_retries;
+    const MAX_ATTEMPTS = claimRetries?.max_attempts || 3;
+    const BASE_DELAY_MS = claimRetries?.base_delay_ms || 100;
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       try {

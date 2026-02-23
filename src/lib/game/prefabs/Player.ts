@@ -110,7 +110,11 @@ export class Player extends BaseEntity {
     }
 
     // Enable health bar for player
-    this.enableHealthBar(50, 6, -5);
+    this.enableHealthBar(
+      playerConfig.health_bar?.width || 50,
+      playerConfig.health_bar?.height || 6,
+      playerConfig.health_bar?.offset_y || -5
+    );
   }
 
   setRecorder(recorder: Recorder) {

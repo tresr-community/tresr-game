@@ -18,6 +18,9 @@ declare module "/config-client.json" {
       };
     };
     app: {      name: string;
+      description: string;
+      url: string;
+      icon: string;
       tagline: string;
       footer_text: string;
       narration_text: {        intro: string;
@@ -67,6 +70,9 @@ declare module "/config-client.json" {
       };
     };
     wallet: {      balance_refresh_cooldown_ms: number;
+      connect_timeout_ms: number;
+      tx_timeout_ms: number;
+      tx_polling_interval_ms: number;
     };
     assets: {      music: string[];
       sfx: string[];
@@ -93,6 +99,9 @@ declare module "/config-client.json" {
       };
       fee_gate: {        transaction_timeout_ms: number;
       };
+      claim_retries: {        max_attempts: number;
+        base_delay_ms: number;
+      };
       vault: {        minimum_cap: number;
         tiers: {          easy: number;
           normal: number;
@@ -104,7 +113,8 @@ declare module "/config-client.json" {
           extreme: number;
         };
       };
-      physics: {        gravity: number;
+      physics: {        fps: number;
+        gravity: number;
         timestep: number;
         game_speed: number;
       };
@@ -179,6 +189,10 @@ declare module "/config-client.json" {
               explosion_expand_duration: number;
             };
           };
+          health_bar: {            width: number;
+            height: number;
+            offset_y: number;
+          };
           effects: {            attack_shake_duration: number;
             attack_shake_intensity: number;
             victory_flash_duration: number;
@@ -201,6 +215,9 @@ declare module "/config-client.json" {
           damage: number;
           speed: number;
           flee_speed_mult: number;
+          flee_margin_px: number;
+          offscreen_kill_distance_px: number;
+          walk_in_boundary_margin_px: number;
           knockback: {            force: number;
             stun_ms: number;
           };
@@ -228,10 +245,13 @@ declare module "/config-client.json" {
               charge_speed_mult: number;
               strafe_speed_mult: number;
               strafe_switch_time: number;
+              check_frame_interval: number;
             };
             erratic: {              speed_mult: number;
               zigzag_frequency: number;
               zigzag_amplitude: number;
+              jitter_x: number;
+              jitter_y: number;
             };
             swarm: {              speed_mult: number;
               group_radius: number;
@@ -239,6 +259,7 @@ declare module "/config-client.json" {
               max_speed_mult: number;
               rush_threshold: number;
               rush_tint: number;
+              check_frame_interval: number;
             };
             passive: {              speed_mult: number;
               provoked_speed_mult: number;
@@ -248,6 +269,7 @@ declare module "/config-client.json" {
               jitter_time: number;
               retarget_time: number;
               attack_damage: number;
+              attack_cooldown_s: number;
             };
             weights: {              direct: number;
               flanker: number;
@@ -257,6 +279,10 @@ declare module "/config-client.json" {
               passive: number;
               retardio: number;
             };
+          };
+          health_bar: {            width: number;
+            height: number;
+            offset_y: number;
           };
           animations: {            death_delay: number;
           };
@@ -284,6 +310,7 @@ declare module "/config-client.json" {
           damage: number;
           speed: number;
           knockback: {            force: number;
+            force_mult: number;
             stun_ms: number;
           };
           hitbox: {            radius: number;
@@ -300,6 +327,7 @@ declare module "/config-client.json" {
           phases: {            enrage_threshold: number;
             phase2_speed_mult: number;
             phase2_damage_mult: number;
+            enrage_tint: number;
           };
           attacks: {            ground_pound: {              damage: number;
               radius: number;
@@ -332,6 +360,10 @@ declare module "/config-client.json" {
             flash_g: number;
             flash_b: number;
           };
+          health_bar: {            width: number;
+            height: number;
+            offset_y: number;
+          };
           animations: {            death_delay: number;
           };
         };
@@ -361,6 +393,10 @@ declare module "/config-client.json" {
           };
           effects: {            shake_duration: number;
             shake_intensity: number;
+            explosion_scale: number;
+            explosion_duration: number;
+            explosion_tint: number;
+            explosion_alpha: number;
           };
           spawner: {            pool_size: number;
             delay_ms: number;
@@ -370,7 +406,8 @@ declare module "/config-client.json" {
             y_margin_bottom_ratio: number;
           };
         };
-        chest: {          combat: {            interact_range: number;
+        chest: {          fallback_tint: number;
+          combat: {            interact_range: number;
           };
           air_drop: {            delay_after_boss_ms: number;
             landing_flash_color: number;
@@ -697,6 +734,9 @@ declare module "../../../public/config-client.json" {
       };
     };
     app: {      name: string;
+      description: string;
+      url: string;
+      icon: string;
       tagline: string;
       footer_text: string;
       narration_text: {        intro: string;
@@ -746,6 +786,9 @@ declare module "../../../public/config-client.json" {
       };
     };
     wallet: {      balance_refresh_cooldown_ms: number;
+      connect_timeout_ms: number;
+      tx_timeout_ms: number;
+      tx_polling_interval_ms: number;
     };
     assets: {      music: string[];
       sfx: string[];
@@ -772,6 +815,9 @@ declare module "../../../public/config-client.json" {
       };
       fee_gate: {        transaction_timeout_ms: number;
       };
+      claim_retries: {        max_attempts: number;
+        base_delay_ms: number;
+      };
       vault: {        minimum_cap: number;
         tiers: {          easy: number;
           normal: number;
@@ -783,7 +829,8 @@ declare module "../../../public/config-client.json" {
           extreme: number;
         };
       };
-      physics: {        gravity: number;
+      physics: {        fps: number;
+        gravity: number;
         timestep: number;
         game_speed: number;
       };
@@ -858,6 +905,10 @@ declare module "../../../public/config-client.json" {
               explosion_expand_duration: number;
             };
           };
+          health_bar: {            width: number;
+            height: number;
+            offset_y: number;
+          };
           effects: {            attack_shake_duration: number;
             attack_shake_intensity: number;
             victory_flash_duration: number;
@@ -880,6 +931,9 @@ declare module "../../../public/config-client.json" {
           damage: number;
           speed: number;
           flee_speed_mult: number;
+          flee_margin_px: number;
+          offscreen_kill_distance_px: number;
+          walk_in_boundary_margin_px: number;
           knockback: {            force: number;
             stun_ms: number;
           };
@@ -907,10 +961,13 @@ declare module "../../../public/config-client.json" {
               charge_speed_mult: number;
               strafe_speed_mult: number;
               strafe_switch_time: number;
+              check_frame_interval: number;
             };
             erratic: {              speed_mult: number;
               zigzag_frequency: number;
               zigzag_amplitude: number;
+              jitter_x: number;
+              jitter_y: number;
             };
             swarm: {              speed_mult: number;
               group_radius: number;
@@ -918,6 +975,7 @@ declare module "../../../public/config-client.json" {
               max_speed_mult: number;
               rush_threshold: number;
               rush_tint: number;
+              check_frame_interval: number;
             };
             passive: {              speed_mult: number;
               provoked_speed_mult: number;
@@ -927,6 +985,7 @@ declare module "../../../public/config-client.json" {
               jitter_time: number;
               retarget_time: number;
               attack_damage: number;
+              attack_cooldown_s: number;
             };
             weights: {              direct: number;
               flanker: number;
@@ -936,6 +995,10 @@ declare module "../../../public/config-client.json" {
               passive: number;
               retardio: number;
             };
+          };
+          health_bar: {            width: number;
+            height: number;
+            offset_y: number;
           };
           animations: {            death_delay: number;
           };
@@ -963,6 +1026,7 @@ declare module "../../../public/config-client.json" {
           damage: number;
           speed: number;
           knockback: {            force: number;
+            force_mult: number;
             stun_ms: number;
           };
           hitbox: {            radius: number;
@@ -979,6 +1043,7 @@ declare module "../../../public/config-client.json" {
           phases: {            enrage_threshold: number;
             phase2_speed_mult: number;
             phase2_damage_mult: number;
+            enrage_tint: number;
           };
           attacks: {            ground_pound: {              damage: number;
               radius: number;
@@ -1011,6 +1076,10 @@ declare module "../../../public/config-client.json" {
             flash_g: number;
             flash_b: number;
           };
+          health_bar: {            width: number;
+            height: number;
+            offset_y: number;
+          };
           animations: {            death_delay: number;
           };
         };
@@ -1040,6 +1109,10 @@ declare module "../../../public/config-client.json" {
           };
           effects: {            shake_duration: number;
             shake_intensity: number;
+            explosion_scale: number;
+            explosion_duration: number;
+            explosion_tint: number;
+            explosion_alpha: number;
           };
           spawner: {            pool_size: number;
             delay_ms: number;
@@ -1049,7 +1122,8 @@ declare module "../../../public/config-client.json" {
             y_margin_bottom_ratio: number;
           };
         };
-        chest: {          combat: {            interact_range: number;
+        chest: {          fallback_tint: number;
+          combat: {            interact_range: number;
           };
           air_drop: {            delay_after_boss_ms: number;
             landing_flash_color: number;
