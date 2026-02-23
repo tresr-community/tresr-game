@@ -91,7 +91,9 @@
         ],
         "allowed_origins": [
           "http://localhost:5173",
-          "http://localhost:4943"
+          "http://localhost:4943",
+          "http://auamu-4x777-77775-aaaaa-cai.localhost:5987",
+          "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987"
         ],
         "token_ticker": "tRON",
         "tresr_token_contract": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",

@@ -99,10 +99,10 @@ thread_local! {
 #[assert_set_doc(collections = ["users", "fees", "claims", "game_sessions", "balance_refresh"])]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     match context.data.collection.as_str() {
-        "users" => assert_user_profile(&context),
-        "fees" => assert_fee_request(&context),
-        "claims" => assert_claim_request(&context),
-        "game_sessions" => assert_game_session(&context),
+        "users" => assert_user_profile(&context).map_err(|e| { crate::logging::log_error("Users", &e); e }),
+        "fees" => assert_fee_request(&context).map_err(|e| { crate::logging::log_error("Fees", &e); e }),
+        "claims" => assert_claim_request(&context).map_err(|e| { crate::logging::log_error("Claims", &e); e }),
+        "game_sessions" => assert_game_session(&context).map_err(|e| { crate::logging::log_error("GameSessions", &e); e }),
         "balance_refresh" => Ok(()), // No validation needed for refresh requests
         _ => Ok(()),
     }
@@ -384,10 +384,14 @@ fn assert_delete_doc(context: AssertDeleteDocContext) -> Result<(), String> {
         // Balance refresh: ephemeral, allow cleanup
         "balance_refresh" => Ok(()),
         // Financial / game session data — block to preserve audit trail
-        "fees" | "claims" | "game_sessions" | "stats" => Err(format!(
-            "Deletion blocked for collection '{}' — audit trail must be preserved",
-            context.data.collection
-        )),
+        "fees" | "claims" | "game_sessions" | "stats" => {
+            let msg = format!(
+                "Deletion blocked for collection '{}' — audit trail must be preserved",
+                context.data.collection
+            );
+            crate::logging::log_error("Security", &msg);
+            Err(msg)
+        },
         _ => Ok(()),
     }
 }

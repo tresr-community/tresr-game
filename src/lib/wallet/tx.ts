@@ -10,7 +10,7 @@
  * transport or where auto-mine means no new blocks arrive after the tx.
  */
 
-import {createPublicClient, http} from "viem";
+import {createPublicClient, http, fallback} from "viem";
 import type {TransactionReceipt, PublicClient} from "viem";
 import {getTargetChain, getEnvironmentKey} from "./avalanche";
 import {config} from "../config/client";
@@ -18,22 +18,38 @@ import {log} from "../utils/log";
 
 const COMPONENT_NAME = "Tx";
 
+// Module-scoped cache for the PublicClient
+let cachedClient: PublicClient | null = null;
+let cachedEnv: string | null = null;
+
 /**
  * Build a direct viem public client for the configured chain + RPC.
  *
  * This is intentionally NOT wagmi's managed client — it uses `http(rpcUrl)`
  * pointed at the exact RPC from tresr.yaml, so receipt polling always
  * queries the right endpoint regardless of wagmi's internal chain state.
+ *
+ * The client is cached to prevent leaking connections/memory on repeated calls.
  */
 function buildDirectClient(): PublicClient {
   const env = getEnvironmentKey();
+
+  if (cachedClient && cachedEnv === env) {
+    return cachedClient;
+  }
+
   const chainConfig = config.blockchain.avalanche[env];
   const chain = getTargetChain(chainConfig.rpc_urls[0]);
 
-  return createPublicClient({
+  const transports = chainConfig.rpc_urls.map((url) => http(url));
+
+  cachedClient = createPublicClient({
     chain,
-    transport: http(chainConfig.rpc_urls[0]),
+    transport: fallback(transports),
   }) as PublicClient;
+  cachedEnv = env;
+
+  return cachedClient;
 }
 
 /**

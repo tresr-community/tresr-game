@@ -535,9 +535,6 @@ export async function signInWithAvalanche(): Promise<void> {
     // Bridge SIWA identity to IDB so initSatellite() recognizes the session
     await bridgeSiwaToIdb(siwaIdentity);
 
-    // Pass identity to Juno
-    await initSatellite();
-
     // Use the DelegationIdentity principal — this is the self-authenticating
     // principal the IC sees as caller(), NOT the opaque keccak-derived one
     // from result.principal (which is only for SIWA internal address mapping).
@@ -547,6 +544,23 @@ export async function signInWithAvalanche(): Promise<void> {
       COMPONENT_NAME,
       `SIWA canister Principal (unused): ${result.principal.toText()}`
     );
+
+    // Generate TRESR Wallet Link signature to satisfy the smart contract validation
+    // Do this BEFORE initSatellite() so the UI doesn't transition to the game
+    // and potentially unmount the wallet connector / cause hanging.
+    log.debug(COMPONENT_NAME, "Requesting wallet link signature...");
+    emitProgress("Please sign wallet link message...");
+    const linkMessage = buildWalletLinkMessage(
+      principal,
+      address as `0x${string}`
+    );
+    const linkSignature = await walletClient.signMessage({
+      account: address as `0x${string}`,
+      message: linkMessage,
+    });
+
+    // Pass identity to Juno
+    await initSatellite();
 
     // Register in Juno's #user system collection so getDoc/setDoc are authorized
     try {
@@ -568,18 +582,6 @@ export async function signInWithAvalanche(): Promise<void> {
         userDocError
       );
     }
-
-    // Generate TRESR Wallet Link signature to satisfy the smart contract validation
-    log.debug(COMPONENT_NAME, "Requesting wallet link signature...");
-    emitProgress("Please sign wallet link message...");
-    const linkMessage = buildWalletLinkMessage(
-      principal,
-      address as `0x${string}`
-    );
-    const linkSignature = await walletClient.signMessage({
-      account: address as `0x${string}`,
-      message: linkMessage,
-    });
 
     authState = {
       isAuthenticated: true,

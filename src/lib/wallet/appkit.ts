@@ -10,6 +10,7 @@
 import {createAppKit, type AppKit} from "@reown/appkit";
 import {WagmiAdapter} from "@reown/appkit-adapter-wagmi";
 import {defineChain} from "@reown/appkit/networks";
+import {http, fallback} from "viem";
 import type {Config} from "@wagmi/core";
 import {config} from "../config/client";
 import {getEnvironmentKey} from "../config/constants";
@@ -49,7 +50,7 @@ function getTargetNetwork() {
       symbol: "AVAX",
     },
     rpcUrls: {
-      default: {http: [chainConfig.rpc_urls[0]]},
+      default: {http: [...chainConfig.rpc_urls]},
     },
   });
 }
@@ -76,10 +77,18 @@ export function getAppKit(): AppKit {
 
   log.info(COMPONENT_NAME, `Initializing for chain ${targetNetwork.id}...`);
 
+  const env = getEnvironmentKey();
+  const chainConfig = config.blockchain.avalanche[env];
+
   // Create Wagmi adapter
   wagmiAdapterInstance = new WagmiAdapter({
     projectId: WALLETCONNECT_PROJECT_ID,
     networks,
+    transports: {
+      [targetNetwork.id]: fallback(
+        chainConfig.rpc_urls.map((url) => http(url))
+      ),
+    },
   });
 
   // Application metadata
