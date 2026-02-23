@@ -957,6 +957,10 @@ oneshot | loop)
 		log_error "Could not deploy the site."
 		exit 13
 	}
+	cmd_functions_deploy development || {
+		log_error "Could not deploy serverless functions."
+		exit 2
+	}
 	;;
 
 # Clear satellite data

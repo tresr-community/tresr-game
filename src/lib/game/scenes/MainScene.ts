@@ -357,7 +357,7 @@ export class MainScene extends Phaser.Scene {
     // Initialize seeded RNG for reproducible gameplay
     this.seed = data.seed || Date.now();
     this.rng = new Phaser.Math.RandomDataGenerator([this.seed.toString()]);
-    this.physics.world.setFPS(this.gameplayConfig.physics.fps || 60); // Fixed physics step for determinism
+    // Physics FPS is set in create() after gameplayConfig is loaded from registry
 
     this.recorder.reset();
     this.configTampered = false;
@@ -492,6 +492,9 @@ export class MainScene extends Phaser.Scene {
     const fullConfig = this.registry.get("full_config");
     this.gameplayConfig = fullConfig.gameplay as GameplayConfig;
     this.designHeight = fullConfig.display?.design_height ?? 720;
+
+    // Fixed physics step for determinism
+    this.physics.world.setFPS(this.gameplayConfig.physics.fps || 60);
 
     // Apply game_speed as a true global speed multiplier.
     // Phaser's world.timeScale DIVIDES the physics delta, so 1/speed = faster.
