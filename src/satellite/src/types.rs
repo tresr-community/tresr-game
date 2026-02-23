@@ -225,7 +225,7 @@ pub struct UserProfile {
 }
 
 /// Nested stats object matching TypeScript `stats` field
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct UserStats {
     #[serde(default, deserialize_with = "deserialize_flexible_u64")]
@@ -239,7 +239,7 @@ pub struct UserStats {
 }
 
 /// Nested wallet object matching TypeScript `wallet` field
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct UserWallet {
     #[serde(default, deserialize_with = "deserialize_flexible_u64")]
@@ -249,7 +249,7 @@ pub struct UserWallet {
 }
 
 /// Nested preferences object matching TypeScript `preferences` field
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct UserPreferences {
     #[serde(default, skip_serializing_if = "Option::is_none")]

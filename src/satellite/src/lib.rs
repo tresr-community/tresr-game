@@ -75,11 +75,19 @@ struct TopScorerCacheDoc {
     owner_principal: String,
 }
 
+/// Three-state cache for the top active scorer.
+#[derive(Clone)]
+enum TopScorerState {
+    /// Cold start — cache not yet loaded from datastore
+    Cold,
+    /// Cache loaded, but no active top scorer exists
+    Empty,
+    /// Cached active top scorer
+    Active(TopScorerCache),
+}
+
 thread_local! {
-    /// `Some(Some(..))` = cached top scorer
-    /// `Some(None)` = cache loaded, no active top scorer exists
-    /// `None` = cache not yet loaded from datastore (cold start)
-    static TOP_SCORER: RefCell<Option<Option<TopScorerCache>>> = const { RefCell::new(None) };
+    static TOP_SCORER: RefCell<TopScorerState> = const { RefCell::new(TopScorerState::Cold) };
 }
 
 // =============================================================================
@@ -364,11 +372,24 @@ fn assert_game_session(context: &AssertSetDocContext) -> Result<(), String> {
     Ok(())
 }
 
-/// Prevent deletion of critical data
-#[assert_delete_doc(collections = ["users", "fees", "claims", "game_sessions"])]
-fn assert_delete_doc(_context: AssertDeleteDocContext) -> Result<(), String> {
-    // For now, allow deletion. In production, you might want to check for pending claims
-    Ok(())
+/// Per-collection delete policy.
+/// Allow deletion for ephemeral / user-managed data; block for financial audit trails.
+#[assert_delete_doc(collections = ["users", "fees", "claims", "game_sessions", "leaderboard", "balance_refresh", "stats"])]
+fn assert_delete_doc(context: AssertDeleteDocContext) -> Result<(), String> {
+    match context.data.collection.as_str() {
+        // Users: allow self-deletion (e.g. account removal)
+        "users" => Ok(()),
+        // Leaderboard: allow removal of own expired entries
+        "leaderboard" => Ok(()),
+        // Balance refresh: ephemeral, allow cleanup
+        "balance_refresh" => Ok(()),
+        // Financial / game session data — block to preserve audit trail
+        "fees" | "claims" | "game_sessions" | "stats" => Err(format!(
+            "Deletion blocked for collection '{}' — audit trail must be preserved",
+            context.data.collection
+        )),
+        _ => Ok(()),
+    }
 }
 
 // =============================================================================
@@ -417,6 +438,11 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
 
 /// Sync sanitized leaderboard entry when a user profile is saved.
 /// Only writes public-safe data: nickname, highScore, gamesWon.
+///
+/// Guard: if the leaderboard-relevant fields haven't changed since the last
+/// write, skip the write entirely. This prevents wasteful re-trigger cascades
+/// when only the wallet balance or notifications are updated (e.g. from
+/// `on_fee_created`).
 async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String> {
     let profile: UserProfile = decode_doc_data(&context.data.data.after.data)?;
 
@@ -436,6 +462,26 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
 
     let existing_version = existing_doc.as_ref().and_then(|d| d.version);
     let existing = existing_doc.and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
+
+    // --- Re-trigger guard ---
+    // If the leaderboard already has exactly the same user-derived fields,
+    // skip the write to avoid a set_doc → on_set_doc → set_doc loop.
+    if let Some(ref ex) = existing {
+        if ex.nickname == profile.nickname
+            && ex.avatar_url == profile.preferences.avatar_url
+            && ex.high_score == profile.stats.high_score
+            && ex.games_won == profile.stats.total_games_won
+        {
+            logging::log_debug(
+                "Leaderboard",
+                &format!(
+                    "Skipping leaderboard sync — no user-field changes for {}",
+                    context.data.key
+                ),
+            );
+            return Ok(());
+        }
+    }
 
     let entry = LeaderboardEntry {
         nickname: profile.nickname.clone(),
@@ -577,9 +623,14 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                 updated_doc,
             )?;
 
-            // Credit verified fee to user's wallet balance
-            if let Some(user_doc_inner) = user_doc {
-                let mut user_profile: UserProfile = decode_doc_data(&user_doc_inner.data)?;
+            // Credit verified fee to user's wallet balance.
+            // Re-read the user doc to get the latest version — the frontend may
+            // have written a newer version during the async EVM RPC verification
+            // (the original read at line 489 can be seconds stale by now).
+            let fresh_user_doc =
+                get_doc_store(context.caller, "users".to_string(), user_key.clone())?;
+            if let Some(fresh_doc) = fresh_user_doc {
+                let mut user_profile: UserProfile = decode_doc_data(&fresh_doc.data)?;
                 user_profile.wallet.balance = user_profile
                     .wallet
                     .balance
@@ -587,8 +638,8 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                     .ok_or("Balance overflow on deposit credit")?;
                 let updated_user = SetDoc {
                     data: encode_doc_data(&user_profile)?,
-                    description: user_doc_inner.description.clone(),
-                    version: user_doc_inner.version,
+                    description: fresh_doc.description.clone(),
+                    version: fresh_doc.version,
                 };
                 set_doc_store(
                     context.caller,
@@ -1199,15 +1250,15 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
     let should_update = TOP_SCORER.with(|cell| {
         let cache = cell.borrow();
         match &*cache {
-            None => true,       // Cold start — we'll set it
-            Some(None) => true, // No existing top scorer
-            Some(Some(c)) => {
+            TopScorerState::Cold => true,
+            TopScorerState::Empty => true,
+            TopScorerState::Active(c) => {
                 session.score > c.score || (session.score == c.score && now_ms < c.scored_at)
             }
         }
     });
     if should_update {
-        TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(Some(new_cache.clone())));
+        TOP_SCORER.with(|cell| *cell.borrow_mut() = TopScorerState::Active(new_cache.clone()));
         // Write-through to datastore for cold-start recovery
         persist_top_scorer_cache(&new_cache)?;
     }
@@ -1228,12 +1279,17 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     // Check or populate the cache
     let cached = TOP_SCORER.with(|cell| cell.borrow().clone());
     let cached = match cached {
-        Some(Some(c)) => c,
-        Some(None) => return Ok(()), // Cache loaded, no active top scorer
-        None => {
+        TopScorerState::Active(c) => c,
+        TopScorerState::Empty => return Ok(()), // Cache loaded, no active top scorer
+        TopScorerState::Cold => {
             // Cold start: load from persisted datastore document (O(1) read)
             let top = load_persisted_top_scorer()?;
-            TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(top.clone()));
+            TOP_SCORER.with(|cell| {
+                *cell.borrow_mut() = match &top {
+                    Some(t) => TopScorerState::Active(t.clone()),
+                    None => TopScorerState::Empty,
+                };
+            });
             match top {
                 Some(t) => t,
                 None => return Ok(()), // No persisted top scorer
@@ -1255,7 +1311,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         Some(ref doc) => decode_doc_data(&doc.data)?,
         None => {
             // Entry was deleted; clear cache and return
-            TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(None));
+            TOP_SCORER.with(|cell| *cell.borrow_mut() = TopScorerState::Empty);
             clear_persisted_top_scorer_cache();
             return Ok(());
         }
@@ -1265,7 +1321,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     let actual_expires = winner_entry.expires_at.unwrap_or(0);
     if actual_expires == 0 || winner_entry.active_score == 0 {
         // Entry was already cleared; invalidate cache and return
-        TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(None));
+        TOP_SCORER.with(|cell| *cell.borrow_mut() = TopScorerState::Empty);
         clear_persisted_top_scorer_cache();
         return Ok(());
     }
@@ -1287,7 +1343,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     if check_ban(&winner_profile).is_err() {
         // Banned user — clear their expires_at and skip
         clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
-        TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(None));
+        TOP_SCORER.with(|cell| *cell.borrow_mut() = TopScorerState::Empty);
         clear_persisted_top_scorer_cache();
         logging::log_warn(
             "Consolation",
@@ -1387,7 +1443,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     )?;
 
     // Invalidate cache so next call re-discovers the new top scorer
-    TOP_SCORER.with(|cell| *cell.borrow_mut() = Some(None));
+    TOP_SCORER.with(|cell| *cell.borrow_mut() = TopScorerState::Empty);
     clear_persisted_top_scorer_cache();
 
     logging::log_info(
@@ -1528,32 +1584,56 @@ fn clear_leaderboard_expiry(
 // =============================================================================
 
 #[on_set_many_docs]
-async fn on_set_many_docs(_context: OnSetManyDocsContext) -> Result<(), String> {
+async fn on_set_many_docs(context: OnSetManyDocsContext) -> Result<(), String> {
+    logging::log_debug(
+        "Hooks",
+        &format!("on_set_many_docs fired with {} docs", context.data.len()),
+    );
     Ok(())
 }
 
 #[on_delete_doc]
-async fn on_delete_doc(_context: OnDeleteDocContext) -> Result<(), String> {
+async fn on_delete_doc(context: OnDeleteDocContext) -> Result<(), String> {
+    logging::log_info(
+        "Hooks",
+        &format!(
+            "on_delete_doc: collection='{}' key='{}'",
+            context.data.collection, context.data.key
+        ),
+    );
     Ok(())
 }
 
 #[on_delete_many_docs]
-async fn on_delete_many_docs(_context: OnDeleteManyDocsContext) -> Result<(), String> {
+async fn on_delete_many_docs(context: OnDeleteManyDocsContext) -> Result<(), String> {
+    logging::log_debug(
+        "Hooks",
+        &format!("on_delete_many_docs fired with {} docs", context.data.len()),
+    );
     Ok(())
 }
 
 #[on_upload_asset]
 async fn on_upload_asset(_context: OnUploadAssetContext) -> Result<(), String> {
+    logging::log_debug("Hooks", "on_upload_asset fired");
     Ok(())
 }
 
 #[on_delete_asset]
 async fn on_delete_asset(_context: OnDeleteAssetContext) -> Result<(), String> {
+    logging::log_info("Hooks", "on_delete_asset fired");
     Ok(())
 }
 
 #[on_delete_many_assets]
-async fn on_delete_many_assets(_context: OnDeleteManyAssetsContext) -> Result<(), String> {
+async fn on_delete_many_assets(context: OnDeleteManyAssetsContext) -> Result<(), String> {
+    logging::log_debug(
+        "Hooks",
+        &format!(
+            "on_delete_many_assets fired with {} assets",
+            context.data.len()
+        ),
+    );
     Ok(())
 }
 

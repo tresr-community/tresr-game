@@ -142,6 +142,12 @@ export async function connectWallet(): Promise<WalletConnection> {
  */
 export async function getWalletClient(): Promise<WalletClient> {
   const config = getWagmiConfig();
+
+  // Rehydrate connector from localStorage after full page reload.
+  // Without this, the connector's transport methods (getChainId, etc.)
+  // are missing, causing "connector.getChainId is not a function" errors.
+  await reconnect(config);
+
   const account = getConnection(config);
 
   if (!account.isConnected || !account.address) {

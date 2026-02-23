@@ -77,8 +77,8 @@ async function doWrite(
   principal: string,
   mutator: (profile: UserProfile) => UserProfile
 ): Promise<void> {
-  const MAX_ATTEMPTS = 4;
-  const BASE_DELAY_MS = 100;
+  const MAX_ATTEMPTS = 6;
+  const BASE_DELAY_MS = 150;
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
     const config = getSatelliteConfig();
@@ -95,6 +95,15 @@ async function doWrite(
         existingDoc?.data ?? createDefaultProfile(principal);
 
       const updatedProfile = mutator(currentProfile);
+
+      // Strip one-time verification fields — they are only needed during
+      // the explicit wallet-link flow (WalletLink.astro / ProfileModal.astro).
+      // Leaving them in causes the satellite to require re-verification
+      // on every profile write that round-trips the evm_wallet field.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const profileAny = updatedProfile as any;
+      delete profileAny.verification_signature;
+      delete profileAny.verification_message;
 
       await setDoc<UserProfile>({
         collection: COLLECTION_USERS,
@@ -113,7 +122,8 @@ async function doWrite(
         e instanceof Error && e.message.includes("version_outdated_or_future");
 
       if (isVersionConflict && attempt < MAX_ATTEMPTS - 1) {
-        const backoff = BASE_DELAY_MS * Math.pow(2, attempt);
+        const base = BASE_DELAY_MS * Math.pow(2, attempt);
+        const backoff = Math.round(base * (0.75 + Math.random() * 0.5)); // ±25% jitter
         log.warn(
           COMPONENT_NAME,
           `Version conflict (attempt ${attempt + 1}/${MAX_ATTEMPTS}), ` +
