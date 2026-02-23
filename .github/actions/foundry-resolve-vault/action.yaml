@@ -231,7 +231,7 @@ runs:
           DEPLOYED_VAULT=$(jq -r '.transactions[] | select(.transactionType == "CREATE" and .contractName == "ERC1967Proxy") | .contractAddress' "$LATEST" 2>/dev/null | head -1)
         fi
 
-        if [[ -n "$DEPLOYED_VAULT" && ("$CONFIG_VAULT" == "$ZERO" || -z "$CONFIG_VAULT" || "$CONFIG_VAULT" == "null") ]]; then
+        if [[ -n "$DEPLOYED_VAULT" ]]; then
           echo "vault_address=${DEPLOYED_VAULT}" >> "$GITHUB_OUTPUT"
           echo "🔗 Using freshly-deployed vault proxy: ${DEPLOYED_VAULT}"
         elif [[ -n "$CONFIG_VAULT" && "$CONFIG_VAULT" != "$ZERO" ]]; then

@@ -209,7 +209,7 @@ runs:
           DEPLOYED_TOKEN=$(jq -r '.transactions[] | select(.transactionType == "CREATE" and .contractName == "RonToken") | .contractAddress' "$LATEST" 2>/dev/null | head -1)
         fi
 
-        if [[ -n "$DEPLOYED_TOKEN" && ("$CONFIG_TOKEN" == "$ZERO" || -z "$CONFIG_TOKEN" || "$CONFIG_TOKEN" == "null") ]]; then
+        if [[ -n "$DEPLOYED_TOKEN" ]]; then
           echo "token_address=${DEPLOYED_TOKEN}" >> "$GITHUB_OUTPUT"
           echo "🔗 Using freshly-deployed token: ${DEPLOYED_TOKEN}"
         elif [[ -n "$CONFIG_TOKEN" && "$CONFIG_TOKEN" != "$ZERO" ]]; then
@@ -235,7 +235,7 @@ runs:
           DEPLOYED_FAUCET=$(jq -r '.transactions[] | select(.transactionType == "CREATE" and .contractName == "TresrFaucet") | .contractAddress' "$LATEST" 2>/dev/null | head -1)
         fi
 
-        if [[ -n "$DEPLOYED_FAUCET" && ("$CONFIG_FAUCET" == "$ZERO" || -z "$CONFIG_FAUCET" || "$CONFIG_FAUCET" == "null") ]]; then
+        if [[ -n "$DEPLOYED_FAUCET" ]]; then
           echo "faucet_address=${DEPLOYED_FAUCET}" >> "$GITHUB_OUTPUT"
           echo "🔗 Using freshly-deployed faucet: ${DEPLOYED_FAUCET}"
         elif [[ -n "$CONFIG_FAUCET" && "$CONFIG_FAUCET" != "$ZERO" ]]; then
