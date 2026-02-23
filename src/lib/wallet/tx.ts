@@ -40,11 +40,11 @@ function buildDirectClient(): PublicClient {
  * Confirm a transaction receipt via direct RPC polling.
  *
  * Creates a viem public client pointed at the configured RPC URL and
- * polls for the receipt there. Uses `confirmations: 0` so it resolves
- * as soon as the receipt exists — critical for Anvil's auto-mine mode
+ * polls for the receipt there. Uses environment-aware confirmation counts:
+ * 0 for local/anvil, 1 for testnet/Fuji, and 2 for production/Mainnet.
+ * Resolving with 0 confirmations is critical for Anvil's auto-mine mode
  * where no additional blocks are produced after a transaction.
  *
- * Works across Anvil (instant auto-mine), testnet, and mainnet.
  * Throws if the transaction reverts on-chain or if the timeout elapses.
  *
  * @param hash - Transaction hash to confirm
@@ -59,14 +59,26 @@ export async function confirmReceipt(
   const timeout = options?.timeout ?? 30_000;
   const component = options?.component ?? COMPONENT_NAME;
 
-  log.info(component, "Waiting for receipt:", hash);
+  const env = getEnvironmentKey();
+  let confirmations = 0; // default for development/anvil
+  if (env === "testnet") {
+    confirmations = 1;
+  } else if (env === "mainnet") {
+    confirmations = 2;
+  }
+
+  log.info(
+    component,
+    `Waiting for receipt (${confirmations} confirmations):`,
+    hash
+  );
 
   const client = buildDirectClient();
   const receipt = await client.waitForTransactionReceipt({
     hash,
     timeout,
     pollingInterval: 1_000,
-    confirmations: 0,
+    confirmations,
   });
 
   if (receipt.status !== "success") {
