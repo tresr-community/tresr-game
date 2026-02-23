@@ -206,14 +206,25 @@ export async function claimWin(
       "No wallet accounts found. Please connect your wallet and try again."
     );
   }
-  const hash = await walletClient.writeContract({
+
+  const publicClient = getReadClient();
+  log.info(COMPONENT_NAME, "Claiming win from vault for session:", sessionId);
+
+  // simulateContract decodes Solidity revert reasons (unlike raw estimateGas)
+  const {request: claimRequest} = await publicClient.simulateContract({
     account: accounts[0],
     address: chainConfig.vault_contract as `0x${string}`,
     abi: VaultAbi,
     functionName: "claim",
     args: [sessionId as `0x${string}`, amount, BigInt(keys), signature],
+  });
+
+  const hash = await walletClient.writeContract({
+    ...claimRequest,
     chain: getTargetChain(), // Chain is already configured in the wallet client
   });
+
+  await confirmReceipt(hash, {component: COMPONENT_NAME});
 
   return hash;
 }
