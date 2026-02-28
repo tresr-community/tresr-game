@@ -25,7 +25,7 @@
         "clsx": "2.1.1",
         "ic-siwa": "0.2.5",
         "js-yaml": "4.1.1",
-        "nanostores": "1.1.0",
+        "nanostores": "1.1.1",
         "phaser": "3.90.0",
         "rehype-stringify": "10.0.1",
         "remark-breaks": "4.0.0",
@@ -1340,7 +1340,7 @@
 
     "nanoid": ["nanoid@3.3.11", "", { "bin": "bin/nanoid.cjs" }, ""],
 
-    "nanostores": ["nanostores@1.1.0", "", {}, "sha512-yJBmDJr18xy47dbNVlHcgdPrulSn1nhSE6Ns9vTG+Nx9VPT6iV1MD6aQFp/t52zpf82FhLLTXAXr30NuCnxvwA=="],
+    "nanostores": ["nanostores@1.1.1", "", {}, "sha512-EYJqS25r2iBeTtGQCHidXl1VfZ1jXM7Q04zXJOrMlxVVmD0ptxJaNux92n1mJ7c5lN3zTq12MhH/8x59nP+qmg=="],
 
     "natural-compare": ["natural-compare@1.4.0", "", {}, ""],
 
