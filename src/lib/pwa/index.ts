@@ -138,6 +138,21 @@ class PWA {
       );
       return;
     }
+
+    // After an upgrade, suppress re-notification for a cooldown period.
+    // In dev mode, every page load triggers updatefound (Vite serves a
+    // fresh SW), creating an infinite notification loop without this guard.
+    const UPGRADE_COOLDOWN_KEY = "tresr_upgrade_applied_at";
+    const UPGRADE_COOLDOWN_MS = 5 * 60_000; // 5 minutes
+    const appliedAt = sessionStorage.getItem(UPGRADE_COOLDOWN_KEY);
+    if (appliedAt && Date.now() - Number(appliedAt) < UPGRADE_COOLDOWN_MS) {
+      log.debug(
+        COMPONENT_NAME,
+        "Upgrade cooldown active — suppressing update notification"
+      );
+      return;
+    }
+
     this.updatePending = true;
     log.info(
       COMPONENT_NAME,
@@ -349,6 +364,9 @@ class PWA {
     }
 
     this.updatePending = false;
+    // Mark upgrade timestamp so the next page load suppresses re-notification
+    // during the cooldown window (prevents dev-mode infinite notification loop).
+    sessionStorage.setItem("tresr_upgrade_applied_at", String(Date.now()));
     log.info(
       COMPONENT_NAME,
       "Applying update — clearing update notifications..."

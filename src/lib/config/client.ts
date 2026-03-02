@@ -46,9 +46,7 @@ export const config: ConfigTypes = {
   },
   "app": {
     "name": "TRESR Game",
-    "description": "Decentralized treasure hunting game on Avalanche",
-    "url": "https://game.tresr.community",
-    "icon": "https://game.tresr.community/favicon.ico",
+    "description": "Beat up bankers to claim the $TRESR.",
     "tagline": "Collect Keys. Fight Enemies. Claim the $TRESR.",
     "footer_text": "Powered by Avalanche 🔺",
     "narration_text": {
@@ -90,6 +88,7 @@ export const config: ConfigTypes = {
   "blockchain": {
     "avalanche": {
       "anvil": {
+        "url": "http://auamu-4x777-77775-aaaaa-cai.localhost:5987",
         "fee": 10,
         "burn_rate": 1000,
         "chain_id": 31337,
@@ -110,6 +109,7 @@ export const config: ConfigTypes = {
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       },
       "testnet": {
+        "url": "https://game-testnet.tresr.community",
         "fee": 10,
         "burn_rate": 1000,
         "chain_id": 43113,
@@ -128,6 +128,7 @@ export const config: ConfigTypes = {
         "faucet_contract": "0x29d16738c64566940a5543bc3e141e0e9057468e"
       },
       "mainnet": {
+        "url": "https://game.tresr.community",
         "fee": 10,
         "burn_rate": 1000,
         "chain_id": 43114,
@@ -151,6 +152,7 @@ export const config: ConfigTypes = {
   },
   "wallet": {
     "balance_refresh_cooldown_ms": 30000,
+    "vault_poll_interval_ms": 60000,
     "connect_timeout_ms": 300000,
     "tx_timeout_ms": 30000,
     "tx_polling_interval_ms": 1000
@@ -603,8 +605,8 @@ export const config: ConfigTypes = {
             "attack_cooldown_s": 0.5
           },
           "weights": {
-            "direct": 100,
-            "flanker": 0,
+            "direct": 0,
+            "flanker": 100,
             "cautious": 0,
             "swarm": 0,
             "erratic": 0,
@@ -1449,5 +1451,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "197e129e35c0055b3ab03b29a80fe101c5fe66dde1f0b6a04a0bb10e7bedb7c6"
+  "configHash": "a3d787d95d00ff664382036ed1950f449e5e36e6621ba43264d8724b430ef287"
 };

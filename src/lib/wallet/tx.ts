@@ -72,7 +72,15 @@ export async function confirmReceipt(
   hash: `0x${string}`,
   options?: {timeout?: number; component?: string}
 ): Promise<TransactionReceipt> {
-  const timeout = options?.timeout ?? config.wallet?.tx_timeout_ms ?? 30_000;
+  if (!config.wallet.tx_timeout_ms) {
+    throw new Error("Missing required config value: wallet.tx_timeout_ms");
+  }
+  if (!config.wallet.tx_polling_interval_ms) {
+    throw new Error(
+      "Missing required config value: wallet.tx_polling_interval_ms"
+    );
+  }
+  const timeout = options?.timeout ?? config.wallet.tx_timeout_ms;
   const component = options?.component ?? COMPONENT_NAME;
 
   const env = getEnvironmentKey();
@@ -93,7 +101,7 @@ export async function confirmReceipt(
   const receipt = await client.waitForTransactionReceipt({
     hash,
     timeout,
-    pollingInterval: config.wallet?.tx_polling_interval_ms ?? 1_000,
+    pollingInterval: config.wallet.tx_polling_interval_ms,
     confirmations,
   });
 

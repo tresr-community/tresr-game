@@ -19,8 +19,6 @@ declare module "/config-client.json" {
     };
     app: {      name: string;
       description: string;
-      url: string;
-      icon: string;
       tagline: string;
       footer_text: string;
       narration_text: {        intro: string;
@@ -30,7 +28,8 @@ declare module "/config-client.json" {
       custom_404: string;
       instructions: string;
     };
-    blockchain: {      avalanche: {        anvil: {          fee: number;
+    blockchain: {      avalanche: {        anvil: {          url: string;
+          fee: number;
           burn_rate: number;
           chain_id: number;
           rpc_urls: string[];
@@ -42,7 +41,8 @@ declare module "/config-client.json" {
           faucet_contract: string;
           player_wallet: string;
         };
-        testnet: {          fee: number;
+        testnet: {          url: string;
+          fee: number;
           burn_rate: number;
           chain_id: number;
           rpc_urls: string[];
@@ -54,7 +54,8 @@ declare module "/config-client.json" {
           vault_contract: string;
           faucet_contract: string;
         };
-        mainnet: {          fee: number;
+        mainnet: {          url: string;
+          fee: number;
           burn_rate: number;
           chain_id: number;
           rpc_urls: string[];
@@ -70,6 +71,7 @@ declare module "/config-client.json" {
       };
     };
     wallet: {      balance_refresh_cooldown_ms: number;
+      vault_poll_interval_ms: number;
       connect_timeout_ms: number;
       tx_timeout_ms: number;
       tx_polling_interval_ms: number;
@@ -735,8 +737,6 @@ declare module "../../../public/config-client.json" {
     };
     app: {      name: string;
       description: string;
-      url: string;
-      icon: string;
       tagline: string;
       footer_text: string;
       narration_text: {        intro: string;
@@ -746,7 +746,8 @@ declare module "../../../public/config-client.json" {
       custom_404: string;
       instructions: string;
     };
-    blockchain: {      avalanche: {        anvil: {          fee: number;
+    blockchain: {      avalanche: {        anvil: {          url: string;
+          fee: number;
           burn_rate: number;
           chain_id: number;
           rpc_urls: string[];
@@ -758,7 +759,8 @@ declare module "../../../public/config-client.json" {
           faucet_contract: string;
           player_wallet: string;
         };
-        testnet: {          fee: number;
+        testnet: {          url: string;
+          fee: number;
           burn_rate: number;
           chain_id: number;
           rpc_urls: string[];
@@ -770,7 +772,8 @@ declare module "../../../public/config-client.json" {
           vault_contract: string;
           faucet_contract: string;
         };
-        mainnet: {          fee: number;
+        mainnet: {          url: string;
+          fee: number;
           burn_rate: number;
           chain_id: number;
           rpc_urls: string[];
@@ -786,6 +789,7 @@ declare module "../../../public/config-client.json" {
       };
     };
     wallet: {      balance_refresh_cooldown_ms: number;
+      vault_poll_interval_ms: number;
       connect_timeout_ms: number;
       tx_timeout_ms: number;
       tx_polling_interval_ms: number;

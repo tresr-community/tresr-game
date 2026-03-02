@@ -12,6 +12,52 @@ import {ERC20Abi} from "./VaultAbi";
 
 const COMPONENT_NAME = "Balance";
 
+// ── RPC availability tracking ──────────────────────────────────────────
+// Prevents error spam when the blockchain backend (e.g. anvil) is down.
+// After the first connection-level failure, subsequent calls short-circuit
+// and return 0n. The flag auto-resets after RPC_REPROBE_MS so the next
+// poll naturally re-probes the endpoint without manual intervention.
+
+const RPC_REPROBE_MS = 30_000; // Re-probe RPC every 30s while offline
+
+let rpcAvailable: boolean | null = null; // null = untested
+let rpcUnavailableSince = 0;
+let rpcUnavailableLoggedOnce = false;
+
+/** Detect errors that indicate the RPC endpoint itself is unreachable. */
+function isRpcUnavailableError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return (
+    msg.includes("ECONNREFUSED") ||
+    msg.includes("fetch failed") ||
+    msg.includes("Failed to fetch") ||
+    msg.includes("Could not connect")
+  );
+}
+
+/**
+ * Detect errors that indicate the contract is not deployed.
+ * `returned no data ("0x")` means the RPC is fine but there's no code at
+ * the contract address — e.g. anvil is running but contracts haven't been
+ * deployed yet. This is NOT an RPC availability issue.
+ */
+function isContractNotDeployedError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return msg.includes('returned no data ("0x")');
+}
+
+/** Whether the RPC endpoint is currently believed to be reachable. */
+export function isRpcAvailable(): boolean {
+  return rpcAvailable !== false;
+}
+
+/** Reset the availability flag so the next call re-probes the RPC. */
+export function resetRpcAvailability(): void {
+  rpcAvailable = null;
+  rpcUnavailableSince = 0;
+  rpcUnavailableLoggedOnce = false;
+}
+
 // Cache configuration
 const CACHE_TTL_MS = 60_000; // 60 seconds
 
@@ -80,6 +126,16 @@ export async function getTokenBalance(
     }
   }
 
+  // Short-circuit when RPC is known to be down, but allow periodic re-probe
+  if (rpcAvailable === false) {
+    if (Date.now() - rpcUnavailableSince < RPC_REPROBE_MS) {
+      log.debug(COMPONENT_NAME, "RPC unavailable, returning 0n");
+      return 0n;
+    }
+    // Cooldown expired — allow one re-probe attempt
+    log.debug(COMPONENT_NAME, "Re-probing RPC availability...");
+  }
+
   // Fetch fresh balance
   try {
     const publicClient = getReadClient();
@@ -90,7 +146,13 @@ export async function getTokenBalance(
       args: [walletAddress as `0x${string}`],
     });
 
-    // Update cache
+    // RPC is reachable — mark available and update cache
+    if (rpcAvailable === false) {
+      log.info(COMPONENT_NAME, "Blockchain RPC recovered");
+    }
+    rpcAvailable = true;
+    rpcUnavailableSince = 0;
+    rpcUnavailableLoggedOnce = false;
     balanceCache.set(cacheKey, {
       value: balance,
       timestamp: Date.now(),
@@ -102,6 +164,31 @@ export async function getTokenBalance(
     );
     return balance;
   } catch (error) {
+    if (isRpcUnavailableError(error)) {
+      rpcAvailable = false;
+      rpcUnavailableSince = Date.now();
+      if (!rpcUnavailableLoggedOnce) {
+        rpcUnavailableLoggedOnce = true;
+        log.info(
+          COMPONENT_NAME,
+          "Blockchain RPC unreachable — will re-probe automatically"
+        );
+      }
+      return 0n;
+    }
+    // Contract not deployed — RPC is fine, just no code at the address.
+    // Return 0n without marking RPC as down, so other queries still work.
+    if (isContractNotDeployedError(error)) {
+      // Mark RPC as available since the endpoint responded
+      if (rpcAvailable === false) {
+        log.info(COMPONENT_NAME, "Blockchain RPC recovered");
+      }
+      rpcAvailable = true;
+      rpcUnavailableSince = 0;
+      log.debug(COMPONENT_NAME, "Contract not deployed — returning 0n");
+      return 0n;
+    }
+    // Non-connectivity error — propagate normally
     log.error(
       COMPONENT_NAME,
       `Failed to fetch balance for ${walletAddress}:`,

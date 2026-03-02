@@ -99,9 +99,7 @@ client:
       enabled: true
   app:
     name: TRESR Game
-    description: Decentralized treasure hunting game on Avalanche
-    url: https://game.tresr.community
-    icon: https://game.tresr.community/favicon.ico
+    description: Beat up bankers to claim the $TRESR.
     tagline: Collect Keys. Fight Enemies. Claim the $TRESR.
     #footer_text: Powered by the Internet Computer and Avalanche Blockchain.
     footer_text: Powered by Avalanche 🔺
@@ -191,6 +189,7 @@ client:
     # NOTE: The vault_contract is the proxy smart contract address.
     avalanche:
       anvil:
+        url: http://auamu-4x777-77775-aaaaa-cai.localhost:5987
         fee: 10 # Fee in tokens to play
         burn_rate: 1000 # 10% in basis points — must match Vault.sol burnRate
         chain_id: 31337 # Standalone Anvil (no fork)
@@ -208,6 +207,7 @@ client:
         faucet_contract: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
         player_wallet: "0xb81749c72db5b5209098f2bd45a7a0293925da13"
       testnet:
+        url: https://game-testnet.tresr.community
         fee: 10 # Fee in tokens to play
         burn_rate: 1000 # 10% in basis points — must match Vault.sol burnRate
         chain_id: 43113
@@ -225,6 +225,7 @@ client:
         vault_contract: "0xf4a67b6beb1a54587468703ef877bf64c5f49dc7"
         faucet_contract: "0x29d16738c64566940a5543bc3e141e0e9057468e"
       mainnet:
+        url: https://game.tresr.community
         fee: 10 # Fee in tokens to play
         burn_rate: 1000 # 10% in basis points — must match Vault.sol burnRate
         chain_id: 43114
@@ -244,6 +245,7 @@ client:
       evm_rpc_canister_id: 7hfb6-caaaa-aaaar-qadga-cai
   wallet:
     balance_refresh_cooldown_ms: 30000
+    vault_poll_interval_ms: 60000 # Vault balance background polling interval
     connect_timeout_ms: 300000 # AppKit connect wallet timeout (5 mins)
     tx_timeout_ms: 30000 # Direct RPC tx confirmation fallback timeout
     tx_polling_interval_ms: 1000 # Direct RPC tx polling interval
@@ -494,10 +496,10 @@ client:
             attack_damage: 10
             attack_cooldown_s: 0.5
           weights:
-            direct: 100 # TODO: Test
-            flanker: 0 # TODO: Test
+            direct: 0 # TODO: Test
+            flanker: 100 # TODO: Test
             cautious: 0 # TODO: Test
-            swarm: 0
+            swarm: 0 # TODO: Test
             erratic: 0 # TODO: Test
             passive: 0 # TODO: Test
             retardio: 0 # TODO: Test

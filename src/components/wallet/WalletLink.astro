@@ -148,7 +148,12 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
   import {connectWallet, getWalletClient} from "@/lib/wallet/connection";
   import {buildWalletLinkMessage} from "@/lib/wallet/wallet-message";
   import {shortenAddress} from "@/lib/wallet/avalanche";
-  import {getTresrBalance, formatBalance} from "@/lib/wallet/balance";
+  import {
+    getTresrBalance,
+    formatBalance,
+    isRpcAvailable,
+    resetRpcAvailability,
+  } from "@/lib/wallet/balance";
   import {JUNO_ENVIRONMENT} from "@/lib/utils/log";
   import {log} from "@/lib/utils/log";
   import {config} from "@/lib/config/client";
@@ -276,6 +281,17 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     showBalanceLoading();
     try {
       const balance = await getTresrBalance(address, !bypassCache);
+
+      // RPC offline — getTresrBalance returns 0n silently
+      if (!isRpcAvailable()) {
+        balanceLoading.classList.add("hidden");
+        balanceValue.classList.add("hidden");
+        balanceError.classList.remove("hidden");
+        balanceError.querySelector("span")!.textContent = "Network unavailable";
+        addressEl.textContent = shortenAddress(address);
+        return;
+      }
+
       const formatted = formatBalance(balance);
       showBalanceValue(formatted);
       addressEl.textContent = shortenAddress(address);
@@ -288,6 +304,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
 
   async function handleRefresh() {
     if (!canRefresh() || !currentAddress) return;
+    resetRpcAvailability(); // Re-probe RPC on manual refresh
     lastRefreshTime = Date.now();
     startCooldownTimer();
     await fetchAndDisplayBalance(currentAddress, true);

@@ -91,23 +91,28 @@ export function getAppKit(): AppKit {
     },
   });
 
-  // Application metadata
+  // Application metadata — URL must come from per-environment blockchain config
+  // so that WalletConnect metadata.url matches the actual page origin.
+  const appUrl = chainConfig.url;
+  if (!appUrl) {
+    throw new Error(
+      `Missing blockchain.avalanche.${env}.url in config. ` +
+        "Each environment must specify its dApp URL for WalletConnect metadata."
+    );
+  }
+
+  if (!config.app.name) {
+    throw new Error("Missing required config value: app.name");
+  }
+  if (!config.app.description) {
+    throw new Error("Missing required config value: app.description");
+  }
+
   const metadata = {
     name: config.app.name,
-    description:
-      config.app.description ||
-      "Decentralized treasure hunting game on Avalanche",
-    url:
-      config.app.url ||
-      (typeof window !== "undefined"
-        ? window.location.origin
-        : "https://tresr.game"),
-    icons: [
-      config.app.icon ||
-        (typeof window !== "undefined"
-          ? `${window.location.origin}/favicon.ico`
-          : "https://tresr.game/favicon.ico"),
-    ],
+    description: config.app.description,
+    url: appUrl,
+    icons: [`${appUrl}/favicon.ico`],
   };
 
   // Create AppKit instance
@@ -317,7 +322,12 @@ export function connectWallet(): Promise<string> {
     const appKit = getAppKit();
 
     // Timeout — always reject to avoid hanging forever
-    const timeoutMs = config.wallet?.connect_timeout_ms || 300000;
+    if (!config.wallet?.connect_timeout_ms) {
+      throw new Error(
+        "Missing required config value: wallet.connect_timeout_ms"
+      );
+    }
+    const timeoutMs = config.wallet.connect_timeout_ms;
     const timeoutId = setTimeout(() => {
       clearPendingConnect();
       reject(new Error("Connection timeout"));
