@@ -235,4 +235,6 @@ webp
 webps
 yoyo
 yzhang
-oller
+ollerinpaint
+inpaint
+inpainted

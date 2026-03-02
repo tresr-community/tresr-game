@@ -740,7 +740,7 @@ client:
 
     # Hero character (Ron Jay)
     hero:
-      scaleFactor: 1.5
+      scaleFactor: 1.0
       anims:
         - name: idle
           frames: 6
@@ -786,109 +786,99 @@ client:
           frameHeight: 512
     # Super Attack Projectile (spinning coin hadouken)
     super:
-      scaleFactor: 0.75
+      scaleFactor: 1.0
       anims:
         - name: spin
           frames: 5
           frameRate: 15
           repeat: -1
           path: /assets/images/sprites/super/spin.webp
-          frameWidth: 512
-          frameHeight: 512
+          frameWidth: 256
+          frameHeight: 256
     # Boss character (Gary Gensler)
     boss:
       scaleFactor: 2.0
       anims:
         - name: idle
-          frames: 6
+          frames: 8
           frameRate: 6
           repeat: -1
           path: /assets/images/sprites/boss/idle.webp
-          frameWidth: 512
-          frameHeight: 512
+          frameWidth: 400
+          frameHeight: 500
         - name: walk
-          frames: 6
+          frames: 8
           frameRate: 8
           repeat: -1
           path: /assets/images/sprites/boss/walk.webp
-          frameWidth: 512
-          frameHeight: 512
+          frameWidth: 400
+          frameHeight: 516
         - name: jump
-          frames: 6
+          frames: 8
           frameRate: 10
           repeat: 0
           path: /assets/images/sprites/boss/jump.webp
-          frameWidth: 512
-          frameHeight: 512
+          frameWidth: 400
+          frameHeight: 700
         - name: attack
-          frames: 6
+          frames: 8
           frameRate: 10
           repeat: 0
           path: /assets/images/sprites/boss/attack.webp
-          frameWidth: 512
-          frameHeight: 512
+          frameWidth: 400
+          frameHeight: 500
         - name: hurt
-          frames: 4
+          frames: 8
           frameRate: 8
           repeat: 0
           path: /assets/images/sprites/boss/hurt.webp
-          frameWidth: 512
-          frameHeight: 512
+          frameWidth: 400
+          frameHeight: 500
     # Businessmen enemies (templated for 5 variants)
     # Each one uses the same animations/mechanics.
     # Per-anim paths use {i} placeholder for variant number.
     enemies:
-      scaleFactor: 1.5
+      scaleFactor: 1.0
       count: 5
       anims:
         - name: idle
           frames: 6
           frameRate: 6
           repeat: -1
-          # HACK: Using a temporary sprite until we have proper sprites from artist.
-          path: /assets/images/sprites/boss/idle.webp
-          #pathTemplate: /assets/images/sprites/enemy_{i}/idle.webp
+          pathTemplate: /assets/images/sprites/enemy_{i}/idle.webp
           frameWidth: 512
           frameHeight: 512
         - name: walk
           frames: 6
           frameRate: 8
           repeat: -1
-          # HACK: Using a temporary sprite until we have proper sprites from artist.
-          path: /assets/images/sprites/boss/walk.webp
-          #pathTemplate: /assets/images/sprites/enemy_{i}/walk.webp
+          pathTemplate: /assets/images/sprites/enemy_{i}/walk.webp
           frameWidth: 512
           frameHeight: 512
         - name: jump
           frames: 6
           frameRate: 10
           repeat: 0
-          # HACK: Using a temporary sprite until we have proper sprites from artist.
-          path: /assets/images/sprites/boss/jump.webp
-          #pathTemplate: /assets/images/sprites/enemy_{i}/jump.webp
+          pathTemplate: /assets/images/sprites/enemy_{i}/jump.webp
           frameWidth: 512
           frameHeight: 512
         - name: attack
           frames: 6
           frameRate: 10
           repeat: 0
-          # HACK: Using a temporary sprite until we have proper sprites from artist.
-          path: /assets/images/sprites/boss/attack.webp
-          #pathTemplate: /assets/images/sprites/enemy_{i}/attack.webp
+          pathTemplate: /assets/images/sprites/enemy_{i}/attack.webp
           frameWidth: 512
           frameHeight: 512
         - name: hurt
           frames: 4
           frameRate: 8
           repeat: 0
-          # HACK: Using a temporary sprite until we have proper sprites from artist.
-          path: /assets/images/sprites/boss/hurt.webp
-          #pathTemplate: /assets/images/sprites/enemy_{i}/hurt.webp
+          pathTemplate: /assets/images/sprites/enemy_{i}/hurt.webp
           frameWidth: 512
           frameHeight: 512
     # TRESR-BOT companion (AI ally spawned from powerup pickup)
     tresr_bot:
-      scaleFactor: 1.5
+      scaleFactor: 1.0
       anims:
         - name: idle
           frames: 6
@@ -905,7 +895,7 @@ client:
           frameWidth: 512
           frameHeight: 512
         - name: attack
-          frames: 8
+          frames: 6
           frameRate: 10
           repeat: 0
           path: /assets/images/sprites/tresr_bot/attack.webp
@@ -921,7 +911,7 @@ client:
     # Items (per-animation sheets)
     items:
       key:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 5
@@ -929,9 +919,9 @@ client:
             repeat: -1
             path: /assets/images/sprites/key/idle.webp
             frameWidth: 256
-            frameHeight: 512
+            frameHeight: 256
       bomb:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 5
@@ -939,17 +929,17 @@ client:
             repeat: -1
             path: /assets/images/sprites/bomb/idle.webp
             frameWidth: 256
-            frameHeight: 512
+            frameHeight: 256
       loader:
-        scaleFactor: 1.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 5
             frameRate: 8
             repeat: -1
             path: /assets/images/sprites/loader/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       chest:
         scaleFactor: 1.0
         anims:
@@ -975,105 +965,105 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_1:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/health_1/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       health_2:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/health_2/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       health_3:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/health_3/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       health_4:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/health_4/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       health_5:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/health_5/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       powerup_1:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/powerup_1/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       powerup_2:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/powerup_2/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       powerup_3:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/powerup_3/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       powerup_4:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/powerup_4/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       powerup_5:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/powerup_5/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
     # Static images (no animation)
     statics: []
     # - name: example

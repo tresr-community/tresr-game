@@ -882,7 +882,7 @@ export const config: ConfigTypes = {
       "frameHeight": 512
     },
     "hero": {
-      "scaleFactor": 1.5,
+      "scaleFactor": 1,
       "anims": [
         {
           "name": "idle",
@@ -941,7 +941,7 @@ export const config: ConfigTypes = {
       ]
     },
     "super": {
-      "scaleFactor": 0.75,
+      "scaleFactor": 1,
       "anims": [
         {
           "name": "spin",
@@ -949,8 +949,8 @@ export const config: ConfigTypes = {
           "frameRate": 15,
           "repeat": -1,
           "path": "/assets/images/sprites/super/spin.webp",
-          "frameWidth": 512,
-          "frameHeight": 512
+          "frameWidth": 256,
+          "frameHeight": 256
         }
       ]
     },
@@ -959,53 +959,53 @@ export const config: ConfigTypes = {
       "anims": [
         {
           "name": "idle",
-          "frames": 6,
+          "frames": 8,
           "frameRate": 6,
           "repeat": -1,
           "path": "/assets/images/sprites/boss/idle.webp",
-          "frameWidth": 512,
-          "frameHeight": 512
+          "frameWidth": 400,
+          "frameHeight": 500
         },
         {
           "name": "walk",
-          "frames": 6,
+          "frames": 8,
           "frameRate": 8,
           "repeat": -1,
           "path": "/assets/images/sprites/boss/walk.webp",
-          "frameWidth": 512,
-          "frameHeight": 512
+          "frameWidth": 400,
+          "frameHeight": 516
         },
         {
           "name": "jump",
-          "frames": 6,
+          "frames": 8,
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/jump.webp",
-          "frameWidth": 512,
-          "frameHeight": 512
+          "frameWidth": 400,
+          "frameHeight": 700
         },
         {
           "name": "attack",
-          "frames": 6,
+          "frames": 8,
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/attack.webp",
-          "frameWidth": 512,
-          "frameHeight": 512
+          "frameWidth": 400,
+          "frameHeight": 500
         },
         {
           "name": "hurt",
-          "frames": 4,
+          "frames": 8,
           "frameRate": 8,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/hurt.webp",
-          "frameWidth": 512,
-          "frameHeight": 512
+          "frameWidth": 400,
+          "frameHeight": 500
         }
       ]
     },
     "enemies": {
-      "scaleFactor": 1.5,
+      "scaleFactor": 1,
       "count": 5,
       "anims": [
         {
@@ -1013,7 +1013,7 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 6,
           "repeat": -1,
-          "path": "/assets/images/sprites/boss/idle.webp",
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/idle.webp",
           "frameWidth": 512,
           "frameHeight": 512
         },
@@ -1022,7 +1022,7 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 8,
           "repeat": -1,
-          "path": "/assets/images/sprites/boss/walk.webp",
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/walk.webp",
           "frameWidth": 512,
           "frameHeight": 512
         },
@@ -1031,7 +1031,7 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "path": "/assets/images/sprites/boss/jump.webp",
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/jump.webp",
           "frameWidth": 512,
           "frameHeight": 512
         },
@@ -1040,7 +1040,7 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "path": "/assets/images/sprites/boss/attack.webp",
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/attack.webp",
           "frameWidth": 512,
           "frameHeight": 512
         },
@@ -1049,14 +1049,14 @@ export const config: ConfigTypes = {
           "frames": 4,
           "frameRate": 8,
           "repeat": 0,
-          "path": "/assets/images/sprites/boss/hurt.webp",
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/hurt.webp",
           "frameWidth": 512,
           "frameHeight": 512
         }
       ]
     },
     "tresr_bot": {
-      "scaleFactor": 1.5,
+      "scaleFactor": 1,
       "anims": [
         {
           "name": "idle",
@@ -1078,7 +1078,7 @@ export const config: ConfigTypes = {
         },
         {
           "name": "attack",
-          "frames": 8,
+          "frames": 6,
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/tresr_bot/attack.webp",
@@ -1098,7 +1098,7 @@ export const config: ConfigTypes = {
     },
     "items": {
       "key": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1107,12 +1107,12 @@ export const config: ConfigTypes = {
             "repeat": -1,
             "path": "/assets/images/sprites/key/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 512
+            "frameHeight": 256
           }
         ]
       },
       "bomb": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1121,12 +1121,12 @@ export const config: ConfigTypes = {
             "repeat": -1,
             "path": "/assets/images/sprites/bomb/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 512
+            "frameHeight": 256
           }
         ]
       },
       "loader": {
-        "scaleFactor": 1.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1134,8 +1134,8 @@ export const config: ConfigTypes = {
             "frameRate": 8,
             "repeat": -1,
             "path": "/assets/images/sprites/loader/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
@@ -1172,7 +1172,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_1": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1180,13 +1180,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/health_1/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "health_2": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1194,13 +1194,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/health_2/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "health_3": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1208,13 +1208,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/health_3/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "health_4": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1222,13 +1222,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/health_4/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "health_5": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1236,13 +1236,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/health_5/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "powerup_1": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1250,13 +1250,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/powerup_1/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "powerup_2": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1264,13 +1264,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/powerup_2/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "powerup_3": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1278,13 +1278,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/powerup_3/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "powerup_4": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1292,13 +1292,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/powerup_4/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "powerup_5": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1306,8 +1306,8 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/powerup_5/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       }

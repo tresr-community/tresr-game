@@ -14,7 +14,7 @@ export const idlFactory = ({ IDL }) => {
     'Err' : IDL.Text,
   });
   const Result_1 = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text });
-
+  
   return IDL.Service({
     'claim_authorize' : IDL.Func(
         [IDL.Text, IDL.Nat64, IDL.Text, IDL.Vec(IDL.Nat8)],

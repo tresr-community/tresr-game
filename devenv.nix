@@ -402,7 +402,12 @@ in
       shfmt.enable = true;
       staticcheck.enable = true;
       statix.enable = true;
-      trim-trailing-whitespace.enable = true;
+      trim-trailing-whitespace = {
+        enable = true;
+        excludes = [
+          "^src/declarations/.*$"
+        ];
+      };
       trufflehog.enable = true;
       cspell = {
         enable = true;
