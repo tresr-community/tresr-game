@@ -1,13 +1,27 @@
 ---
 versions:
-  - version: "next..."
-    date: "TBD"
+  - version: "TBD"
+    date: "Planning"
+    title: ""
+    notes:
+      - "Consolation prize for expired #1 active score — a participation trophy for degens"
+
+  - version: "0.3.0"
+    date: "2026-03-03"
     title: "Make AI great again"
     notes:
-      - "5 new enemy AI types — the bankers brought reinforcements from TradFi"
-      - "Consolation prize for expired #1 active score — a participation trophy for degens"
+      - "$tRON token and Faucet enabled"
+      - "v2 Sprites with ridiculous big head animation"
       - "Active score leaderboard with 24h TTL decay — your high score rugs itself"
       - "Unit tests included to catch dem sneaky regressions"
+      - "New enemy AI types — the bankers brought reinforcements from TradFi"
+      - "AI 1. Direct: Charges straight at the player with no special movement"
+      - "AI 2. Flanker: Orbits the player at a set radius, then lunges in to attack."
+      - "AI 3. Cautious: Strafes laterally at preferred distance when solo."
+      - "AI 4. Erratic: Snakes toward the player with continuous sine-wave zigzag."
+      - "AI 5. Swarm: Clusters with nearby allies. When rush_threshold allies are nearby, triggers a coordinated rush with a green tint visual cue."
+      - "AI 6. Passive (The Banker): Walks slowly across the screen, minding its own business."
+      - "AI 7. Retardio: Rare, chaotic enemy that attacks OTHER enemies."
 
   - version: "0.2.0"
     date: "2026-02-21"

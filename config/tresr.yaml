@@ -2,7 +2,7 @@
 ##################################################
 # Server side configuration.
 #
-# Injected into Astro during build time.
+# Injected Astro during build time from config/config-server.json
 ##################################################
 server:
   juno:
@@ -56,10 +56,11 @@ server:
     consolation_prize_percent: 5
     consolation_prize_max: 100
     consolation_prize_min_games: 3
+
 ##################################################
 # Client side configuration.
 #
-# Read from typescript at /config-client.json
+# Read from typescript at public/config-client.json
 ##################################################
 client:
   daisyui:
@@ -101,19 +102,20 @@ client:
     name: TRESR Game
     description: Beat up bankers to claim the $TRESR.
     tagline: Collect Keys. Fight Enemies. Claim the $TRESR.
-    #footer_text: Powered by the Internet Computer and Avalanche Blockchain.
+    #footer_text: Powered by the Internet Computer ♾️ and Avalanche 🔺
     footer_text: Powered by Avalanche 🔺
     narration_text:
       intro: |
-        Most days, Ron Jay embraces the degenerate life
-        farming airdrops and aping into meme coins.
+        Yo, I'm Ron Jay — full-time degen, airdrop farmer,
+        meme-coin maniac and diamond-handed legend.
 
-        But today?
+        These suit-wearing bankers think they can gatekeep crypto forever.
 
-        Today Ron chooses violence against the
-        tyrannical bankers shackling crypto's future.
+        The streets are dead quiet tonight.
 
-        Welcome, to the Crypto Cage...
+        But not for long.
+
+        Grab your fists, let's send these clowns to zero!
     loader_messages:
       - Aping In...
       - Boarding Yacht...
@@ -147,7 +149,7 @@ client:
     instructions: |
       ## 🎯 Mission
 
-      Your mission, should you choose to accept it, is to;
+      Your mission, should you choose to accept it;
 
       - ⚔️ Defeat enemies for points
       - 🚀 Collect keys to multiply rewards
@@ -439,11 +441,13 @@ client:
         # Enemy AI behaviour profiles.
         # Each enemy is randomly assigned a behaviour at spawn based on the weights below.
         ai:
-          # Direct: Charges straight at the player with no special movement.
-          # Simple but effective in groups. Bread and butter enemy.
+          # Direct
+          #   - Charges straight at the player with no special movement.
+          #   - Simple but effective in groups. Bread and butter enemy.
           direct: {}
-          # Flanker: Orbits the player at a set radius, then lunges in to attack.
-          # Creates a circling-then-striking pattern that feels distinct.
+          # Flanker
+          #   - Orbits the player at a set radius, then lunges in to attack.
+          #   - Creates a circling-then-striking pattern that feels distinct.
           flanker:
             speed_mult: 1.1
             offset: 120 # Orbit radius (px)
@@ -452,9 +456,10 @@ client:
             lunge_speed_mult: 2.5 # Speed multiplier during lunge dash
             lunge_duration: 0.3 # Seconds of lunge dash
             recovery_time: 0.8 # Seconds to back off after attacking
-          # Cautious: Strafes laterally at preferred distance when solo.
-          # Once enough allies gather nearby (pack_threshold), charges in.
-          # If allies die mid-charge and count drops, retreats to strafe.
+          # Cautious
+          #   - Strafes laterally at preferred distance when solo.
+          #   - Once enough allies gather nearby (pack_threshold), charges in.
+          #   - If allies die mid-charge and count drops, retreats to strafe.
           cautious:
             speed_mult: 0.7
             preferred_distance: 180
@@ -464,16 +469,18 @@ client:
             strafe_speed_mult: 0.9 # Lateral strafe speed when solo
             strafe_switch_time: 2.0 # Seconds between strafe direction changes
             check_frame_interval: 10 # Frames between AI checks
-          # Erratic: Snakes toward the player with continuous sine-wave zigzag.
-          # Visibly weaves side-to-side — hard to track and predict.
+          # Erratic
+          #   - Snakes toward the player with continuous sine-wave zigzag.
+          #   - Visibly weaves side-to-side — hard to track and predict.
           erratic:
             speed_mult: 1.2
             zigzag_frequency: 3.0 # Sine oscillations per second
             zigzag_amplitude: 80 # Pixels of lateral swing
             jitter_x: 80
             jitter_y: 40
-          # Swarm: Clusters with nearby allies. When rush_threshold allies are
-          # nearby, triggers a coordinated rush with a green tint visual cue.
+          # Swarm
+          #   - Clusters with nearby allies. When rush_threshold allies are
+          #   - nearby, triggers a coordinated rush with a green tint visual cue.
           swarm:
             speed_mult: 1.0
             group_radius: 150
@@ -482,15 +489,17 @@ client:
             rush_threshold: 3 # Allies needed for coordinated rush
             rush_tint: 0x00ff88 # Green glow when rushing
             check_frame_interval: 10 # Frames between AI checks
-          # Passive ("The Banker"): Walks slowly across the screen, minding
-          # its own business. Only attacks if the player hits it first.
-          # Higher HP, better loot — risk/reward choice for the player.
+          # Passive ("The Banker")
+          #   - Walks slowly across the screen, minding its own business.
+          #   - Only attacks if the player hits it first.
+          #   - Higher HP, better loot — risk/reward choice for the player.
           passive:
             speed_mult: 0.5
             provoked_speed_mult: 1.3
             hp_mult: 1.5
-          # Retardio: Rare, chaotic enemy that attacks OTHER enemies.
-          # Walks around erratically punching bankers. Can be killed.
+          # Retardio
+          #   - Rare, chaotic enemy that attacks OTHER enemies.
+          #   - Walks around erratically punching bankers. Can be killed.
           retardio:
             speed_mult: 1.1
             jitter_time: 0.3
@@ -515,6 +524,16 @@ client:
           pool_size: 50 # Max enemies in the object pool
           delay_ms: 2500 # Interval between enemy spawns (ms)
           buffer_distance: 50 # Spawn distance beyond screen edge (px)
+          director:
+            burst_chance: 0.15 # 15% chance an intended normal spawn turns into a burst
+            burst_count_min: 3
+            burst_count_max: 7
+            burst_delay_ms: 300 # spawn very fast during a burst
+            breather_chance: 0.20 # 20% chance after any normal/burst spawn to pause
+            breather_duration_ms: 5000 # 5 seconds of breather
+            # A "bus" full of bankers arrives. But rich bankers ride in limos.
+            limo_chance: 0.05 # 5% chance instead of normal spawn to spawn a banker limo.
+            limo_count: 5 # 5 Bankers in one Limo
         loot:
           health:
             drop_chance: 0.25 # 25% chance to drop health on death

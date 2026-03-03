@@ -102,6 +102,7 @@ ffset
 filecom
 filecomplete
 frontmatter
+gatekeep
 gify
 giga
 giphy

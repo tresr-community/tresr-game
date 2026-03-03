@@ -206,11 +206,23 @@ export class Enemy extends BaseEntity {
     // Handle walk-in from off-screen
     if (this.enterState === "walking_in") {
       const walkSpeed = this._baseSpeed * this.resolutionScale;
+      // We still use walkInTargetX to determine which direction to walk
       const dx = this.walkInTargetX - this.x;
       this.setFlipX(dx < 0);
-      if (Math.abs(dx) < 5) {
-        this.x = this.walkInTargetX;
-        this.setVelocityX(0);
+
+      // If we've entered the walkable bounds, or reached the target, become active immediately!
+      // Provide a buffer so they are fully visible before stopping their strict walk-in.
+      const buffer = 40;
+      const walkableLeft = (this._walkableArea?.getLeftX() ?? 0) + buffer;
+      const walkableRight =
+        (this._walkableArea?.getRightX() ?? this.scene.cameras.main.width) -
+        buffer;
+
+      const isPastLeftEdge = dx > 0 && this.x >= walkableLeft;
+      const isPastRightEdge = dx < 0 && this.x <= walkableRight;
+
+      if (isPastLeftEdge || isPastRightEdge || Math.abs(dx) < 5) {
+        // AI activates as soon as they cross the visible walkable threshold
         this.enterState = "active";
       } else {
         this.setVelocityX(Math.sign(dx) * walkSpeed);
@@ -324,10 +336,12 @@ export class Enemy extends BaseEntity {
 
   spawn(
     x: number,
-    y: number,
+    groundY: number,
     rng: Phaser.Math.RandomDataGenerator,
-    walkInTargetX?: number,
-    textureKey?: string
+    walkInTargetX: number,
+    textureKey: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    aiOverride?: string // This is kept for the overload match
   ) {
     this._rng = rng;
     this.setActive(true);
@@ -372,9 +386,9 @@ export class Enemy extends BaseEntity {
     }
 
     // Initialize groundY for 2.5D positioning
-    this.groundY = y;
+    this.groundY = groundY;
     this.z = 0;
-    this.setPosition(x, y);
+    this.setPosition(x, groundY);
     // Body is enabled and position is set — safe to reveal the sprite now.
     this.setVisible(true);
     if (this.shadow) {

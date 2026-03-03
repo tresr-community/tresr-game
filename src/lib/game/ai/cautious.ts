@@ -15,6 +15,7 @@ export class CautiousBehavior implements AIBehavior {
   private nearbyCount: number = 0;
   private strafeDir: number = 1;
   private strafeTimer: number = 0;
+  private strafePatienceTimer: number = 0;
 
   onSpawn(ctx: EnemyContext): void {
     const cautiousConfig = ctx.config.gameplay.entities.enemy.ai.cautious;
@@ -24,6 +25,7 @@ export class CautiousBehavior implements AIBehavior {
     this.nearbyCount = 0;
     this.strafeDir = ctx.rng.frac() < 0.5 ? 1 : -1;
     this.strafeTimer = 0;
+    this.strafePatienceTimer = 0;
   }
 
   update(ctx: EnemyContext, dt: number): BehaviorResult {
@@ -44,12 +46,17 @@ export class CautiousBehavior implements AIBehavior {
       this.checkCounter = 0;
       this.nearbyCount = countNearbyAllies(ctx, cautiousConfig.group_radius);
 
-      // Toggle charge state based on ally count
-      if (this.nearbyCount >= cautiousConfig.pack_threshold && !this.charging) {
+      // Toggle charge state based on ally count OR patience limit
+      const lostPatience = this.strafePatienceTimer > 5.0;
+      if (
+        (this.nearbyCount >= cautiousConfig.pack_threshold || lostPatience) &&
+        !this.charging
+      ) {
         this.charging = true;
         ctx.speed = ctx.baseSpeed * cautiousConfig.charge_speed_mult;
       } else if (
         this.nearbyCount < cautiousConfig.pack_threshold &&
+        !lostPatience &&
         this.charging
       ) {
         this.charging = false;
@@ -59,6 +66,7 @@ export class CautiousBehavior implements AIBehavior {
 
     // When not charging: strafe laterally at preferred distance
     if (!this.charging) {
+      this.strafePatienceTimer += dt;
       const preferred = cautiousConfig.preferred_distance;
 
       // Flip strafe direction periodically
@@ -93,14 +101,21 @@ export class CautiousBehavior implements AIBehavior {
         // Within strafe zone — move perpendicular to player
         const dxP = ctx.target.x - ctx.x;
         const dyP = ctx.target.groundY - ctx.groundY;
-        const dP = Math.sqrt(dxP * dxP + dyP * dyP);
+        // Apply 2.5D math
+        const dyCorrected = dyP / 0.4;
+        const dP = Math.sqrt(dxP * dxP + dyCorrected * dyCorrected);
         if (dP > 1) {
-          const perpX = (-dyP / dP) * this.strafeDir;
-          const perpGY = (dxP / dP) * this.strafeDir;
+          const perpX = (-dyCorrected / dP) * this.strafeDir;
+          const perpY = (dxP / dP) * this.strafeDir;
+          const moveAngle = Math.atan2(perpY * 0.4, perpX);
+
           ctx.setFlipX(ctx.target.x < ctx.x);
-          ctx.setVelocityX(perpX * ctx.speed * ctx.resolutionScale);
+          ctx.setVelocityX(
+            Math.cos(moveAngle) * ctx.speed * ctx.resolutionScale
+          );
           ctx.setVelocityY(0);
-          ctx.groundY += perpGY * ctx.speed * ctx.resolutionScale * dt;
+          ctx.groundY +=
+            Math.sin(moveAngle) * ctx.speed * ctx.resolutionScale * dt;
 
           if (ctx.walkableArea) {
             const clamped = ctx.walkableArea.clampToWalkable(
@@ -115,6 +130,11 @@ export class CautiousBehavior implements AIBehavior {
         return {action: "handled"};
       }
       // Too far — fall through to chase
+    } else {
+      // If we made a successful attack in a charge, we reset patience
+      if (distToPlayer < ctx.attackRange) {
+        this.strafePatienceTimer = 0;
+      }
     }
 
     // Charging or too far from preferred distance: chase the player

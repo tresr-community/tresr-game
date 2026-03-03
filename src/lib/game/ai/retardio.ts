@@ -62,12 +62,14 @@ export class RetardioBehavior implements AIBehavior {
         this.jitterTimer = 0;
       }
 
-      const tX = this.retardioTarget.x + this.jitterOffset.x;
-      const tGY = targetGY + this.jitterOffset.y;
-      const dx = tX - ctx.x;
-      const dy = tGY - ctx.groundY;
-      const dist = Phaser.Math.Distance.Between(ctx.x, ctx.groundY, tX, tGY);
-      const angle = Math.atan2(dy, dx);
+      const dx = this.retardioTarget.x - ctx.x;
+      const dy = targetGY - ctx.groundY;
+      const dist = Phaser.Math.Distance.Between(
+        ctx.x,
+        ctx.groundY,
+        this.retardioTarget.x,
+        targetGY
+      );
       ctx.setFlipX(dx < 0);
 
       if (dist < ctx.attackRange) {
@@ -85,9 +87,14 @@ export class RetardioBehavior implements AIBehavior {
           }
         }
       } else {
-        ctx.setVelocityX(Math.cos(angle) * ctx.speed * ctx.resolutionScale);
+        const moveDirX = dx + this.jitterOffset.x;
+        const moveDirY = dy + this.jitterOffset.y;
+        const moveAngle = Math.atan2(moveDirY, moveDirX);
+
+        ctx.setVelocityX(Math.cos(moveAngle) * ctx.speed * ctx.resolutionScale);
         ctx.setVelocityY(0);
-        ctx.groundY += Math.sin(angle) * ctx.speed * ctx.resolutionScale * dt;
+        ctx.groundY +=
+          Math.sin(moveAngle) * ctx.speed * ctx.resolutionScale * dt;
 
         if (ctx.walkableArea) {
           const clamped = ctx.walkableArea.clampToWalkable(ctx.x, ctx.groundY);

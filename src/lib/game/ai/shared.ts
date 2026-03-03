@@ -68,6 +68,36 @@ export function countNearbyAllies(ctx: EnemyContext, radius: number): number {
 }
 
 /**
+ * Calculate the center of mass of nearby allies.
+ * Used by swarm behavior for cohesion.
+ */
+export function getNearbyAlliesCenter(
+  ctx: EnemyContext,
+  radius: number
+): {x: number; groundY: number; count: number} {
+  let cx = 0;
+  let cy = 0;
+  let count = 0;
+  if (!ctx.enemyGroup) return {x: 0, groundY: 0, count: 0};
+  for (const child of ctx.enemyGroup.getChildren()) {
+    const ally = child as unknown as GroupMemberView;
+    if (ally._self === ctx._self || !ally.active || ally.hp <= 0) continue;
+    if (
+      Phaser.Math.Distance.Between(ctx.x, ctx.groundY, ally.x, ally.groundY) <=
+      radius
+    ) {
+      cx += ally.x;
+      cy += ally.groundY;
+      count++;
+    }
+  }
+  if (count > 0) {
+    return {x: cx / count, groundY: cy / count, count};
+  }
+  return {x: 0, groundY: 0, count: 0};
+}
+
+/**
  * Find the nearest living enemy that is not a retardio.
  * Used by retardio behavior.
  */

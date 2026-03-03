@@ -50,7 +50,7 @@ export const config: ConfigTypes = {
     "tagline": "Collect Keys. Fight Enemies. Claim the $TRESR.",
     "footer_text": "Powered by Avalanche 🔺",
     "narration_text": {
-      "intro": "Most days, Ron Jay embraces the degenerate life\nfarming airdrops and aping into meme coins.\n\nBut today?\n\nToday Ron chooses violence against the\ntyrannical bankers shackling crypto's future.\n\nWelcome, to the Crypto Cage...\n"
+      "intro": "Yo, I'm Ron Jay — full-time degen, airdrop farmer,\nmeme-coin maniac and diamond-handed legend.\n\nThese suit-wearing bankers think they can gatekeep crypto forever.\n\nThe streets are dead quiet tonight.\n\nBut not for long.\n\nGrab your fists, let's send these clowns to zero!\n"
     },
     "loader_messages": [
       "Aping In...",
@@ -83,7 +83,7 @@ export const config: ConfigTypes = {
       "No rugs"
     ],
     "custom_404": "404, degen not found.\n",
-    "instructions": "## 🎯 Mission\n\nYour mission, should you choose to accept it, is to;\n\n- ⚔️ Defeat enemies for points\n- 🚀 Collect keys to multiply rewards\n- ⏱️ Survive the time limit\n- 👑 Defeat the final boss\n- 💎 And finally, open the treasure chest for your **$TRESR** reward!\n\n## 🎮 Controls\n\n**Keyboard** (both schemes active simultaneously):\n\n| Action       | WASD Scheme | Arrow Scheme |\n|--------------|-------------|--------------|\n| Move         | W/A/S/D     | Arrow Keys   |\n| Jump         | Space       | Space        |\n| Attack       | J           | Z            |\n| Super Attack | K           | X            |\n| Pause        | Escape      | Escape       |\n\n**Gamepad**:\n\n| Action       | Button               |\n|--------------|---------------------- |\n| Move         | Left Stick / D-Pad    |\n| Jump         | A (Xbox) / Cross (PS) |\n| Attack       | X (Xbox) / Square (PS)|\n| Super Attack | RB (Xbox) / R1 (PS)   |\n\n**Touch**:\n\n- Virtual joystick on left half of screen for movement\n- Right side control for attack, jump and super.\n\n## 💰 Economy\n\n- 💵 Pay a fee in **$TRESR** to start your epic adventure\n- 🔑 Keys boost your rewards big time\n- 🏆 Beat the boss to claim the **$TRESR** prize\n- ⚠️ **Warning:** Die and lose your **TRESR** Stay alive! 💀\n"
+    "instructions": "## 🎯 Mission\n\nYour mission, should you choose to accept it;\n\n- ⚔️ Defeat enemies for points\n- 🚀 Collect keys to multiply rewards\n- ⏱️ Survive the time limit\n- 👑 Defeat the final boss\n- 💎 And finally, open the treasure chest for your **$TRESR** reward!\n\n## 🎮 Controls\n\n**Keyboard** (both schemes active simultaneously):\n\n| Action       | WASD Scheme | Arrow Scheme |\n|--------------|-------------|--------------|\n| Move         | W/A/S/D     | Arrow Keys   |\n| Jump         | Space       | Space        |\n| Attack       | J           | Z            |\n| Super Attack | K           | X            |\n| Pause        | Escape      | Escape       |\n\n**Gamepad**:\n\n| Action       | Button               |\n|--------------|---------------------- |\n| Move         | Left Stick / D-Pad    |\n| Jump         | A (Xbox) / Cross (PS) |\n| Attack       | X (Xbox) / Square (PS)|\n| Super Attack | RB (Xbox) / R1 (PS)   |\n\n**Touch**:\n\n- Virtual joystick on left half of screen for movement\n- Right side control for attack, jump and super.\n\n## 💰 Economy\n\n- 💵 Pay a fee in **$TRESR** to start your epic adventure\n- 🔑 Keys boost your rewards big time\n- 🏆 Beat the boss to claim the **$TRESR** prize\n- ⚠️ **Warning:** Die and lose your **TRESR** Stay alive! 💀\n"
   },
   "blockchain": {
     "avalanche": {
@@ -625,7 +625,17 @@ export const config: ConfigTypes = {
         "spawner": {
           "pool_size": 50,
           "delay_ms": 2500,
-          "buffer_distance": 50
+          "buffer_distance": 50,
+          "director": {
+            "burst_chance": 0.15,
+            "burst_count_min": 3,
+            "burst_count_max": 7,
+            "burst_delay_ms": 300,
+            "breather_chance": 0.2,
+            "breather_duration_ms": 5000,
+            "limo_chance": 0.05,
+            "limo_count": 5
+          }
         },
         "loot": {
           "health": {
@@ -1401,14 +1411,30 @@ export const config: ConfigTypes = {
   "changelog": {
     "versions": [
       {
-        "version": "next...",
-        "date": "TBD",
+        "version": "TBD",
+        "date": "Planning",
+        "title": "",
+        "notes": [
+          "Consolation prize for expired #1 active score — a participation trophy for degens"
+        ]
+      },
+      {
+        "version": "0.3.0",
+        "date": "2026-03-03",
         "title": "Make AI great again",
         "notes": [
-          "5 new enemy AI types — the bankers brought reinforcements from TradFi",
-          "Consolation prize for expired #1 active score — a participation trophy for degens",
+          "$tRON token and Faucet enabled",
+          "v2 Sprites with ridiculous big head animation",
           "Active score leaderboard with 24h TTL decay — your high score rugs itself",
-          "Unit tests included to catch dem sneaky regressions"
+          "Unit tests included to catch dem sneaky regressions",
+          "New enemy AI types — the bankers brought reinforcements from TradFi",
+          "AI 1. Direct: Charges straight at the player with no special movement",
+          "AI 2. Flanker: Orbits the player at a set radius, then lunges in to attack.",
+          "AI 3. Cautious: Strafes laterally at preferred distance when solo.",
+          "AI 4. Erratic: Snakes toward the player with continuous sine-wave zigzag.",
+          "AI 5. Swarm: Clusters with nearby allies. When rush_threshold allies are nearby, triggers a coordinated rush with a green tint visual cue.",
+          "AI 6. Passive (The Banker): Walks slowly across the screen, minding its own business.",
+          "AI 7. Retardio: Rare, chaotic enemy that attacks OTHER enemies."
         ]
       },
       {
@@ -1451,5 +1477,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "a3d787d95d00ff664382036ed1950f449e5e36e6621ba43264d8724b430ef287"
+  "configHash": "2d915ad8b2eb533ee5fed25f967cb981a8ea91eeb9b915cb8d038a268915e539"
 };

@@ -132,7 +132,21 @@ export interface GameplayConfig {
       };
       ai: Record<string, Record<string, number>>;
       animations: {death_delay: number};
-      spawner: {pool_size: number; delay_ms: number; buffer_distance: number};
+      spawner: {
+        pool_size: number;
+        delay_ms: number;
+        buffer_distance: number;
+        director: {
+          burst_chance: number;
+          burst_count_min: number;
+          burst_count_max: number;
+          burst_delay_ms: number;
+          breather_chance: number;
+          breather_duration_ms: number;
+          limo_chance: number;
+          limo_count: number;
+        };
+      };
       loot: {
         health: {
           drop_chance: number;
