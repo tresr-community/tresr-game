@@ -39,7 +39,6 @@ import {
 import {config} from "@/lib/config/client";
 import {loadProfile, clearProfile, profileStore} from "@/lib/user/store";
 import {getUserProfile, enqueueProfileWrite} from "@/lib/user";
-import {buildWalletLinkMessage} from "@/lib/wallet/wallet-message";
 
 const COMPONENT_NAME = "Auth";
 
@@ -545,20 +544,6 @@ export async function signInWithAvalanche(): Promise<void> {
       `SIWA canister Principal (unused): ${result.principal.toText()}`
     );
 
-    // Generate TRESR Wallet Link signature to satisfy the smart contract validation
-    // Do this BEFORE initSatellite() so the UI doesn't transition to the game
-    // and potentially unmount the wallet connector / cause hanging.
-    log.debug(COMPONENT_NAME, "Requesting wallet link signature...");
-    emitProgress("Please sign wallet link message...");
-    const linkMessage = buildWalletLinkMessage(
-      principal,
-      address as `0x${string}`
-    );
-    const linkSignature = await walletClient.signMessage({
-      account: address as `0x${string}`,
-      message: linkMessage,
-    });
-
     // Pass identity to Juno
     await initSatellite();
 
@@ -601,8 +586,6 @@ export async function signInWithAvalanche(): Promise<void> {
       await enqueueProfileWrite(principal, (profile) => ({
         ...profile,
         evmWallet: address,
-        verification_signature: linkSignature,
-        verification_message: linkMessage,
         wallet: {...profile.wallet, evmWalletLinked: true},
         loginMethod: "siwa" as const,
       }));

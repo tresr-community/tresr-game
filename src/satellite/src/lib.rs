@@ -136,18 +136,29 @@ fn assert_user_profile(context: &AssertSetDocContext) -> Result<(), String> {
             let wallet_is_changing = current_wallet.as_deref() != Some(wallet.as_str());
 
             if wallet_is_changing {
-                // Require verification only when linking/changing a wallet (ticket #189)
-                let sig = data.verification_signature.as_deref().ok_or(
-                    "verification_signature is required when linking an EVM wallet".to_string(),
-                )?;
-                let msg = data.verification_message.as_deref().ok_or(
-                    "verification_message is required when linking an EVM wallet".to_string(),
-                )?;
+                // SIWA (Sign In With Avalanche) users already proved wallet ownership
+                // at the IC network level via the ic-siwa canister — the SIWA signature
+                // cryptographically binds the wallet address to the caller's principal.
+                // Requiring a second wallet-link signature is redundant and hurts UX.
+                //
+                // For IID (Internet Identity) users who manually link a wallet, we still
+                // require the wallet-link signature since IID auth doesn't involve a wallet.
+                let is_siwa = data.login_method.as_deref() == Some("siwa");
 
-                // The document key in the "users" collection is the caller's principal
-                let caller_principal = &context.data.key;
+                if !is_siwa {
+                    // Require verification only for non-SIWA wallet linking (ticket #189)
+                    let sig = data.verification_signature.as_deref().ok_or(
+                        "verification_signature is required when linking an EVM wallet".to_string(),
+                    )?;
+                    let msg = data.verification_message.as_deref().ok_or(
+                        "verification_message is required when linking an EVM wallet".to_string(),
+                    )?;
 
-                verify_wallet_signature(wallet, msg, sig, caller_principal)?;
+                    // The document key in the "users" collection is the caller's principal
+                    let caller_principal = &context.data.key;
+
+                    verify_wallet_signature(wallet, msg, sig, caller_principal)?;
+                }
             }
         }
     }
