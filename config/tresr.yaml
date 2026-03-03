@@ -145,15 +145,17 @@ client:
     custom_404: |
       404, degen not found.
     instructions: |
-      ## 🎯 Goal
+      ## 🎯 Mission
 
-      - 🚀 Collect keys to multiply rewards
+      Your mission, should you choose to accept it, is to;
+
       - ⚔️ Defeat enemies for points
-      - ⏱️Survive the time limit
+      - 🚀 Collect keys to multiply rewards
+      - ⏱️ Survive the time limit
       - 👑 Defeat the final boss
       - 💎 And finally, open the treasure chest for your **$TRESR** reward!
 
-      ## Controls
+      ## 🎮 Controls
 
       **Keyboard** (both schemes active simultaneously):
 
