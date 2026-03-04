@@ -50,6 +50,7 @@ cachix
 caip
 camerafadeoutcomplete
 cano
+cbor
 cdylib
 cheatcode
 chibi

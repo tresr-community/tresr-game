@@ -749,6 +749,22 @@ client:
       # Files follow naming convention: {type}_{number}.webm (contiguous from 1).
       # Adding/removing files automatically updates variant counts on rebuild.
       sfx_variants: {}
+      # Per-type SFX volume multipliers applied on top of the global sfxVolume.
+      # 1.0 = no change. Tune these to balance loud/quiet sounds without re-exporting files.
+      sfx_volume_overrides:
+        bot_attack: 1.0
+        bot_spawn: 1.0
+        bot_special: 1.0
+        countdown: 1.0
+        death: 1.0
+        explosion: 1.0
+        game_over: 1.0
+        hurt: 1.0
+        key_collect: 1.0
+        open_treasure_chest: 1.0
+        powerup_collect: 1.0
+        punch: 1.0
+        victory: 1.0
     # Loading screen configuration (cinematic intro)
     # mode: "sprite" = old spritesheet coin, "video" = animated WebP video
     loading_screen:

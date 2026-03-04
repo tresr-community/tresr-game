@@ -313,6 +313,7 @@ export interface GameplayConfig {
     crossfade_duration_ms: number;
     crossfade_step_ms: number;
     sfx_variants: Record<string, number>;
+    sfx_volume_overrides: Record<string, number>;
   };
 }
 
@@ -944,10 +945,22 @@ export class MainScene extends Phaser.Scene {
     const variant = this.rng.integerInRange(1, count);
     const key = `${type}_${variant}`;
 
+    // Resolve per-type volume multiplier — throws if the type is missing from
+    // config so we catch config drift early during testing (no silent defaults).
+    const overrides = this.gameplayConfig.audio.sfx_volume_overrides;
+    const multiplier = overrides[type];
+    if (multiplier === undefined) {
+      throw new Error(
+        `[MainScene] sfx_volume_overrides is missing entry for SFX type "${type}". Add it to tresr.yaml audio.sfx_volume_overrides.`
+      );
+    }
+
     try {
       // Guard: deferred SFX may not be loaded yet (OOM fix)
       if (!this.cache.audio.exists(key)) return;
-      this.sound.play(key, {volume: gameState.get().music.sfxVolume});
+      this.sound.play(key, {
+        volume: gameState.get().music.sfxVolume * multiplier,
+      });
     } catch {
       log.warn(COMPONENT_NAME, `Failed to play sound: ${key}`);
     }
@@ -1233,6 +1246,14 @@ export class MainScene extends Phaser.Scene {
     gameActions.setPhase("victory");
     log.info(COMPONENT_NAME, "VICTORY! Authorizing settlement...");
 
+    // Freeze the simulation on victory — same as death, prevents stray
+    // bomb/contact damage or timer callbacks from firing during claim flow.
+    this.physics.world.pause();
+    this.anims.pauseAll();
+    this.time.paused = true;
+    this.spawnManager.pauseTimers();
+    this.combatManager.pauseTimers();
+
     // Kill bot on game end
     if (this.tresrBot && this.tresrBot.active) {
       this.tresrBot.kill();
@@ -1405,6 +1426,16 @@ export class MainScene extends Phaser.Scene {
     gameActions.setPhase("lost");
     log.info(COMPONENT_NAME, "PLAYER DIED. System Critical.");
 
+    // Freeze the simulation — stop all spawning, physics, and timers so
+    // bombs/enemies/boss stop processing. The scene stays alive (no black
+    // screen) so the death overlay renders over the frozen game world.
+    this.physics.world.pause();
+    this.anims.pauseAll();
+    this.time.paused = true;
+    if (this.survivalCountdown) this.survivalCountdown.paused = true;
+    this.spawnManager.pauseTimers();
+    this.combatManager.pauseTimers();
+
     // Kill bot on game end
     if (this.tresrBot && this.tresrBot.active) {
       this.tresrBot.kill();
@@ -1460,6 +1491,9 @@ export class MainScene extends Phaser.Scene {
 
   update(time: number, delta: number) {
     if (this.configTampered) return;
+
+    // Game over — simulation is frozen, nothing to update
+    if (this.phase === "lost" || this.phase === "victory") return;
 
     // Handle Pause via ESC
     if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) {

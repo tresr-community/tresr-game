@@ -311,6 +311,9 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
   }
 
   async function showLinkedState(address: string) {
+    // Dedup: if already showing this address, skip (prevents race between
+    // auth subscriber and profileStore subscriber both calling us concurrently)
+    if (currentAddress === address) return;
     currentAddress = address;
     showState(stateLinked);
     addressEl.textContent = shortenAddress(address);
@@ -332,16 +335,15 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
       return;
     }
 
-    // Authenticated user - check profile for wallet link
-    const profile = profileStore.get();
-
-    if (profile?.wallet?.evm_wallet_linked && profile.evm_wallet) {
-      // Wallet is linked (either IID+linked or SIWA)
-      await showLinkedState(profile.evm_wallet);
+    // Authenticated user — check in-memory store first to avoid a redundant
+    // Juno read when auth fires before loadProfile has completed (e.g. SIWA).
+    const cachedProfile = profileStore.get();
+    if (cachedProfile?.wallet?.evm_wallet_linked && cachedProfile.evm_wallet) {
+      await showLinkedState(cachedProfile.evm_wallet);
       return;
     }
 
-    // IID user without linked wallet - check if we can get it from the profile doc
+    // Store miss — fetch from Juno (first load or cache not yet populated)
     if (authState.user) {
       try {
         const doc = await getUserProfile(authState.user.key);

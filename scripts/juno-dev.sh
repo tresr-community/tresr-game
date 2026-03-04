@@ -882,7 +882,7 @@ oneshot | loop)
 		log_error "TypeScript type check failed."
 		exit 20
 	}
-	# Build once (rebuild does build + candid), then deploy with skip_build
+	# Build once (rebuild does build), then deploy with skip_build
 	cmd_rebuild || {
 		log_error "Could not rebuild the static site."
 		exit 9

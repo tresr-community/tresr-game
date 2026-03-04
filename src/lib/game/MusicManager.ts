@@ -159,9 +159,10 @@ class MusicManager {
     const favorite = gameState.get().music.favoriteTrack;
 
     if (isPaused) {
-      // If the user left the player paused, set the track but don't play
+      // If the user left the player paused, set the track but don't play.
+      // persist=false: this is automated restore, not a user action.
       if (favorite && this.tracks.includes(favorite)) {
-        this.setTrack(favorite, false, false);
+        this.setTrack(favorite, false, false, false);
       } else if (mode === "shuffle") {
         // Queue up a random track silently (so the UI shows something)
         this.playAfterNarration(() => this.playRandom());
@@ -172,7 +173,10 @@ class MusicManager {
     switch (mode) {
       case "repeat-one":
         if (favorite && this.tracks.includes(favorite)) {
-          this.playAfterNarration(() => this.setTrack(favorite, true, false));
+          // persist=false: automated restore, not a user action
+          this.playAfterNarration(() =>
+            this.setTrack(favorite, true, false, false)
+          );
         } else {
           // No favorite — fall back to shuffle for the first track
           this.playAfterNarration(() => this.playRandom());
@@ -180,12 +184,16 @@ class MusicManager {
         break;
       case "normal":
         if (favorite && this.tracks.includes(favorite)) {
-          // Favorite plays first, then sequential from there
-          this.playAfterNarration(() => this.setTrack(favorite, true, false));
-        } else {
-          // No favorite — start from the first track
+          // Favorite plays first, then sequential from there.
+          // persist=false: automated restore, not a user action.
           this.playAfterNarration(() =>
-            this.setTrack(this.tracks[0], true, false)
+            this.setTrack(favorite, true, false, false)
+          );
+        } else {
+          // No favorite — start from the first track.
+          // persist=false: automated restore, not a user action.
+          this.playAfterNarration(() =>
+            this.setTrack(this.tracks[0], true, false, false)
           );
         }
         break;
@@ -319,7 +327,8 @@ class MusicManager {
   public setTrack(
     track: string,
     forcePlay: boolean = false,
-    isFavorite: boolean = false
+    isFavorite: boolean = false,
+    persist: boolean = true
   ) {
     if (!this.audio) return;
     const isPlaying = forcePlay || !this.audio.paused;
@@ -347,7 +356,8 @@ class MusicManager {
         isPlaying: true,
       });
     }
-    this.persistPreferences();
+    // Only save prefs for explicit user actions, not automated initial playback
+    if (persist) this.persistPreferences();
   }
 
   /**

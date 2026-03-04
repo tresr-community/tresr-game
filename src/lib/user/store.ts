@@ -17,12 +17,22 @@ export async function loadProfile(principal: string): Promise<void> {
     const {getUserProfile, enqueueProfileWrite} = await import("./index");
 
     log.info(COMPONENT_NAME, `Loading profile for ${principal}`);
+
+    // Check the in-memory store first. The SIWA auth path writes the profile
+    // and populates the store before calling notifyAuthChange, so loadProfile
+    // may be called when the store is already populated (avoids an extra write).
+    const existing = profileStore.get();
+    if (existing) {
+      log.debug(COMPONENT_NAME, "Profile already in store, skipping Juno read");
+      return;
+    }
+
     const doc = await getUserProfile(principal);
     if (doc) {
       // Load existing user profile.
       profileStore.set(doc.data);
     } else {
-      // Create a default profile via the centralized write queue.
+      // No profile yet — create a default via the write queue.
       // The queue's doWrite handles createDefaultProfile internally.
       await enqueueProfileWrite(principal, (profile) => profile);
       // Read back the saved profile
