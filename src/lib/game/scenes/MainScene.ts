@@ -50,6 +50,7 @@ export interface GameplayConfig {
     min_bomb_spawn_ms: number;
   };
   physics: {
+    fps: number;
     gravity: number;
     timestep: number;
     game_speed: number;
@@ -63,6 +64,10 @@ export interface GameplayConfig {
     enemy_kill: number;
     boss_hit: number;
     super_hit: number;
+  };
+  claim_retries: {
+    max_attempts: number;
+    base_delay_ms: number;
   };
   entities: {
     player: {
@@ -127,7 +132,21 @@ export interface GameplayConfig {
       };
       ai: Record<string, Record<string, number>>;
       animations: {death_delay: number};
-      spawner: {pool_size: number; delay_ms: number; buffer_distance: number};
+      spawner: {
+        pool_size: number;
+        delay_ms: number;
+        buffer_distance: number;
+        director: {
+          burst_chance: number;
+          burst_count_min: number;
+          burst_count_max: number;
+          burst_delay_ms: number;
+          breather_chance: number;
+          breather_duration_ms: number;
+          limo_chance: number;
+          limo_count: number;
+        };
+      };
       loot: {
         health: {
           drop_chance: number;
@@ -294,6 +313,7 @@ export interface GameplayConfig {
     crossfade_duration_ms: number;
     crossfade_step_ms: number;
     sfx_variants: Record<string, number>;
+    sfx_volume_overrides: Record<string, number>;
   };
 }
 
@@ -352,7 +372,7 @@ export class MainScene extends Phaser.Scene {
     // Initialize seeded RNG for reproducible gameplay
     this.seed = data.seed || Date.now();
     this.rng = new Phaser.Math.RandomDataGenerator([this.seed.toString()]);
-    this.physics.world.setFPS(60); // Fixed physics step for determinism
+    // Physics FPS is set in create() after gameplayConfig is loaded from registry
 
     this.recorder.reset();
     this.configTampered = false;
@@ -487,6 +507,9 @@ export class MainScene extends Phaser.Scene {
     const fullConfig = this.registry.get("full_config");
     this.gameplayConfig = fullConfig.gameplay as GameplayConfig;
     this.designHeight = fullConfig.display?.design_height ?? 720;
+
+    // Fixed physics step for determinism
+    this.physics.world.setFPS(this.gameplayConfig.physics.fps || 60);
 
     // Apply game_speed as a true global speed multiplier.
     // Phaser's world.timeScale DIVIDES the physics delta, so 1/speed = faster.
@@ -922,10 +945,22 @@ export class MainScene extends Phaser.Scene {
     const variant = this.rng.integerInRange(1, count);
     const key = `${type}_${variant}`;
 
+    // Resolve per-type volume multiplier — throws if the type is missing from
+    // config so we catch config drift early during testing (no silent defaults).
+    const overrides = this.gameplayConfig.audio.sfx_volume_overrides;
+    const multiplier = overrides[type];
+    if (multiplier === undefined) {
+      throw new Error(
+        `[MainScene] sfx_volume_overrides is missing entry for SFX type "${type}". Add it to tresr.yaml audio.sfx_volume_overrides.`
+      );
+    }
+
     try {
       // Guard: deferred SFX may not be loaded yet (OOM fix)
       if (!this.cache.audio.exists(key)) return;
-      this.sound.play(key, {volume: gameState.get().music.sfxVolume});
+      this.sound.play(key, {
+        volume: gameState.get().music.sfxVolume * multiplier,
+      });
     } catch {
       log.warn(COMPONENT_NAME, `Failed to play sound: ${key}`);
     }
@@ -1211,6 +1246,14 @@ export class MainScene extends Phaser.Scene {
     gameActions.setPhase("victory");
     log.info(COMPONENT_NAME, "VICTORY! Authorizing settlement...");
 
+    // Freeze the simulation on victory — same as death, prevents stray
+    // bomb/contact damage or timer callbacks from firing during claim flow.
+    this.physics.world.pause();
+    this.anims.pauseAll();
+    this.time.paused = true;
+    this.spawnManager.pauseTimers();
+    this.combatManager.pauseTimers();
+
     // Kill bot on game end
     if (this.tresrBot && this.tresrBot.active) {
       this.tresrBot.kill();
@@ -1298,12 +1341,14 @@ export class MainScene extends Phaser.Scene {
               ...profile,
               stats: {
                 ...profile.stats,
-                totalGamesPlayed: (profile.stats.totalGamesPlayed || 0n) + 1n,
-                totalGamesWon: (profile.stats.totalGamesWon || 0n) + 1n,
-                highScore:
-                  score > profile.stats.highScore
+                total_games_played:
+                  BigInt(profile.stats.total_games_played ?? 0) + 1n,
+                total_games_won:
+                  BigInt(profile.stats.total_games_won ?? 0) + 1n,
+                high_score:
+                  score > BigInt(profile.stats.high_score ?? 0)
                     ? score
-                    : profile.stats.highScore,
+                    : BigInt(profile.stats.high_score ?? 0),
               },
             }));
             log.info(COMPONENT_NAME, "Win stats saved to Juno.");
@@ -1327,27 +1372,26 @@ export class MainScene extends Phaser.Scene {
    * hook, which writes to the leaderboard. Retries on version conflict.
    */
   private async saveGameSession(bossDefeated: boolean) {
-    if (!this.sessionId || this.sessionId.startsWith("guest-")) return;
-
-    const MAX_ATTEMPTS = 3;
-    const BASE_DELAY_MS = 100;
+    const claimRetries = this.gameplayConfig.claim_retries;
+    const MAX_ATTEMPTS = claimRetries?.max_attempts || 3;
+    const BASE_DELAY_MS = claimRetries?.base_delay_ms || 100;
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       try {
         await setDoc({
-          collection: "game_sessions",
+          collection: "audit",
           doc: {
-            key: this.sessionId,
+            key: `session_${this.sessionId}`,
             data: {
-              startedAt:
+              started_at:
                 Date.now() -
                 (this.gameplayConfig.time_limit_seconds - this.survivalTimer) *
                   1000,
-              endedAt: Date.now(),
-              keysCollected: this.collectedKeys,
-              bossDefeated,
+              ended_at: Date.now(),
+              keys_collected: this.collectedKeys,
+              boss_defeated: bossDefeated,
               score: this.score,
-              rewardClaimed: false,
+              reward_claimed: false,
             },
           },
         });
@@ -1381,6 +1425,16 @@ export class MainScene extends Phaser.Scene {
     this.phase = "lost";
     gameActions.setPhase("lost");
     log.info(COMPONENT_NAME, "PLAYER DIED. System Critical.");
+
+    // Freeze the simulation — stop all spawning, physics, and timers so
+    // bombs/enemies/boss stop processing. The scene stays alive (no black
+    // screen) so the death overlay renders over the frozen game world.
+    this.physics.world.pause();
+    this.anims.pauseAll();
+    this.time.paused = true;
+    if (this.survivalCountdown) this.survivalCountdown.paused = true;
+    this.spawnManager.pauseTimers();
+    this.combatManager.pauseTimers();
 
     // Kill bot on game end
     if (this.tresrBot && this.tresrBot.active) {
@@ -1416,10 +1470,13 @@ export class MainScene extends Phaser.Scene {
           ...profile,
           stats: {
             ...profile.stats,
-            totalGamesPlayed: (profile.stats.totalGamesPlayed || 0n) + 1n,
-            totalGamesLost: (profile.stats.totalGamesLost || 0n) + 1n,
-            highScore:
-              score > profile.stats.highScore ? score : profile.stats.highScore,
+            total_games_played:
+              BigInt(profile.stats.total_games_played ?? 0) + 1n,
+            total_games_lost: BigInt(profile.stats.total_games_lost ?? 0) + 1n,
+            high_score:
+              score > BigInt(profile.stats.high_score ?? 0)
+                ? score
+                : BigInt(profile.stats.high_score ?? 0),
           },
         }));
         log.info(COMPONENT_NAME, "Loss stats saved to Juno.");
@@ -1434,6 +1491,9 @@ export class MainScene extends Phaser.Scene {
 
   update(time: number, delta: number) {
     if (this.configTampered) return;
+
+    // Game over — simulation is frozen, nothing to update
+    if (this.phase === "lost" || this.phase === "victory") return;
 
     // Handle Pause via ESC
     if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) {

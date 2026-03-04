@@ -55,6 +55,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
+          lfs: true
 
       - id: detect_changes
         name: Detect Contract Changes

@@ -2,39 +2,46 @@
 ##################################################
 # Server side configuration.
 #
-# Injected into Astro during build time.
+# Injected Astro during build time from config/config-server.json
 ##################################################
 server:
   juno:
     satellite_id: "${VITE_SATELLITE_ID}"
     orbiter_id: "${VITE_ORBITER_ID}"
+    # Admin principals allowed to access the /admin interface and error logs.
+    # Add your Internet Identity / SIWA principal text here.
+    admins:
+      - "pegnp-gazih-6vb6n-cze6g-gei4h-y3dlc-i77bm-7ityv-rmome-rshwy-wqe"
     collections:
       datastore:
+        # Audit: Private admin collection for auditing blockchain transactions mapped to users.
+        - collection: "audit"
+          read: "managed"
+          write: "managed"
+          memory: "stable"
+        # Economy: Public collection for economy metrics (total_collected, total_rewarded, total_burned).
+        - collection: "economy"
+          read: "public"
+          write: "managed"
+          memory: "stable"
+        # Scores: Public collection for leaderboard entries per user and the top_scorer cache.
+        - collection: "scores"
+          read: "public"
+          write: "managed"
+          memory: "stable"
+        # Users: Private collection for per-user preferences (nickname, avatar, wallet, settings).
         - collection: "users"
           read: "managed"
           write: "managed"
           memory: "stable"
-        - collection: "fees"
+        # Errors: Private admin-only collection for error tracking.
+        # Satellite functions write here; clients cannot read or write directly.
+        - collection: "errors"
           read: "managed"
-          write: "managed"
-          memory: "stable"
-        - collection: "claims"
-          read: "managed"
-          write: "managed"
-          memory: "stable"
-        - collection: "game_sessions"
-          read: "managed"
-          write: "managed"
-          memory: "stable"
-        - collection: "leaderboard"
-          read: "public"
-          write: "managed"
-          memory: "stable"
-        - collection: "stats"
-          read: "public"
           write: "managed"
           memory: "stable"
       storage:
+        # Images: Public images like Avatars
         - collection: "images"
           read: "public"
           write: "managed"
@@ -56,10 +63,11 @@ server:
     consolation_prize_percent: 5
     consolation_prize_max: 100
     consolation_prize_min_games: 3
+
 ##################################################
 # Client side configuration.
 #
-# Read from typescript at /config-client.json
+# Read from typescript at public/config-client.json
 ##################################################
 client:
   daisyui:
@@ -99,20 +107,22 @@ client:
       enabled: true
   app:
     name: TRESR Game
+    description: Beat up bankers to claim the $TRESR.
     tagline: Collect Keys. Fight Enemies. Claim the $TRESR.
-    #footer_text: Powered by the Internet Computer and Avalanche Blockchain.
+    #footer_text: Powered by the Internet Computer ♾️ and Avalanche 🔺
     footer_text: Powered by Avalanche 🔺
     narration_text:
       intro: |
-        Most days, Ron Jay embraces the degenerate life
-        farming airdrops and aping into meme coins.
+        Yo, I'm Ron Jay — full-time degen, airdrop farmer,
+        meme-coin maniac and diamond-handed legend.
 
-        But today?
+        These suit-wearing bankers think they can gatekeep crypto forever.
 
-        Today Ron chooses violence against the
-        tyrannical bankers shackling crypto's future.
+        The streets are dead quiet tonight.
 
-        Welcome, to the Crypto Cage...
+        But not for long.
+
+        Grab your fists, let's send these clowns to zero!
     loader_messages:
       - Aping In...
       - Boarding Yacht...
@@ -144,15 +154,17 @@ client:
     custom_404: |
       404, degen not found.
     instructions: |
-      ## 🎯 Goal
+      ## 🎯 Mission
 
-      - 🚀 Collect keys to multiply rewards
+      Your mission, should you choose to accept it;
+
       - ⚔️ Defeat enemies for points
-      - ⏱️Survive the time limit
+      - 🚀 Collect keys to multiply rewards
+      - ⏱️ Survive the time limit
       - 👑 Defeat the final boss
       - 💎 And finally, open the treasure chest for your **$TRESR** reward!
 
-      ## Controls
+      ## 🎮 Controls
 
       **Keyboard** (both schemes active simultaneously):
 
@@ -188,6 +200,7 @@ client:
     # NOTE: The vault_contract is the proxy smart contract address.
     avalanche:
       anvil:
+        url: http://auamu-4x777-77775-aaaaa-cai.localhost:5987
         fee: 10 # Fee in tokens to play
         burn_rate: 1000 # 10% in basis points — must match Vault.sol burnRate
         chain_id: 31337 # Standalone Anvil (no fork)
@@ -196,13 +209,17 @@ client:
         allowed_origins:
           - http://localhost:5173
           - http://localhost:4943
+          - http://auamu-4x777-77775-aaaaa-cai.localhost:5987
+          - http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987
         token_ticker: "tRON"
         tresr_token_contract: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
         deployer_address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
         vault_contract: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"
         faucet_contract: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
         player_wallet: "0xb81749c72db5b5209098f2bd45a7a0293925da13"
+        explorer_url: "http://localhost:8545/tx/"
       testnet:
+        url: https://game-testnet.tresr.community
         fee: 10 # Fee in tokens to play
         burn_rate: 1000 # 10% in basis points — must match Vault.sol burnRate
         chain_id: 43113
@@ -219,7 +236,9 @@ client:
         safe_address: "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3"
         vault_contract: "0xf4a67b6beb1a54587468703ef877bf64c5f49dc7"
         faucet_contract: "0x29d16738c64566940a5543bc3e141e0e9057468e"
+        explorer_url: "https://testnet.snowtrace.io/tx/"
       mainnet:
+        url: https://game.tresr.community
         fee: 10 # Fee in tokens to play
         burn_rate: 1000 # 10% in basis points — must match Vault.sol burnRate
         chain_id: 43114
@@ -235,10 +254,15 @@ client:
         oracle_address: "0x0000000000000000000000000000000000000000"
         safe_address: "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3"
         vault_contract: "0x0000000000000000000000000000000000000000"
+        explorer_url: "https://snowtrace.io/tx/"
     icp:
       evm_rpc_canister_id: 7hfb6-caaaa-aaaar-qadga-cai
   wallet:
     balance_refresh_cooldown_ms: 30000
+    vault_poll_interval_ms: 60000 # Vault balance background polling interval
+    connect_timeout_ms: 300000 # AppKit connect wallet timeout (5 mins)
+    tx_timeout_ms: 30000 # Direct RPC tx confirmation fallback timeout
+    tx_polling_interval_ms: 1000 # Direct RPC tx polling interval
   # Assets are auto-populated at build time by bin/client-config.ts.
   # Wallpapers: scanned from public/assets/images/wallpapers/wallpaper_*.webp
   # Music: scanned from public/assets/audio/music/*.webm
@@ -274,6 +298,10 @@ client:
     # Fee gate configuration
     fee_gate:
       transaction_timeout_ms: 300000 # Timeout for blockchain transaction confirmation (5 mins)
+    # Claim configuration
+    claim_retries:
+      max_attempts: 3
+      base_delay_ms: 100
     # Vault economics
     # Reference: docs/fomo.md
     vault:
@@ -294,6 +322,7 @@ client:
         extreme: 2.0
     # Global physics (shared by all entities)
     physics:
+      fps: 60
       gravity: 0.75
       timestep: 0.01667 # 1/60 for 60 FPS
       game_speed: 1.5 # Global simulation speed multiplier (2.0 = double speed)
@@ -379,6 +408,10 @@ client:
             shake_intensity: 0.02
             explosion_initial_radius: 10
             explosion_expand_duration: 300
+        health_bar:
+          width: 50
+          height: 6
+          offset_y: -5
         effects:
           attack_shake_duration: 100
           attack_shake_intensity: 0.01
@@ -401,6 +434,9 @@ client:
         damage: 10
         speed: 100
         flee_speed_mult: 1.5 # Multiplier applied to base speed when fleeing off-screen
+        flee_margin_px: 50 # Distance outside camera bounds before fleeing enemy is killed
+        offscreen_kill_distance_px: 100 # Maximum distance outside camera bounds before active enemy is killed
+        walk_in_boundary_margin_px: 5 # Boundary margin padding when walking into screen
         knockback:
           force: 300 # Knockback impulse when hit by player
           stun_ms: 200 # Brief immobility during knockback recovery
@@ -415,22 +451,10 @@ client:
         # Enemy AI behaviour profiles.
         # Each enemy is randomly assigned a behaviour at spawn based on the weights below.
         ai:
-          # Direct: Charges straight at the player with no special movement.
-          # Simple but effective in groups. Bread and butter enemy.
-          direct: {}
-          # Flanker: Orbits the player at a set radius, then lunges in to attack.
-          # Creates a circling-then-striking pattern that feels distinct.
-          flanker:
-            speed_mult: 1.1
-            offset: 120 # Orbit radius (px)
-            switch_time: 3 # Seconds between flank direction switches
-            orbit_time: 2.0 # Seconds to orbit before lunging
-            lunge_speed_mult: 2.5 # Speed multiplier during lunge dash
-            lunge_duration: 0.3 # Seconds of lunge dash
-            recovery_time: 0.8 # Seconds to back off after attacking
-          # Cautious: Strafes laterally at preferred distance when solo.
-          # Once enough allies gather nearby (pack_threshold), charges in.
-          # If allies die mid-charge and count drops, retreats to strafe.
+          # Cautious
+          #   - Strafes laterally at preferred distance when solo.
+          #   - Once enough allies gather nearby (pack_threshold), charges in.
+          #   - If allies die mid-charge and count drops, retreats to strafe.
           cautious:
             speed_mult: 0.7
             preferred_distance: 180
@@ -439,14 +463,51 @@ client:
             charge_speed_mult: 1.3
             strafe_speed_mult: 0.9 # Lateral strafe speed when solo
             strafe_switch_time: 2.0 # Seconds between strafe direction changes
-          # Erratic: Snakes toward the player with continuous sine-wave zigzag.
-          # Visibly weaves side-to-side — hard to track and predict.
+            check_frame_interval: 10 # Frames between AI checks
+          # Direct
+          #   - Charges straight at the player with no special movement.
+          #   - Simple but effective in groups. Bread and butter enemy.
+          direct: {}
+          # Erratic
+          #   - Snakes toward the player with continuous sine-wave zigzag.
+          #   - Visibly weaves side-to-side — hard to track and predict.
           erratic:
             speed_mult: 1.2
             zigzag_frequency: 3.0 # Sine oscillations per second
             zigzag_amplitude: 80 # Pixels of lateral swing
-          # Swarm: Clusters with nearby allies. When rush_threshold allies are
-          # nearby, triggers a coordinated rush with a green tint visual cue.
+            jitter_x: 80
+            jitter_y: 40
+          # Flanker
+          #   - Orbits the player at a set radius, then lunges in to attack.
+          #   - Creates a circling-then-striking pattern that feels distinct.
+          flanker:
+            speed_mult: 1.1
+            offset: 120 # Orbit radius (px)
+            switch_time: 3 # Seconds between flank direction switches
+            orbit_time: 2.0 # Seconds to orbit before lunging
+            lunge_speed_mult: 2.5 # Speed multiplier during lunge dash
+            lunge_duration: 0.3 # Seconds of lunge dash
+            recovery_time: 0.8 # Seconds to back off after attacking
+          # Passive ("The Banker")
+          #   - Walks slowly across the screen, minding its own business.
+          #   - Only attacks if the player hits it first (return fire mode).
+          #   - Higher HP, better loot — a risk/reward choice for the player.
+          passive:
+            speed_mult: 0.5
+            provoked_speed_mult: 1.3
+            hp_mult: 1.5
+          # Retardio
+          #   - Rare, chaotic enemy that attacks OTHER enemies.
+          #   - Walks around erratically punching bankers. Can be killed.
+          retardio:
+            speed_mult: 1.1
+            jitter_time: 0.3
+            retarget_time: 4
+            attack_damage: 10
+            attack_cooldown_s: 0.5
+          # Swarm
+          #   - Clusters with nearby allies.
+          #   - When rush_threshold allies are nearby, triggers the "hulk" green rush.
           swarm:
             speed_mult: 1.0
             group_radius: 150
@@ -454,34 +515,35 @@ client:
             max_speed_mult: 2.0
             rush_threshold: 3 # Allies needed for coordinated rush
             rush_tint: 0x00ff88 # Green glow when rushing
-          # Passive ("The Banker"): Walks slowly across the screen, minding
-          # its own business. Only attacks if the player hits it first.
-          # Higher HP, better loot — risk/reward choice for the player.
-          passive:
-            speed_mult: 0.5
-            provoked_speed_mult: 1.3
-            hp_mult: 1.5
-          # Retardio: Rare, chaotic enemy that attacks OTHER enemies.
-          # Walks around erratically punching bankers. Can be killed.
-          retardio:
-            speed_mult: 1.1
-            jitter_time: 0.3
-            retarget_time: 4
-            attack_damage: 10
+            check_frame_interval: 10 # Frames between AI checks
           weights:
-            direct: 100 # TODO: Test
-            flanker: 0 # TODO: Test
-            cautious: 0 # TODO: Test
-            swarm: 0
-            erratic: 0 # TODO: Test
-            passive: 0 # TODO: Test
-            retardio: 0 # TODO: Test
+            cautious: 0 # TODO: Test RESULT: TODO
+            direct: 0 # TODO: Test RESULT: TODO
+            erratic: 0 # TODO: Test RESULT: TODO
+            flanker: 0 # TODO: Test RESULT: TODO
+            passive: 0 # TODO: Test RESULT: TODO
+            retardio: 0 # TODO: Test RESULT: TODO
+            swarm: 100 # TODO: Test RESULT: TODO
+        health_bar:
+          width: 30
+          height: 4
+          offset_y: -5
         animations:
           death_delay: 500 # Delay before kill() after hurt animation (ms)
         spawner:
           pool_size: 50 # Max enemies in the object pool
           delay_ms: 2500 # Interval between enemy spawns (ms)
           buffer_distance: 50 # Spawn distance beyond screen edge (px)
+          director:
+            burst_chance: 0.15 # 15% chance an intended normal spawn turns into a burst
+            burst_count_min: 3
+            burst_count_max: 7
+            burst_delay_ms: 300 # spawn very fast during a burst
+            breather_chance: 0.20 # 20% chance after any normal/burst spawn to pause
+            breather_duration_ms: 5000 # 5 seconds of breather
+            # A "bus" full of bankers arrives. But rich bankers ride in limos.
+            limo_chance: 0.05 # 5% chance instead of normal spawn to spawn a banker limo.
+            limo_count: 5 # 5 Bankers in one Limo
         loot:
           health:
             drop_chance: 0.25 # 25% chance to drop health on death
@@ -503,6 +565,7 @@ client:
         speed: 150
         knockback:
           force: 50 # Boss is heavy — minimal knockback
+          force_mult: 0.5 # Knockback applied during normal hits
           stun_ms: 100
         hitbox:
           radius: 20
@@ -521,6 +584,7 @@ client:
           enrage_threshold: 0.5 # HP percentage to trigger Phase 2 (50%)
           phase2_speed_mult: 2.0 # Speed multiplier during enrage
           phase2_damage_mult: 2.0 # Damage multiplier during enrage
+          enrage_tint: 0xff0000
         # Special attacks the boss cycles through between normal melee
         attacks:
           # Ground Pound: AoE slam that damages all nearby players
@@ -558,6 +622,10 @@ client:
           flash_r: 255 # Flash color red channel (0-255)
           flash_g: 200 # Flash color green channel (0-255)
           flash_b: 100 # Flash color blue channel (0-255)
+        health_bar:
+          width: 80
+          height: 8
+          offset_y: -10
         animations:
           death_delay: 1000 # Delay before kill() after death animation (ms)
       key:
@@ -589,6 +657,10 @@ client:
         effects:
           shake_duration: 150 # Camera shake length on explosion (ms)
           shake_intensity: 0.015 # Camera shake strength (fraction of screen)
+          explosion_scale: 0.2
+          explosion_duration: 300
+          explosion_tint: 0xff6600
+          explosion_alpha: 0.5
         spawner:
           pool_size: 10 # Max bombs in the object pool
           delay_ms: 5000 # Interval between bomb drops (ms)
@@ -598,6 +670,7 @@ client:
           y_margin_bottom_ratio: 0.035 # Bottom margin ratio from screen edge (25/720)
       # Treasure chest that air-drops after the boss is defeated
       chest:
+        fallback_tint: 0x00ff00
         combat:
           interact_range: 100 # Distance the player must be within to open (px)
         # VFX when the chest lands after air-drop
@@ -676,6 +749,22 @@ client:
       # Files follow naming convention: {type}_{number}.webm (contiguous from 1).
       # Adding/removing files automatically updates variant counts on rebuild.
       sfx_variants: {}
+      # Per-type SFX volume multipliers applied on top of the global sfxVolume.
+      # 1.0 = no change. Tune these to balance loud/quiet sounds without re-exporting files.
+      sfx_volume_overrides:
+        bot_attack: 1.0
+        bot_spawn: 1.0
+        bot_special: 1.0
+        countdown: 1.0
+        death: 1.0
+        explosion: 1.0
+        game_over: 1.0
+        hurt: 1.0
+        key_collect: 1.0
+        open_treasure_chest: 1.0
+        powerup_collect: 1.0
+        punch: 1.0
+        victory: 1.0
     # Loading screen configuration (cinematic intro)
     # mode: "sprite" = old spritesheet coin, "video" = animated WebP video
     loading_screen:
@@ -700,7 +789,7 @@ client:
 
     # Hero character (Ron Jay)
     hero:
-      scaleFactor: 1.5
+      scaleFactor: 0.8
       anims:
         - name: idle
           frames: 6
@@ -746,109 +835,99 @@ client:
           frameHeight: 512
     # Super Attack Projectile (spinning coin hadouken)
     super:
-      scaleFactor: 0.75
+      scaleFactor: 1.0
       anims:
         - name: spin
           frames: 5
           frameRate: 15
           repeat: -1
           path: /assets/images/sprites/super/spin.webp
-          frameWidth: 512
-          frameHeight: 512
+          frameWidth: 256
+          frameHeight: 256
     # Boss character (Gary Gensler)
     boss:
       scaleFactor: 2.0
       anims:
         - name: idle
-          frames: 6
+          frames: 8
           frameRate: 6
           repeat: -1
           path: /assets/images/sprites/boss/idle.webp
-          frameWidth: 512
-          frameHeight: 512
+          frameWidth: 400
+          frameHeight: 500
         - name: walk
-          frames: 6
+          frames: 8
           frameRate: 8
           repeat: -1
           path: /assets/images/sprites/boss/walk.webp
-          frameWidth: 512
-          frameHeight: 512
+          frameWidth: 400
+          frameHeight: 516
         - name: jump
-          frames: 6
+          frames: 8
           frameRate: 10
           repeat: 0
           path: /assets/images/sprites/boss/jump.webp
-          frameWidth: 512
-          frameHeight: 512
+          frameWidth: 400
+          frameHeight: 700
         - name: attack
-          frames: 6
+          frames: 8
           frameRate: 10
           repeat: 0
           path: /assets/images/sprites/boss/attack.webp
-          frameWidth: 512
-          frameHeight: 512
+          frameWidth: 400
+          frameHeight: 500
         - name: hurt
-          frames: 4
+          frames: 8
           frameRate: 8
           repeat: 0
           path: /assets/images/sprites/boss/hurt.webp
-          frameWidth: 512
-          frameHeight: 512
+          frameWidth: 400
+          frameHeight: 500
     # Businessmen enemies (templated for 5 variants)
     # Each one uses the same animations/mechanics.
     # Per-anim paths use {i} placeholder for variant number.
     enemies:
-      scaleFactor: 1.5
+      scaleFactor: 0.8
       count: 5
       anims:
         - name: idle
           frames: 6
           frameRate: 6
           repeat: -1
-          # HACK: Using a temporary sprite until we have proper sprites from artist.
-          path: /assets/images/sprites/boss/idle.webp
-          #pathTemplate: /assets/images/sprites/enemy_{i}/idle.webp
+          pathTemplate: /assets/images/sprites/enemy_{i}/idle.webp
           frameWidth: 512
           frameHeight: 512
         - name: walk
           frames: 6
           frameRate: 8
           repeat: -1
-          # HACK: Using a temporary sprite until we have proper sprites from artist.
-          path: /assets/images/sprites/boss/walk.webp
-          #pathTemplate: /assets/images/sprites/enemy_{i}/walk.webp
+          pathTemplate: /assets/images/sprites/enemy_{i}/walk.webp
           frameWidth: 512
           frameHeight: 512
         - name: jump
           frames: 6
           frameRate: 10
           repeat: 0
-          # HACK: Using a temporary sprite until we have proper sprites from artist.
-          path: /assets/images/sprites/boss/jump.webp
-          #pathTemplate: /assets/images/sprites/enemy_{i}/jump.webp
+          pathTemplate: /assets/images/sprites/enemy_{i}/jump.webp
           frameWidth: 512
           frameHeight: 512
         - name: attack
           frames: 6
           frameRate: 10
           repeat: 0
-          # HACK: Using a temporary sprite until we have proper sprites from artist.
-          path: /assets/images/sprites/boss/attack.webp
-          #pathTemplate: /assets/images/sprites/enemy_{i}/attack.webp
+          pathTemplate: /assets/images/sprites/enemy_{i}/attack.webp
           frameWidth: 512
           frameHeight: 512
         - name: hurt
           frames: 4
           frameRate: 8
           repeat: 0
-          # HACK: Using a temporary sprite until we have proper sprites from artist.
-          path: /assets/images/sprites/boss/hurt.webp
-          #pathTemplate: /assets/images/sprites/enemy_{i}/hurt.webp
+          pathTemplate: /assets/images/sprites/enemy_{i}/hurt.webp
           frameWidth: 512
           frameHeight: 512
     # TRESR-BOT companion (AI ally spawned from powerup pickup)
     tresr_bot:
-      scaleFactor: 1.5
+      scaleFactor: 1.0
       anims:
         - name: idle
           frames: 6
@@ -865,7 +944,7 @@ client:
           frameWidth: 512
           frameHeight: 512
         - name: attack
-          frames: 8
+          frames: 6
           frameRate: 10
           repeat: 0
           path: /assets/images/sprites/tresr_bot/attack.webp
@@ -881,7 +960,7 @@ client:
     # Items (per-animation sheets)
     items:
       key:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 5
@@ -889,9 +968,9 @@ client:
             repeat: -1
             path: /assets/images/sprites/key/idle.webp
             frameWidth: 256
-            frameHeight: 512
+            frameHeight: 256
       bomb:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 5
@@ -899,17 +978,17 @@ client:
             repeat: -1
             path: /assets/images/sprites/bomb/idle.webp
             frameWidth: 256
-            frameHeight: 512
+            frameHeight: 256
       loader:
-        scaleFactor: 1.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 5
             frameRate: 8
             repeat: -1
             path: /assets/images/sprites/loader/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       chest:
         scaleFactor: 1.0
         anims:
@@ -935,105 +1014,105 @@ client:
             frameWidth: 512
             frameHeight: 512
       health_1:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/health_1/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       health_2:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/health_2/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       health_3:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/health_3/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       health_4:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/health_4/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       health_5:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/health_5/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       powerup_1:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/powerup_1/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       powerup_2:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/powerup_2/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       powerup_3:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/powerup_3/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       powerup_4:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/powerup_4/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
       powerup_5:
-        scaleFactor: 0.5
+        scaleFactor: 1.0
         anims:
           - name: idle
             frames: 4
             frameRate: 6
             repeat: -1
             path: /assets/images/sprites/powerup_5/idle.webp
-            frameWidth: 512
-            frameHeight: 512
+            frameWidth: 256
+            frameHeight: 256
     # Static images (no animation)
     statics: []
     # - name: example

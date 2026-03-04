@@ -46,10 +46,11 @@ export const config: ConfigTypes = {
   },
   "app": {
     "name": "TRESR Game",
+    "description": "Beat up bankers to claim the $TRESR.",
     "tagline": "Collect Keys. Fight Enemies. Claim the $TRESR.",
     "footer_text": "Powered by Avalanche 🔺",
     "narration_text": {
-      "intro": "Most days, Ron Jay embraces the degenerate life\nfarming airdrops and aping into meme coins.\n\nBut today?\n\nToday Ron chooses violence against the\ntyrannical bankers shackling crypto's future.\n\nWelcome, to the Crypto Cage...\n"
+      "intro": "Yo, I'm Ron Jay — full-time degen, airdrop farmer,\nmeme-coin maniac and diamond-handed legend.\n\nThese suit-wearing bankers think they can gatekeep crypto forever.\n\nThe streets are dead quiet tonight.\n\nBut not for long.\n\nGrab your fists, let's send these clowns to zero!\n"
     },
     "loader_messages": [
       "Aping In...",
@@ -82,11 +83,12 @@ export const config: ConfigTypes = {
       "No rugs"
     ],
     "custom_404": "404, degen not found.\n",
-    "instructions": "## 🎯 Goal\n\n- 🚀 Collect keys to multiply rewards\n- ⚔️ Defeat enemies for points\n- ⏱️Survive the time limit\n- 👑 Defeat the final boss\n- 💎 And finally, open the treasure chest for your **$TRESR** reward!\n\n## Controls\n\n**Keyboard** (both schemes active simultaneously):\n\n| Action       | WASD Scheme | Arrow Scheme |\n|--------------|-------------|--------------|\n| Move         | W/A/S/D     | Arrow Keys   |\n| Jump         | Space       | Space        |\n| Attack       | J           | Z            |\n| Super Attack | K           | X            |\n| Pause        | Escape      | Escape       |\n\n**Gamepad**:\n\n| Action       | Button               |\n|--------------|---------------------- |\n| Move         | Left Stick / D-Pad    |\n| Jump         | A (Xbox) / Cross (PS) |\n| Attack       | X (Xbox) / Square (PS)|\n| Super Attack | RB (Xbox) / R1 (PS)   |\n\n**Touch**:\n\n- Virtual joystick on left half of screen for movement\n- Right side control for attack, jump and super.\n\n## 💰 Economy\n\n- 💵 Pay a fee in **$TRESR** to start your epic adventure\n- 🔑 Keys boost your rewards big time\n- 🏆 Beat the boss to claim the **$TRESR** prize\n- ⚠️ **Warning:** Die and lose your **TRESR** Stay alive! 💀\n"
+    "instructions": "## 🎯 Mission\n\nYour mission, should you choose to accept it;\n\n- ⚔️ Defeat enemies for points\n- 🚀 Collect keys to multiply rewards\n- ⏱️ Survive the time limit\n- 👑 Defeat the final boss\n- 💎 And finally, open the treasure chest for your **$TRESR** reward!\n\n## 🎮 Controls\n\n**Keyboard** (both schemes active simultaneously):\n\n| Action       | WASD Scheme | Arrow Scheme |\n|--------------|-------------|--------------|\n| Move         | W/A/S/D     | Arrow Keys   |\n| Jump         | Space       | Space        |\n| Attack       | J           | Z            |\n| Super Attack | K           | X            |\n| Pause        | Escape      | Escape       |\n\n**Gamepad**:\n\n| Action       | Button               |\n|--------------|---------------------- |\n| Move         | Left Stick / D-Pad    |\n| Jump         | A (Xbox) / Cross (PS) |\n| Attack       | X (Xbox) / Square (PS)|\n| Super Attack | RB (Xbox) / R1 (PS)   |\n\n**Touch**:\n\n- Virtual joystick on left half of screen for movement\n- Right side control for attack, jump and super.\n\n## 💰 Economy\n\n- 💵 Pay a fee in **$TRESR** to start your epic adventure\n- 🔑 Keys boost your rewards big time\n- 🏆 Beat the boss to claim the **$TRESR** prize\n- ⚠️ **Warning:** Die and lose your **TRESR** Stay alive! 💀\n"
   },
   "blockchain": {
     "avalanche": {
       "anvil": {
+        "url": "http://auamu-4x777-77775-aaaaa-cai.localhost:5987",
         "fee": 10,
         "burn_rate": 1000,
         "chain_id": 31337,
@@ -95,16 +97,20 @@ export const config: ConfigTypes = {
         ],
         "allowed_origins": [
           "http://localhost:5173",
-          "http://localhost:4943"
+          "http://localhost:4943",
+          "http://auamu-4x777-77775-aaaaa-cai.localhost:5987",
+          "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987"
         ],
         "token_ticker": "tRON",
         "tresr_token_contract": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
         "vault_contract": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
         "faucet_contract": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-        "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
+        "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
+        "explorer_url": "http://localhost:8545/tx/"
       },
       "testnet": {
+        "url": "https://game-testnet.tresr.community",
         "fee": 10,
         "burn_rate": 1000,
         "chain_id": 43113,
@@ -120,9 +126,11 @@ export const config: ConfigTypes = {
         "oracle_address": "0xf2ff695cae8cc886d3c03afd502a35fcee61b66f",
         "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
         "vault_contract": "0xf4a67b6beb1a54587468703ef877bf64c5f49dc7",
-        "faucet_contract": "0x29d16738c64566940a5543bc3e141e0e9057468e"
+        "faucet_contract": "0x29d16738c64566940a5543bc3e141e0e9057468e",
+        "explorer_url": "https://testnet.snowtrace.io/tx/"
       },
       "mainnet": {
+        "url": "https://game.tresr.community",
         "fee": 10,
         "burn_rate": 1000,
         "chain_id": 43114,
@@ -137,7 +145,8 @@ export const config: ConfigTypes = {
         "tresr_token_contract": "0x9913BA363073Ca3e9eA0cD296E36B75aF9E40bef",
         "oracle_address": "0x0000000000000000000000000000000000000000",
         "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
-        "vault_contract": "0x0000000000000000000000000000000000000000"
+        "vault_contract": "0x0000000000000000000000000000000000000000",
+        "explorer_url": "https://snowtrace.io/tx/"
       }
     },
     "icp": {
@@ -145,7 +154,11 @@ export const config: ConfigTypes = {
     }
   },
   "wallet": {
-    "balance_refresh_cooldown_ms": 30000
+    "balance_refresh_cooldown_ms": 30000,
+    "vault_poll_interval_ms": 60000,
+    "connect_timeout_ms": 300000,
+    "tx_timeout_ms": 30000,
+    "tx_polling_interval_ms": 1000
   },
   "assets": {
     "music": [
@@ -385,6 +398,10 @@ export const config: ConfigTypes = {
     "fee_gate": {
       "transaction_timeout_ms": 300000
     },
+    "claim_retries": {
+      "max_attempts": 3,
+      "base_delay_ms": 100
+    },
     "vault": {
       "minimum_cap": 1000,
       "tiers": {
@@ -400,6 +417,7 @@ export const config: ConfigTypes = {
       }
     },
     "physics": {
+      "fps": 60,
       "gravity": 0.75,
       "timestep": 0.01667,
       "game_speed": 1.5
@@ -490,6 +508,11 @@ export const config: ConfigTypes = {
             "explosion_expand_duration": 300
           }
         },
+        "health_bar": {
+          "width": 50,
+          "height": 6,
+          "offset_y": -5
+        },
         "effects": {
           "attack_shake_duration": 100,
           "attack_shake_intensity": 0.01,
@@ -518,6 +541,9 @@ export const config: ConfigTypes = {
         "damage": 10,
         "speed": 100,
         "flee_speed_mult": 1.5,
+        "flee_margin_px": 50,
+        "offscreen_kill_distance_px": 100,
+        "walk_in_boundary_margin_px": 5,
         "knockback": {
           "force": 300,
           "stun_ms": 200
@@ -533,7 +559,24 @@ export const config: ConfigTypes = {
           "attack_check_ms": 500
         },
         "ai": {
+          "cautious": {
+            "speed_mult": 0.7,
+            "preferred_distance": 180,
+            "group_radius": 200,
+            "pack_threshold": 2,
+            "charge_speed_mult": 1.3,
+            "strafe_speed_mult": 0.9,
+            "strafe_switch_time": 2,
+            "check_frame_interval": 10
+          },
           "direct": {},
+          "erratic": {
+            "speed_mult": 1.2,
+            "zigzag_frequency": 3,
+            "zigzag_amplitude": 80,
+            "jitter_x": 80,
+            "jitter_y": 40
+          },
           "flanker": {
             "speed_mult": 1.1,
             "offset": 120,
@@ -542,28 +585,6 @@ export const config: ConfigTypes = {
             "lunge_speed_mult": 2.5,
             "lunge_duration": 0.3,
             "recovery_time": 0.8
-          },
-          "cautious": {
-            "speed_mult": 0.7,
-            "preferred_distance": 180,
-            "group_radius": 200,
-            "pack_threshold": 2,
-            "charge_speed_mult": 1.3,
-            "strafe_speed_mult": 0.9,
-            "strafe_switch_time": 2
-          },
-          "erratic": {
-            "speed_mult": 1.2,
-            "zigzag_frequency": 3,
-            "zigzag_amplitude": 80
-          },
-          "swarm": {
-            "speed_mult": 1,
-            "group_radius": 150,
-            "speed_bonus_per_ally": 0.15,
-            "max_speed_mult": 2,
-            "rush_threshold": 3,
-            "rush_tint": 65416
           },
           "passive": {
             "speed_mult": 0.5,
@@ -574,17 +595,32 @@ export const config: ConfigTypes = {
             "speed_mult": 1.1,
             "jitter_time": 0.3,
             "retarget_time": 4,
-            "attack_damage": 10
+            "attack_damage": 10,
+            "attack_cooldown_s": 0.5
+          },
+          "swarm": {
+            "speed_mult": 1,
+            "group_radius": 150,
+            "speed_bonus_per_ally": 0.15,
+            "max_speed_mult": 2,
+            "rush_threshold": 3,
+            "rush_tint": 65416,
+            "check_frame_interval": 10
           },
           "weights": {
-            "direct": 100,
-            "flanker": 0,
             "cautious": 0,
-            "swarm": 0,
+            "direct": 0,
             "erratic": 0,
+            "flanker": 0,
             "passive": 0,
-            "retardio": 0
+            "retardio": 0,
+            "swarm": 100
           }
+        },
+        "health_bar": {
+          "width": 30,
+          "height": 4,
+          "offset_y": -5
         },
         "animations": {
           "death_delay": 500
@@ -592,7 +628,17 @@ export const config: ConfigTypes = {
         "spawner": {
           "pool_size": 50,
           "delay_ms": 2500,
-          "buffer_distance": 50
+          "buffer_distance": 50,
+          "director": {
+            "burst_chance": 0.15,
+            "burst_count_min": 3,
+            "burst_count_max": 7,
+            "burst_delay_ms": 300,
+            "breather_chance": 0.2,
+            "breather_duration_ms": 5000,
+            "limo_chance": 0.05,
+            "limo_count": 5
+          }
         },
         "loot": {
           "health": {
@@ -620,6 +666,7 @@ export const config: ConfigTypes = {
         "speed": 150,
         "knockback": {
           "force": 50,
+          "force_mult": 0.5,
           "stun_ms": 100
         },
         "hitbox": {
@@ -639,7 +686,8 @@ export const config: ConfigTypes = {
         "phases": {
           "enrage_threshold": 0.5,
           "phase2_speed_mult": 2,
-          "phase2_damage_mult": 2
+          "phase2_damage_mult": 2,
+          "enrage_tint": 16711680
         },
         "attacks": {
           "ground_pound": {
@@ -678,6 +726,11 @@ export const config: ConfigTypes = {
           "flash_g": 200,
           "flash_b": 100
         },
+        "health_bar": {
+          "width": 80,
+          "height": 8,
+          "offset_y": -10
+        },
         "animations": {
           "death_delay": 1000
         }
@@ -714,7 +767,11 @@ export const config: ConfigTypes = {
         },
         "effects": {
           "shake_duration": 150,
-          "shake_intensity": 0.015
+          "shake_intensity": 0.015,
+          "explosion_scale": 0.2,
+          "explosion_duration": 300,
+          "explosion_tint": 16737792,
+          "explosion_alpha": 0.5
         },
         "spawner": {
           "pool_size": 10,
@@ -726,6 +783,7 @@ export const config: ConfigTypes = {
         }
       },
       "chest": {
+        "fallback_tint": 65280,
         "combat": {
           "interact_range": 100
         },
@@ -819,6 +877,21 @@ export const config: ConfigTypes = {
         "powerup_collect": 1,
         "punch": 5,
         "victory": 3
+      },
+      "sfx_volume_overrides": {
+        "bot_attack": 1,
+        "bot_spawn": 1,
+        "bot_special": 1,
+        "countdown": 1,
+        "death": 1,
+        "explosion": 1,
+        "game_over": 1,
+        "hurt": 1,
+        "key_collect": 1,
+        "open_treasure_chest": 1,
+        "powerup_collect": 1,
+        "punch": 1,
+        "victory": 1
       }
     },
     "loading_screen": {
@@ -839,7 +912,7 @@ export const config: ConfigTypes = {
       "frameHeight": 512
     },
     "hero": {
-      "scaleFactor": 1.5,
+      "scaleFactor": 0.8,
       "anims": [
         {
           "name": "idle",
@@ -898,7 +971,7 @@ export const config: ConfigTypes = {
       ]
     },
     "super": {
-      "scaleFactor": 0.75,
+      "scaleFactor": 1,
       "anims": [
         {
           "name": "spin",
@@ -906,8 +979,8 @@ export const config: ConfigTypes = {
           "frameRate": 15,
           "repeat": -1,
           "path": "/assets/images/sprites/super/spin.webp",
-          "frameWidth": 512,
-          "frameHeight": 512
+          "frameWidth": 256,
+          "frameHeight": 256
         }
       ]
     },
@@ -916,53 +989,53 @@ export const config: ConfigTypes = {
       "anims": [
         {
           "name": "idle",
-          "frames": 6,
+          "frames": 8,
           "frameRate": 6,
           "repeat": -1,
           "path": "/assets/images/sprites/boss/idle.webp",
-          "frameWidth": 512,
-          "frameHeight": 512
+          "frameWidth": 400,
+          "frameHeight": 500
         },
         {
           "name": "walk",
-          "frames": 6,
+          "frames": 8,
           "frameRate": 8,
           "repeat": -1,
           "path": "/assets/images/sprites/boss/walk.webp",
-          "frameWidth": 512,
-          "frameHeight": 512
+          "frameWidth": 400,
+          "frameHeight": 516
         },
         {
           "name": "jump",
-          "frames": 6,
+          "frames": 8,
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/jump.webp",
-          "frameWidth": 512,
-          "frameHeight": 512
+          "frameWidth": 400,
+          "frameHeight": 700
         },
         {
           "name": "attack",
-          "frames": 6,
+          "frames": 8,
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/attack.webp",
-          "frameWidth": 512,
-          "frameHeight": 512
+          "frameWidth": 400,
+          "frameHeight": 500
         },
         {
           "name": "hurt",
-          "frames": 4,
+          "frames": 8,
           "frameRate": 8,
           "repeat": 0,
           "path": "/assets/images/sprites/boss/hurt.webp",
-          "frameWidth": 512,
-          "frameHeight": 512
+          "frameWidth": 400,
+          "frameHeight": 500
         }
       ]
     },
     "enemies": {
-      "scaleFactor": 1.5,
+      "scaleFactor": 0.8,
       "count": 5,
       "anims": [
         {
@@ -970,7 +1043,7 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 6,
           "repeat": -1,
-          "path": "/assets/images/sprites/boss/idle.webp",
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/idle.webp",
           "frameWidth": 512,
           "frameHeight": 512
         },
@@ -979,7 +1052,7 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 8,
           "repeat": -1,
-          "path": "/assets/images/sprites/boss/walk.webp",
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/walk.webp",
           "frameWidth": 512,
           "frameHeight": 512
         },
@@ -988,7 +1061,7 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "path": "/assets/images/sprites/boss/jump.webp",
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/jump.webp",
           "frameWidth": 512,
           "frameHeight": 512
         },
@@ -997,7 +1070,7 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "path": "/assets/images/sprites/boss/attack.webp",
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/attack.webp",
           "frameWidth": 512,
           "frameHeight": 512
         },
@@ -1006,14 +1079,14 @@ export const config: ConfigTypes = {
           "frames": 4,
           "frameRate": 8,
           "repeat": 0,
-          "path": "/assets/images/sprites/boss/hurt.webp",
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/hurt.webp",
           "frameWidth": 512,
           "frameHeight": 512
         }
       ]
     },
     "tresr_bot": {
-      "scaleFactor": 1.5,
+      "scaleFactor": 1,
       "anims": [
         {
           "name": "idle",
@@ -1035,7 +1108,7 @@ export const config: ConfigTypes = {
         },
         {
           "name": "attack",
-          "frames": 8,
+          "frames": 6,
           "frameRate": 10,
           "repeat": 0,
           "path": "/assets/images/sprites/tresr_bot/attack.webp",
@@ -1055,7 +1128,7 @@ export const config: ConfigTypes = {
     },
     "items": {
       "key": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1064,12 +1137,12 @@ export const config: ConfigTypes = {
             "repeat": -1,
             "path": "/assets/images/sprites/key/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 512
+            "frameHeight": 256
           }
         ]
       },
       "bomb": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1078,12 +1151,12 @@ export const config: ConfigTypes = {
             "repeat": -1,
             "path": "/assets/images/sprites/bomb/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 512
+            "frameHeight": 256
           }
         ]
       },
       "loader": {
-        "scaleFactor": 1.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1091,8 +1164,8 @@ export const config: ConfigTypes = {
             "frameRate": 8,
             "repeat": -1,
             "path": "/assets/images/sprites/loader/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
@@ -1129,7 +1202,7 @@ export const config: ConfigTypes = {
         ]
       },
       "health_1": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1137,13 +1210,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/health_1/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "health_2": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1151,13 +1224,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/health_2/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "health_3": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1165,13 +1238,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/health_3/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "health_4": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1179,13 +1252,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/health_4/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "health_5": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1193,13 +1266,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/health_5/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "powerup_1": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1207,13 +1280,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/powerup_1/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "powerup_2": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1221,13 +1294,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/powerup_2/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "powerup_3": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1235,13 +1308,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/powerup_3/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "powerup_4": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1249,13 +1322,13 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/powerup_4/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       },
       "powerup_5": {
-        "scaleFactor": 0.5,
+        "scaleFactor": 1,
         "anims": [
           {
             "name": "idle",
@@ -1263,8 +1336,8 @@ export const config: ConfigTypes = {
             "frameRate": 6,
             "repeat": -1,
             "path": "/assets/images/sprites/powerup_5/idle.webp",
-            "frameWidth": 512,
-            "frameHeight": 512
+            "frameWidth": 256,
+            "frameHeight": 256
           }
         ]
       }
@@ -1356,14 +1429,30 @@ export const config: ConfigTypes = {
   "changelog": {
     "versions": [
       {
-        "version": "next...",
-        "date": "TBD",
+        "version": "0.4.0",
+        "date": "TBD: Planning stage...",
+        "title": "Prizes for losers",
+        "notes": [
+          "Consolation prize for expired #1 active score — a participation trophy for degens"
+        ]
+      },
+      {
+        "version": "0.3.0",
+        "date": "2026-03-03",
         "title": "Make AI great again",
         "notes": [
-          "5 new enemy AI types — the bankers brought reinforcements from TradFi",
-          "Consolation prize for expired #1 active score — a participation trophy for degens",
+          "$tRON token and Faucet enabled",
+          "v2 Sprites with ridiculous big head animation",
           "Active score leaderboard with 24h TTL decay — your high score rugs itself",
-          "Unit tests included to catch dem sneaky regressions"
+          "Unit tests included to catch dem sneaky regressions",
+          "New Enemy AI types — the bankers brought reinforcements from TradFi",
+          "Added Enemy AI 1. Direct: Charges straight at the player with no special movement",
+          "Added Enemy AI 2. Flanker: Orbits the player at a set radius, then lunges in to attack.",
+          "Added Enemy AI 3. Cautious: Strafes laterally at preferred distance when solo.",
+          "Added Enemy AI 4. Erratic: Snakes toward the player with continuous sine-wave zigzag.",
+          "Added Enemy AI 5. Swarm: Clusters with nearby allies. When rush_threshold allies are nearby, triggers a coordinated rush with a green tint visual cue.",
+          "Added Enemy AI 6. Passive (The Banker): Walks slowly across the screen, minding its own business.",
+          "Added Enemy AI 7. Retardio: Rare, chaotic enemy that attacks OTHER enemies."
         ]
       },
       {
@@ -1371,17 +1460,21 @@ export const config: ConfigTypes = {
         "date": "2026-02-21",
         "title": "Mobile Friendly",
         "notes": [
-          "Game speed set to 1.5, because degens have no patience",
           "Mobile support so you can beat-up bankers from the toilet",
+          "Mobile touch controls and Game Pad support",
           "PWA Mobile support for that poor-man native app feel",
           "Portrait mode blocked — forced landscape, no vertical charts allowed",
-          "CI Pipelines — because yolo-pushing to main was getting old (it wasn't)",
+          "Game speed set to 1.5, because degens have no patience",
+          "Guest (normie) and authenticated (degen) play modes",
+          "SIWA enabled (Sign-In with Avalanche)",
+          "CI Pipelines — because yolo-pushing to main was getting old",
           "CI Pipeline caching — builds go brrr 🚀",
           "Game session tracking on victory and defeat — receipts for your bags and your L's",
           "Leaderboard — finally some on-chain clout to flex",
           "Countdown timers on active leaderboard entries — watch your clout evaporate in real time",
           "Screen wake lock — your phone won't paper-hand and go to sleep mid-boss",
-          "Two-tab leaderboard UI (ACTIVE + ALL TIME) — so you can cope in two dimensions"
+          "Two-tab leaderboard UI (ACTIVE + ALL TIME) — so you can cope in two dimensions",
+          "An initial half-arsed attempt at cheating prevention"
         ]
       },
       {
@@ -1390,21 +1483,18 @@ export const config: ConfigTypes = {
         "title": "Genesis Drop",
         "notes": [
           "Initial MVP release pushed straight to main like a savage",
+          "Guest(normie) play modes",
           "Beat-em-up combat with 2.5D physics",
           "Phaser 3 Arcade Engine",
           "Single enemy sprite with multiple AI behaviors",
           "Boss encounters with ground pound and charge attacks",
           "Key and loot drop system",
           "Bear Market of endless retardio bankers",
-          "Avalanche blockchain integration for fees and claims",
-          "Guest and authenticated play modes",
           "AI generated Art, SFX and Music",
-          "Mobile touch controls and Game Pad support",
-          "An initial half-arsed attempt at cheating prevention",
           "No working backend or smart contracts yet"
         ]
       }
     ]
   },
-  "configHash": "73dc969b3be1029705313bb19a0232491c236826072074cb987290edf42bdeaf"
+  "configHash": "0ad44db49da9ac216f999f19f74f97ee75efa3eb76ab58b3edc08d6d164f1878"
 };

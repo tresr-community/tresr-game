@@ -50,6 +50,11 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
     mapping(bytes32 => bool) public claimedSessions; // sessionId -> claimed
     mapping(address => uint256) public lastClaimTime; // user -> last claim timestamp
 
+    // Cumulative counters (readable via view functions — no event scanning needed)
+    uint256 public totalFeesCollected; // Total entry fees paid by users (wei)
+    uint256 public totalRewardsPaid; // Total rewards claimed by winners (wei)
+    uint256 public totalBurned; // Total tokens sent to burn address (wei)
+
     // Events
     event FeePaid(bytes32 indexed sessionId, address indexed user, uint256 amount, uint256 burned, uint256 poolAmount);
     event Claim(bytes32 indexed sessionId, address indexed user, uint256 amount);
@@ -110,6 +115,8 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
         }
 
         paidSessions[sessionId] = true;
+        totalFeesCollected += amount;
+        totalBurned += burnAmount;
 
         emit FeePaid(sessionId, msg.sender, amount, burnAmount, poolAmount);
     }
@@ -137,6 +144,7 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
 
         claimedSessions[sessionId] = true;
         lastClaimTime[msg.sender] = block.timestamp;
+        totalRewardsPaid += amount;
 
         token.safeTransfer(msg.sender, amount);
 

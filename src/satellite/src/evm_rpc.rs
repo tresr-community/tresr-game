@@ -28,8 +28,25 @@ const ECDSA_KEY_NAME: &str = crate::config::ECDSA_KEY_NAME;
 const DEFAULT_GAS_LIMIT: u64 = 21000;
 const DEFAULT_GAS_PRICE: u64 = 25_000_000_000; // 25 Gwei
 
-/// Default cycles budget for each EVM RPC call (~3B covers most methods)
-const DEFAULT_CYCLES: u128 = 3_000_000_000;
+/// Base cycles for an EVM RPC call. The IC charges per byte of HTTP response,
+/// so larger responses (like getTransactionReceipt) need more budget.
+const BASE_CYCLES: u128 = 1_000_000_000; // 1B base
+
+/// Calculate cycle budget for an EVM RPC call.
+/// `max_response_bytes`: expected max response size.
+fn cycles_for_call(max_response_bytes: u64) -> u128 {
+    // IC charges ~400K cycles per KB of response on a 13-node subnet
+    let response_cycles = (max_response_bytes as u128) * 400_000;
+    let subtotal = BASE_CYCLES + response_cycles;
+
+    // Network multiplier: local/testnet subnets are smaller (cheaper)
+    if crate::config::NETWORK_NAME == "anvil" {
+        subtotal // Local: use as-is
+    } else {
+        // 50% safety margin for production / testnet
+        subtotal * 3 / 2
+    }
+}
 
 /// Vault.payFee(uint256,bytes32) function selector
 const PAY_FEE_SELECTOR: &str = "c6bbdafb";
@@ -93,7 +110,7 @@ async fn json_rpc_request(method: &str, params: &str) -> Result<String, String> 
     });
 
     let result = canister
-        .request(service, json_body, 2048, DEFAULT_CYCLES)
+        .request(service, json_body, 2048, cycles_for_call(2048))
         .await?;
 
     match result.0 {
@@ -128,17 +145,23 @@ fn parse_json_rpc_result(body: &str) -> Result<serde_json::Value, String> {
 
 /// Verify a fee transaction on Avalanche.
 /// Returns the parsed fee data including amount and sender address.
-pub async fn verify_avalanche_fee(tx_hash: &str) -> Result<ParsedFee, String> {
+/// `caller_wallet` is used by the ANVIL mock to return the correct `from` address
+/// so the wallet-match check in `on_fee_created` passes in local dev.
+pub async fn verify_avalanche_fee(
+    tx_hash: &str,
+    caller_wallet: Option<&str>,
+) -> Result<ParsedFee, String> {
     // Anvil mock: skip real RPC verification in local dev
     if crate::config::NETWORK_NAME == "anvil" {
         crate::logging::log_debug(
             "EvmRpc",
             &format!("ANVIL_MOCK: verify_avalanche_fee for {}", tx_hash),
         );
-        return Ok(ParsedFee {
-            amount: 10,
-            from: "0x0000000000000000000000000000000000000000".to_string(),
-        });
+        // Echo back the caller's wallet so the from-address check passes.
+        let from = caller_wallet
+            .unwrap_or("0x0000000000000000000000000000000000000000")
+            .to_string();
+        return Ok(ParsedFee { amount: 10, from });
     }
 
     // eth_getTransactionByHash — no typed binding, use raw JSON-RPC
@@ -423,7 +446,7 @@ async fn verify_transaction_receipt(tx_hash: &str) -> Result<(), String> {
             avalanche_rpc_services(),
             default_rpc_config(),
             tx_hash.to_string(),
-            DEFAULT_CYCLES,
+            cycles_for_call(4096), // receipts are larger
         )
         .await?;
 
@@ -640,7 +663,7 @@ async fn get_transaction_count(address: &str) -> Result<u64, String> {
             avalanche_rpc_services(),
             default_rpc_config(),
             args,
-            DEFAULT_CYCLES,
+            cycles_for_call(256), // nonce is a small response
         )
         .await?;
 
@@ -800,7 +823,7 @@ pub async fn get_token_balance(wallet_address: &str) -> Result<u64, String> {
             avalanche_rpc_services(),
             default_rpc_config(),
             call_args,
-            DEFAULT_CYCLES,
+            cycles_for_call(256), // balance is a small response
         )
         .await?;
 

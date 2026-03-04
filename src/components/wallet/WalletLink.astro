@@ -148,7 +148,12 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
   import {connectWallet, getWalletClient} from "@/lib/wallet/connection";
   import {buildWalletLinkMessage} from "@/lib/wallet/wallet-message";
   import {shortenAddress} from "@/lib/wallet/avalanche";
-  import {getTresrBalance, formatBalance} from "@/lib/wallet/balance";
+  import {
+    getTresrBalance,
+    formatBalance,
+    isRpcAvailable,
+    resetRpcAvailability,
+  } from "@/lib/wallet/balance";
   import {JUNO_ENVIRONMENT} from "@/lib/utils/log";
   import {log} from "@/lib/utils/log";
   import {config} from "@/lib/config/client";
@@ -276,6 +281,17 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     showBalanceLoading();
     try {
       const balance = await getTresrBalance(address, !bypassCache);
+
+      // RPC offline — getTresrBalance returns 0n silently
+      if (!isRpcAvailable()) {
+        balanceLoading.classList.add("hidden");
+        balanceValue.classList.add("hidden");
+        balanceError.classList.remove("hidden");
+        balanceError.querySelector("span")!.textContent = "Network unavailable";
+        addressEl.textContent = shortenAddress(address);
+        return;
+      }
+
       const formatted = formatBalance(balance);
       showBalanceValue(formatted);
       addressEl.textContent = shortenAddress(address);
@@ -288,12 +304,16 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
 
   async function handleRefresh() {
     if (!canRefresh() || !currentAddress) return;
+    resetRpcAvailability(); // Re-probe RPC on manual refresh
     lastRefreshTime = Date.now();
     startCooldownTimer();
     await fetchAndDisplayBalance(currentAddress, true);
   }
 
   async function showLinkedState(address: string) {
+    // Dedup: if already showing this address, skip (prevents race between
+    // auth subscriber and profileStore subscriber both calling us concurrently)
+    if (currentAddress === address) return;
     currentAddress = address;
     showState(stateLinked);
     addressEl.textContent = shortenAddress(address);
@@ -315,22 +335,21 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
       return;
     }
 
-    // Authenticated user - check profile for wallet link
-    const profile = profileStore.get();
-
-    if (profile?.wallet?.evmWalletLinked && profile.evmWallet) {
-      // Wallet is linked (either IID+linked or SIWA)
-      await showLinkedState(profile.evmWallet);
+    // Authenticated user — check in-memory store first to avoid a redundant
+    // Juno read when auth fires before loadProfile has completed (e.g. SIWA).
+    const cachedProfile = profileStore.get();
+    if (cachedProfile?.wallet?.evm_wallet_linked && cachedProfile.evm_wallet) {
+      await showLinkedState(cachedProfile.evm_wallet);
       return;
     }
 
-    // IID user without linked wallet - check if we can get it from the profile doc
+    // Store miss — fetch from Juno (first load or cache not yet populated)
     if (authState.user) {
       try {
         const doc = await getUserProfile(authState.user.key);
         if (gen !== updateGeneration) return; // Stale — newer update superseded
-        if (doc?.data?.wallet?.evmWalletLinked && doc.data.evmWallet) {
-          await showLinkedState(doc.data.evmWallet);
+        if (doc?.data?.wallet?.evm_wallet_linked && doc.data.evm_wallet) {
+          await showLinkedState(doc.data.evm_wallet);
           return;
         }
       } catch (e) {
@@ -365,8 +384,8 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
       if (authState.user) {
         const doc = await getUserProfile(authState.user.key);
         if (
-          doc?.data?.wallet?.evmWalletLinked &&
-          doc.data.evmWallet?.toLowerCase() === address.toLowerCase()
+          doc?.data?.wallet?.evm_wallet_linked &&
+          doc.data.evm_wallet?.toLowerCase() === address.toLowerCase()
         ) {
           await showLinkedState(address);
         } else {
@@ -401,11 +420,11 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
       const existingProfile = await getUserProfile(principal);
       const profile = {
         ...(existingProfile?.data || createDefaultProfile(principal)),
-        evmWallet: address,
+        evm_wallet: address,
         verification_signature: signature,
         verification_message: message,
       };
-      profile.wallet.evmWalletLinked = true;
+      profile.wallet.evm_wallet_linked = true;
 
       await saveUserProfile(principal, profile, existingProfile?.version);
       profileStore.set(profile);
@@ -426,10 +445,12 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
   });
 
   const unsubProfile = profileStore.subscribe((profile) => {
-    if (profile?.wallet?.evmWalletLinked && profile.evmWallet) {
+    if (profile?.wallet?.evm_wallet_linked && profile.evm_wallet) {
       const authState = getAuthState();
       if (authState.isAuthenticated && !authState.isGuest) {
-        showLinkedState(profile.evmWallet);
+        // Skip if the auth subscription already handled this address
+        if (currentAddress === profile.evm_wallet) return;
+        showLinkedState(profile.evm_wallet);
       }
     }
   });

@@ -1,4 +1,7 @@
 // Backend types for the Tresr game satellite
+// All field names use snake_case to match the Juno wire format (stored in Datastore).
+// TypeScript-internal variables may use camelCase idiomatically, but all
+// fields in these interfaces are the exact keys written to / read from Juno.
 
 export interface NotificationItem {
   key: string;
@@ -8,43 +11,43 @@ export interface NotificationItem {
     details?: string;
     urgency: "none" | "non-urgent" | "urgent";
     timestamp: number;
-    snoozeUntil?: number;
+    snooze_until?: number;
   };
 }
 
 export interface UserProfile {
-  userId: string; // User Principal
+  user_id: string; // User Principal
 
   // Identity
   nickname: string;
-  loginMethod?: "iid" | "siwa"; // How user authenticated (Internet Identity or Sign-In with Avalanche)
+  login_method?: "iid" | "siwa"; // How user authenticated
 
   // Game Stats
   stats: {
-    highScore: bigint;
-    totalGamesPlayed: bigint;
-    totalGamesWon: bigint;
-    totalGamesLost: bigint;
+    high_score: bigint;
+    total_games_played: bigint;
+    total_games_won: bigint;
+    total_games_lost: bigint;
   };
 
   // Wallet
   wallet: {
     balance: bigint;
-    evmWalletLinked: boolean;
+    evm_wallet_linked: boolean;
   };
 
   // Preferences
   preferences: {
-    avatarUrl?: string;
+    avatar_url?: string;
     theme: string;
     has_read_instructions: boolean;
     narration?: boolean; // Intro voiceover preference (default: true when absent)
     music?: {
-      favoriteTrack?: string;
-      playbackMode?: "normal" | "shuffle" | "repeat-one";
+      favorite_track?: string;
+      playback_mode?: "normal" | "shuffle" | "repeat-one";
       volume?: number;
-      sfxVolume?: number;
-      isPaused?: boolean;
+      sfx_volume?: number;
+      is_paused?: boolean;
     };
   };
 
@@ -52,11 +55,11 @@ export interface UserProfile {
   email?: string;
 
   // Wallet
-  evmWallet?: string;
-  walletProof?: `0x${string}`;
+  evm_wallet?: string;
+  wallet_proof?: `0x${string}`;
   verification_signature?: string;
   verification_message?: string;
-  withdrawalAddress?: string;
+  withdrawal_address?: string;
 
   // Notifications
   notifications?: NotificationItem[];
@@ -68,19 +71,20 @@ export interface UserProfile {
 
 export interface LeaderboardEntry {
   nickname: string;
-  avatarUrl?: string;
-  highScore: number;
-  gamesWon: number;
-  activeScore: number;
-  scoredAt?: number;
-  expiresAt?: number;
-  sessionId?: string;
+  avatar_url?: string;
+  high_score: number;
+  games_won: number;
+  active_score: number;
+  scored_at?: number;
+  expires_at?: number;
+  session_id?: string;
 }
 
 export interface GlobalStats {
-  totalFees: number;
-  totalBurned: number;
-  totalRewarded: number;
+  total_fees: number;
+  total_collected: number;
+  total_burned: number;
+  total_rewarded: number;
 }
 
 export type EvmRpcResult = {Ok: string} | {Err: string};

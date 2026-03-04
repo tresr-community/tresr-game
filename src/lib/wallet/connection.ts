@@ -24,7 +24,7 @@ import {
 
 // Re-export for external callers
 export {cancelConnectWallet};
-import {config} from "../config/client";
+import {config as appConfig} from "../config/client";
 import {getEnvironmentKey} from "../config/constants";
 import {log} from "../utils/log";
 
@@ -43,7 +43,7 @@ export interface WalletConnection {
  */
 function getTargetChainId(): number {
   const envKey = getEnvironmentKey();
-  return config.blockchain.avalanche[envKey].chain_id;
+  return appConfig.blockchain.avalanche[envKey].chain_id;
 }
 
 /**
@@ -101,15 +101,29 @@ export async function connectWallet(): Promise<WalletConnection> {
     } catch (switchErr: unknown) {
       const err = switchErr as {code?: number; message?: string};
       const env = getEnvironmentKey();
+      const chainLabel =
+        env === "anvil"
+          ? `Anvil local (Chain ID: ${targetChainId})`
+          : env === "testnet"
+            ? `Avalanche Fuji testnet (Chain ID: ${targetChainId})`
+            : `Avalanche mainnet (Chain ID: ${targetChainId})`;
 
-      if (err.code === 4902) {
+      // 4902 = chain not added; 4200 = unsupported / RPC unreachable
+      // Brave Wallet returns 4200 when it cannot reach a localhost RPC.
+      if (err.code === 4902 || err.code === 4200) {
+        const hint =
+          env === "anvil"
+            ? " For local development, manually add the Anvil network " +
+              `(Chain ID: ${targetChainId}, RPC: ${appConfig.blockchain.avalanche[env].rpc_urls[0]}) ` +
+              "in your wallet settings before connecting."
+            : "";
         throw new Error(
-          `Please add Avalanche ${env === "mainnet" ? "mainnet" : "Fuji testnet"} (Chain ID: ${targetChainId}) to your wallet and try again.`,
+          `Please add ${chainLabel} to your wallet and try again.${hint}`,
           {cause: switchErr}
         );
       }
       throw new Error(
-        `Failed to switch to Avalanche ${env === "mainnet" ? "mainnet" : "Fuji testnet"}. Please switch manually in your wallet.`,
+        `Failed to switch to ${chainLabel}. Please switch manually in your wallet.`,
         {cause: switchErr}
       );
     }
@@ -142,13 +156,28 @@ export async function connectWallet(): Promise<WalletConnection> {
  */
 export async function getWalletClient(): Promise<WalletClient> {
   const config = getWagmiConfig();
+
+  // Rehydrate connector from localStorage after full page reload.
+  // Without this, the connector's transport methods (getChainId, etc.)
+  // are missing, causing "connector.getChainId is not a function" errors.
+  //
+  // IMPORTANT: We capture the reconnect result to extract the live connector
+  // object. Passing it explicitly to getWalletClient bypasses wagmi's fallback
+  // to the serialized (un-hydrated) connector from its internal state store.
+  const reconnected = await reconnect(config);
+
   const account = getConnection(config);
 
   if (!account.isConnected || !account.address) {
     throw new Error("No wallet connected. Call connectWallet() first.");
   }
 
-  const client = await wagmiGetWalletClient(config);
+  // Use the live connector from reconnect if available — avoids the
+  // "connector.getChainId is not a function" error on first call after page load.
+  const liveConnector = reconnected[0]?.connector;
+  const client = liveConnector
+    ? await wagmiGetWalletClient(config, {connector: liveConnector})
+    : await wagmiGetWalletClient(config);
 
   if (!client) {
     throw new Error("Failed to get wallet client");

@@ -37,8 +37,8 @@ const {gameSessionId, amount, vaultAddress} = Astro.props;
   import {initSatellite, setDoc} from "@junobuild/core";
   import {getAuthState} from "@/lib/auth";
   import {connectWallet, getWalletClient} from "@/lib/wallet/connection";
-  import {getEnvironmentKey} from "@/lib/wallet/avalanche";
-  import {VaultAbi} from "@/lib/wallet/VaultAbi";
+  import {getEnvironmentKey, getExplorerUrl} from "@/lib/wallet/avalanche";
+  import {VaultAbi} from "@/lib/wallet/abi/vault";
   import {loadConfigAsync} from "@/lib/config";
   import {trackClaim} from "@/lib/metrics/analytics";
   import {confirmReceipt} from "@/lib/wallet/tx";
@@ -110,13 +110,14 @@ const {gameSessionId, amount, vaultAddress} = Astro.props;
       //   Rust assert: assert_claim_request() — validates session link, status, amount > 0
       //   Rust hook:   on_claim_created() — generates oracle signature or verifies tx
       await setDoc({
-        collection: "claims",
+        collection: "audit",
         doc: {
-          key: crypto.randomUUID(),
+          key: `claim_${crypto.randomUUID()}`,
           data: {
             amount,
             status: "pending",
             tx_hash: hash,
+            tx_url: getExplorerUrl(hash),
             game_session_id: gameSessionId,
           },
         },

@@ -35,7 +35,7 @@
 </div>
 
 <script>
-  import {getVaultTresrBalance} from "@/lib/wallet/balance";
+  import {getVaultTresrBalance, isRpcAvailable} from "@/lib/wallet/balance";
   import {
     getEnvironmentKey,
     isVaultDeployed,
@@ -55,10 +55,15 @@
     formatCooldown,
     formatVaultDisplay,
   } from "@/lib/wallet/vault-status";
-  import {VaultAbi} from "@/lib/wallet/VaultAbi";
+  import {VaultAbi} from "@/lib/wallet/abi/vault";
 
   const COMPONENT_NAME = "VaultBalance";
-  const REFRESH_INTERVAL_MS = 60_000;
+  if (!config.wallet?.vault_poll_interval_ms) {
+    throw new Error(
+      "Missing required config value: wallet.vault_poll_interval_ms"
+    );
+  }
+  const REFRESH_INTERVAL_MS = config.wallet.vault_poll_interval_ms;
   const COOLDOWN_TICK_MS = 1_000;
   const MAX_CONSECUTIVE_ERRORS = 3;
   const WIN_TOAST_DURATION_MS = 8_000;
@@ -185,6 +190,7 @@
   async function startWatchingClaims() {
     if (unwatchClaim || disposed) return;
     if (!isVaultDeployed(config)) return;
+    if (!isRpcAvailable()) return;
 
     try {
       const publicClient = getReadClient();
@@ -234,6 +240,13 @@
     try {
       const balance = await getVaultTresrBalance();
       if (disposed) return;
+
+      // RPC went offline — getVaultTresrBalance returns 0n silently
+      if (!isRpcAvailable()) {
+        balanceEl.textContent = "Offline";
+        if (difficultyEl) difficultyEl.classList.add("hidden");
+        return;
+      }
 
       balanceEl.textContent = formatVaultDisplay(balance);
       updateDifficultyBadge(balance);

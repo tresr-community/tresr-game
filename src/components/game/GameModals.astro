@@ -227,8 +227,8 @@
         document.dispatchEvent(
           new CustomEvent("tresr:ban-modal-open", {
             detail: {
-              bannedUntil: banInfo.bannedUntil,
-              offenceCount: banInfo.offenceCount,
+              banned_until: banInfo.bannedUntil,
+              offence_count: banInfo.offenceCount,
             },
           })
         );
@@ -319,7 +319,7 @@
       if (auth.isAuthenticated && !auth.isGuest && auth.user) {
         try {
           const doc = await getUserProfile(auth.user.key);
-          if (doc && BigInt(state.score) > (doc.data.stats.highScore || 0n)) {
+          if (doc && BigInt(state.score) > (doc.data.stats.high_score || 0n)) {
             highScoreEl.classList.remove("hidden");
           }
         } catch {

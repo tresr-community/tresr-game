@@ -43,8 +43,8 @@ import Loader from "@/components/game/Loader.astro";
         document.dispatchEvent(
           new CustomEvent("tresr:ban-modal-open", {
             detail: {
-              bannedUntil,
-              offenceCount: profile.offence_count ?? 0,
+              banned_until: bannedUntil,
+              offence_count: profile.offence_count ?? 0,
             },
           })
         );
@@ -70,8 +70,8 @@ import Loader from "@/components/game/Loader.astro";
         document.dispatchEvent(
           new CustomEvent("tresr:ban-modal-open", {
             detail: {
-              bannedUntil: deviceBan.bannedUntil,
-              offenceCount: deviceBan.offenceCount,
+              banned_until: deviceBan.bannedUntil,
+              offence_count: deviceBan.offenceCount,
             },
           })
         );
@@ -98,7 +98,7 @@ import Loader from "@/components/game/Loader.astro";
 
       // IID users without a linked wallet cannot pay the fee
       const profile = profileStore.get();
-      if (profile && !profile.wallet.evmWalletLinked) {
+      if (profile && !profile.wallet.evm_wallet_linked) {
         log.info(COMPONENT_NAME, "No wallet linked, cannot enter fee gate");
         window.showWarningToast("You need to link a wallet first");
         window.location.href = "/";
@@ -280,7 +280,7 @@ import Loader from "@/components/game/Loader.astro";
       if (!kb) return;
 
       if (document.hidden) {
-        kb.resetKeys(); // release any held keys
+        kb.clearCaptures(); // release any held keys
         kb.enabled = false;
         log.debug(COMPONENT_NAME, "Keyboard capture disabled (tab hidden)");
       } else {

@@ -75,7 +75,11 @@ export class Boss extends BaseEntity {
     this.walkableArea = scene.registry.get("walkable_area") as WalkableArea;
 
     // Enable large health bar for boss
-    this.enableHealthBar(80, 8, -10);
+    this.enableHealthBar(
+      bossConfig.health_bar?.width || 80,
+      bossConfig.health_bar?.height || 8,
+      bossConfig.health_bar?.offset_y || -10
+    );
   }
 
   setTarget(target: Phaser.GameObjects.Components.Transform) {

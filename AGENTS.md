@@ -230,6 +230,69 @@ Security Best Practices for Juno:
 - Implement proper authorization checks in serverless functions using caller() identity.
 - Keep satellite IDs and configuration in environment variables for production.
 
+### Juno Collections (Canonical)
+
+These are the **only** Juno Datastore collections in the project. Do not create new ones without updating `config/tresr.yaml`, `AGENTS.md`, and `docs/spec.md`.
+
+| Collection | Access  | Purpose                                            |
+| ---------- | ------- | -------------------------------------------------- |
+| `audit`    | Managed | Private admin audit trail (fees, claims, sessions) |
+| `economy`  | Public  | Economy-wide stats: `global` doc with totals       |
+| `scores`   | Public  | Per-user leaderboard entries + `top_scorer` cache  |
+| `users`    | Managed | Per-user preferences, stats, wallet, notifications |
+
+Juno Storage:
+
+| Bucket   | Purpose                                |
+| -------- | -------------------------------------- |
+| `images` | User avatar uploads (owner-write only) |
+
+## 🔤 Naming Conventions
+
+A single, consistent naming standard is enforced across all layers of the project.
+
+### Cross-Language Identifiers
+
+This applies to; Juno collections, document keys, JSON fields and YAML keys.
+
+**Format: `snake_case`**
+
+These identifiers cross language boundaries and must be uniform:
+
+- Juno collection names: `audit`, `economy`, `scores`, `users`, `images`
+- Document keys: `top_scorer`, `global`, `fee_<id>`, `claim_<id>`, `session_<id>`
+- JSON/YAML config keys: `total_collected`, `total_rewarded`, `total_burned`, `high_score`, `games_won`
+- Rust struct fields: `snake_case` (Rust default — no change needed)
+
+### Language-Specific Variables (internal only)
+
+| Language   | Convention   | Example                                      |
+| ---------- | ------------ | -------------------------------------------- |
+| Rust       | `snake_case` | `high_score`, `scores_doc`, `caller_key`     |
+| TypeScript | `camelCase`  | `highScore`, `totalCollected`, `activeScore` |
+| YAML keys  | `snake_case` | `time_limit_seconds`, `sfx_volume`           |
+
+> **Rule:** When a field crosses a language boundary (e.g., serialized as JSON), the **wire format is always `snake_case`**.
+>
+> - Rust serializes with `#[serde(rename_all = "snake_case")]`;
+> - TypeScript deserializes from `snake_case` and maps to `camelCase` locally when needed.
+
+### Logging Messages for Collection Writes
+
+Every log message that writes to a Juno collection **must** follow this format:
+
+```bash
+[CollectionName] Updated collection <name> for user <id> with <field>=<value>, ...
+```
+
+Examples:
+
+- `[Scores] Updated collection scores for user <principal> with score=3230, nickname=Bug Hunter 01`
+- `[Economy] Updated collection economy (global) with total_collected=1000, total_rewarded=500, total_burned=50`
+- `[Scores] Updated collection scores (top_scorer cache) with key=<principal>, score=9999`
+
+---
+
 ### Solidity Development
 
 Context: The project integrates Avalanche C-Chain for $TRESR ERC20 and custom vault contracts (e.g., chest pool).

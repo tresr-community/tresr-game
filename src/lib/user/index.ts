@@ -12,7 +12,7 @@ import {log} from "../utils/log";
 const COLLECTION_USERS = "users";
 
 // Re-export the centralized write queue so consumers can import from "@/lib/user"
-export {enqueueProfileWrite, flushProfileWrites} from "./writeQueue";
+export {enqueueProfileWrite, flushProfileWrites} from "./write-queue";
 
 /**
  * Fetch a user profile by their Principal ID (key).
@@ -55,8 +55,8 @@ export async function saveUserProfile(
     "UserProfile",
     "Saving profile for key:",
     key,
-    "data.userId:",
-    profile.userId
+    "data.user_id:",
+    profile.user_id
   );
   return await setDoc<UserProfile>({
     collection: COLLECTION_USERS,
@@ -124,9 +124,9 @@ export function genNickName(): string {
  */
 export interface CreateProfileOptions {
   /** The wallet address for SIWA users (already linked via login) */
-  evmWallet?: string;
+  evm_wallet?: string;
   /** How the user authenticated */
-  loginMethod?: "iid" | "siwa";
+  login_method?: "iid" | "siwa";
 }
 
 /**
@@ -140,26 +140,26 @@ export function createDefaultProfile(
   userId: string,
   options?: CreateProfileOptions
 ): UserProfile {
-  const isWalletLinked = Boolean(options?.evmWallet);
+  const isWalletLinked = Boolean(options?.evm_wallet);
 
   return {
-    userId,
+    user_id: userId,
     nickname: genNickName(),
-    loginMethod: options?.loginMethod,
+    login_method: options?.login_method,
     stats: {
-      highScore: 0n,
-      totalGamesPlayed: 0n,
-      totalGamesWon: 0n,
-      totalGamesLost: 0n,
+      high_score: 0n,
+      total_games_played: 0n,
+      total_games_won: 0n,
+      total_games_lost: 0n,
     },
     wallet: {
       balance: 0n,
-      evmWalletLinked: isWalletLinked,
+      evm_wallet_linked: isWalletLinked,
     },
     preferences: {
       theme: "synthwave",
       has_read_instructions: false,
     },
-    evmWallet: options?.evmWallet,
+    evm_wallet: options?.evm_wallet,
   };
 }

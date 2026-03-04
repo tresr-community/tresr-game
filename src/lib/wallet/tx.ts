@@ -10,7 +10,7 @@
  * transport or where auto-mine means no new blocks arrive after the tx.
  */
 
-import {createPublicClient, http} from "viem";
+import {createPublicClient, http, fallback} from "viem";
 import type {TransactionReceipt, PublicClient} from "viem";
 import {getTargetChain, getEnvironmentKey} from "./avalanche";
 import {config} from "../config/client";
@@ -18,33 +18,49 @@ import {log} from "../utils/log";
 
 const COMPONENT_NAME = "Tx";
 
+// Module-scoped cache for the PublicClient
+let cachedClient: PublicClient | null = null;
+let cachedEnv: string | null = null;
+
 /**
  * Build a direct viem public client for the configured chain + RPC.
  *
  * This is intentionally NOT wagmi's managed client — it uses `http(rpcUrl)`
  * pointed at the exact RPC from tresr.yaml, so receipt polling always
  * queries the right endpoint regardless of wagmi's internal chain state.
+ *
+ * The client is cached to prevent leaking connections/memory on repeated calls.
  */
 function buildDirectClient(): PublicClient {
   const env = getEnvironmentKey();
+
+  if (cachedClient && cachedEnv === env) {
+    return cachedClient;
+  }
+
   const chainConfig = config.blockchain.avalanche[env];
   const chain = getTargetChain(chainConfig.rpc_urls[0]);
 
-  return createPublicClient({
+  const transports = chainConfig.rpc_urls.map((url) => http(url));
+
+  cachedClient = createPublicClient({
     chain,
-    transport: http(chainConfig.rpc_urls[0]),
+    transport: fallback(transports),
   }) as PublicClient;
+  cachedEnv = env;
+
+  return cachedClient;
 }
 
 /**
  * Confirm a transaction receipt via direct RPC polling.
  *
  * Creates a viem public client pointed at the configured RPC URL and
- * polls for the receipt there. Uses `confirmations: 0` so it resolves
- * as soon as the receipt exists — critical for Anvil's auto-mine mode
+ * polls for the receipt there. Uses environment-aware confirmation counts:
+ * 0 for local/anvil, 1 for testnet/Fuji, and 2 for production/Mainnet.
+ * Resolving with 0 confirmations is critical for Anvil's auto-mine mode
  * where no additional blocks are produced after a transaction.
  *
- * Works across Anvil (instant auto-mine), testnet, and mainnet.
  * Throws if the transaction reverts on-chain or if the timeout elapses.
  *
  * @param hash - Transaction hash to confirm
@@ -56,17 +72,37 @@ export async function confirmReceipt(
   hash: `0x${string}`,
   options?: {timeout?: number; component?: string}
 ): Promise<TransactionReceipt> {
-  const timeout = options?.timeout ?? 30_000;
+  if (!config.wallet.tx_timeout_ms) {
+    throw new Error("Missing required config value: wallet.tx_timeout_ms");
+  }
+  if (!config.wallet.tx_polling_interval_ms) {
+    throw new Error(
+      "Missing required config value: wallet.tx_polling_interval_ms"
+    );
+  }
+  const timeout = options?.timeout ?? config.wallet.tx_timeout_ms;
   const component = options?.component ?? COMPONENT_NAME;
 
-  log.info(component, "Waiting for receipt:", hash);
+  const env = getEnvironmentKey();
+  let confirmations = 0; // default for development/anvil
+  if (env === "testnet") {
+    confirmations = 1;
+  } else if (env === "mainnet") {
+    confirmations = 2;
+  }
+
+  log.info(
+    component,
+    `Waiting for receipt (${confirmations} confirmations):`,
+    hash
+  );
 
   const client = buildDirectClient();
   const receipt = await client.waitForTransactionReceipt({
     hash,
     timeout,
-    pollingInterval: 1_000,
-    confirmations: 0,
+    pollingInterval: config.wallet.tx_polling_interval_ms,
+    confirmations,
   });
 
   if (receipt.status !== "success") {

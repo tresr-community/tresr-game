@@ -86,6 +86,7 @@ jobs:
         with:
           fetch-depth: 0
           submodules: recursive
+          lfs: true
 
       - id: setup_devenv
         name: Setup Devenv

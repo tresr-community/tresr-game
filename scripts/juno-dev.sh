@@ -218,52 +218,6 @@ function logs() {
 	fi
 }
 
-function cmd_check_didc() {
-	if ! command -v didc &>/dev/null; then
-		log_error "didc not found. Install for Candid declarations."
-		return 1
-	fi
-}
-
-function cmd_generate_ts_declarations() {
-	local candid_dir="$1"
-	local functions_dir="$2"
-
-	log_info "Generating TypeScript declarations..."
-	mkdir -p "${candid_dir}" || {
-		log_error "Failed to create directory for Candid declarations."
-		return 1
-	}
-
-	if [[ -f "${functions_dir}/satellite.did" ]]; then
-		local did_file="${functions_dir}/satellite.did"
-		local js_file="${candid_dir}/satellite.did.js"
-		local ts_file="${candid_dir}/satellite.did.d.ts"
-
-		# Generate JavaScript IDL factory (runtime)
-		log_info "Generating JavaScript IDL factory from satellite.did..."
-		didc bind "${did_file}" -t js >"${js_file}" || {
-			log_error "Failed to generate JavaScript IDL factory."
-			return 1
-		}
-
-		# Generate TypeScript declarations (types)
-		log_info "Generating TypeScript declarations from satellite.did..."
-		didc bind "${did_file}" -t ts >"${ts_file}" || {
-			log_error "Failed to generate TypeScript declarations."
-			return 1
-		}
-	else
-		log_warn "satellite.did not found. Skipping Candid generation."
-	fi
-
-	cat <<-EOF >"${candid_dir}/index.ts"
-		// Auto-generated TypeScript declarations for Satellite Candid interfaces
-		export * from './satellite.did';
-	EOF
-	log_success "TypeScript declarations generated."
-}
-
 function cmd_lint() {
 	log_info "Linting..."
 	bun run lint || {
@@ -299,17 +253,9 @@ function cmd_cleanup() {
 
 # Perform all the build steps but don't deploy.
 function cmd_rebuild() {
-	log_info "Full rebuild (build + candid)..."
+	log_info "Full rebuild..."
 	cmd_astro_build || {
 		log_error "Build failed."
-		return 1
-	}
-	cmd_check_didc || {
-		log_error "didc not found."
-		return 1
-	}
-	cmd_generate_ts_declarations "src/declarations/satellite" "src/satellite" || {
-		log_error "Candid generation failed."
 		return 1
 	}
 }
@@ -904,18 +850,6 @@ rebuild)
 	}
 	;;
 
-# Generate TypeScript declarations for Candid interfaces
-candid)
-	cmd_check_didc || {
-		log_error "Could not check didc."
-		exit 10
-	}
-	cmd_generate_ts_declarations "src/declarations/satellite" "src/satellite" || {
-		log_error "Could not generate TypeScript declarations."
-		exit 11
-	}
-	;;
-
 # Initial Juno Emulator Setup (Funding, etc.)
 setup)
 	cmd_setup || {
@@ -948,7 +882,7 @@ oneshot | loop)
 		log_error "TypeScript type check failed."
 		exit 20
 	}
-	# Build once (rebuild does build + candid), then deploy with skip_build
+	# Build once (rebuild does build), then deploy with skip_build
 	cmd_rebuild || {
 		log_error "Could not rebuild the static site."
 		exit 9
@@ -956,6 +890,10 @@ oneshot | loop)
 	cmd_juno_deploy development true || {
 		log_error "Could not deploy the site."
 		exit 13
+	}
+	cmd_functions_deploy development || {
+		log_error "Could not deploy serverless functions."
+		exit 2
 	}
 	;;
 
@@ -1008,7 +946,7 @@ update | upgrade)
 	;;
 
 *)
-	echo "Usage: $0 {build|build-functions|deploy [dev/prod]|deploy-functions|start|stop|logs|lint|test|typecheck|cleanup|rebuild|candid|setup|topup|topup-wallet|agent-docs|update|clear-satellite|nuke-juno|loop|oneshot}"
+	echo "Usage: $0 {build|build-functions|deploy [dev/prod]|deploy-functions|start|stop|logs|lint|test|typecheck|cleanup|rebuild|setup|topup|topup-wallet|agent-docs|update|clear-satellite|nuke-juno|loop|oneshot}"
 	exit 1
 	;;
 esac

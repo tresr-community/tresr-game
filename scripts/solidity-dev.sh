@@ -368,8 +368,8 @@ function run_start() {
 	done
 
 	# Ensure no existing anvil on this port
-	if lsof -i ":${ANVIL_PORT}" -sTCP:LISTEN >/dev/null 2>&1; then
-		log_error "Port ${ANVIL_PORT} is already in use. Run 'stop' first."
+	if cast block-number --rpc-url "$ANVIL_RPC_URL" >/dev/null 2>&1; then
+		log_error "Port ${ANVIL_PORT} is already in use (Anvil already running?). Run 'stop' first."
 		exit 1
 	fi
 
@@ -653,7 +653,15 @@ function run_deploy_token() {
 
 function run_stop() {
 	local pid
+	# Try lsof first, fall back to ss then fuser (lsof may not see processes
+	# spawned inside nix/devenv shells on some Linux kernels)
 	pid=$(lsof -t -i ":${ANVIL_PORT}" -sTCP:LISTEN 2>/dev/null || true)
+	if [[ -z $pid ]]; then
+		pid=$(ss -tlnp 2>/dev/null | grep ":${ANVIL_PORT}" | grep -oP 'pid=\K[0-9]+' | head -1 || true)
+	fi
+	if [[ -z $pid ]]; then
+		pid=$(fuser "${ANVIL_PORT}/tcp" 2>/dev/null | awk '{print $1}' || true)
+	fi
 
 	if [[ -z $pid ]]; then
 		log_info "No Anvil process found on port ${ANVIL_PORT}."
@@ -829,7 +837,7 @@ function run_health() {
 		# Confirm receipt
 		local receipt_status
 		receipt_status=$(cast receipt "$tx_hash" status --rpc-url "$ANVIL_RPC_URL" 2>/dev/null | awk '{print $1}')
-		if [[ $receipt_status == "1" || $receipt_status == "0x1" ]]; then
+		if [[ $receipt_status == "1" || $receipt_status == "0x1" || $receipt_status == "true" ]]; then
 			log_info "  ${GREEN}✓${NC} Tx sent and receipt confirmed: ${tx_hash:0:18}..."
 			((pass++)) || true
 		else

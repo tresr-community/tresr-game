@@ -144,8 +144,16 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
       </div>
     </div>
 
-    <!-- Right: empty (pause moved to bottom center) -->
-    <div></div>
+    <!-- Right: Admin icon (visible only for admin principals). Security enforced by canister. -->
+    <div class="flex justify-end">
+      <a
+        id="admin-icon-btn"
+        href="/admin"
+        class="btn btn-circle btn-ghost btn-sm pointer-events-auto hidden opacity-70 hover:opacity-100"
+        title="Admin panel"
+        aria-label="Admin panel">🛡️</a
+      >
+    </div>
   </div>
 
   <!-- Bottom HUD Area: 3-column grid with min-w-0 on sides to guarantee true centering -->
@@ -207,6 +215,23 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
 <script>
   import {gameActions, gameState} from "@/lib/game/state";
   import {config} from "@/lib/config/client";
+  import {initSatellite} from "@junobuild/core";
+  import {getErrors} from "@/declarations/satellite/satellite.api";
+
+  // Show admin icon if the caller is an admin (canister confirms via get_errors).
+  // initSatellite() must be called before any satellite API. It is idempotent,
+  // so calling it here is safe even if game.astro already called it via initAuth().
+  (async () => {
+    try {
+      await initSatellite();
+      const result = await getErrors();
+      if ("Ok" in result) {
+        document.getElementById("admin-icon-btn")?.classList.remove("hidden");
+      }
+    } catch {
+      // Not admin or not authenticated — icon stays hidden
+    }
+  })();
 
   const gp = config.gameplay;
   const thresholds = gp.health_bar.thresholds;

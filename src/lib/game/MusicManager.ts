@@ -18,6 +18,7 @@ class MusicManager {
   private shuffledQueue: string[] = [];
   private queueIndex: number = 0;
   private initialPlayStarted: boolean = false;
+  private prefsLoaded: boolean = false;
   private authUnsubscribe: (() => void) | null = null;
   private narrationDone: boolean = false;
   private deferredPlay: (() => void) | null = null;
@@ -111,7 +112,10 @@ class MusicManager {
       this.authUnsubscribe = subscribeToAuth(async (state) => {
         try {
           if (state.isAuthenticated && !state.isGuest && state.user) {
-            await this.loadPreferences(state.user.key);
+            if (!this.prefsLoaded) {
+              this.prefsLoaded = true;
+              await this.loadPreferences(state.user.key);
+            }
           } else if (!this.initialPlayStarted && this.tracks.length > 0) {
             // Guest or unauthenticated — default to shuffle playback
             this.initialPlayStarted = true;
@@ -155,9 +159,10 @@ class MusicManager {
     const favorite = gameState.get().music.favoriteTrack;
 
     if (isPaused) {
-      // If the user left the player paused, set the track but don't play
+      // If the user left the player paused, set the track but don't play.
+      // persist=false: this is automated restore, not a user action.
       if (favorite && this.tracks.includes(favorite)) {
-        this.setTrack(favorite, false, false);
+        this.setTrack(favorite, false, false, false);
       } else if (mode === "shuffle") {
         // Queue up a random track silently (so the UI shows something)
         this.playAfterNarration(() => this.playRandom());
@@ -168,7 +173,10 @@ class MusicManager {
     switch (mode) {
       case "repeat-one":
         if (favorite && this.tracks.includes(favorite)) {
-          this.playAfterNarration(() => this.setTrack(favorite, true, false));
+          // persist=false: automated restore, not a user action
+          this.playAfterNarration(() =>
+            this.setTrack(favorite, true, false, false)
+          );
         } else {
           // No favorite — fall back to shuffle for the first track
           this.playAfterNarration(() => this.playRandom());
@@ -176,12 +184,16 @@ class MusicManager {
         break;
       case "normal":
         if (favorite && this.tracks.includes(favorite)) {
-          // Favorite plays first, then sequential from there
-          this.playAfterNarration(() => this.setTrack(favorite, true, false));
-        } else {
-          // No favorite — start from the first track
+          // Favorite plays first, then sequential from there.
+          // persist=false: automated restore, not a user action.
           this.playAfterNarration(() =>
-            this.setTrack(this.tracks[0], true, false)
+            this.setTrack(favorite, true, false, false)
+          );
+        } else {
+          // No favorite — start from the first track.
+          // persist=false: automated restore, not a user action.
+          this.playAfterNarration(() =>
+            this.setTrack(this.tracks[0], true, false, false)
           );
         }
         break;
@@ -209,18 +221,18 @@ class MusicManager {
         }
 
         // Load SFX volume preference
-        if (prefs.sfxVolume !== undefined) {
-          this.setSfxVolume(prefs.sfxVolume, false);
+        if (prefs.sfx_volume !== undefined) {
+          this.setSfxVolume(prefs.sfx_volume, false);
         }
 
         // Load playback mode (with backward compatibility for legacy `track` field)
         let mode: PlaybackMode = "shuffle";
         let favorite = "";
 
-        if (prefs.playbackMode) {
+        if (prefs.playback_mode) {
           // New format — use directly
-          mode = prefs.playbackMode;
-          favorite = prefs.favoriteTrack || "";
+          mode = prefs.playback_mode;
+          favorite = prefs.favorite_track || "";
         } else if ("track" in prefs) {
           // Legacy format: track was "random" or a track name
           const legacyTrack = (prefs as {track?: string}).track;
@@ -237,7 +249,7 @@ class MusicManager {
           favoriteTrack: favorite,
         });
 
-        this.startInitialPlayback(!!prefs.isPaused);
+        this.startInitialPlayback(!!prefs.is_paused);
       } else {
         // Defaults from config
         const audioConfig = config.gameplay.audio;
@@ -280,11 +292,11 @@ class MusicManager {
           preferences: {
             ...profile.preferences,
             music: {
-              favoriteTrack: musicState.favoriteTrack || undefined,
-              playbackMode: musicState.playbackMode,
+              favorite_track: musicState.favoriteTrack || undefined,
+              playback_mode: musicState.playbackMode,
               volume: musicState.musicVolume,
-              sfxVolume: musicState.sfxVolume,
-              isPaused: !musicState.isPlaying,
+              sfx_volume: musicState.sfxVolume,
+              is_paused: !musicState.isPlaying,
             },
           },
         }));
@@ -315,7 +327,8 @@ class MusicManager {
   public setTrack(
     track: string,
     forcePlay: boolean = false,
-    isFavorite: boolean = false
+    isFavorite: boolean = false,
+    persist: boolean = true
   ) {
     if (!this.audio) return;
     const isPlaying = forcePlay || !this.audio.paused;
@@ -343,7 +356,8 @@ class MusicManager {
         isPlaying: true,
       });
     }
-    this.persistPreferences();
+    // Only save prefs for explicit user actions, not automated initial playback
+    if (persist) this.persistPreferences();
   }
 
   /**
@@ -626,11 +640,11 @@ class MusicManager {
     try {
       const musicState = gameState.get().music;
       const prefs = {
-        favoriteTrack: musicState.favoriteTrack || undefined,
-        playbackMode: musicState.playbackMode,
+        favorite_track: musicState.favoriteTrack || undefined,
+        playback_mode: musicState.playbackMode,
         volume: musicState.musicVolume,
-        sfxVolume: musicState.sfxVolume,
-        isPaused: !musicState.isPlaying,
+        sfx_volume: musicState.sfxVolume,
+        is_paused: !musicState.isPlaying,
       };
       localStorage.setItem(
         MusicManager.PENDING_PREFS_KEY,

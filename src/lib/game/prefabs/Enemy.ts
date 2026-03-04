@@ -3,53 +3,20 @@ import {BaseEntity} from "./BaseEntity";
 import type {WalkableArea} from "@/lib/game/WalkableArea";
 import {gameState} from "@/lib/game/state";
 import {log} from "@/lib/utils/log";
+import type {AIBehavior, EnemyContext} from "@/lib/game/ai";
+import {createBehavior, selectRandomAIType} from "@/lib/game/ai";
+import {chaseTarget} from "@/lib/game/ai/shared";
 
 const COMPONENT_NAME = "Enemy";
 
-// AI behavior types for enemy variety
-type EnemyAIType =
-  | "direct"
-  | "flanker"
-  | "cautious"
-  | "erratic"
-  | "swarm"
-  | "passive"
-  | "retardio";
-
 export class Enemy extends BaseEntity {
-  private target?: Phaser.GameObjects.Components.Transform;
-  private speed: number = 100;
-  private baseSpeed: number = 100;
-  private attackRange: number = 40;
-  private aiType: EnemyAIType = "direct";
-  private aiTimer: number = 0;
-  private flankDirection: number = 1;
-  private erraticOffset: {x: number; y: number} = {x: 0, y: 0};
-  private rng!: Phaser.Math.RandomDataGenerator;
-  private walkableArea?: WalkableArea;
-  private enemyGroup?: Phaser.Physics.Arcade.Group;
-  private swarmNearbyCount: number = 0;
-  private swarmCheckCounter: number = 0;
-  private swarmRushing: boolean = false;
-
-  // Flanker AI state — orbit → lunge → recover
-  private flankerPhase: "orbiting" | "lunging" | "recovering" = "orbiting";
-  private flankerOrbitAngle: number = 0;
-
-  // Passive AI state
-  private passiveDirection: number = 1; // 1 = right, -1 = left
-  private provoked: boolean = false;
-
-  // Retardio AI state — targets other enemies instead of the player
-  private retardioTarget?: Enemy;
-  private retardioTimer: number = 0;
-
-  // Cautious AI state
-  private cautiousCharging: boolean = false;
-  private cautiousCheckCounter: number = 0;
-  private cautiousNearbyCount: number = 0;
-  private cautiousStrafeDir: number = 1;
-  private cautiousStrafeTimer: number = 0;
+  private _target?: Phaser.GameObjects.Components.Transform;
+  private _speed: number = 100;
+  private _baseSpeed: number = 100;
+  private _attackRange: number = 40;
+  private _rng!: Phaser.Math.RandomDataGenerator;
+  private _walkableArea?: WalkableArea;
+  private _enemyGroup?: Phaser.Physics.Arcade.Group;
 
   // Per-enemy damage cooldown (ticket #139: each enemy tracks its own cooldown)
   public lastPlayerDamageTime: number = 0;
@@ -59,7 +26,18 @@ export class Enemy extends BaseEntity {
   private walkInTargetX: number = 0;
 
   // Pre-computed animation keys to avoid string concatenation per frame
-  private animKeys!: {idle: string; walk: string; attack: string; hurt: string};
+  private _animKeys!: {
+    idle: string;
+    walk: string;
+    attack: string;
+    hurt: string;
+  };
+
+  // AI behavior strategy — each behavior holds its own state
+  private behavior!: AIBehavior;
+
+  // Cached EnemyContext bridge — closures always reflect current state
+  private _ctx!: EnemyContext;
 
   constructor(
     scene: Phaser.Scene,
@@ -73,9 +51,9 @@ export class Enemy extends BaseEntity {
     const enemyConfig = this.config.gameplay.entities.enemy;
     this.hp = enemyConfig.health;
     this.maxHp = this.hp;
-    this.baseSpeed = enemyConfig.speed;
-    this.speed = this.baseSpeed;
-    this.attackRange = enemyConfig.combat.attack_range;
+    this._baseSpeed = enemyConfig.speed;
+    this._speed = this._baseSpeed;
+    this._attackRange = enemyConfig.combat.attack_range;
 
     // Set physics properties from config
     const hitbox = enemyConfig.hitbox;
@@ -84,21 +62,30 @@ export class Enemy extends BaseEntity {
     // Pre-compute animation keys to avoid string concatenation every frame
     // Strip _idle suffix from texture if present to get base entity key
     const baseKey = texture.replace(/_idle$/, "");
-    this.animKeys = {
+    this._animKeys = {
       idle: `${baseKey}_idle`,
       walk: `${baseKey}_walk`,
       attack: `${baseKey}_attack`,
       hurt: `${baseKey}_hurt`,
     };
+
+    // Initialize default behavior and context
+    this.behavior = createBehavior("direct");
+    this.buildContext();
   }
 
   setTarget(target: Phaser.GameObjects.Components.Transform) {
-    this.target = target;
+    this._target = target;
   }
 
-  /** @deprecated Use spawn(x, y, rng) instead */
-  setRng(rng: Phaser.Math.RandomDataGenerator) {
-    this.rng = rng;
+  /** AI type name exposed for group scanning (retardio filtering). */
+  get aiTypeName(): string {
+    return this.behavior.type;
+  }
+
+  /** Identity ref for GroupMemberView self-filtering. */
+  get _self(): object {
+    return this;
   }
 
   /** Play animation only if it exists — prevents infinite Phaser warnings
@@ -111,79 +98,95 @@ export class Enemy extends BaseEntity {
     }
   }
 
-  private selectRandomAI() {
-    // Weighted random selection from config
-    const aiConfig = this.config.gameplay.entities.enemy.ai;
-    const weights = aiConfig.weights;
-    const entries: [EnemyAIType, number][] = [
-      ["direct", weights.direct],
-      ["flanker", weights.flanker],
-      ["cautious", weights.cautious],
-      ["erratic", weights.erratic],
-      ["swarm", weights.swarm],
-      ["passive", weights.passive],
-      ["retardio", weights.retardio],
-    ];
-    const totalWeight = entries.reduce((sum, [, w]) => sum + w, 0);
-    if (totalWeight <= 0) {
-      this.aiType = "direct";
-      this.flankDirection = this.rng.frac() < 0.5 ? 1 : -1;
-      return;
-    }
-    let roll = this.rng.frac() * totalWeight;
-    this.aiType = "direct"; // fallback
-    for (const [type, w] of entries) {
-      roll -= w;
-      if (roll <= 0) {
-        this.aiType = type;
-        break;
-      }
-    }
-
-    this.flankDirection = this.rng.frac() < 0.5 ? 1 : -1;
-
-    // Adjust stats based on AI type
-    switch (this.aiType) {
-      case "cautious":
-        this.speed = this.baseSpeed * aiConfig.cautious.speed_mult;
-        break;
-      case "erratic":
-        this.speed = this.baseSpeed * aiConfig.erratic.speed_mult;
-        break;
-      case "flanker":
-        this.speed = this.baseSpeed * aiConfig.flanker.speed_mult;
-        break;
-      case "swarm":
-        this.speed = this.baseSpeed * aiConfig.swarm.speed_mult;
-        break;
-      case "passive": {
-        this.speed = this.baseSpeed * aiConfig.passive.speed_mult;
-        this.provoked = false;
-        // Pick random walk direction
-        this.passiveDirection = this.rng.frac() < 0.5 ? 1 : -1;
-        // Higher HP for passive enemies
-        const hpMult = aiConfig.passive.hp_mult ?? 1.5;
-        this.hp = Math.round(this.maxHp * hpMult);
-        this.maxHp = this.hp;
-        break;
-      }
-      case "retardio": {
-        // Erratic speed, targets other enemies
-        this.speed = this.baseSpeed * (aiConfig.retardio?.speed_mult ?? 1.1);
-        this.retardioTarget = undefined;
-        this.retardioTimer = 0;
-        break;
-      }
-      case "direct":
-        this.speed = this.baseSpeed;
-        break;
-      default:
-        log.warn(
-          COMPONENT_NAME,
-          `Unknown AI type in selectRandomAI: ${this.aiType}`
+  /**
+   * Build the EnemyContext bridge object.
+   * Created once; closures capture `enemy` so every access reflects live state.
+   * Protected fields (config, resolutionScale) are accessible from the closure.
+   */
+  private buildContext(): void {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const enemy = this;
+    this._ctx = {
+      get x() {
+        return enemy.x;
+      },
+      get groundY() {
+        return enemy.groundY;
+      },
+      set groundY(v: number) {
+        enemy.groundY = v;
+      },
+      get baseSpeed() {
+        return enemy._baseSpeed;
+      },
+      get speed() {
+        return enemy._speed;
+      },
+      set speed(v: number) {
+        enemy._speed = v;
+      },
+      get resolutionScale() {
+        return enemy.resolutionScale;
+      },
+      get attackRange() {
+        return enemy._attackRange;
+      },
+      get hp() {
+        return enemy.hp;
+      },
+      set hp(v: number) {
+        enemy.hp = v;
+      },
+      get maxHp() {
+        return enemy.maxHp;
+      },
+      set maxHp(v: number) {
+        enemy.maxHp = v;
+      },
+      get animKeys() {
+        return enemy._animKeys;
+      },
+      safePlay: (key: string, ignoreIfPlaying?: boolean) =>
+        enemy.safePlay(key, ignoreIfPlaying),
+      get isAttacking() {
+        return (
+          enemy.anims?.isPlaying === true &&
+          enemy.anims?.currentAnim?.key === enemy._animKeys.attack
         );
-        this.speed = this.baseSpeed;
-    }
+      },
+      setFlipX: (flip: boolean) => enemy.setFlipX(flip),
+      setVelocityX: (vx: number) => enemy.setVelocityX(vx),
+      setVelocityY: (vy: number) => enemy.setVelocityY(vy),
+      setTint: (tint: number) => enemy.setTint(tint),
+      clearTint: () => enemy.clearTint(),
+      get walkableArea() {
+        return enemy._walkableArea;
+      },
+      get cameraWidth() {
+        return enemy.scene.cameras.main.width;
+      },
+      get target() {
+        if (!enemy._target) return undefined;
+        const t = enemy._target;
+        const gY = "groundY" in t ? (t as BaseEntity).groundY : t.y;
+        return {x: t.x, groundY: gY};
+      },
+      get enemyGroup() {
+        return enemy._enemyGroup;
+      },
+      get config() {
+        return enemy.config;
+      },
+      get rng() {
+        return enemy._rng;
+      },
+      get _self() {
+        return enemy;
+      },
+      get aiTypeName() {
+        return enemy.behavior.type;
+      },
+    };
   }
 
   update(dt?: number) {
@@ -197,24 +200,35 @@ export class Enemy extends BaseEntity {
 
     // Use cached config from BaseEntity
     const gp = this.config.gameplay;
-    const aiConfig = gp.entities.enemy.ai;
     // Use real delta time from MainScene (falls back to reference timestep)
     const frameDt = dt ?? this.referenceDt;
 
     // Handle walk-in from off-screen
     if (this.enterState === "walking_in") {
-      const walkSpeed = this.baseSpeed * this.resolutionScale;
+      const walkSpeed = this._baseSpeed * this.resolutionScale;
+      // We still use walkInTargetX to determine which direction to walk
       const dx = this.walkInTargetX - this.x;
       this.setFlipX(dx < 0);
-      if (Math.abs(dx) < 5) {
-        this.x = this.walkInTargetX;
-        this.setVelocityX(0);
+
+      // If we've entered the walkable bounds, or reached the target, become active immediately!
+      // Provide a buffer so they are fully visible before stopping their strict walk-in.
+      const buffer = 40;
+      const walkableLeft = (this._walkableArea?.getLeftX() ?? 0) + buffer;
+      const walkableRight =
+        (this._walkableArea?.getRightX() ?? this.scene.cameras.main.width) -
+        buffer;
+
+      const isPastLeftEdge = dx > 0 && this.x >= walkableLeft;
+      const isPastRightEdge = dx < 0 && this.x <= walkableRight;
+
+      if (isPastLeftEdge || isPastRightEdge || Math.abs(dx) < 5) {
+        // AI activates as soon as they cross the visible walkable threshold
         this.enterState = "active";
       } else {
         this.setVelocityX(Math.sign(dx) * walkSpeed);
         this.setVelocityY(0);
       }
-      this.safePlay(this.animKeys.walk, true);
+      this.safePlay(this._animKeys.walk, true);
       super.update(dt);
       return;
     }
@@ -222,18 +236,20 @@ export class Enemy extends BaseEntity {
     // Handle fleeing off-screen
     if (this.enterState === "fleeing") {
       const fleeSpeed =
-        this.baseSpeed *
+        this._baseSpeed *
         gp.entities.enemy.flee_speed_mult *
         this.resolutionScale;
       const {width} = this.scene.cameras.main;
       // Run toward nearest edge
-      const nearestEdge = this.x < width / 2 ? -100 : width + 100;
+      const fleeMargin = gp.entities.enemy.flee_margin_px ?? 50;
+      const nearestEdge =
+        this.x < width / 2 ? -fleeMargin * 2 : width + fleeMargin * 2;
       this.setFlipX(nearestEdge < this.x);
       this.setVelocityX(Math.sign(nearestEdge - this.x) * fleeSpeed);
       this.setVelocityY(0);
-      this.safePlay(this.animKeys.walk, true);
+      this.safePlay(this._animKeys.walk, true);
       // Kill once off-screen
-      if (this.x < -50 || this.x > width + 50) {
+      if (this.x < -fleeMargin || this.x > width + fleeMargin) {
         this.kill();
         return;
       }
@@ -241,489 +257,34 @@ export class Enemy extends BaseEntity {
       return;
     }
 
-    this.aiTimer += frameDt;
+    // --- Delegate to AI behavior strategy ---
+    const result = this.behavior.update(this._ctx, frameDt);
 
-    // --- Passive AI: Walk across screen, ignore player unless provoked ---
-    if (this.aiType === "passive" && !this.provoked) {
-      const {width} = this.scene.cameras.main;
-      this.setFlipX(this.passiveDirection < 0);
-      this.setVelocityX(
-        this.passiveDirection * this.speed * this.resolutionScale
-      );
-      this.setVelocityY(0);
-      this.safePlay(this.animKeys.walk, true);
-
-      // Walk off-screen → self-destruct (no kill event, just disappears)
-      if (this.x < -50 || this.x > width + 50) {
+    switch (result.action) {
+      case "chase":
+        chaseTarget(this._ctx, result.targetX, result.targetGY, frameDt);
+        break;
+      case "handled":
+        // Behavior did all movement — just clamp x below
+        break;
+      case "idle":
+        this.setVelocity(0, 0);
+        this.safePlay(this._animKeys.idle, true);
+        break;
+      case "kill":
         this.kill();
         return;
-      }
-
-      // Clamp to walkable area
-      if (this.walkableArea) {
-        const clamped = this.walkableArea.clampToWalkable(this.x, this.groundY);
-        this.x = clamped.x;
-        this.groundY = clamped.groundY;
-      }
-
-      super.update(dt);
-      return;
     }
 
-    // --- Retardio AI: Chase and attack other enemies (not the player) ---
-    if (this.aiType === "retardio") {
-      const retDt = frameDt;
-      const aiConfig = this.config.gameplay.entities.enemy.ai;
-      const jitterTime = aiConfig.retardio?.jitter_time ?? 0.3;
-
-      // Re-pick target every few seconds or if current target is dead
-      this.retardioTimer += retDt;
-      if (
-        !this.retardioTarget ||
-        !this.retardioTarget.active ||
-        this.retardioTarget.hp <= 0 ||
-        this.retardioTimer > (aiConfig.retardio?.retarget_time ?? 4)
-      ) {
-        this.retardioTimer = 0;
-        this.retardioTarget = this.findNearestEnemy();
-      }
-
-      if (this.retardioTarget) {
-        const targetGY = this.retardioTarget.groundY ?? this.retardioTarget.y;
-        // Add some erratic jitter
-        if (this.aiTimer > jitterTime) {
-          this.erraticOffset = {
-            x: (this.rng.frac() - 0.5) * 80,
-            y: (this.rng.frac() - 0.5) * 40,
-          };
-          this.aiTimer = 0;
-        }
-        const tX = this.retardioTarget.x + this.erraticOffset.x;
-        const tGY = targetGY + this.erraticOffset.y;
-        const dx = tX - this.x;
-        const dy = tGY - this.groundY;
-        const dist = Phaser.Math.Distance.Between(
-          this.x,
-          this.groundY,
-          tX,
-          tGY
-        );
-        const angle = Math.atan2(dy, dx);
-        this.setFlipX(dx < 0);
-
-        if (dist < this.attackRange) {
-          // Punch the other enemy
-          this.safePlay(this.animKeys.attack, true);
-          this.setVelocityX(0);
-          this.setVelocityY(0);
-          // Actually deal damage to the target enemy
-          if (this.retardioTarget.active && this.retardioTarget.hp > 0) {
-            // Damage every ~0.5s
-            if (this.retardioTimer > 0.5 || this.retardioTimer === 0) {
-              this.retardioTarget.takeDamage(
-                aiConfig.retardio?.attack_damage ?? 10
-              );
-              this.retardioTimer = 0;
-            }
-          }
-        } else {
-          this.setVelocityX(
-            Math.cos(angle) * this.speed * this.resolutionScale
-          );
-          this.setVelocityY(0);
-          this.groundY +=
-            Math.sin(angle) * this.speed * this.resolutionScale * retDt;
-          if (this.walkableArea) {
-            const clamped = this.walkableArea.clampToWalkable(
-              this.x,
-              this.groundY
-            );
-            this.x = clamped.x;
-            this.groundY = clamped.groundY;
-          }
-          this.safePlay(this.animKeys.walk, true);
-        }
-      } else {
-        // No enemies nearby — wander erratically (timer-gated like erratic AI)
-        if (this.aiTimer > jitterTime) {
-          this.setFlipX(this.rng.frac() < 0.5);
-          this.setVelocityX(
-            (this.rng.frac() - 0.5) * this.speed * this.resolutionScale
-          );
-          this.aiTimer = 0;
-        }
-        this.setVelocityY(0);
-        this.safePlay(this.animKeys.walk, true);
-      }
-
-      super.update(dt);
-      return;
-    }
-
-    if (this.target) {
-      const chaseDt = frameDt;
-
-      // Calculate direction to target's ground position
-      const targetGroundY =
-        "groundY" in this.target
-          ? (this.target as BaseEntity).groundY
-          : this.target.y;
-
-      let targetX = this.target.x;
-      let targetGY = targetGroundY;
-
-      // Apply AI-specific movement modifiers
-      switch (this.aiType) {
-        case "flanker": {
-          const flankerConfig = aiConfig.flanker;
-          const orbitRadius = flankerConfig.offset;
-
-          if (this.flankerPhase === "orbiting") {
-            // Circle around the player at orbit radius
-            this.flankerOrbitAngle += chaseDt * 2; // ~2 rad/s orbit speed
-            const orbitX =
-              this.target.x +
-              Math.cos(this.flankerOrbitAngle) *
-                orbitRadius *
-                this.flankDirection;
-            const orbitGY =
-              targetGroundY +
-              Math.sin(this.flankerOrbitAngle) * (orbitRadius * 0.4); // squished ellipse for 2.5D
-
-            const dxOrbit = orbitX - this.x;
-            const dyOrbit = orbitGY - this.groundY;
-            const orbitAngle = Math.atan2(dyOrbit, dxOrbit);
-
-            this.setFlipX(this.target.x < this.x);
-            this.setVelocityX(
-              Math.cos(orbitAngle) * this.speed * this.resolutionScale
-            );
-            this.setVelocityY(0);
-            this.groundY +=
-              Math.sin(orbitAngle) *
-              this.speed *
-              this.resolutionScale *
-              chaseDt;
-
-            if (this.walkableArea) {
-              const clamped = this.walkableArea.clampToWalkable(
-                this.x,
-                this.groundY
-              );
-              this.x = clamped.x;
-              this.groundY = clamped.groundY;
-            }
-
-            this.safePlay(this.animKeys.walk, true);
-
-            // Transition to lunge after orbit_time
-            if (this.aiTimer > flankerConfig.orbit_time) {
-              this.flankerPhase = "lunging";
-              this.aiTimer = 0;
-              this.speed = this.baseSpeed * flankerConfig.lunge_speed_mult;
-            }
-            super.update(dt);
-            return;
-          }
-
-          if (this.flankerPhase === "lunging") {
-            // Dash straight at the player
-            // targetX/targetGY already point at the player — fall through to chase
-            if (this.aiTimer > flankerConfig.lunge_duration) {
-              this.flankerPhase = "recovering";
-              this.aiTimer = 0;
-              this.speed = this.baseSpeed * flankerConfig.speed_mult;
-            }
-            // Fall through to normal chase with boosted speed
-            break;
-          }
-
-          if (this.flankerPhase === "recovering") {
-            // Back away from the player
-            const retreatAngle = Math.atan2(
-              this.groundY - targetGroundY,
-              this.x - this.target.x
-            );
-            this.setFlipX(this.target.x < this.x);
-            this.setVelocityX(
-              Math.cos(retreatAngle) * this.speed * this.resolutionScale
-            );
-            this.setVelocityY(0);
-            this.groundY +=
-              Math.sin(retreatAngle) *
-              this.speed *
-              this.resolutionScale *
-              chaseDt;
-
-            if (this.walkableArea) {
-              const clamped = this.walkableArea.clampToWalkable(
-                this.x,
-                this.groundY
-              );
-              this.x = clamped.x;
-              this.groundY = clamped.groundY;
-            }
-
-            this.safePlay(this.animKeys.walk, true);
-
-            if (this.aiTimer > flankerConfig.recovery_time) {
-              this.flankerPhase = "orbiting";
-              this.aiTimer = 0;
-              this.speed = this.baseSpeed * flankerConfig.speed_mult;
-            }
-            super.update(dt);
-            return;
-          }
-          break;
-        }
-        case "erratic": {
-          // Continuous sine-wave zigzag — snake toward the player
-          const erraticConfig = aiConfig.erratic;
-          const lateralOffset =
-            Math.sin(
-              this.aiTimer * erraticConfig.zigzag_frequency * Math.PI * 2
-            ) * erraticConfig.zigzag_amplitude;
-
-          // Perpendicular offset: rotate the direction-to-player by 90°
-          const dxToPlayer = this.target.x - this.x;
-          const dyToPlayer = targetGroundY - this.groundY;
-          const distToP = Math.sqrt(
-            dxToPlayer * dxToPlayer + dyToPlayer * dyToPlayer
-          );
-          if (distToP > 1) {
-            // Unit perpendicular vector (rotated 90°)
-            const perpX = -dyToPlayer / distToP;
-            const perpGY = dxToPlayer / distToP;
-            targetX = this.target.x + perpX * lateralOffset;
-            targetGY = targetGroundY + perpGY * lateralOffset;
-          }
-          break;
-        }
-        case "cautious": {
-          // Strafe laterally when solo, charge with pack
-          const cautiousConfig = aiConfig.cautious;
-          const distToPlayer = Phaser.Math.Distance.Between(
-            this.x,
-            this.groundY,
-            this.target.x,
-            targetGroundY
-          );
-
-          // Count nearby allies every 10 frames
-          this.cautiousCheckCounter++;
-          if (this.cautiousCheckCounter >= 10) {
-            this.cautiousCheckCounter = 0;
-            let nearbyCount = 0;
-            if (this.enemyGroup) {
-              for (const child of this.enemyGroup.getChildren()) {
-                const ally = child as Enemy;
-                if (ally === this || !ally.active || ally.hp <= 0) continue;
-                if (
-                  Phaser.Math.Distance.Between(
-                    this.x,
-                    this.groundY,
-                    ally.x,
-                    ally.groundY
-                  ) <= cautiousConfig.group_radius
-                ) {
-                  nearbyCount++;
-                }
-              }
-            }
-            this.cautiousNearbyCount = nearbyCount;
-
-            // Toggle charge state based on ally count
-            if (
-              this.cautiousNearbyCount >= cautiousConfig.pack_threshold &&
-              !this.cautiousCharging
-            ) {
-              this.cautiousCharging = true;
-              this.speed = this.baseSpeed * cautiousConfig.charge_speed_mult;
-            } else if (
-              this.cautiousNearbyCount < cautiousConfig.pack_threshold &&
-              this.cautiousCharging
-            ) {
-              this.cautiousCharging = false;
-              this.speed = this.baseSpeed * cautiousConfig.strafe_speed_mult;
-            }
-          }
-
-          // When not charging: strafe laterally at preferred distance
-          if (!this.cautiousCharging) {
-            const preferred = cautiousConfig.preferred_distance;
-
-            // Flip strafe direction periodically
-            this.cautiousStrafeTimer += chaseDt;
-            if (this.cautiousStrafeTimer > cautiousConfig.strafe_switch_time) {
-              this.cautiousStrafeDir *= -1;
-              this.cautiousStrafeTimer = 0;
-            }
-
-            if (distToPlayer < preferred * 0.7) {
-              // Too close — actively retreat
-              const retreatAngle = Math.atan2(
-                this.groundY - targetGroundY,
-                this.x - this.target.x
-              );
-              this.setFlipX(this.target.x < this.x);
-              this.setVelocityX(
-                Math.cos(retreatAngle) * this.speed * this.resolutionScale
-              );
-              this.setVelocityY(0);
-              this.groundY +=
-                Math.sin(retreatAngle) *
-                this.speed *
-                this.resolutionScale *
-                chaseDt;
-
-              if (this.walkableArea) {
-                const clamped = this.walkableArea.clampToWalkable(
-                  this.x,
-                  this.groundY
-                );
-                this.x = clamped.x;
-                this.groundY = clamped.groundY;
-              }
-
-              this.safePlay(this.animKeys.walk, true);
-              super.update(dt);
-              return;
-            } else if (distToPlayer <= preferred * 1.3) {
-              // Within strafe zone — move laterally (perpendicular to player)
-              const dxP = this.target.x - this.x;
-              const dyP = targetGroundY - this.groundY;
-              const dP = Math.sqrt(dxP * dxP + dyP * dyP);
-              if (dP > 1) {
-                const perpX = (-dyP / dP) * this.cautiousStrafeDir;
-                const perpGY = (dxP / dP) * this.cautiousStrafeDir;
-                this.setFlipX(this.target.x < this.x);
-                this.setVelocityX(perpX * this.speed * this.resolutionScale);
-                this.setVelocityY(0);
-                this.groundY +=
-                  perpGY * this.speed * this.resolutionScale * chaseDt;
-
-                if (this.walkableArea) {
-                  const clamped = this.walkableArea.clampToWalkable(
-                    this.x,
-                    this.groundY
-                  );
-                  this.x = clamped.x;
-                  this.groundY = clamped.groundY;
-                }
-              }
-
-              this.safePlay(this.animKeys.walk, true);
-              super.update(dt);
-              return;
-            }
-            // Too far — creep closer (fall through to normal chase)
-          }
-          // If charging or too far, fall through to normal chase behavior
-          break;
-        }
-        case "swarm": {
-          // Speed boost from nearby allies (re-evaluate every 10 frames)
-          const swarmConfig = aiConfig.swarm;
-          this.swarmCheckCounter++;
-          if (this.swarmCheckCounter >= 10) {
-            this.swarmCheckCounter = 0;
-            let nearbyCount = 0;
-            if (this.enemyGroup) {
-              for (const child of this.enemyGroup.getChildren()) {
-                const ally = child as Enemy;
-                if (ally === this || !ally.active || ally.hp <= 0) continue;
-                if (
-                  Phaser.Math.Distance.Between(
-                    this.x,
-                    this.groundY,
-                    ally.x,
-                    ally.groundY
-                  ) <= swarmConfig.group_radius
-                ) {
-                  nearbyCount++;
-                }
-              }
-            }
-            this.swarmNearbyCount = nearbyCount;
-
-            // Rush activation: apply/clear tint when threshold crossed
-            if (
-              this.swarmNearbyCount >= swarmConfig.rush_threshold &&
-              !this.swarmRushing
-            ) {
-              this.swarmRushing = true;
-              this.setTint(swarmConfig.rush_tint);
-            } else if (
-              this.swarmNearbyCount < swarmConfig.rush_threshold &&
-              this.swarmRushing
-            ) {
-              this.swarmRushing = false;
-              this.clearTint();
-            }
-          }
-          const swarmMult = Math.min(
-            swarmConfig.max_speed_mult,
-            1 + this.swarmNearbyCount * swarmConfig.speed_bonus_per_ally
-          );
-          this.speed = this.baseSpeed * swarmConfig.speed_mult * swarmMult;
-          // Fall through to default chase behavior
-          break;
-        }
-        // "direct", "passive" (provoked) — no modification needed
-        case "direct":
-        case "passive":
-          break;
-        default:
-          log.warn(COMPONENT_NAME, `Unknown AI behavior: ${this.aiType}`);
-          break;
-      }
-
-      const dx = targetX - this.x;
-      const dy = targetGY - this.groundY;
-      const dist = Phaser.Math.Distance.Between(
-        this.x,
-        this.groundY,
-        targetX,
-        targetGY
-      );
-      const angle = Math.atan2(dy, dx);
-
-      this.setFlipX(dx < 0);
-
-      // Use pre-computed animation keys to avoid string concat per frame
-      const isAttacking =
-        this.anims.isPlaying &&
-        this.anims.currentAnim?.key === this.animKeys.attack;
-
-      if (dist < this.attackRange) {
-        if (!isAttacking) {
-          this.safePlay(this.animKeys.attack, true);
-        }
+    // Clamp x to walkable area (behaviors handle their own groundY clamping)
+    // If X was clamped, zero the X velocity so the enemy doesn't oscillate
+    // against the wall every frame (classic boundary-bounce stuck bug).
+    if (this._walkableArea) {
+      const clamped = this._walkableArea.clampToWalkable(this.x, this.groundY);
+      if (clamped.x !== this.x) {
         this.setVelocityX(0);
-        this.setVelocityY(0);
-      } else {
-        this.setVelocityX(Math.cos(angle) * this.speed * this.resolutionScale);
-        this.setVelocityY(0);
-        this.groundY +=
-          Math.sin(angle) * this.speed * this.resolutionScale * chaseDt;
-
-        // Clamp to walkable area (both X and groundY)
-        if (this.walkableArea) {
-          const clamped = this.walkableArea.clampToWalkable(
-            this.x,
-            this.groundY
-          );
-          this.x = clamped.x;
-          this.groundY = clamped.groundY;
-        }
-
-        if (!isAttacking) {
-          this.safePlay(this.animKeys.walk, true);
-        }
       }
-    } else {
-      this.setVelocity(0, 0);
-      this.safePlay(this.animKeys.idle, true);
+      this.x = clamped.x;
     }
 
     super.update(dt);
@@ -732,20 +293,21 @@ export class Enemy extends BaseEntity {
   public takeDamage(amount: number) {
     if (this.hp <= 0) return;
 
-    // Passive enemies become provoked when attacked
-    if (this.aiType === "passive" && !this.provoked) {
-      this.provoked = true;
-      const aiConfig = this.config.gameplay.entities.enemy.ai;
-      this.speed = this.baseSpeed * aiConfig.passive.provoked_speed_mult;
-    }
+    // Delegate to behavior's onDamage hook (e.g., passive provoke)
+    this.behavior.onDamage?.(this._ctx);
 
     super.takeDamage(amount);
     // Show health bar after damage applied, but not for dead enemies
     if (!this.showHealthBar && this.hp > 0 && this.hp < this.maxHp) {
-      this.enableHealthBar(30, 4, -5);
+      const enemyConfig = this.config.gameplay.entities.enemy;
+      this.enableHealthBar(
+        enemyConfig.health_bar?.width ?? 30,
+        enemyConfig.health_bar?.height ?? 4,
+        enemyConfig.health_bar?.offset_y ?? -5
+      );
     }
     if (this.hp > 0 && this.anims) {
-      this.safePlay(this.animKeys.hurt, true);
+      this.safePlay(this._animKeys.hurt, true);
     }
   }
 
@@ -762,7 +324,7 @@ export class Enemy extends BaseEntity {
       this.healthBar.setVisible(false);
     }
 
-    if (this.anims) this.safePlay(this.animKeys.hurt, true);
+    if (this.anims) this.safePlay(this._animKeys.hurt, true);
     this.setVelocity(0, 0);
     // Use cached config from BaseEntity
     const deathDelay =
@@ -779,12 +341,13 @@ export class Enemy extends BaseEntity {
 
   spawn(
     x: number,
-    y: number,
+    groundY: number,
     rng: Phaser.Math.RandomDataGenerator,
-    walkInTargetX?: number,
-    textureKey?: string
+    walkInTargetX: number,
+    textureKey: string,
+    aiOverride?: string
   ) {
-    this.rng = rng;
+    this._rng = rng;
     this.setActive(true);
     // Keep invisible until body is enabled and position is set — prevents
     // Phaser rendering the recycled sprite at its stale pool position for
@@ -813,7 +376,7 @@ export class Enemy extends BaseEntity {
       // Set to the _idle texture for this variant
       this.setTexture(`${baseKey}_idle`);
     }
-    this.animKeys = {
+    this._animKeys = {
       idle: `${baseKey}_idle`,
       walk: `${baseKey}_walk`,
       attack: `${baseKey}_attack`,
@@ -827,9 +390,9 @@ export class Enemy extends BaseEntity {
     }
 
     // Initialize groundY for 2.5D positioning
-    this.groundY = y;
+    this.groundY = groundY;
     this.z = 0;
-    this.setPosition(x, y);
+    this.setPosition(x, groundY);
     // Body is enabled and position is set — safe to reveal the sprite now.
     this.setVisible(true);
     if (this.shadow) {
@@ -839,73 +402,72 @@ export class Enemy extends BaseEntity {
     this.setAlpha(1);
     this.clearTint();
     this.setVelocity(0, 0);
-    this.target = undefined;
+    // Note: _target is NOT cleared here — SpawnManager always calls setTarget()
+    // immediately after spawn(). Clearing it would create a 1-frame window where
+    // the AI has no target and produces erratic / idle movement.
 
     // Reset inherited state flags (ticket #231)
     this.isKnockedBack = false;
     this.isInvincible = false;
 
-    // Reset AI state
-    this.aiTimer = 0;
-    this.erraticOffset = {x: 0, y: 0};
-    this.provoked = false;
-    this.passiveDirection = 1;
-    this.retardioTarget = undefined;
-    this.retardioTimer = 0;
-    this.cautiousCharging = false;
-    this.cautiousCheckCounter = 0;
-    this.cautiousNearbyCount = 0;
-    this.cautiousStrafeDir = this.rng?.frac() < 0.5 ? 1 : -1;
-    this.cautiousStrafeTimer = 0;
-    this.swarmNearbyCount = 0;
-    this.swarmCheckCounter = 0;
-    this.swarmRushing = false;
-    this.flankerPhase = "orbiting";
-    this.flankerOrbitAngle = this.rng ? this.rng.frac() * Math.PI * 2 : 0;
     this.lastPlayerDamageTime = 0;
-    this.walkableArea = this.scene.registry.get(
+    this._walkableArea = this.scene.registry.get(
       "walkable_area"
     ) as WalkableArea;
-    this.enemyGroup = this.scene.registry.get(
+    this._enemyGroup = this.scene.registry.get(
       "enemy_group"
     ) as Phaser.Physics.Arcade.Group;
-    this.selectRandomAI();
+
+    // Select AI type and create fresh behavior (each holds its own state)
+    type AITypeKeys =
+      | "direct"
+      | "flanker"
+      | "cautious"
+      | "swarm"
+      | "erratic"
+      | "passive"
+      | "retardio";
+    let aiType: AITypeKeys;
+    if (
+      aiOverride &&
+      [
+        "direct",
+        "flanker",
+        "cautious",
+        "swarm",
+        "erratic",
+        "passive",
+        "retardio",
+      ].includes(aiOverride)
+    ) {
+      aiType = aiOverride as AITypeKeys;
+    } else {
+      aiType = selectRandomAIType(this.config, this._rng) as AITypeKeys;
+    }
+    this.behavior = createBehavior(aiType);
+    this.behavior.onSpawn(this._ctx);
+
+    log.debug(COMPONENT_NAME, `AI selected: ${this.behavior.type}`);
 
     // Walk-in state: enemy walks from off-screen to target position
     if (walkInTargetX !== undefined) {
       this.enterState = "walking_in";
-      this.walkInTargetX = walkInTargetX;
+
+      // Calculate walk in limit
+      const margin =
+        this.config.gameplay.entities.enemy.walk_in_boundary_margin_px ?? 5;
+      const {width} = this.scene.cameras.main;
+
+      // Clamp the walk-in target to within allowed bounds
+      this.walkInTargetX = Math.min(
+        Math.max(walkInTargetX, margin),
+        width - margin
+      );
     } else {
       this.enterState = "active";
     }
     this.anims.stop();
-    this.safePlay(this.animKeys.walk, true);
-  }
-
-  /**
-   * Find the nearest living enemy (for retardio AI targeting).
-   * Excludes self and other retardio enemies.
-   */
-  private findNearestEnemy(): Enemy | undefined {
-    if (!this.enemyGroup) return undefined;
-    let nearest: Enemy | undefined;
-    let nearestDist = Infinity;
-    for (const child of this.enemyGroup.getChildren()) {
-      const e = child as Enemy;
-      if (e === this || !e.active || e.hp <= 0) continue;
-      if (e.aiType === "retardio") continue; // don't target other retardios
-      const d = Phaser.Math.Distance.Between(
-        this.x,
-        this.groundY,
-        e.x,
-        e.groundY
-      );
-      if (d < nearestDist) {
-        nearestDist = d;
-        nearest = e;
-      }
-    }
-    return nearest;
+    this.safePlay(this._animKeys.walk, true);
   }
 
   /**
@@ -915,7 +477,7 @@ export class Enemy extends BaseEntity {
   flee() {
     if (!this.active || this.enterState === "fleeing") return;
     this.enterState = "fleeing";
-    this.target = undefined;
+    this._target = undefined;
   }
 
   kill() {

@@ -41,6 +41,7 @@ export class LootDrop extends Phaser.Physics.Arcade.Sprite {
   public spawn(x: number, y: number, type: LootType, textureKey: string) {
     this.lootType = type;
     this.setPosition(x, y);
+    this.setDepth(y + 1);
     this.setActive(true);
     // Stay invisible until the body is fully locked and synced — prevents the
     // one-frame snap where Phaser renders the drop at the stale pool body

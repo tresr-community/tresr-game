@@ -116,7 +116,7 @@
         </div>
       </div>
 
-      <!-- Neural Link (Wallet) -->
+      <!-- Avalanche Wallet -->
       <div
         class="collapse-arrow border-base-content/10 bg-base-300 collapse border"
       >
@@ -124,7 +124,7 @@
         <div
           class="collapse-title text-sm font-bold tracking-tighter uppercase"
         >
-          Neural Link (Wallet)
+          Avalanche Wallet
         </div>
         <div class="collapse-content space-y-4 pt-4">
           <!-- Not Linked State -->
@@ -150,15 +150,13 @@
 
           <!-- Linked State (Manual Link) -->
           <div id="wallet-status-linked" class="hidden">
-            <div
-              class="bg-success/10 border-success/20 mb-4 flex items-center justify-between rounded border p-2"
-            >
-              <span class="text-success text-[10px] font-bold"
-                >LINK ESTABLISHED</span
+            <div role="alert" class="alert alert-success mb-4 px-3 py-2">
+              <span class="text-[10px] font-bold uppercase"
+                >Link Established</span
               >
               <span
                 id="wallet-address-display"
-                class="font-mono text-xs opacity-70">0x...</span
+                class="ml-auto font-mono text-xs opacity-80">0x...</span
               >
             </div>
             <button
@@ -170,15 +168,13 @@
 
           <!-- SIWA Primary Identity State -->
           <div id="wallet-status-siwa" class="hidden">
-            <div
-              class="bg-primary/10 border-primary/20 mb-4 flex items-center justify-between rounded border p-2"
-            >
-              <span class="text-primary text-[10px] font-bold"
-                >PRIMARY IDENTITY</span
+            <div role="alert" class="alert alert-info mb-4 px-3 py-2">
+              <span class="text-[10px] font-bold uppercase"
+                >Primary Identity</span
               >
               <span
                 id="wallet-address-siwa"
-                class="font-mono text-xs opacity-70">0x...</span
+                class="ml-auto font-mono text-xs opacity-80">0x...</span
               >
             </div>
             <p class="text-base-content/50 text-xs italic">
@@ -189,9 +185,9 @@
       </div>
 
       <!-- Global Stats Preview -->
-      <div class="stats stats-horizontal bg-base-300/50 w-full shadow">
-        <div class="stat place-items-center">
-          <div class="stat-title text-xs uppercase">High Score</div>
+      <div class="stats stats-vertical bg-base-200/50 w-full shadow">
+        <div class="stat place-items-center py-3">
+          <div class="stat-title text-[10px] uppercase">High Score</div>
           <div
             id="stat-highscore"
             class="stat-value text-primary font-mono text-xl"
@@ -199,15 +195,42 @@
             0
           </div>
         </div>
-        <div class="stat place-items-center">
-          <div class="stat-title text-xs uppercase">Balance</div>
+        <div class="stat place-items-center py-3">
+          <div class="stat-title text-[10px] uppercase">Games Played</div>
           <div
-            id="stat-balance"
-            class="stat-value text-warning font-mono text-xl"
+            id="stat-games-played"
+            class="stat-value text-accent font-mono text-xl"
           >
             0
           </div>
         </div>
+        <div class="stat place-items-center py-3">
+          <div class="stat-title text-[10px] uppercase">Games Won</div>
+          <div
+            id="stat-games-won"
+            class="stat-value text-success font-mono text-xl"
+          >
+            0
+          </div>
+        </div>
+        <div class="stat place-items-center py-3">
+          <div class="stat-title text-[10px] uppercase">Games Lost</div>
+          <div
+            id="stat-games-lost"
+            class="stat-value text-error font-mono text-xl"
+          >
+            0
+          </div>
+        </div>
+      </div>
+
+      <!-- Guest note (shown only for guest sessions) -->
+      <div
+        id="guest-profile-note"
+        role="alert"
+        class="alert alert-warning hidden text-sm"
+      >
+        <span>Login to access full profile and link wallet.</span>
       </div>
 
       <div class="divider"></div>
@@ -281,8 +304,14 @@
   const statHighscore = document.getElementById(
     "stat-highscore"
   ) as HTMLSpanElement;
-  const statBalance = document.getElementById(
-    "stat-balance"
+  const statGamesPlayed = document.getElementById(
+    "stat-games-played"
+  ) as HTMLSpanElement;
+  const statGamesWon = document.getElementById(
+    "stat-games-won"
+  ) as HTMLSpanElement;
+  const statGamesLost = document.getElementById(
+    "stat-games-lost"
   ) as HTMLSpanElement;
   const saveBtn = document.getElementById(
     "btn-save-profile"
@@ -321,23 +350,23 @@
       if (auth.isGuest) {
         // ... guest logic ...
         currentProfile = {
-          userId: "guest",
+          user_id: "guest",
           nickname: "Guest Agent",
           email: "",
-          evmWallet: undefined,
+          evm_wallet: undefined,
           preferences: {
             theme: "synthwave",
             has_read_instructions: false,
           },
           wallet: {
             balance: 0n,
-            evmWalletLinked: false,
+            evm_wallet_linked: false,
           },
           stats: {
-            highScore: 0n,
-            totalGamesPlayed: 0n,
-            totalGamesWon: 0n,
-            totalGamesLost: 0n,
+            high_score: 0n,
+            total_games_played: 0n,
+            total_games_won: 0n,
+            total_games_lost: 0n,
           },
         };
         currentVersion = undefined;
@@ -393,11 +422,17 @@
     emailInput.value = currentProfile.email || "";
     principalDisplay.innerText = auth.user.key;
 
-    statHighscore.innerText = currentProfile.stats.highScore.toString();
-    statBalance.innerText = currentProfile.wallet.balance.toString();
+    statHighscore.innerText = currentProfile.stats.high_score.toString();
+    statGamesPlayed.innerText =
+      currentProfile.stats.total_games_played.toString();
+    statGamesWon.innerText = currentProfile.stats.total_games_won.toString();
+    statGamesLost.innerText = currentProfile.stats.total_games_lost.toString();
 
     // Avatar
     renderAvatar(currentProfile);
+
+    // Ensure guest note is hidden for non-guest sessions
+    document.getElementById("guest-profile-note")?.classList.add("hidden");
 
     updateWalletUI();
   }
@@ -420,22 +455,22 @@
 
     // Check if user logged in with SIWA (Avalanche wallet)
     const isSiwaLogin =
-      auth.authMode === "avalanche" || currentProfile?.loginMethod === "siwa";
+      auth.authMode === "avalanche" || currentProfile?.login_method === "siwa";
 
-    if (currentProfile?.evmWallet) {
+    if (currentProfile?.evm_wallet) {
       if (isSiwaLogin) {
         // SIWA users: show primary identity state (cannot unlink)
         walletStatusSiwa?.classList.remove("hidden");
         if (walletAddressSiwa) {
           walletAddressSiwa.innerText = shortenAddress(
-            currentProfile.evmWallet
+            currentProfile.evm_wallet
           );
         }
       } else {
         // Non-SIWA users: show linked state with unlink option
         walletStatusLinked?.classList.remove("hidden");
         walletAddressDisplay.innerText = shortenAddress(
-          currentProfile.evmWallet
+          currentProfile.evm_wallet
         );
       }
     } else {
@@ -482,6 +517,7 @@
       trackProfileUpdate("nickname");
       window.showInfoToast("Profile updated successfully");
       log.info(COMPONENT_NAME, "Profile saved successfully.", currentProfile);
+      modal?.close();
     } catch (error) {
       log.error(COMPONENT_NAME, "Failed to save profile:", error);
       window.showErrorToast(
@@ -519,23 +555,23 @@
         if (auth.user) {
           await enqueueProfileWrite(auth.user.key, (profile) => ({
             ...profile,
-            evmWallet: address,
+            evm_wallet: address,
             verification_signature: sig,
             verification_message: message,
             wallet: {
               ...profile.wallet,
-              evmWalletLinked: true,
+              evm_wallet_linked: true,
             },
           }));
         }
         // Update local state
-        currentProfile.evmWallet = address;
+        currentProfile.evm_wallet = address;
         currentProfile.verification_signature = sig;
         currentProfile.verification_message = message;
-        currentProfile.wallet.evmWalletLinked = true;
+        currentProfile.wallet.evm_wallet_linked = true;
         updateWalletUI();
         trackWalletLink();
-        window.showInfoToast("Neural link established");
+        window.showInfoToast("Avalanche Wallet link established");
       }
     } catch (err: unknown) {
       const error = err as {message?: string; code?: number};
@@ -555,7 +591,7 @@
   }
 
   async function handleUnlinkWallet() {
-    if (!confirm("Sever Neural Link?")) return;
+    if (!confirm("Remove Avalanche Wallet?")) return;
 
     try {
       await disconnectWallet();
@@ -564,26 +600,26 @@
         if (auth.user) {
           await enqueueProfileWrite(auth.user.key, (profile) => ({
             ...profile,
-            evmWallet: undefined,
-            walletProof: undefined,
+            evm_wallet: undefined,
+            wallet_proof: undefined,
             wallet: {
               ...profile.wallet,
-              evmWalletLinked: false,
+              evm_wallet_linked: false,
             },
           }));
         }
         // Update local state
-        currentProfile.wallet.evmWalletLinked = false;
-        currentProfile.evmWallet = undefined;
-        currentProfile.walletProof = undefined;
+        currentProfile.wallet.evm_wallet_linked = false;
+        currentProfile.evm_wallet = undefined;
+        currentProfile.wallet_proof = undefined;
         updateWalletUI();
         trackWalletUnlink();
-        window.showInfoToast("Neural link severed");
+        window.showInfoToast("Avalanche Wallet link severed");
       }
     } catch (err) {
       log.error(COMPONENT_NAME, "Wallet unlink failed", err);
       window.showErrorToast(
-        "Failed to sever neural link",
+        "Failed to sever Avalanche Wallet link",
         (err as Error).message
       );
     }
@@ -617,8 +653,11 @@
     emailInput.disabled = true;
     principalDisplay.innerText = "Guest Session";
 
-    statHighscore.innerText = currentProfile.stats.highScore.toString();
-    statBalance.innerText = currentProfile.wallet.balance.toString();
+    statHighscore.innerText = currentProfile.stats.high_score.toString();
+    statGamesPlayed.innerText =
+      currentProfile.stats.total_games_played.toString();
+    statGamesWon.innerText = currentProfile.stats.total_games_won.toString();
+    statGamesLost.innerText = currentProfile.stats.total_games_lost.toString();
 
     // Disable wallet linking for guests
     document.getElementById("wallet-status-unlinked")?.classList.add("hidden");
@@ -627,18 +666,14 @@
     // Disable save button for guests
     saveBtn.disabled = true;
 
-    // Add a note (remove existing one first to prevent duplicates on re-open)
-    content?.querySelector(".guest-profile-note")?.remove();
-    const note = document.createElement("p");
-    note.className = "text-warning text-sm guest-profile-note";
-    note.innerText = "Login to access full profile and link wallet.";
-    content?.prepend(note);
+    // Show pre-rendered guest note alert
+    document.getElementById("guest-profile-note")?.classList.remove("hidden");
   }
 
   // --- Avatar ---
 
   function renderAvatar(profile: UserProfile) {
-    const url = profile.preferences?.avatarUrl;
+    const url = profile.preferences?.avatar_url;
     if (url) {
       avatarImg.src = url;
       avatarImg.classList.remove("hidden");
@@ -675,7 +710,7 @@
         ...profile,
         preferences: {
           ...profile.preferences,
-          avatarUrl: url,
+          avatar_url: url,
         },
       }));
 
@@ -684,7 +719,7 @@
         theme: "synthwave",
         has_read_instructions: false,
       };
-      currentProfile.preferences.avatarUrl = url;
+      currentProfile.preferences.avatar_url = url;
       renderAvatar(currentProfile);
       profileStore.set({...currentProfile});
       trackAvatarUpload();

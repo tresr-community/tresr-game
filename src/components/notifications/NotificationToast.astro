@@ -21,6 +21,7 @@
       urgency: string;
       type?: string;
       details?: string;
+      errorId?: string;
     };
   }
 
@@ -33,7 +34,7 @@
 
   function handleNotificationToast(e: Event) {
     const doc: NotificationDoc = (e as CustomEvent).detail;
-    const {message, urgency, type, details} = doc.data;
+    const {message, urgency, type, details, errorId} = doc.data;
 
     const toast = document.createElement("div");
     toast.className = `alert ${getUrgencyClass(urgency)} shadow-lg animate-in slide-in-from-right duration-300 pointer-events-auto flex flex-col items-start gap-2 min-w-[300px] max-w-[90vw] max-w-xs`;
@@ -64,6 +65,35 @@
       detailsP.className = "text-xs opacity-90";
       detailsP.textContent = details;
       toast.appendChild(detailsP);
+    }
+    // Show error_id badge so users can quote it to devs (added below details)
+    if (errorId) {
+      const errorRow = document.createElement("div");
+      errorRow.className = "flex items-center gap-2 mt-1 w-full";
+
+      const codeSpan = document.createElement("code");
+      codeSpan.className =
+        "text-xs font-mono bg-black/30 px-1.5 py-0.5 rounded select-all";
+      codeSpan.textContent = errorId;
+
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "btn btn-ghost btn-xs opacity-70 hover:opacity-100";
+      copyBtn.title = "Copy error code";
+      copyBtn.textContent = "⎘";
+      copyBtn.addEventListener("click", () => {
+        navigator.clipboard?.writeText(errorId).catch(() => {
+          /* clipboard unavailable */
+        });
+        copyBtn.textContent = "✓";
+        setTimeout(() => (copyBtn.textContent = "⎘"), 1500);
+      });
+
+      const label = document.createElement("span");
+      label.className = "text-xs opacity-75";
+      label.textContent = "Error code:";
+
+      errorRow.append(label, codeSpan, copyBtn);
+      toast.appendChild(errorRow);
     }
 
     const actionsRow = document.createElement("div");
@@ -169,7 +199,12 @@
     interface Window {
       showInfoToast: (message: string, details?: string) => void;
       showWarningToast: (message: string, details?: string) => void;
-      showErrorToast: (message: string, details?: string) => void;
+      // errorId is the short code shown to users so they can quote it to devs.
+      showErrorToast: (
+        message: string,
+        details?: string,
+        errorId?: string
+      ) => void;
     }
   }
 
@@ -193,13 +228,20 @@
     });
   };
 
-  window.showErrorToast = (message: string, details?: string) => {
+  window.showErrorToast = (
+    message: string,
+    details?: string,
+    errorId?: string
+  ) => {
     // Store in notification manager so it appears in bell icon
     notificationManager.addNotification({
       message,
       urgency: "urgent",
       type: "error",
       details,
+      errorId,
+    } as Parameters<typeof notificationManager.addNotification>[0] & {
+      errorId?: string;
     });
   };
 </script>
