@@ -30,6 +30,7 @@ WCAG
 Waaaaaaa
 adist
 alltime
+anticheat
 alnum
 amannn
 anims
@@ -55,6 +56,7 @@ cdylib
 cheatcode
 chibi
 cmyk
+codegen
 codescanning
 compl
 conne
@@ -99,6 +101,7 @@ ethe
 exte
 extname
 fanfic
+launchericon
 ffset
 filecom
 filecomplete
@@ -129,6 +132,7 @@ johnpapa
 junobuild
 keccak
 knockback
+lightunplated
 libopus
 libsecp
 libwebp
@@ -236,6 +240,7 @@ wakatime
 webauthn
 webp
 webps
+webfonts
 yoyo
 yzhang
 ollerinpaint
