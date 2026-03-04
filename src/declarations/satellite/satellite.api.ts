@@ -14,16 +14,12 @@ export const claimAuthorize = async (value0: string, value1: bigint, value2: str
 	return await claim_authorize(value0, value1, value2, value3);
 }
 
-// MANUAL PATCH: Juno CLI codegen bug — `vec text` args are emitted as bare `Array`
-// instead of `Array<string>`. Re-apply this fix after every `juno functions build`
-// until the upstream issue is resolved. Reported in Juno Discord (Mar 2026).
-export const deleteErrors = async (value0: Array<string>): Promise<Result_1> => {
-const {delete_errors} = await getSatelliteExtendedActor<SatelliteActor>({
-idlFactory
-});
+export const deleteErrors = async (value0: Array): Promise<Result_1> => {
+	const {delete_errors} = await getSatelliteExtendedActor<SatelliteActor>({
+		idlFactory
+	});
 
-    return await delete_errors(value0);
-
+	return await delete_errors(value0);
 }
 
 export const getErrors = async (): Promise<Result_2> => {

@@ -65,6 +65,36 @@ export const VaultAbi = [
     stateMutability: "view",
     type: "function",
   },
+  // Cumulative counters
+  {
+    inputs: [],
+    name: "totalFeesCollected",
+    outputs: [{internalType: "uint256", name: "", type: "uint256"}],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "totalRewardsPaid",
+    outputs: [{internalType: "uint256", name: "", type: "uint256"}],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "totalBurned",
+    outputs: [{internalType: "uint256", name: "", type: "uint256"}],
+    stateMutability: "view",
+    type: "function",
+  },
+  // Burn address (readable state variable)
+  {
+    inputs: [],
+    name: "burnAddress",
+    outputs: [{internalType: "address", name: "", type: "address"}],
+    stateMutability: "view",
+    type: "function",
+  },
   // Claim event — emitted when a player wins and claims rewards
   {
     anonymous: false,

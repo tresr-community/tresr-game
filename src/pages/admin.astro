@@ -9,7 +9,13 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
   <div class="container mx-auto max-w-7xl px-4 py-8">
     <!-- Page header -->
     <div class="mb-6 flex items-center gap-3">
-      <h1 class="text-2xl font-bold">🛡 Admin Dashboard</h1>
+      <h1 class="flex-1 text-2xl font-bold">🛡 Admin Dashboard</h1>
+      <a
+        href="/"
+        class="btn btn-outline btn-primary btn-sm font-mono tracking-widest"
+      >
+        RETURN TO BASE
+      </a>
     </div>
 
     <!-- Loading state -->
@@ -156,58 +162,128 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
             >
           </div>
 
-          <!-- Global stats summary -->
-          <div class="stats stats-horizontal bg-base-200 mb-6 w-full shadow">
-            <div class="stat">
-              <div class="stat-title">Total Collected</div>
-              <div class="stat-value text-success text-lg" id="stat-collected">
-                —
-              </div>
-            </div>
-            <div class="stat">
-              <div class="stat-title">Total Rewarded</div>
-              <div class="stat-value text-primary text-lg" id="stat-rewarded">
-                —
-              </div>
-            </div>
-            <div class="stat">
-              <div class="stat-title">Total Burned</div>
-              <div class="stat-value text-error text-lg" id="stat-burned">
-                —
-              </div>
-            </div>
-            <div class="stat">
-              <div class="stat-title">Total Fees</div>
-              <div class="stat-value text-warning text-lg" id="stat-fees">
-                —
-              </div>
-            </div>
-          </div>
-
           <div id="economy-loading" class="flex hidden justify-center py-12">
             <span class="loading loading-dots loading-md"></span>
           </div>
 
-          <!-- Per-user balance comparison table -->
-          <div class="rounded-box border-base-300 overflow-x-auto border">
-            <table class="table-sm table">
-              <thead>
-                <tr>
-                  <th>Principal</th>
-                  <th>Nickname</th>
-                  <th>Juno Collection</th>
-                  <th>On-Chain</th>
-                  <th>Difference</th>
-                </tr>
-              </thead>
-              <tbody id="economy-table-body">
-                <tr>
-                  <td colspan="5" class="py-8 text-center opacity-50"
-                    >Click Refresh to load economy data</td
+          <!-- Global comparison -->
+          <div id="economy-comparison" class="hidden">
+            <!-- Juno vs Blockchain side-by-side stats -->
+            <div class="mb-2 grid grid-cols-1 gap-4 md:grid-cols-2">
+              <!-- Juno Datastore -->
+              <div>
+                <div class="mb-2 flex items-center gap-2">
+                  <span class="font-mono text-xs font-bold uppercase opacity-60"
+                    >🗄 Juno Datastore</span
                   >
-                </tr>
-              </tbody>
-            </table>
+                </div>
+                <div class="stats stats-vertical bg-base-200 w-full shadow">
+                  <div class="stat">
+                    <div class="stat-title">Fees Collected</div>
+                    <div id="juno-fees" class="stat-value text-info text-lg">
+                      —
+                    </div>
+                    <div class="stat-desc">Total entry fees paid</div>
+                  </div>
+                  <div class="stat">
+                    <div class="stat-title">Rewarded</div>
+                    <div
+                      id="juno-rewarded"
+                      class="stat-value text-success text-lg"
+                    >
+                      —
+                    </div>
+                    <div class="stat-desc">Total paid out to winners</div>
+                  </div>
+                  <div class="stat">
+                    <div class="stat-title">Burned</div>
+                    <div id="juno-burned" class="stat-value text-error text-lg">
+                      —
+                    </div>
+                    <div class="stat-desc">Total sent to burn address</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Blockchain -->
+              <div>
+                <div class="mb-2 flex items-center gap-2">
+                  <span class="font-mono text-xs font-bold uppercase opacity-60"
+                    >⛓ Blockchain (Live)</span
+                  >
+                  <span id="chain-status" class="badge badge-xs badge-ghost"
+                    >loading…</span
+                  >
+                </div>
+                <div class="stats stats-vertical bg-base-200 w-full shadow">
+                  <div class="stat">
+                    <div class="stat-title">Fees Collected</div>
+                    <div id="chain-fees" class="stat-value text-info text-lg">
+                      —
+                    </div>
+                    <div class="stat-desc">vault.totalFeesCollected()</div>
+                  </div>
+                  <div class="stat">
+                    <div class="stat-title">Rewarded</div>
+                    <div
+                      id="chain-rewarded"
+                      class="stat-value text-success text-lg"
+                    >
+                      —
+                    </div>
+                    <div class="stat-desc">vault.totalRewardsPaid()</div>
+                  </div>
+                  <div class="stat">
+                    <div class="stat-title">Burned</div>
+                    <div
+                      id="chain-burned"
+                      class="stat-value text-error text-lg"
+                    >
+                      —
+                    </div>
+                    <div class="stat-desc">vault.totalBurned()</div>
+                  </div>
+                  <div class="stat">
+                    <div class="stat-title">Vault Balance</div>
+                    <div
+                      id="chain-vault"
+                      class="stat-value text-warning text-lg"
+                    >
+                      —
+                    </div>
+                    <div class="stat-desc">Current prize pool</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Discrepancy alerts -->
+            <div id="economy-alerts" class="mb-6 flex flex-col gap-2"></div>
+
+            <!-- Per-user balance table -->
+            <div class="mb-2 font-mono text-xs font-bold uppercase opacity-60">
+              👤 Per-User Balance Audit
+            </div>
+            <div class="rounded-box border-base-300 overflow-x-auto border">
+              <table class="table-sm table">
+                <thead>
+                  <tr>
+                    <th>Principal</th>
+                    <th>Nickname</th>
+                    <th>Juno Balance</th>
+                    <th>On-Chain</th>
+                    <th>Difference</th>
+                  </tr>
+                </thead>
+                <tbody id="economy-table-body">
+                  <tr>
+                    <td colspan="5" class="py-8 text-center opacity-50"
+                      >Click Refresh to load economy data</td
+                    >
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -324,7 +400,15 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
     } from "@/declarations/satellite/satellite.api";
     import type {ErrorRecord} from "@/declarations/satellite/satellite.did";
     import type {UserProfile, GlobalStats} from "@/types/backend";
-    import {getTresrBalance, formatBalance} from "@/lib/wallet/balance";
+    import {
+      getTresrBalance,
+      getVaultTresrBalance,
+      formatBalance,
+    } from "@/lib/wallet/balance";
+    import {getReadClient} from "@/lib/wallet/tx";
+    import {getEnvironmentKey} from "@/lib/wallet/avalanche";
+    import {VaultAbi} from "@/lib/wallet/abi/vault";
+    import {config} from "@/lib/config/client";
 
     // ─── State ────────────────────────────────────────────────────────────
 
@@ -531,35 +615,142 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 
     async function loadEconomy() {
       const econLoading = document.getElementById("economy-loading")!;
+      const econComparison = document.getElementById("economy-comparison")!;
       const econBody = document.getElementById("economy-table-body")!;
+      const alertsEl = document.getElementById("economy-alerts")!;
+      const chainStatus = document.getElementById("chain-status")!;
+
       econLoading.classList.remove("hidden");
+      econComparison.classList.add("hidden");
       econBody.innerHTML = "";
+      alertsEl.innerHTML = "";
 
       try {
-        // Load global stats from the economy collection
+        // ── 1. Juno Datastore ─────────────────────────────────────────────
         const statsDoc = await getDoc<GlobalStats>({
           collection: "economy",
           key: "global",
         });
 
         const stats = statsDoc?.data;
-        const fmt = (n: number | undefined) =>
-          n !== undefined ? formatBalance(BigInt(n)) : "0";
+        const junoFees = BigInt(Math.round(Number(stats?.total_fees ?? 0)));
+        const junoRewarded = BigInt(
+          Math.round(Number(stats?.total_rewarded ?? 0))
+        );
+        const junoBurned = BigInt(Math.round(Number(stats?.total_burned ?? 0)));
 
-        document.getElementById("stat-collected")!.textContent = fmt(
-          stats?.total_collected
-        );
-        document.getElementById("stat-rewarded")!.textContent = fmt(
-          stats?.total_rewarded
-        );
-        document.getElementById("stat-burned")!.textContent = fmt(
-          stats?.total_burned
-        );
-        document.getElementById("stat-fees")!.textContent = fmt(
-          stats?.total_fees
-        );
+        document.getElementById("juno-fees")!.textContent =
+          formatBalance(junoFees);
+        document.getElementById("juno-rewarded")!.textContent =
+          formatBalance(junoRewarded);
+        document.getElementById("juno-burned")!.textContent =
+          formatBalance(junoBurned);
 
-        // Load all user profiles
+        // ── 2. Blockchain ─────────────────────────────────────────────────
+        let chainFees = 0n;
+        let chainRewarded = 0n;
+        let chainBurned = 0n;
+        let chainVault = 0n;
+        let chainOnline = false;
+
+        try {
+          const env = getEnvironmentKey();
+          const vaultAddr = config.blockchain.avalanche[env]
+            .vault_contract as `0x${string}`;
+
+          if (
+            vaultAddr &&
+            vaultAddr !== "0x0000000000000000000000000000000000000000"
+          ) {
+            const client = getReadClient();
+            const [fees, rewarded, burned, vault] = await Promise.all([
+              client.readContract({
+                address: vaultAddr,
+                abi: VaultAbi,
+                functionName: "totalFeesCollected",
+              }),
+              client.readContract({
+                address: vaultAddr,
+                abi: VaultAbi,
+                functionName: "totalRewardsPaid",
+              }),
+              client.readContract({
+                address: vaultAddr,
+                abi: VaultAbi,
+                functionName: "totalBurned",
+              }),
+              getVaultTresrBalance(false),
+            ]);
+            chainFees = fees as bigint;
+            chainRewarded = rewarded as bigint;
+            chainBurned = burned as bigint;
+            chainVault = vault;
+            chainOnline = true;
+          }
+        } catch {
+          // RPC offline — show dashes
+        }
+
+        if (chainOnline) {
+          chainStatus.textContent = "online";
+          chainStatus.className = "badge badge-xs badge-success";
+        } else {
+          chainStatus.textContent = "offline";
+          chainStatus.className = "badge badge-xs badge-error";
+        }
+
+        document.getElementById("chain-fees")!.textContent = chainOnline
+          ? formatBalance(chainFees)
+          : "—";
+        document.getElementById("chain-rewarded")!.textContent = chainOnline
+          ? formatBalance(chainRewarded)
+          : "—";
+        document.getElementById("chain-burned")!.textContent = chainOnline
+          ? formatBalance(chainBurned)
+          : "—";
+        document.getElementById("chain-vault")!.textContent = chainOnline
+          ? formatBalance(chainVault)
+          : "—";
+
+        // ── 3. Discrepancy alerts ─────────────────────────────────────────
+        if (chainOnline) {
+          const checks: Array<{label: string; juno: bigint; chain: bigint}> = [
+            {label: "Fees", juno: junoFees, chain: chainFees},
+            {label: "Rewarded", juno: junoRewarded, chain: chainRewarded},
+            {label: "Burned", juno: junoBurned, chain: chainBurned},
+          ];
+
+          const alerts: string[] = [];
+          for (const {label, juno, chain: ch} of checks) {
+            if (juno !== ch) {
+              const diff = ch > juno ? ch - juno : juno - ch;
+              const direction = ch > juno ? "chain > juno" : "juno > chain";
+              alerts.push(`
+                <div class="alert alert-error flex items-center gap-3">
+                  <span class="inline-grid *:[grid-area:1/1]">
+                    <span class="status status-error animate-ping"></span>
+                    <span class="status status-error"></span>
+                  </span>
+                  <span class="font-mono text-sm">
+                    <strong>${label}</strong> discrepancy: Juno ${formatBalance(juno)} vs Chain ${formatBalance(ch)}
+                    &mdash; delta <strong>${formatBalance(diff)}</strong> (${direction})
+                  </span>
+                </div>
+              `);
+            }
+          }
+
+          if (alerts.length === 0) {
+            alertsEl.innerHTML = `
+              <div class="alert alert-success">
+                <span>✅ Juno and blockchain are in sync</span>
+              </div>`;
+          } else {
+            alertsEl.innerHTML = alerts.join("");
+          }
+        }
+
+        // ── 4. Per-user audit ─────────────────────────────────────────────
         const usersResult = await listDocs<UserProfile>({
           collection: "users",
         });
@@ -570,7 +761,6 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           const profile = doc.data;
           const principal = doc.key;
           const nickname = escHtml(profile.nickname ?? "—");
-          // wallet.balance is stored as a number in JSON (bigint not serializable)
           const junoBalance = BigInt(
             Math.round(Number(profile.wallet?.balance ?? 0))
           );
@@ -590,7 +780,6 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
             ? `<span class="text-error font-bold">${formatBalance(diff < 0n ? -diff : diff)}${diff < 0n ? " ↓" : " ↑"}</span>`
             : `<span class="text-success">0</span>`;
 
-          // Use DaisyUI animate-ping status dot for discrepancy alert
           const diffCell = hasDiff
             ? `<td class="relative">
                 ${diffLabel}
@@ -601,22 +790,27 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
               </td>`
             : `<td>${diffLabel}</td>`;
 
-          rows.push(`<tr class="${hasDiff ? "bg-error/10" : ""}">
-            <td class="text-xs font-mono truncate max-w-[120px]" title="${escHtml(principal)}">${escHtml(principal.slice(0, 14))}…</td>
-            <td>${nickname}</td>
-            <td class="font-mono text-xs">${formatBalance(junoBalance)}</td>
-            <td class="font-mono text-xs">${formatBalance(onChainBalance)}</td>
-            ${diffCell}
-          </tr>`);
+          const rowClass = hasDiff ? "bg-error/10" : "";
+          rows.push(
+            `<tr class="${rowClass}">` +
+              `<td class="text-xs font-mono truncate max-w-[120px]" title="${escHtml(principal)}">${escHtml(principal.slice(0, 14))}…</td>` +
+              `<td>${nickname}</td>` +
+              `<td class="font-mono text-xs">${formatBalance(junoBalance)}</td>` +
+              `<td class="font-mono text-xs">${formatBalance(onChainBalance)}</td>` +
+              diffCell +
+              `</tr>`
+          );
         }
 
         econLoading.classList.add("hidden");
+        econComparison.classList.remove("hidden");
         econBody.innerHTML =
           rows.length > 0
             ? rows.join("")
-            : '<tr><td colspan="5" class="py-8 text-center opacity-50">No user data found</td></tr>';
+            : '<tr><td colspan="5" class="py-8 text-center opacity-50">No users found</td></tr>';
       } catch (e) {
         econLoading.classList.add("hidden");
+        econComparison.classList.remove("hidden");
         econBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-error">Failed to load economy data: ${escHtml(String(e))}</td></tr>`;
       }
     }

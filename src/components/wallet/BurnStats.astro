@@ -7,7 +7,7 @@
   class="stats stats-horizontal bg-base-200/50 border-error/20 mt-6 hidden w-full max-w-4xl border shadow"
 >
   <div class="stat place-items-center">
-    <div class="stat-title font-mono text-xs">COLLECTED</div>
+    <div class="stat-title font-mono text-xs">FEES</div>
     <div id="burn-stat-collected" class="stat-value text-info text-2xl">
       <span class="loading loading-dots loading-sm"></span>
     </div>
@@ -81,7 +81,7 @@
       if (doc?.data) {
         const stats = doc.data;
         if (collectedEl)
-          collectedEl.textContent = formatAmount(stats.total_collected ?? 0);
+          collectedEl.textContent = formatAmount(stats.total_fees ?? 0);
         if (rewardedEl)
           rewardedEl.textContent = formatAmount(stats.total_rewarded ?? 0);
         if (burnedEl)
