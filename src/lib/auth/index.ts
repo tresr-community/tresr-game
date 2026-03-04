@@ -534,9 +534,6 @@ export async function signInWithAvalanche(): Promise<void> {
     // Bridge SIWA identity to IDB so initSatellite() recognizes the session
     await bridgeSiwaToIdb(siwaIdentity);
 
-    // Pass identity to Juno
-    await initSatellite();
-
     // Use the DelegationIdentity principal — this is the self-authenticating
     // principal the IC sees as caller(), NOT the opaque keccak-derived one
     // from result.principal (which is only for SIWA internal address mapping).
@@ -546,6 +543,9 @@ export async function signInWithAvalanche(): Promise<void> {
       COMPONENT_NAME,
       `SIWA canister Principal (unused): ${result.principal.toText()}`
     );
+
+    // Pass identity to Juno
+    await initSatellite();
 
     // Register in Juno's #user system collection so getDoc/setDoc are authorized
     try {
@@ -585,9 +585,9 @@ export async function signInWithAvalanche(): Promise<void> {
 
       await enqueueProfileWrite(principal, (profile) => ({
         ...profile,
-        evmWallet: address,
-        wallet: {...profile.wallet, evmWalletLinked: true},
-        loginMethod: "siwa" as const,
+        evm_wallet: address,
+        wallet: {...profile.wallet, evm_wallet_linked: true},
+        login_method: "siwa" as const,
       }));
 
       // Read back the profile to populate the store

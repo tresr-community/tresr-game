@@ -110,7 +110,11 @@ export class Player extends BaseEntity {
     }
 
     // Enable health bar for player
-    this.enableHealthBar(50, 6, -5);
+    this.enableHealthBar(
+      playerConfig.health_bar?.width || 50,
+      playerConfig.health_bar?.height || 6,
+      playerConfig.health_bar?.offset_y || -5
+    );
   }
 
   setRecorder(recorder: Recorder) {
@@ -294,7 +298,7 @@ export class Player extends BaseEntity {
   public superAttack() {
     // Atomic check-and-reset to prevent race between read and reset (ticket #226)
     if (!gameActions.attemptSuperAttack(this.superMaxCharge)) {
-      log.info(
+      log.debug(
         COMPONENT_NAME,
         `Super not ready: ${gameState.get().superCharge}/${this.superMaxCharge}`
       );

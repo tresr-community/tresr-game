@@ -9,7 +9,7 @@ import {encodeFunctionData} from "viem";
 import type {ConfigTypes} from "@/types/config";
 import {loadConfigAsync} from "../config";
 import {log} from "../utils/log";
-import {FaucetAbi} from "./FaucetAbi";
+import {FaucetAbi} from "./abi/faucet";
 import {getWalletClient} from "./connection";
 import {getTargetChain, getEnvironmentKey} from "./avalanche";
 import {confirmReceipt, getReadClient} from "./tx";

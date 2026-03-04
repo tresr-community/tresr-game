@@ -7,11 +7,13 @@
   class="stats stats-horizontal bg-base-200/50 border-error/20 mt-6 hidden w-full max-w-4xl border shadow"
 >
   <div class="stat place-items-center">
-    <div class="stat-title font-mono text-xs">BURNED</div>
-    <div id="burn-stat-burned" class="stat-value text-error text-2xl">
+    <div class="stat-title font-mono text-xs">FEES</div>
+    <div id="burn-stat-collected" class="stat-value text-info text-2xl">
       <span class="loading loading-dots loading-sm"></span>
     </div>
-    <div id="burn-stat-burned-ticker" class="stat-desc font-mono">$TRESR</div>
+    <div id="burn-stat-collected-ticker" class="stat-desc font-mono">
+      $TRESR
+    </div>
   </div>
   <div class="stat place-items-center">
     <div class="stat-title font-mono text-xs">REWARDED</div>
@@ -20,10 +22,17 @@
     </div>
     <div id="burn-stat-rewarded-ticker" class="stat-desc font-mono">$TRESR</div>
   </div>
+  <div class="stat place-items-center">
+    <div class="stat-title font-mono text-xs">BURNED</div>
+    <div id="burn-stat-burned" class="stat-value text-error text-2xl">
+      <span class="loading loading-dots loading-sm"></span>
+    </div>
+    <div id="burn-stat-burned-ticker" class="stat-desc font-mono">$TRESR</div>
+  </div>
 </div>
 
 <script>
-  import {getDoc} from "@junobuild/core";
+  import {listDocs} from "@junobuild/core";
   import {getEnvironmentKey} from "@/lib/wallet/avalanche";
   import {config} from "@/lib/config/client";
   import {log} from "@/lib/utils/log";
@@ -32,16 +41,22 @@
   const COMPONENT_NAME = "BurnStats";
 
   const cardEl = document.getElementById("burn-stats-card");
-  const burnedEl = document.getElementById("burn-stat-burned");
+  const collectedEl = document.getElementById("burn-stat-collected");
   const rewardedEl = document.getElementById("burn-stat-rewarded");
-  const burnedTickerEl = document.getElementById("burn-stat-burned-ticker");
+  const burnedEl = document.getElementById("burn-stat-burned");
+
+  const collectedTickerEl = document.getElementById(
+    "burn-stat-collected-ticker"
+  );
   const rewardedTickerEl = document.getElementById("burn-stat-rewarded-ticker");
+  const burnedTickerEl = document.getElementById("burn-stat-burned-ticker");
 
   // Set ticker from config
   const env = getEnvironmentKey();
   const ticker = config.blockchain.avalanche[env].token_ticker;
-  if (burnedTickerEl) burnedTickerEl.textContent = `$${ticker}`;
+  if (collectedTickerEl) collectedTickerEl.textContent = `$${ticker}`;
   if (rewardedTickerEl) rewardedTickerEl.textContent = `$${ticker}`;
+  if (burnedTickerEl) burnedTickerEl.textContent = `$${ticker}`;
 
   function formatAmount(amount: number): string {
     if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`;
@@ -51,19 +66,30 @@
 
   async function loadStats() {
     try {
-      const doc = await getDoc<GlobalStats>({
-        collection: "stats",
-        key: "global",
+      const {items} = await listDocs<GlobalStats>({
+        collection: "economy",
+        filter: {
+          owner: import.meta.env.VITE_SATELLITE_ID,
+          matcher: {
+            key: "global",
+          },
+        },
       });
+
+      const doc = items[0];
 
       if (doc?.data) {
         const stats = doc.data;
-        if (burnedEl) burnedEl.textContent = formatAmount(stats.totalBurned);
+        if (collectedEl)
+          collectedEl.textContent = formatAmount(stats.total_fees ?? 0);
         if (rewardedEl)
-          rewardedEl.textContent = formatAmount(stats.totalRewarded);
+          rewardedEl.textContent = formatAmount(stats.total_rewarded ?? 0);
+        if (burnedEl)
+          burnedEl.textContent = formatAmount(stats.total_burned ?? 0);
       } else {
-        if (burnedEl) burnedEl.textContent = "0";
+        if (collectedEl) collectedEl.textContent = "0";
         if (rewardedEl) rewardedEl.textContent = "0";
+        if (burnedEl) burnedEl.textContent = "0";
       }
 
       if (cardEl) cardEl.classList.remove("hidden");
@@ -74,8 +100,9 @@
         err instanceof Error ? err.message : String(err)
       );
       // Show card with zeroes on error
-      if (burnedEl) burnedEl.textContent = "0";
+      if (collectedEl) collectedEl.textContent = "0";
       if (rewardedEl) rewardedEl.textContent = "0";
+      if (burnedEl) burnedEl.textContent = "0";
       if (cardEl) cardEl.classList.remove("hidden");
     }
   }

@@ -216,12 +216,12 @@
 
     try {
       const {items} = await listDocs({
-        collection: "leaderboard",
+        collection: "scores",
         filter: {
           order: {
             desc: true,
             // @ts-ignore — Juno supports nested field ordering
-            field: "activeScore",
+            field: "active_score",
           },
         },
         paginate: {
@@ -234,8 +234,8 @@
       // Client-side filter: only show entries with active (non-expired) scores
       const activeItems = items.filter((item) => {
         const entry = item.data as Record<string, unknown> | undefined;
-        const expiresAt = entry?.expiresAt as number | undefined;
-        const activeScore = entry?.activeScore as number | undefined;
+        const expiresAt = entry?.expires_at as number | undefined;
+        const activeScore = entry?.active_score as number | undefined;
         return expiresAt && expiresAt > now && activeScore && activeScore > 0;
       });
 
@@ -261,10 +261,10 @@
           typeof entry?.nickname === "string"
             ? entry.nickname
             : "Unknown Agent";
-        const score = entry?.activeScore?.toString() || "0";
-        const expiresAt = (entry?.expiresAt as number) || 0;
+        const score = entry?.active_score?.toString() || "0";
+        const expiresAt = (entry?.expires_at as number) || 0;
         const avatarUrl =
-          typeof entry?.avatarUrl === "string" ? entry.avatarUrl : undefined;
+          typeof entry?.avatar_url === "string" ? entry.avatar_url : undefined;
 
         // Rank cell
         const tdRank = document.createElement("td");
@@ -350,12 +350,12 @@
 
     try {
       const {items} = await listDocs({
-        collection: "leaderboard",
+        collection: "scores",
         filter: {
           order: {
             desc: true,
             // @ts-ignore — Juno supports nested field ordering
-            field: "highScore",
+            field: "high_score",
           },
         },
         paginate: {
@@ -389,9 +389,9 @@
           typeof entry?.nickname === "string"
             ? entry.nickname
             : "Unknown Agent";
-        const score = entry?.highScore?.toString() || "0";
+        const score = entry?.high_score?.toString() || "0";
         const avatarUrl =
-          typeof entry?.avatarUrl === "string" ? entry.avatarUrl : undefined;
+          typeof entry?.avatar_url === "string" ? entry.avatar_url : undefined;
 
         // Rank cell
         const tdRank = document.createElement("td");

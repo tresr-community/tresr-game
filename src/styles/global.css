@@ -57,6 +57,8 @@
     winter;
 }
 
+@plugin "@tailwindcss/typography";
+
 /* Tailwind v4 theme configuration */
 @theme {
   --p: 258deg;

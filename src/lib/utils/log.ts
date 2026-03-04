@@ -2,7 +2,12 @@ declare global {
   interface Window {
     showInfoToast: (message: string, details?: string) => void;
     showWarningToast: (message: string, details?: string) => void;
-    showErrorToast: (message: string, details?: string) => void;
+    // errorId is the short code shown to users so they can quote it to devs.
+    showErrorToast: (
+      message: string,
+      details?: string,
+      errorId?: string
+    ) => void;
   }
 }
 
@@ -77,13 +82,8 @@ export function showToast(
       } else {
         console.error(`${tag} ${message}`, details || "");
       }
-      if (typeof window !== "undefined" && window.showErrorToast) {
-        try {
-          window.showErrorToast(`${component}: ${message}`, details || "");
-        } catch (e) {
-          console.error(`[${component}] [ERROR] Failed to show error toast`, e);
-        }
-      }
+      // Error toast is shown asynchronously after we have the error_id from the canister.
+      // If reportError fails or is unavailable, we fall back to showing the toast without an id.
       break;
   }
 }
@@ -119,7 +119,39 @@ export const log = {
           ? String(error)
           : "Unknown error";
     const details = `${errorStr} ${args.join(" ")}`.trim();
-    showToast(component, "error", message, details || undefined);
+
+    // Log to console immediately
+    const tag = `[${component}] [ERROR]`;
+    const style = LOG_STYLES["error"];
+    if (isBrowser) {
+      console.error(`%c${tag}`, style, message, details || "");
+    } else {
+      console.error(`${tag} ${message}`, details || "");
+    }
+
+    // Fire-and-forget: report to canister, then show toast with error_id.
+    // Falls back to showing toast without error_id if canister call fails.
+    if (isBrowser) {
+      import("@/lib/utils/error-reporter")
+        .then(({reportError}) => reportError(component, message, details || ""))
+        .catch(() => null)
+        .then((errorId) => {
+          if (typeof window !== "undefined" && window.showErrorToast) {
+            try {
+              window.showErrorToast(
+                `${component}: ${message}`,
+                details || undefined,
+                errorId ?? undefined
+              );
+            } catch (toastErr) {
+              console.error(
+                `[${component}] [ERROR] Failed to show error toast`,
+                toastErr
+              );
+            }
+          }
+        });
+    }
 
     // Fire-and-forget analytics tracking for every log.error() call.
     // Uses dynamic import to break circular dependency (analytics → log → analytics).

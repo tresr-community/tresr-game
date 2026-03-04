@@ -49,6 +49,9 @@ runs:
         RPC_URL: ${{ inputs.rpc-url }}
         DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
       run: |
+        # Run from contracts/ so FOUNDRY_PROFILE can resolve foundry.toml
+        cd contracts
+
         TOKEN_ADDR="${{ inputs.token-address }}"
         FAUCET_ADDR="${{ inputs.faucet-address }}"
         ZERO="0x0000000000000000000000000000000000000000"
@@ -79,7 +82,7 @@ runs:
           exit 0
         fi
 
-        TOKEN_ARTIFACT="contracts/out/Token.sol/RonToken.json"
+        TOKEN_ARTIFACT="out/Token.sol/RonToken.json"
         if [[ ! -f "$TOKEN_ARTIFACT" ]]; then
           echo "::error::Build artifact not found at $TOKEN_ARTIFACT — run forge build first"
           exit 1
@@ -116,7 +119,7 @@ runs:
             echo "::warning::Faucet address has no on-chain code — treating as deploy needed"
             FAUCET_MATCH=false
           else
-            FAUCET_ARTIFACT="contracts/out/Faucet.sol/TresrFaucet.json"
+            FAUCET_ARTIFACT="out/Faucet.sol/TresrFaucet.json"
             if [[ ! -f "$FAUCET_ARTIFACT" ]]; then
               echo "::error::Build artifact not found at $FAUCET_ARTIFACT — run forge build first"
               exit 1
@@ -150,7 +153,6 @@ runs:
         # ──────────────────────────────────────────────
         # 5. Forge dry-run gate: verify transactions
         # ──────────────────────────────────────────────
-        cd contracts
         DRY_RUN_LOG=$(mktemp)
 
         set +e
@@ -207,7 +209,7 @@ runs:
           DEPLOYED_TOKEN=$(jq -r '.transactions[] | select(.transactionType == "CREATE" and .contractName == "RonToken") | .contractAddress' "$LATEST" 2>/dev/null | head -1)
         fi
 
-        if [[ -n "$DEPLOYED_TOKEN" && ("$CONFIG_TOKEN" == "$ZERO" || -z "$CONFIG_TOKEN" || "$CONFIG_TOKEN" == "null") ]]; then
+        if [[ -n "$DEPLOYED_TOKEN" ]]; then
           echo "token_address=${DEPLOYED_TOKEN}" >> "$GITHUB_OUTPUT"
           echo "🔗 Using freshly-deployed token: ${DEPLOYED_TOKEN}"
         elif [[ -n "$CONFIG_TOKEN" && "$CONFIG_TOKEN" != "$ZERO" ]]; then
@@ -233,7 +235,7 @@ runs:
           DEPLOYED_FAUCET=$(jq -r '.transactions[] | select(.transactionType == "CREATE" and .contractName == "TresrFaucet") | .contractAddress' "$LATEST" 2>/dev/null | head -1)
         fi
 
-        if [[ -n "$DEPLOYED_FAUCET" && ("$CONFIG_FAUCET" == "$ZERO" || -z "$CONFIG_FAUCET" || "$CONFIG_FAUCET" == "null") ]]; then
+        if [[ -n "$DEPLOYED_FAUCET" ]]; then
           echo "faucet_address=${DEPLOYED_FAUCET}" >> "$GITHUB_OUTPUT"
           echo "🔗 Using freshly-deployed faucet: ${DEPLOYED_FAUCET}"
         elif [[ -n "$CONFIG_FAUCET" && "$CONFIG_FAUCET" != "$ZERO" ]]; then

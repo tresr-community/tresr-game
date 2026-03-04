@@ -35,6 +35,11 @@ export class SpawnManager {
   private currentEnemySpawnMs: number = 0;
   private currentBombSpawnMs: number = 0;
 
+  // Director state
+  private directorMode: "normal" | "burst" | "breather" | "limo" = "normal";
+  private burstRemaining: number = 0;
+  private limoRemaining: number = 0;
+
   // Dynamic entity references (set by MainScene as they become available)
   private player?: Player;
   private boss?: Boss;
@@ -123,13 +128,14 @@ export class SpawnManager {
     this.currentBombSpawnMs = entities.bomb.spawner.delay_ms;
     this.escalationStep = 0;
 
+    this.directorMode = "normal";
+    this.burstRemaining = 0;
+    this.limoRemaining = 0;
+
     // Spawners
-    this.spawnTimer = this.scene.time.addEvent({
-      delay: this.currentEnemySpawnMs,
-      callback: this.spawnEnemy,
-      callbackScope: this,
-      loop: true,
-    });
+    // Instead of a strict loop, kick off the first dynamic tick
+    this.scheduleNextEnemySpawn(this.currentEnemySpawnMs);
+
     // Key Spawner
     this.keySpawnTimer = this.scene.time.addEvent({
       delay: entities.key.spawner.delay_ms,
@@ -146,7 +152,94 @@ export class SpawnManager {
     });
   }
 
-  spawnEnemy() {
+  private scheduleNextEnemySpawn(delayMs: number) {
+    if (this.spawnTimer) this.spawnTimer.remove();
+    this.spawnTimer = this.scene.time.delayedCall(delayMs, () =>
+      this.executeSpawnTick()
+    );
+  }
+
+  private executeSpawnTick() {
+    if (this.getPhase() !== "survival" || !this.enemies || !this.player) return;
+
+    const spawnerConfig = this.config.entities.enemy.spawner;
+    const directorConfig = spawnerConfig.director;
+    let nextDelay = this.currentEnemySpawnMs;
+
+    switch (this.directorMode) {
+      case "normal": {
+        // Evaluate mode transitions before spawning
+        const roll = this.rng.frac();
+        if (roll < directorConfig.limo_chance) {
+          this.directorMode = "limo";
+          this.limoRemaining = directorConfig.limo_count;
+          log.info(COMPONENT_NAME, "Director Mode: LIMO! 🏦");
+          this.scheduleNextEnemySpawn(0); // Tick immediately
+          return;
+        } else if (
+          roll <
+          directorConfig.limo_chance + directorConfig.burst_chance
+        ) {
+          this.directorMode = "burst";
+          this.burstRemaining = this.rng.integerInRange(
+            directorConfig.burst_count_min,
+            directorConfig.burst_count_max
+          );
+          log.info(
+            COMPONENT_NAME,
+            `Director Mode: BURST! 💥 (${this.burstRemaining})`
+          );
+          this.scheduleNextEnemySpawn(0); // Tick immediately
+          return;
+        } else if (
+          roll <
+          directorConfig.limo_chance +
+            directorConfig.burst_chance +
+            directorConfig.breather_chance
+        ) {
+          this.directorMode = "breather";
+          log.info(COMPONENT_NAME, "Director Mode: BREATHER 😮‍💨");
+          this.scheduleNextEnemySpawn(directorConfig.breather_duration_ms);
+          return; // Don't spawn this tick
+        }
+
+        // Just a normal spawn
+        this.spawnEnemy(false);
+        break;
+      }
+      case "burst": {
+        this.spawnEnemy(false);
+        this.burstRemaining--;
+        if (this.burstRemaining <= 0) {
+          this.directorMode = "normal";
+        } else {
+          nextDelay = directorConfig.burst_delay_ms;
+        }
+        break;
+      }
+      case "limo": {
+        this.spawnEnemy(true);
+        this.limoRemaining--;
+        if (this.limoRemaining <= 0) {
+          this.directorMode = "normal";
+        } else {
+          // Limo spawns walk out practically on top of each other
+          nextDelay = 200;
+        }
+        break;
+      }
+      case "breather": {
+        // Breather finished, back to normal!
+        this.directorMode = "normal";
+        this.spawnEnemy(false); // First guy back
+        break;
+      }
+    }
+
+    this.scheduleNextEnemySpawn(nextDelay);
+  }
+
+  spawnEnemy(forcePassive: boolean = false) {
     if (this.getPhase() !== "survival" || !this.enemies || !this.player) return;
 
     // Spawn off-screen and walk in from left or right edge
@@ -166,7 +259,9 @@ export class SpawnManager {
       "sprites_config"
     ) as SpritesConfig;
     const enemyCount = spritesConfig.enemies.count;
-    const enemyVariant = this.rng.integerInRange(1, enemyCount);
+    const enemyVariant = forcePassive
+      ? this.rng.integerInRange(1, enemyCount)
+      : this.rng.integerInRange(1, enemyCount);
     const textureKey = `enemy_${enemyVariant}_idle`;
 
     // Lazy-load enemy variant sprites on first spawn
@@ -177,7 +272,19 @@ export class SpawnManager {
         // Hide immediately — group.get() makes the sprite visible at its old
         // pool position. spawn() will reveal it after setup is complete.
         enemy.setVisible(false);
-        enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
+        // We override AI weights logic via explicit passing or let the prefab handle it if unforced.
+        const forcedAiOverride = forcePassive ? "passive" : undefined;
+        enemy.spawn(
+          spawnX,
+          groundY,
+          this.rng,
+          walkInTargetX,
+          textureKey,
+          forcedAiOverride
+        );
+        // Set target AFTER spawn() so it is never cleared by the pool-reset inside spawn().
+        // spawn() does not clear _target anymore — see Enemy.ts — but this ordering
+        // is kept explicit so the intent is clear.
         enemy.setTarget(this.player);
         const enemyScale = SpriteManager.getScaleFactor(
           spritesConfig,
@@ -423,20 +530,11 @@ export class SpawnManager {
 
     this.escalationStep = expectedStep;
 
-    // Recreate enemy spawn timer with reduced delay
+    // Update the baseline delay. The director loop will pick it up on the next "normal" tick.
     this.currentEnemySpawnMs = Math.max(
       esc.min_enemy_spawn_ms,
       this.currentEnemySpawnMs * esc.enemy_spawn_multiplier
     );
-    if (this.spawnTimer) {
-      this.spawnTimer.remove();
-      this.spawnTimer = this.scene.time.addEvent({
-        delay: this.currentEnemySpawnMs,
-        callback: this.spawnEnemy,
-        callbackScope: this,
-        loop: true,
-      });
-    }
 
     // Recreate bomb spawn timer with reduced delay
     this.currentBombSpawnMs = Math.max(
@@ -476,6 +574,9 @@ export class SpawnManager {
     this.escalationStep = 0;
     this.currentEnemySpawnMs = 0;
     this.currentBombSpawnMs = 0;
+    this.directorMode = "normal";
+    this.burstRemaining = 0;
+    this.limoRemaining = 0;
     this.player = undefined;
     this.boss = undefined;
     this.tresrBot = undefined;

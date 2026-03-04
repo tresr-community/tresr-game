@@ -7827,6 +7827,72 @@ interface Metadata {
 Find the complete type definition of the `session` object [here](https://github.com/WalletConnect/walletconnect-monorepo/blob/022e4d492c9862ab9b17c1a7b12884bdcd992ae4/packages/types/src/sign-client/session.ts#L25).
 
 
+# Report an Issue
+Source: https://docs.reown.com/advanced/report-an-issue
+
+Report bugs, share feedback, and get help through the Reown Dashboard
+
+The [Reown Dashboard](https://dashboard.reown.com/) is your single place to report bugs, share feedback, send us a message, and get help resolving issues with our AI-powered support.
+
+## How to Report an Issue
+
+Follow these steps to get in touch with our support team:
+
+### Step 1 - Log in to the Reown Dashboard
+
+Go to [dashboard.reown.com](https://dashboard.reown.com/) and log in with your account.
+
+### Step 2 - Open the Help Center
+
+Once logged in, click the **chat bubble** in the bottom-right corner of the page, or choose **Report a bug** from the **Help Center** sidebar.
+
+<Frame>
+  <img alt="Help Center bubble in the bottom-right corner of the Reown Dashboard" />
+</Frame>
+
+### Step 3 - Choose an Option
+
+From the help desk modal, select the option that best fits your needs:
+
+* **Send us a message** - Reach out directly to our support team.
+* **Create a ticket / Report an issue** - File a bug report or request assistance with a technical problem.
+* **Check our docs** - Browse through our documentation for answers.
+
+<Frame>
+  <img alt="Help desk modal with support options" />
+</Frame>
+
+Our team will review your submission and get back to you as soon as possible.
+
+## Support Response Times
+
+Depending on your plan, you can expect different levels of support:
+
+<CardGroup>
+  <Card title="Pro Plan" icon="bolt" href="/appkit/paid-plans/pro">
+    **Response time & expert issue resolution:** Up to 7 days.
+
+    In-dashboard support with the ability to create support tickets.
+  </Card>
+
+  <Card title="Enterprise Plan" icon="building" href="/appkit/paid-plans/enterprise">
+    **Guaranteed 24-hour response time** and expert issue resolution.
+
+    Prioritized support across multiple channels (email, Slack, Telegram, ticketing system).
+  </Card>
+</CardGroup>
+
+### Upgrade Your Plan
+
+Want faster response times and dedicated support? You can upgrade your plan directly from the [Reown Dashboard](https://dashboard.reown.com/):
+
+1. Log in to [dashboard.reown.com](https://dashboard.reown.com/)
+2. Click the **"Upgrade Now"** button in the top right-hand corner
+3. Choose **[Pro](/appkit/paid-plans/pro)** or **[Enterprise](/appkit/paid-plans/enterprise)** depending on your needs
+
+For a full comparison of all plans and pricing, visit <a href="https://reown.com/pricing">reown.com/pricing</a>.
+
+
 # Content Security Policy (CSP)
 Source: https://docs.reown.com/advanced/security/content-security-policy
 
@@ -7945,7 +8011,7 @@ For security-related inquiries, please visit the [security contact page](https:/
 # WalletKit Migration
 Source: https://docs.reown.com/advanced/walletkit-migration
 
-WalletKit documentation has moved to the WalletConnect Docs. Find links to the new locations for all migrated pages.
+WalletKit documentation has moved to the WalletConnect Docs. Find links to the new locations for all migrated pages, and answers to common questions about the new WalletConnect Dashboard.
 
 The following WalletKit-related pages have been migrated from Reown Docs to the [WalletConnect Docs](https://docs.walletconnect.network). Use the links below to find the updated content.
 
@@ -7958,6 +8024,45 @@ The following WalletKit-related pages have been migrated from Reown Docs to the 
 | Sign API - Wallet Usage       | [Wallet SDK Web - One-click Auth](https://docs.walletconnect.network/wallet-sdk/web/one-click-auth) and platform-specific Usage pages ([Web](https://docs.walletconnect.network/wallet-sdk/web/usage), [iOS](https://docs.walletconnect.network/wallet-sdk/ios/usage), [React Native](https://docs.walletconnect.network/wallet-sdk/react-native/usage)) |
 | WalletConnectModal Usage      | [App SDK Overview](https://docs.walletconnect.network/app-sdk/overview)                                                                                                                                                                                                                                                                                  |
 | WalletConnectModal Resources  | [Wallet SDK Web - Resources](https://docs.walletconnect.network/wallet-sdk/web/resources) and [Wallet SDK React Native - Resources](https://docs.walletconnect.network/wallet-sdk/react-native/resources)                                                                                                                                                |
+
+## WalletConnect Dashboard FAQ
+
+If you are a legacy WalletKit team previously using the Reown Cloud dashboard, the new [WalletConnect Dashboard](https://dashboard.walletconnect.com) is now the place to manage all your wallet projects, integrations, and WalletGuide submissions. Below are answers to common questions about the transition.
+
+<AccordionGroup>
+  <Accordion title="Where should WalletKit teams manage their projects now?">
+    All WalletKit teams should use the new [WalletConnect Dashboard](https://dashboard.walletconnect.com) to manage their projects. This dashboard replaces the Reown Cloud dashboard as the unified hub for wallet and app developers to create projects, submit wallets to WalletGuide, and manage WalletConnect Certification.
+  </Accordion>
+
+  <Accordion title="Will my existing Project ID still work?">
+    Yes. Your existing Project ID will remain the same and will continue to work as expected. There is no need to create a new Project ID or update your integration. Simply log in to [dashboard.walletconnect.com](https://dashboard.walletconnect.com) and you will find your existing projects and Project IDs ready to use.
+  </Accordion>
+
+  <Accordion title="Will my team setup carry over to the new dashboard?">
+    Yes. Your team setup, including team members and project configurations, will remain the same on the new WalletConnect Dashboard. No action is required to migrate your team — everything carries over automatically.
+  </Accordion>
+
+  <Accordion title="How do I log in to the new WalletConnect Dashboard?">
+    You can log in to [dashboard.walletconnect.com](https://dashboard.walletconnect.com) using the same credentials you used for the Reown Cloud dashboard. Your login method (email, social, or wallet-based authentication) remains unchanged.
+  </Accordion>
+
+  <Accordion title="What can I do on the new WalletConnect Dashboard?">
+    The [WalletConnect Dashboard](https://dashboard.walletconnect.com) is the unified home for wallet and app developers. From the dashboard you can:
+
+    * **Create and manage projects** — Set up new projects and obtain Project IDs for your wallet or app.
+    * **Submit your wallet to WalletGuide** — Get your wallet listed in the WalletConnect modal so users can discover and connect with it.
+    * **Manage WalletConnect Certification** — Submit, track, and manage your certification process all in one place.
+    * **View analytics** — Monitor usage and performance of your integrations.
+  </Accordion>
+
+  <Accordion title="Do I need to update any code or configuration?">
+    No code changes are required. Your existing Project IDs and SDK integrations will continue to work without modification. The dashboard change only affects where you manage your projects and settings — it does not impact your application's runtime behavior.
+  </Accordion>
+
+  <Accordion title="Where can I learn more about the new dashboard?">
+    Read the official announcement blog post: [Meet the New WalletConnect Dashboard](https://walletconnect.com/blog/meet-the-new-walletconnect-dashboard). For additional help, join the [WalletConnect Discord](https://discord.gg/walletconnect) and post in the developers forum.
+  </Accordion>
+</AccordionGroup>
 
 
 # Analytics
@@ -9803,7 +9908,9 @@ This FAQ section covers common questions and solutions for using AppKit. The que
   </Accordion>
 
   <Accordion title="How do I remove the 'UX by Reown' branding?">
-    Currently, only enterprise clients can hide "UX by Reown" on the AppKit modal by adjusting this option on our Dashboard. If you are an enterprise client and would like to hide this branding, contact us [via our form here](https://share.hsforms.com/1_oWa8QkwRXi6oR0nZ_SIxQnxw6s).
+    Currently, only enterprise clients can hide "UX by Reown" on the AppKit modal by adjusting this
+    option on our Dashboard. If you are an enterprise client and would like to hide this branding,
+    contact us [via our form here](https://share.hsforms.com/1_oWa8QkwRXi6oR0nZ_SIxQnxw6s).
   </Accordion>
 
   <Accordion title="How do I increase my project's RPC limits?">
@@ -9828,13 +9935,14 @@ This FAQ section covers common questions and solutions for using AppKit. The que
   </Accordion>
 
   <Accordion title="How can I add my web wallet to the wallet list in WalletConnect?">
-    Add your web wallet to WalletConnect by following the steps in this link: [https://docs.reown.com/cloud/explorer-submission](https://docs.reown.com/cloud/explorer-submission).
+    Add your web wallet to WalletConnect by following the steps in this link:
+    [https://docs.reown.com/cloud/explorer-submission](https://docs.reown.com/cloud/explorer-submission).
   </Accordion>
 
   <Accordion title="Can I reinitialize AppKit with different network configurations?">
-    Currently, `createAppKit` can only be called once during the application's lifecycle.
-    It cannot be lazily initialized and then torn down for re-initialization.
-    This means you must pass in all the networks you plan to support during the initial setup.
+    Currently, `createAppKit` can only be called once during the application's lifecycle. It cannot be
+    lazily initialized and then torn down for re-initialization. This means you must pass in all the
+    networks you plan to support during the initial setup.
   </Accordion>
 
   <Accordion title="Why can't I open wallet apps from in-app browsers on Android?">
@@ -9857,6 +9965,62 @@ This FAQ section covers common questions and solutions for using AppKit. The que
     ### For app developers embedding WebViews
 
     If you are building an app that embeds a WebView and want to support wallet connections, you need to explicitly handle deep links in your WebView implementation. See our [troubleshooting guide](/appkit/recipes/troubleshooting#in-app-browser-deeplink-detection) for code examples on how to intercept and handle wallet deep links across different platforms.
+  </Accordion>
+
+  <Accordion title="How do I delete a project?">
+    To delete a project from your [Reown Dashboard](https://dashboard.reown.com/):
+
+    1. Open the **Team** dropdown at the top of the Dashboard and select the team that contains the project you want to delete.
+
+    <Frame>
+      <img alt="Team dropdown in the Reown Dashboard" />
+    </Frame>
+
+    2. Click on the **three dots** (`...`) menu at the end of the project you want to delete.
+
+    <Frame>
+      <img alt="Project options menu showing Rename and Delete actions" />
+    </Frame>
+
+    3. Click **Delete** to remove the project.
+
+    4. Type the name of the project to confirm and click **Delete**.
+
+    <Frame>
+      <img alt="Confirmation dialog to delete a project" />
+    </Frame>
+
+    <Warning>
+      Deleting a project is permanent and cannot be undone. Any integrations using this project's `projectId` will stop working immediately.
+    </Warning>
+  </Accordion>
+
+  <Accordion title="How do I delete a team?">
+    To delete a team from your [Reown Dashboard](https://dashboard.reown.com/):
+
+    1. Open the **Team** dropdown at the top of the Dashboard and select the team you want to delete.
+
+    <Frame>
+      <img alt="Team dropdown in the Reown Dashboard" />
+    </Frame>
+
+    2. Navigate to the team **Settings** page.
+
+    3. Click the **Delete** button at the bottom of the settings page.
+
+    <Frame>
+      <img alt="Delete button on the team settings page" />
+    </Frame>
+
+    4. Type the name of the team to confirm and click **Delete**.
+
+    <Frame>
+      <img alt="Confirmation dialog to delete a team" />
+    </Frame>
+
+    <Warning>
+      Deleting a team is permanent and cannot be undone. All projects within the team will also be deleted, and any integrations using their `projectId` values will stop working immediately.
+    </Warning>
   </Accordion>
 
   <Accordion title="Error Codes">
@@ -15822,9 +15986,10 @@ Source: https://docs.reown.com/appkit/javascript/core/installation
 
 
 
-AppKit provides seamless integration with multiple blockchain ecosystems. . It supports [Wagmi](https://wagmi.sh/) and [Ethers v6](https://docs.ethers.org/v6/) on Ethereum,
-[@solana/web3.js](https://solana-labs.github.io/solana-web3.js/) on Solana, as well as Bitcoin, TON and other networks. AppKit Core with Universal Provider library, enable compatibility across any blockchain protocol.
-Choose one of these to get started.
+AppKit provides seamless integration with multiple blockchain ecosystems. It supports [Wagmi](https://wagmi.sh/) and [Ethers v6](https://docs.ethers.org/v6/) on Ethereum,
+[@solana/web3.js](https://solana-labs.github.io/solana-web3.js/) on Solana, as well as Bitcoin, TON, TRON and other networks.
+
+AppKit Core with [Universal Provider](https://www.npmjs.com/package/@walletconnect/universal-provider) library, enable compatibility across any blockchain protocol.
 
 <Note>
   We recommend using [Vite](https://vitejs.dev/guide/#scaffolding-your-first-vite-project) to get
@@ -15954,6 +16119,26 @@ Choose one of these to get started.
 
       ```bash pnpm theme={null}
       pnpm add @reown/appkit @reown/appkit-adapter-ton
+      ```
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="TRON">
+    <CodeGroup>
+      ```bash npm theme={null}
+      npm install @reown/appkit @reown/appkit-adapter-tron
+      ```
+
+      ```bash Yarn theme={null}
+      yarn add @reown/appkit @reown/appkit-adapter-tron
+      ```
+
+      ```bash Bun theme={null}
+      bun add @reown/appkit @reown/appkit-adapter-tron
+      ```
+
+      ```bash pnpm theme={null}
+      pnpm add @reown/appkit @reown/appkit-adapter-tron
       ```
     </CodeGroup>
   </Tab>
@@ -16411,6 +16596,221 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     openConnectModalBtn.addEventListener('click', () => modal.open())
     openNetworkModalBtn.addEventListener('click', () => modal.open({ view: 'Networks' }))
+    ```
+  </Tab>
+
+  <Tab title="TRON">
+    AppKit TRON is built on top of the AppKit library and provides a set of components and actions to easily connect TRON wallets with your decentralized application.
+
+    On top of your app set up the following configuration.
+
+    ```tsx theme={null}
+    // App.tsx
+    import { createAppKit } from '@reown/appkit'
+    import { TronAdapter } from '@reown/appkit-adapter-tron'
+    import { tronMainnet, tronShastaTestnet } from '@reown/appkit/networks'
+
+    // Import wallet adapters you want to support
+    import { TronLinkAdapter } from '@tronweb3/tronwallet-adapter-tronlink'
+
+    // 1. Get projectId from https://dashboard.reown.com
+    const projectId = 'YOUR_PROJECT_ID'
+
+    // 2. Set the networks
+    const networks = [tronMainnet, tronShastaTestnet]
+
+    // 3. Set up TRON Adapter with wallet adapters
+    const tronAdapter = new TronAdapter({
+      walletAdapters: [
+        new TronLinkAdapter({
+          openUrlWhenWalletNotFound: false,
+          checkTimeout: 3000
+        })
+      ]
+    })
+
+    // 4. Create a metadata object - optional
+    const metadata = {
+      name: 'AppKit',
+      description: 'AppKit TRON Example',
+      url: 'https://example.com', // origin must match your domain & subdomain
+      icons: ['https://avatars.githubusercontent.com/u/179229932']
+    }
+
+    // 5. Create modal
+    const modal = createAppKit({
+      adapters: [tronAdapter],
+      networks,
+      metadata,
+      projectId,
+      features: {
+        analytics: true, // Optional - defaults to your Dashboard configuration
+        email: false,
+        socials: []
+      }
+    })
+
+    // 6. Trigger modal programaticaly
+    const openConnectModalBtn = document.getElementById('open-connect-modal')
+    const openNetworkModalBtn = document.getElementById('open-network-modal')
+
+    openConnectModalBtn.addEventListener('click', () => modal.open())
+    openNetworkModalBtn.addEventListener('click', () => modal.open({ view: 'Networks' }))
+    ```
+
+    ## Install Wallet Adapters
+
+    TRON adapter requires you to install wallet adapters separately. This gives you control over which wallets to support and reduces bundle size.
+
+    <Tabs>
+      <Tab title="TronLink">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-tronlink
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-tronlink
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-tronlink
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-tronlink
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="MetaMask">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-metamask-tron
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-metamask-tron
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-metamask-tron
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-metamask-tron
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="Trust Wallet">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-trust
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-trust
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-trust
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-trust
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="OKX Wallet">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-okxwallet
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-okxwallet
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-okxwallet
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-okxwallet
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="BitKeep">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-bitkeep
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-bitkeep
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-bitkeep
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-bitkeep
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="Binance Wallet">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-binance
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-binance
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-binance
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-binance
+          ```
+        </CodeGroup>
+      </Tab>
+    </Tabs>
+
+    <Note>
+      For a complete list of available TRON wallet adapters, visit the [official wallet adapter documentation](https://walletadapter.org/docs/guide/wallet-reference.html).
+    </Note>
+
+    ### Using Multiple Wallet Adapters
+
+    After installing your desired wallet adapters, import and add them to the `walletAdapters` array when creating the TRON adapter:
+
+    ```tsx theme={null}
+    import { TronLinkAdapter } from '@tronweb3/tronwallet-adapter-tronlink'
+    import { MetaMaskAdapter } from '@tronweb3/tronwallet-adapter-metamask-tron'
+    import { TrustAdapter } from '@tronweb3/tronwallet-adapter-trust'
+    import { OkxWalletAdapter } from '@tronweb3/tronwallet-adapter-okxwallet'
+
+    const tronAdapter = new TronAdapter({
+      walletAdapters: [
+        new TronLinkAdapter({
+          openUrlWhenWalletNotFound: false,
+          checkTimeout: 3000
+        }),
+        new MetaMaskAdapter(),
+        new TrustAdapter(),
+        new OkxWalletAdapter({
+          openUrlWhenWalletNotFound: false
+        })
+      ]
+    })
     ```
   </Tab>
 
@@ -22052,8 +22452,10 @@ Source: https://docs.reown.com/appkit/next/core/installation
 
 
 
-AppKit provides seamless integration with multiple blockchain ecosystems. . It supports [Wagmi](https://wagmi.sh/) and [Ethers v6](https://docs.ethers.org/v6/) on Ethereum,
-[@solana/web3.js](https://solana-labs.github.io/solana-web3.js/) on Solana, as well as Bitcoin, TON and other networks. AppKit Core with Universal Provider library, enable compatibility across any blockchain protocol.
+AppKit provides seamless integration with multiple blockchain ecosystems. It supports [Wagmi](https://wagmi.sh/) and [Ethers v6](https://docs.ethers.org/v6/) on Ethereum,
+[@solana/web3.js](https://solana-labs.github.io/solana-web3.js/) on Solana, as well as Bitcoin, TON and other networks.
+
+AppKit Core with [Universal Provider](https://www.npmjs.com/package/@walletconnect/universal-provider) library, enable compatibility across any blockchain protocol.
 
 <Note>
   These steps are specific to [Next.js](https://nextjs.org/) app router. For other React frameworks
@@ -22062,9 +22464,9 @@ AppKit provides seamless integration with multiple blockchain ecosystems. . It s
 
 ## Installation
 
-**If you prefer referring to a video tutorial for this, please [click here](#video-tutorial).**
+If you prefer referring to a video tutorial for this, please [click here](#video-tutorial).
 
-**Setting up from scratch? → Try out the [AppKit CLI templates](#alternative-installation) or the [AI-assisted setup](#alternative-installation).**
+Setting up from scratch? Try out the [AppKit CLI templates](#alternative-installation) or the [AI-assisted setup](#alternative-installation).
 
 ## Custom Installation
 
@@ -35369,15 +35771,17 @@ Source: https://docs.reown.com/appkit/react/core/installation
 
 
 AppKit provides seamless integration with multiple blockchain ecosystems. It supports [Wagmi](https://wagmi.sh/) and [Ethers v6](https://docs.ethers.org/v6/) on Ethereum,
-[@solana/web3.js](https://solana-labs.github.io/solana-web3.js/) on Solana, as well as Bitcoin, TON and other networks. AppKit Core with Universal Provider library, enable compatibility across any blockchain protocol.
+[@solana/web3.js](https://solana-labs.github.io/solana-web3.js/) on Solana, as well as Bitcoin, TON, TRON and other networks.
+
+AppKit Core with [Universal Provider](https://www.npmjs.com/package/@walletconnect/universal-provider) library, enable compatibility across any blockchain protocol.
 
 Choose one of these to get started.
 
 ## Installation
 
-**If you prefer referring to a video tutorial for this, please [click here](#video-tutorial).**
+If you prefer referring to a video tutorial for this, please [click here](#video-tutorial).
 
-**Setting up from scratch? → Try out the [AppKit CLI templates](#alternative-installation) or the [AI-assisted setup](#alternative-installation).**
+Setting up from scratch? Try out the [AppKit CLI templates](#alternative-installation) or the [AI-assisted setup](#alternative-installation).
 
 ## Custom Installation
 
@@ -35509,6 +35913,26 @@ Choose one of these to get started.
     </CodeGroup>
   </Tab>
 
+  <Tab title="TRON">
+    <CodeGroup>
+      ```bash npm theme={null}
+      npm install @reown/appkit @reown/appkit-adapter-tron
+      ```
+
+      ```bash Yarn theme={null}
+      yarn add @reown/appkit @reown/appkit-adapter-tron
+      ```
+
+      ```bash Bun theme={null}
+      bun add @reown/appkit @reown/appkit-adapter-tron
+      ```
+
+      ```bash pnpm theme={null}
+      pnpm add @reown/appkit @reown/appkit-adapter-tron
+      ```
+    </CodeGroup>
+  </Tab>
+
   <Tab title="Others networks (AppKit Core)">
     <CodeGroup>
       ```bash npm theme={null}
@@ -35540,30 +35964,56 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
 ## Implementation
 
-### `AppKitProvider` Component
+AppKit providers two different approaches on React to initialize it.
 
-AppKit now provides an `AppKitProvider` React component for easy integration in React applications. This component wraps your app and provides the AppKit context to all child components.
+<Tabs>
+  <Tab title="AppKitProvider">
+    Use `AppKitProvider` React component for easy integration in React applications. This component wraps your app and provides the AppKit context to all child components.
 
-```tsx theme={null}
-import { AppKitProvider } from '@reown/appkit/react'
+    ```tsx theme={null}
+    import { AppKitProvider } from '@reown/appkit/react'
 
-function App() {
-  return (
-    <AppKitProvider
-      projectId="YOUR_PROJECT_ID"
-      networks={
-        [
-          /* Your Networks */
-        ]
-      }
-    >
-      {/* Your App */}
-    </AppKitProvider>
-  )
-}
-```
+    function App() {
+      return (
+        <AppKitProvider
+          projectId="YOUR_PROJECT_ID"
+          networks={
+            [
+              /* Your Networks */
+            ]
+          }
+        >
+          {/* Your App */}
+        </AppKitProvider>
+      )
+    }
+    ```
+  </Tab>
 
-### Framework Specific Implementation
+  <Tab title="createAppKit">
+    Use `createAppKit` method from `@reown/appkit/react` to initialize AppKit instance and call it on the root of your application with desired parameters depending on your use case.
+
+    ```tsx theme={null}
+    import { createAppKit } from '@reown/appkit/react'
+
+    createAppKit({
+      networks: [
+        /* Your networks */
+      ],
+      adapters: [
+        /* Your adapters */
+      ],
+      ...appKitProps
+    })
+
+    function App() {
+      return <>{children}</>
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Adapter Configuration
 
 <Tabs>
   <Tab title="Wagmi">
@@ -36004,6 +36454,218 @@ function App() {
     export default function App() {
       return <YourApp />
     }
+    ```
+  </Tab>
+
+  <Tab title="TRON">
+    AppKit TRON provides a set of React components and hooks to easily connect TRON wallets with your application.
+
+    On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
+
+    ```tsx theme={null}
+    // App.tsx
+    import { createAppKit } from '@reown/appkit/react'
+    import { TronAdapter } from '@reown/appkit-adapter-tron'
+    import { tronMainnet, tronShastaTestnet } from '@reown/appkit/networks'
+
+    // Import wallet adapters you want to support
+    import { TronLinkAdapter } from '@tronweb3/tronwallet-adapter-tronlink'
+
+    // 1. Get projectId from https://dashboard.reown.com
+    const projectId = 'YOUR_PROJECT_ID'
+
+    // 2. Set the networks
+    const networks = [tronMainnet, tronShastaTestnet]
+
+    // 3. Set up TRON Adapter with wallet adapters
+    const tronAdapter = new TronAdapter({
+      walletAdapters: [
+        new TronLinkAdapter({
+          openUrlWhenWalletNotFound: false,
+          checkTimeout: 3000
+        })
+      ]
+    })
+
+    // 4. Create a metadata object - optional
+    const metadata = {
+      name: 'AppKit',
+      description: 'AppKit TRON Example',
+      url: 'https://example.com', // origin must match your domain & subdomain
+      icons: ['https://avatars.githubusercontent.com/u/179229932']
+    }
+
+    // 5. Create modal
+    createAppKit({
+      adapters: [tronAdapter],
+      networks,
+      metadata,
+      projectId,
+      features: {
+        analytics: true, // Optional - defaults to your Dashboard configuration
+        email: false,
+        socials: []
+      }
+    })
+
+    export default function App() {
+      return <YourApp />
+    }
+    ```
+
+    ## Install Wallet Adapters
+
+    TRON adapter requires you to install wallet adapters separately. This gives you control over which wallets to support and reduces bundle size.
+
+    <Tabs>
+      <Tab title="TronLink">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-tronlink
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-tronlink
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-tronlink
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-tronlink
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="MetaMask">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-metamask-tron
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-metamask-tron
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-metamask-tron
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-metamask-tron
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="Trust Wallet">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-trust
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-trust
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-trust
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-trust
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="OKX Wallet">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-okxwallet
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-okxwallet
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-okxwallet
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-okxwallet
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="BitKeep">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-bitkeep
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-bitkeep
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-bitkeep
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-bitkeep
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="Binance Wallet">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-binance
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-binance
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-binance
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-binance
+          ```
+        </CodeGroup>
+      </Tab>
+    </Tabs>
+
+    <Note>
+      For a complete list of available TRON wallet adapters, visit the [official wallet adapter documentation](https://walletadapter.org/docs/guide/wallet-reference.html).
+    </Note>
+
+    ### Using Multiple Wallet Adapters
+
+    After installing your desired wallet adapters, import and add them to the `walletAdapters` array when creating the TRON adapter:
+
+    ```tsx theme={null}
+    import { TronLinkAdapter } from '@tronweb3/tronwallet-adapter-tronlink'
+    import { MetaMaskAdapter } from '@tronweb3/tronwallet-adapter-metamask-tron'
+    import { TrustAdapter } from '@tronweb3/tronwallet-adapter-trust'
+    import { OkxWalletAdapter } from '@tronweb3/tronwallet-adapter-okxwallet'
+
+    const tronAdapter = new TronAdapter({
+      walletAdapters: [
+        new TronLinkAdapter({
+          openUrlWhenWalletNotFound: false,
+          checkTimeout: 3000
+        }),
+        new MetaMaskAdapter(),
+        new TrustAdapter(),
+        new OkxWalletAdapter({
+          openUrlWhenWalletNotFound: false
+        })
+      ]
+    })
     ```
   </Tab>
 
@@ -52420,7 +53082,7 @@ Source: https://docs.reown.com/appkit/vue/core/installation
 
 ## Introduction
 
-AppKit has support for [Wagmi](https://wagmi.sh/) and [Ethers v6](https://docs.ethers.org/v6/) on Ethereum, [@solana/web3.js](https://solana-labs.github.io/solana-web3.js/) on Solana, Bitcoin and TON.
+AppKit has support for [Wagmi](https://wagmi.sh/) and [Ethers v6](https://docs.ethers.org/v6/) on Ethereum, [@solana/web3.js](https://solana-labs.github.io/solana-web3.js/) on Solana, Bitcoin, TON and TRON.
 Choose one of these to get started.
 
 ## Installation
@@ -52546,6 +53208,26 @@ Choose one of these to get started.
 
       ```bash pnpm theme={null}
       pnpm add @reown/appkit @reown/appkit-adapter-ton
+      ```
+    </CodeGroup>
+  </Tab>
+
+  <Tab title="TRON">
+    <CodeGroup>
+      ```bash npm theme={null}
+      npm install @reown/appkit @reown/appkit-adapter-tron
+      ```
+
+      ```bash Yarn theme={null}
+      yarn add @reown/appkit @reown/appkit-adapter-tron
+      ```
+
+      ```bash Bun theme={null}
+      bun add @reown/appkit @reown/appkit-adapter-tron
+      ```
+
+      ```bash pnpm theme={null}
+      pnpm add @reown/appkit @reown/appkit-adapter-tron
       ```
     </CodeGroup>
   </Tab>
@@ -53001,6 +53683,220 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
     </script>
 
     <template> // Rest of your app ... </template>
+    ```
+  </Tab>
+
+  <Tab title="TRON">
+    AppKit TRON provides a set of Vue components and composables to easily connect TRON wallets with your application.
+
+    On top of your app set up the following configuration, making sure that all functions are called outside any Vue component to avoid unwanted rerenders.
+
+    In your `App.vue` file set up the following configuration.
+
+    ```tsx theme={null}
+    <script setup lang="ts">
+
+    import { createAppKit } from '@reown/appkit/vue'
+    import { TronAdapter } from '@reown/appkit-adapter-tron'
+    import { tronMainnet, tronShastaTestnet } from '@reown/appkit/networks'
+
+    // Import wallet adapters you want to support
+    import { TronLinkAdapter } from '@tronweb3/tronwallet-adapter-tronlink'
+
+    // 1. Get projectId from https://dashboard.reown.com
+    const projectId = 'YOUR_PROJECT_ID'
+
+    // 2. Set the networks
+    const networks = [tronMainnet, tronShastaTestnet]
+
+    // 3. Set up TRON Adapter with wallet adapters
+    const tronAdapter = new TronAdapter({
+      walletAdapters: [
+        new TronLinkAdapter({
+          openUrlWhenWalletNotFound: false,
+          checkTimeout: 3000
+        })
+      ]
+    })
+
+    // 4. Create a metadata object - optional
+    const metadata = {
+      name: 'AppKit',
+      description: 'AppKit TRON Example',
+      url: 'https://example.com', // origin must match your domain & subdomain
+      icons: ['https://avatars.githubusercontent.com/u/179229932']
+    }
+
+    // 5. Create modal
+    createAppKit({
+      adapters: [tronAdapter],
+      networks,
+      metadata,
+      projectId,
+      features: {
+        analytics: true, // Optional - defaults to your Cloud configuration
+        email: false,
+        socials: []
+      }
+    })
+    </script>
+
+    <template> // Rest of your app ... </template>
+    ```
+
+    ## Install Wallet Adapters
+
+    TRON adapter requires you to install wallet adapters separately. This gives you control over which wallets to support and reduces bundle size.
+
+    <Tabs>
+      <Tab title="TronLink">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-tronlink
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-tronlink
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-tronlink
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-tronlink
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="MetaMask">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-metamask-tron
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-metamask-tron
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-metamask-tron
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-metamask-tron
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="Trust Wallet">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-trust
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-trust
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-trust
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-trust
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="OKX Wallet">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-okxwallet
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-okxwallet
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-okxwallet
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-okxwallet
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="BitKeep">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-bitkeep
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-bitkeep
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-bitkeep
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-bitkeep
+          ```
+        </CodeGroup>
+      </Tab>
+
+      <Tab title="Binance Wallet">
+        <CodeGroup>
+          ```bash npm theme={null}
+          npm install @tronweb3/tronwallet-adapter-binance
+          ```
+
+          ```bash Yarn theme={null}
+          yarn add @tronweb3/tronwallet-adapter-binance
+          ```
+
+          ```bash Bun theme={null}
+          bun add @tronweb3/tronwallet-adapter-binance
+          ```
+
+          ```bash pnpm theme={null}
+          pnpm add @tronweb3/tronwallet-adapter-binance
+          ```
+        </CodeGroup>
+      </Tab>
+    </Tabs>
+
+    <Note>
+      For a complete list of available TRON wallet adapters, visit the [official wallet adapter documentation](https://walletadapter.org/docs/guide/wallet-reference.html).
+    </Note>
+
+    ### Using Multiple Wallet Adapters
+
+    After installing your desired wallet adapters, import and add them to the `walletAdapters` array when creating the TRON adapter:
+
+    ```tsx theme={null}
+    import { TronLinkAdapter } from '@tronweb3/tronwallet-adapter-tronlink'
+    import { MetaMaskAdapter } from '@tronweb3/tronwallet-adapter-metamask-tron'
+    import { TrustAdapter } from '@tronweb3/tronwallet-adapter-trust'
+    import { OkxWalletAdapter } from '@tronweb3/tronwallet-adapter-okxwallet'
+
+    const tronAdapter = new TronAdapter({
+      walletAdapters: [
+        new TronLinkAdapter({
+          openUrlWhenWalletNotFound: false,
+          checkTimeout: 3000
+        }),
+        new MetaMaskAdapter(),
+        new TrustAdapter(),
+        new OkxWalletAdapter({
+          openUrlWhenWalletNotFound: false
+        })
+      ]
+    })
     ```
   </Tab>
 </Tabs>

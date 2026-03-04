@@ -144,7 +144,7 @@ where
 /// Matches the TypeScript `UserProfile` interface in `src/types/backend.ts`.
 /// Document key: user's principal ID (text).
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct UserProfile {
     /// User's principal ID
     #[serde(default)]
@@ -183,19 +183,11 @@ pub struct UserProfile {
     pub wallet_proof: Option<String>,
 
     /// Signature for verification (optional, used during linking)
-    #[serde(
-        default,
-        rename = "verification_signature",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub verification_signature: Option<String>,
 
     /// Message signed (optional, used during linking)
-    #[serde(
-        default,
-        rename = "verification_message",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub verification_message: Option<String>,
 
     /// Withdrawal address
@@ -209,24 +201,19 @@ pub struct UserProfile {
     /// Epoch ms timestamp until user is banned. None = not banned.
     #[serde(
         default,
-        rename = "banned_until",
         skip_serializing_if = "Option::is_none",
         deserialize_with = "deserialize_flexible_option_u64"
     )]
     pub banned_until: Option<u64>,
 
     /// Cumulative cheat detection count. Escalates ban duration.
-    #[serde(
-        default,
-        rename = "offence_count",
-        deserialize_with = "deserialize_flexible_u64"
-    )]
+    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
     pub offence_count: u64,
 }
 
 /// Nested stats object matching TypeScript `stats` field
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub struct UserStats {
     #[serde(default, deserialize_with = "deserialize_flexible_u64")]
     pub high_score: u64,
@@ -239,8 +226,8 @@ pub struct UserStats {
 }
 
 /// Nested wallet object matching TypeScript `wallet` field
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub struct UserWallet {
     #[serde(default, deserialize_with = "deserialize_flexible_u64")]
     pub balance: u64,
@@ -249,14 +236,14 @@ pub struct UserWallet {
 }
 
 /// Nested preferences object matching TypeScript `preferences` field
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[serde(rename_all = "snake_case")]
 pub struct UserPreferences {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub avatar_url: Option<String>,
     #[serde(default = "default_theme")]
     pub theme: String,
-    #[serde(default, rename = "has_read_instructions")]
+    #[serde(default)]
     pub has_read_instructions: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub narration: Option<bool>,
@@ -281,14 +268,14 @@ fn default_theme() -> String {
 }
 
 // =============================================================================
-// Leaderboard Entry (stored in "leaderboard" collection)
+// Leaderboard Entry (stored in "scores" collection)
 // =============================================================================
 
 /// Sanitized public leaderboard entry.
 /// Contains only non-sensitive data: nickname and game stats.
 /// Written by the `on_set_doc("users")` hook whenever a user profile is saved.
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct LeaderboardEntry {
     pub nickname: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -318,16 +305,20 @@ pub struct LeaderboardEntry {
 }
 
 // =============================================================================
-// Global Stats (stored in "stats" collection)
+// Global Stats (stored in "economy" collection)
 // =============================================================================
 
 /// Aggregate burn and payout statistics.
 /// Single document with key "global", written by satellite hooks.
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct GlobalStats {
     #[serde(default, deserialize_with = "deserialize_flexible_u64")]
     pub total_fees: u64,
+    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
+    pub total_earned: u64,
+    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
+    pub total_collected: u64,
     #[serde(default, deserialize_with = "deserialize_flexible_u64")]
     pub total_burned: u64,
     #[serde(default, deserialize_with = "deserialize_flexible_u64")]
@@ -339,7 +330,7 @@ pub struct GlobalStats {
 // =============================================================================
 
 /// Fee request for verification
-/// Document key: EVM transaction hash
+/// Document key: "fee_" + EVM transaction hash
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct FeeRequest {
     /// EVM transaction hash
@@ -351,6 +342,10 @@ pub struct FeeRequest {
 
     /// Current status of the fee
     pub status: FeeStatus,
+
+    /// Block explorer URL — optional, sent by frontend for debugging
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tx_url: Option<String>,
 
     /// Timestamp when verified (if verified)
     #[serde(
@@ -433,7 +428,7 @@ pub enum ClaimStatus {
 /// Game session data for validation
 /// Document key: session UUID
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct GameSession {
     /// When the session started (Unix timestamp ms)
     #[serde(deserialize_with = "deserialize_flexible_u64")]
@@ -496,4 +491,54 @@ pub enum RefreshStatus {
     Pending,
     Completed,
     Failed,
+}
+
+// =============================================================================
+// Error Record (stored in "errors" collection)
+// =============================================================================
+
+/// Full error record stored server-side.
+/// `error_id` doubles as the Juno document key (format: `err_{now_ns}`).
+/// It is the only code shown to the user and is directly filterable in the admin panel.
+/// `raw_error` is never returned to non-admin callers.
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct ErrorRecord {
+    /// Unique error ID that is also the Juno document key.
+    /// Format: "err_{nanosecond_timestamp}", e.g. "err_1772598984825320076".
+    /// Shown to the user so they can give it to support; devs filter by this in admin.
+    pub error_id: String,
+
+    /// Frontend component that triggered the error, e.g. "WalletManager".
+    pub component: String,
+
+    /// Friendly message safe to show to the user.
+    pub message: String,
+
+    /// Full technical error details — never shown to users.
+    pub raw_error: String,
+
+    /// Caller's ICP principal text (empty string for unauthenticated callers).
+    pub principal: String,
+
+    /// Network environment: "anvil", "testnet", or "mainnet".
+    pub environment: String,
+
+    /// Unix epoch milliseconds when the error was recorded.
+    #[serde(deserialize_with = "deserialize_flexible_u64")]
+    pub timestamp_ms: u64,
+
+    /// Whether the error has been reviewed and resolved by an admin.
+    #[serde(default)]
+    pub resolved: bool,
+}
+
+/// Payload sent by the client when reporting an error.
+/// The satellite generates the `error_id` and `timestamp_ms` server-side.
+#[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct ErrorPayload {
+    pub component: String,
+    pub message: String,
+    pub raw_error: String,
 }

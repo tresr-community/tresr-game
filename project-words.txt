@@ -30,6 +30,7 @@ WCAG
 Waaaaaaa
 adist
 alltime
+anticheat
 alnum
 amannn
 anims
@@ -50,12 +51,15 @@ cachix
 caip
 camerafadeoutcomplete
 cano
+cbor
 cdylib
 cheatcode
 chibi
 cmyk
+codegen
 codescanning
 compl
+conne
 configur
 consolation
 convco
@@ -97,10 +101,13 @@ ethe
 exte
 extname
 fanfic
+launchericon
 ffset
 filecom
 filecomplete
 frontmatter
+fuser
+gatekeep
 gify
 giga
 giphy
@@ -126,6 +133,7 @@ johnpapa
 junobuild
 keccak
 knockback
+lightunplated
 libopus
 libsecp
 libwebp
@@ -213,6 +221,7 @@ thumbsup
 tilemaps
 timelock
 timonwong
+tlnp
 topup
 trivy
 tuxtina
@@ -233,6 +242,9 @@ wakatime
 webauthn
 webp
 webps
+webfonts
 yoyo
 yzhang
-oller
+ollerinpaint
+inpaint
+inpainted

@@ -9,6 +9,7 @@
  *   --calc       Analyse sprite sheets and display frame dimensions
  *   --cut        Cut multi-row sprite sheets into per-animation strips
  *   --chromakey  Remove green screen (#00FF00) background → transparent PNG
+ *   --repair     Fix transparency holes from aggressive chromakey
  *   --shrink     Downscale oversized sprite sheets to target frame size
  *   --help       Show this help message
  *
@@ -105,6 +106,10 @@ function scanSources(): SpriteEntry[] {
       if (ext !== ".png" && ext !== ".jpg" && ext !== ".jpeg") continue;
 
       const action = path.basename(file, ext);
+
+      // Skip still images — they're style seeds, not animation sheets
+      if (action === "still") continue;
+
       const destPath = path.join(destBase, entity.name, `${action}.webp`);
 
       entries.push({
@@ -587,8 +592,8 @@ async function runChromaKey(): Promise<void> {
   const GREEN_R = 0;
   const GREEN_G = 255;
   const GREEN_B = 0;
-  const TOLERANCE_INNER = 60; // Below this distance: fully transparent
-  const TOLERANCE_OUTER = 120; // Between inner and outer: soft alpha blend
+  const TOLERANCE_INNER = 160; // Below this distance: fully transparent
+  const TOLERANCE_OUTER = 220; // Between inner and outer: soft alpha blend
 
   let processed = 0;
   let skipped = 0;
@@ -895,6 +900,352 @@ async function runShrink(targetSize: number) {
 }
 
 // ═════════════════════════════════════════════════════════════════════
+// MODE: --flatten
+// ═════════════════════════════════════════════════════════════════════
+
+async function runFlatten(filePath: string) {
+  console.log();
+  info(
+    `${c.bold}${c.magenta}Flatten Grid${c.reset} ${c.dim}(--flatten ${filePath})${c.reset}`
+  );
+  divider();
+
+  if (!fs.existsSync(filePath)) {
+    fail(`File not found: ${filePath}`);
+    process.exit(1);
+  }
+
+  // Determine entity and action from path
+  const parts = path.resolve(filePath).split(path.sep);
+  const fileName = parts.pop() || "";
+  const entityDir = parts.pop() || "";
+  const ext = path.extname(fileName);
+  const action = path.basename(fileName, ext);
+
+  // Load config to find expected frames
+  const configPath = join(projectRoot, "config", "tresr.yaml");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const config = load(fs.readFileSync(configPath, "utf8")) as any;
+  if (!config?.client?.sprites) {
+    fail("Sprites configuration not found in config/tresr.yaml");
+    process.exit(1);
+  }
+
+  const sprites = config.client.sprites;
+  let expectedFrames = 0;
+
+  const findFrames = (anims: {name: string; frames: number}[] | undefined) => {
+    if (!anims) return;
+    const a = anims.find((a) => a.name === action);
+    if (a) expectedFrames = a.frames;
+  };
+
+  if (entityDir === "hero") findFrames(sprites.hero?.anims);
+  else if (entityDir === "boss") findFrames(sprites.boss?.anims);
+  else if (entityDir === "tresr_bot") findFrames(sprites.tresr_bot?.anims);
+  else if (entityDir === "super") findFrames(sprites.super?.anims);
+  else if (entityDir.startsWith("enemy_")) findFrames(sprites.enemies?.anims);
+  else if (sprites.items && sprites.items[entityDir])
+    findFrames(sprites.items[entityDir].anims);
+
+  if (!expectedFrames) {
+    fail(
+      `Could not determine expected frames for ${entityDir}/${action} in tresr.yaml`
+    );
+    process.exit(1);
+  }
+
+  // Determine grid layout based on frames
+  const rows = 2;
+  const cols = expectedFrames <= 4 ? 2 : 3;
+
+  try {
+    const data = fs.readFileSync(filePath);
+
+    // We might have a JPG or PNG. Sharp is better for converting and resampling
+    const image = sharp(data);
+    const metadata = await image.metadata();
+
+    if (!metadata.width || !metadata.height) {
+      fail(`Could not read dimensions for ${filePath}`);
+      return;
+    }
+
+    // AI outputs `--aspect 1:1` for sprite sheets (2x2 or 2x3 grids).
+    // Flattened sprites will have a very wide aspect ratio (e.g., 4:1, 5:1, 6:1).
+    const aspectRatio = metadata.width / metadata.height;
+    if (aspectRatio > 3.0) {
+      // If wide, it's already a single row
+      ok(
+        `Image is already flattened (aspect ratio ${aspectRatio.toFixed(2)}). Skipping.`
+      );
+      return;
+    }
+
+    const cellW = Math.floor(metadata.width / cols);
+    const cellH = Math.floor(metadata.height / rows);
+
+    info(
+      `Flattening ${metadata.width}x${metadata.height} image into 1x${expectedFrames} strip using ${cols}x${rows} grid (${cellW}x${cellH} per cell)`
+    );
+
+    // Ensure RGBA PNG buffer for slicing
+    const {data: rawData, info: rawInfo} = await image
+      .ensureAlpha()
+      .raw()
+      .toBuffer({resolveWithObject: true});
+
+    const src = new PNG({width: rawInfo.width, height: rawInfo.height});
+    rawData.copy(src.data);
+
+    // Create a new wide PNG
+    const newW = cellW * expectedFrames;
+    const newH = cellH;
+    const dst = new PNG({width: newW, height: newH});
+
+    // We fill the new image with solid green background (#00FF00)
+    for (let i = 0; i < dst.data.length; i += 4) {
+      dst.data[i] = 0;
+      dst.data[i + 1] = 255;
+      dst.data[i + 2] = 0;
+      dst.data[i + 3] = 255;
+    }
+
+    let frameIdx = 0;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        if (frameIdx >= expectedFrames) break;
+
+        const srcX = c * cellW;
+        const srcY = r * cellH;
+        const dstX = frameIdx * cellW;
+        const dstY = 0;
+
+        // Copy this cell into the destination strip
+        for (let y = 0; y < cellH; y++) {
+          for (let x = 0; x < cellW; x++) {
+            const actualSrcX = srcX + x;
+            const actualSrcY = srcY + y;
+            const actualDstX = dstX + x;
+            const actualDstY = dstY + y;
+
+            if (actualSrcX < src.width && actualSrcY < src.height) {
+              const srcIdx = (src.width * actualSrcY + actualSrcX) << 2;
+              const dstIdx = (dst.width * actualDstY + actualDstX) << 2;
+              src.data.copy(dst.data, dstIdx, srcIdx, srcIdx + 4);
+            }
+          }
+        }
+        frameIdx++;
+      }
+    }
+
+    // Output flattened PNG back to disk (overwriting), even if original was JPG
+    const pngBuffer = PNG.sync.write(dst);
+
+    const targetPath = filePath.replace(/\.jpg|\.jpeg/i, ".png");
+    fs.writeFileSync(targetPath + ".tmp", pngBuffer);
+    fs.renameSync(targetPath + ".tmp", targetPath);
+
+    if (filePath !== targetPath) {
+      fs.unlinkSync(filePath); // delete original JPG
+    }
+
+    ok(`Flattened to ${newW}x${newH}`);
+  } catch (err) {
+    fail(
+      `Error flattening: ${err instanceof Error ? err.message : String(err)}`
+    );
+    process.exit(1);
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════
+// MODE: --repair
+// ═════════════════════════════════════════════════════════════════════
+
+/**
+ * Repair sprites damaged by overly aggressive chromakey.
+ *
+ * Pass 1 — Restore semi-transparent pixels: any pixel with 0 < alpha < 255
+ *          has its alpha set to 255. These are character pixels (suits, skin)
+ *          that got caught in the chromakey edge zone but still retain colour.
+ *
+ * Pass 2 — Inpaint interior holes: fully transparent pixels (alpha=0) that
+ *          are surrounded by enough opaque neighbours get filled by averaging
+ *          those neighbours. Runs multiple iterations to close larger gaps.
+ *
+ * Files are overwritten in-place (assets-source PNGs).
+ */
+async function runRepair(): Promise<void> {
+  console.log();
+  info(
+    `${c.bold}${c.magenta}Repair Sprites${c.reset} ${c.dim}(--repair)${c.reset}`
+  );
+  divider();
+
+  const spritesRoot = path.join(projectRoot, "assets-source/images/sprites");
+
+  if (!fs.existsSync(spritesRoot)) {
+    warn(`Sprites directory not found: ${spritesRoot}`);
+    return;
+  }
+
+  // Collect PNG files (same scan as chromakey)
+  const files: {entity: string; filePath: string; baseName: string}[] = [];
+  const entities = fs.readdirSync(spritesRoot, {withFileTypes: true});
+
+  for (const entity of entities) {
+    if (!entity.isDirectory()) continue;
+    const entityDir = path.join(spritesRoot, entity.name);
+    const items = fs.readdirSync(entityDir);
+
+    for (const item of items) {
+      const ext = path.extname(item).toLowerCase();
+      if (ext !== ".png") continue;
+
+      const baseName = path.basename(item, ext);
+      if (baseName === "still") continue;
+
+      files.push({
+        entity: entity.name,
+        filePath: path.join(entityDir, item),
+        baseName,
+      });
+    }
+  }
+
+  if (files.length === 0) {
+    warn("No PNG sprite sheets found to repair.");
+    return;
+  }
+
+  info(`Found ${files.length} sprite sheet(s) to repair`);
+
+  // Minimum opaque neighbours (out of 8) required to inpaint a hole pixel
+  const MIN_OPAQUE_NEIGHBOURS = 3;
+  // Number of inpaint iterations (each pass fills one pixel ring inward)
+  const INPAINT_PASSES = 6;
+
+  let repaired = 0;
+  let skipped = 0;
+  let failed = 0;
+
+  for (const file of files) {
+    const label = `${file.entity}/${path.basename(file.filePath)}`;
+
+    try {
+      const image = sharp(file.filePath);
+      const {data, info: rawInfo} = await image
+        .ensureAlpha()
+        .raw()
+        .toBuffer({resolveWithObject: true});
+
+      const width = rawInfo.width;
+      const height = rawInfo.height;
+      const pixels = new Uint8Array(data.buffer, data.byteOffset, data.length);
+
+      let restoredSemiTransparent = 0;
+      let inpaintedHoles = 0;
+
+      // ── Pass 1: Restore semi-transparent pixels ──────────────────
+      for (let i = 0; i < pixels.length; i += 4) {
+        const a = pixels[i + 3];
+        if (a > 0 && a < 255) {
+          pixels[i + 3] = 255;
+          restoredSemiTransparent++;
+        }
+      }
+
+      // ── Pass 2: Inpaint interior holes ───────────────────────────
+      // Neighbour offsets (8-connected)
+      const dx = [-1, 0, 1, -1, 1, -1, 0, 1];
+      const dy = [-1, -1, -1, 0, 0, 1, 1, 1];
+
+      for (let pass = 0; pass < INPAINT_PASSES; pass++) {
+        let filled = 0;
+        // Snapshot alpha so we don't chain-react within a single pass
+        const alphaSnap = new Uint8Array(width * height);
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            alphaSnap[y * width + x] = pixels[(y * width + x) * 4 + 3];
+          }
+        }
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const idx = (y * width + x) * 4;
+            if (alphaSnap[y * width + x] > 0) continue; // already opaque
+
+            // Count opaque neighbours and accumulate their colours
+            let opaqueCount = 0;
+            let sumR = 0,
+              sumG = 0,
+              sumB = 0;
+
+            for (let d = 0; d < 8; d++) {
+              const nx = x + dx[d];
+              const ny = y + dy[d];
+              if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+              if (alphaSnap[ny * width + nx] === 255) {
+                const ni = (ny * width + nx) * 4;
+                sumR += pixels[ni];
+                sumG += pixels[ni + 1];
+                sumB += pixels[ni + 2];
+                opaqueCount++;
+              }
+            }
+
+            if (opaqueCount >= MIN_OPAQUE_NEIGHBOURS) {
+              pixels[idx] = Math.round(sumR / opaqueCount);
+              pixels[idx + 1] = Math.round(sumG / opaqueCount);
+              pixels[idx + 2] = Math.round(sumB / opaqueCount);
+              pixels[idx + 3] = 255;
+              filled++;
+            }
+          }
+        }
+
+        inpaintedHoles += filled;
+        if (filled === 0) break; // no more holes to fill
+      }
+
+      const totalFixed = restoredSemiTransparent + inpaintedHoles;
+
+      if (totalFixed === 0) {
+        info(`${label} — no damage detected, skipping`);
+        skipped++;
+        continue;
+      }
+
+      // Write back in-place
+      await sharp(Buffer.from(pixels.buffer), {
+        raw: {width, height, channels: 4},
+      })
+        .png({compressionLevel: 9})
+        .toFile(file.filePath + ".tmp");
+
+      fs.renameSync(file.filePath + ".tmp", file.filePath);
+
+      ok(
+        `${label} — restored ${restoredSemiTransparent} semi-transparent + inpainted ${inpaintedHoles} holes`
+      );
+      repaired++;
+    } catch (err) {
+      fail(`${label}: ${err instanceof Error ? err.message : String(err)}`);
+      failed++;
+    }
+  }
+
+  divider();
+  info(
+    `Done: ${c.green}${repaired} repaired${c.reset}, ${skipped} skipped${failed > 0 ? `, ${c.red}${failed} failed${c.reset}` : ""}`
+  );
+
+  if (failed > 0) process.exit(1);
+}
+
+// ═════════════════════════════════════════════════════════════════════
 // HELP
 // ═════════════════════════════════════════════════════════════════════
 
@@ -907,7 +1258,9 @@ ${c.bold}Usage:${c.reset}
   bun run bin/sprites.ts ${c.bold}--check${c.reset}      Verify all sources have WebP counterparts
   bun run bin/sprites.ts ${c.bold}--calc${c.reset}       Analyse sprite sheets and display frame dimensions
   bun run bin/sprites.ts ${c.bold}--cut${c.reset}        Cut multi-row sheets into per-animation strips
+  bun run bin/sprites.ts ${c.bold}--flatten${c.reset}    Restructure a 2x2 or 2x3 grid image into a 1xN strip
   bun run bin/sprites.ts ${c.bold}--chromakey${c.reset}  Remove #00FF00 green background → transparent PNG
+  bun run bin/sprites.ts ${c.bold}--repair${c.reset}     Fix transparency holes from aggressive chromakey
   bun run bin/sprites.ts ${c.bold}--shrink${c.reset}     Downscale oversized sprite sheets (default target: 512px)
   bun run bin/sprites.ts ${c.bold}--help${c.reset}       Show this help message
 
@@ -938,8 +1291,17 @@ if (args.includes("--convert")) {
   await runCalc();
 } else if (args.includes("--cut")) {
   runCut();
+} else if (args.includes("--flatten")) {
+  const filePath = args[args.indexOf("--flatten") + 1];
+  if (!filePath) {
+    fail("Missing file path for --flatten");
+    process.exit(1);
+  }
+  await runFlatten(filePath);
 } else if (args.includes("--chromakey")) {
   await runChromaKey();
+} else if (args.includes("--repair")) {
+  await runRepair();
 } else if (args.includes("--shrink")) {
   const targetIdx = args.indexOf("--target");
   const target =

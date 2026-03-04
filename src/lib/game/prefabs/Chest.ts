@@ -60,7 +60,8 @@ export class Chest extends BaseEntity {
         this.scene.events.emit("game_win");
       });
     } else {
-      this.setTint(0x00ff00);
+      const chestConfig = this.config.gameplay.entities.chest;
+      this.setTint(chestConfig.fallback_tint || 0x00ff00);
       this.scene.events.emit("game_win");
     }
     return true;

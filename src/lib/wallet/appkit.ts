@@ -10,6 +10,7 @@
 import {createAppKit, type AppKit} from "@reown/appkit";
 import {WagmiAdapter} from "@reown/appkit-adapter-wagmi";
 import {defineChain} from "@reown/appkit/networks";
+import {http, fallback} from "viem";
 import type {Config} from "@wagmi/core";
 import {config} from "../config/client";
 import {getEnvironmentKey} from "../config/constants";
@@ -49,7 +50,7 @@ function getTargetNetwork() {
       symbol: "AVAX",
     },
     rpcUrls: {
-      default: {http: [chainConfig.rpc_urls[0]]},
+      default: {http: [...chainConfig.rpc_urls]},
     },
   });
 }
@@ -76,25 +77,42 @@ export function getAppKit(): AppKit {
 
   log.info(COMPONENT_NAME, `Initializing for chain ${targetNetwork.id}...`);
 
+  const env = getEnvironmentKey();
+  const chainConfig = config.blockchain.avalanche[env];
+
   // Create Wagmi adapter
   wagmiAdapterInstance = new WagmiAdapter({
     projectId: WALLETCONNECT_PROJECT_ID,
     networks,
+    transports: {
+      [targetNetwork.id]: fallback(
+        chainConfig.rpc_urls.map((url) => http(url))
+      ),
+    },
   });
 
-  // Application metadata
+  // Application metadata — URL must come from per-environment blockchain config
+  // so that WalletConnect metadata.url matches the actual page origin.
+  const appUrl = chainConfig.url;
+  if (!appUrl) {
+    throw new Error(
+      `Missing blockchain.avalanche.${env}.url in config. ` +
+        "Each environment must specify its dApp URL for WalletConnect metadata."
+    );
+  }
+
+  if (!config.app.name) {
+    throw new Error("Missing required config value: app.name");
+  }
+  if (!config.app.description) {
+    throw new Error("Missing required config value: app.description");
+  }
+
   const metadata = {
-    name: "TRESR Game",
-    description: "Decentralized treasure hunting game on Avalanche",
-    url:
-      typeof window !== "undefined"
-        ? window.location.origin
-        : "https://tresr.game",
-    icons: [
-      typeof window !== "undefined"
-        ? `${window.location.origin}/favicon.ico`
-        : "https://tresr.game/favicon.ico",
-    ],
+    name: config.app.name,
+    description: config.app.description,
+    url: appUrl,
+    icons: [`${appUrl}/favicon.ico`],
   };
 
   // Create AppKit instance
@@ -303,14 +321,17 @@ export function connectWallet(): Promise<string> {
   return new Promise((resolve, reject) => {
     const appKit = getAppKit();
 
-    // Timeout after 5 minutes — always reject to avoid hanging forever
-    const timeoutId = setTimeout(
-      () => {
-        clearPendingConnect();
-        reject(new Error("Connection timeout"));
-      },
-      5 * 60 * 1000
-    );
+    // Timeout — always reject to avoid hanging forever
+    if (!config.wallet?.connect_timeout_ms) {
+      throw new Error(
+        "Missing required config value: wallet.connect_timeout_ms"
+      );
+    }
+    const timeoutMs = config.wallet.connect_timeout_ms;
+    const timeoutId = setTimeout(() => {
+      clearPendingConnect();
+      reject(new Error("Connection timeout"));
+    }, timeoutMs);
 
     // Subscribe to events to detect connection
     const unsubscribe = appKit.subscribeEvents((event) => {

@@ -85,6 +85,17 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
       >
         👤
       </button>
+
+      <!-- Admin icon: hidden until getErrors() confirms admin access -->
+      <a
+        id="admin-btn"
+        href="/admin"
+        class="btn btn-ghost btn-circle hidden text-xl"
+        title="Admin Panel"
+        aria-label="Admin panel"
+      >
+        🛡
+      </a>
     </div>
 
     <!-- Toggle button: always visible, rotates based on state -->
@@ -138,6 +149,8 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
   import {enqueueProfileWrite} from "@/lib/user";
   import {log} from "@/lib/utils/log";
   import {config} from "@/lib/config/client";
+  import {initSatellite} from "@junobuild/core";
+  import {getErrors} from "@/declarations/satellite/satellite.api";
 
   const COMPONENT_NAME = "Header";
 
@@ -209,18 +222,46 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
     }
   }
 
+  // Show/hide the admin shield based on whether getErrors() succeeds.
+  // The admin principal list lives in server-side config only, so we probe
+  // access by calling the satellite; Err → not admin, Ok → admin.
+  async function updateAdminButtonState() {
+    const adminBtn = document.getElementById("admin-btn");
+    if (!adminBtn) return;
+    const auth = getAuthState();
+    if (!auth.isAuthenticated || auth.isGuest) {
+      adminBtn.classList.add("hidden");
+      return;
+    }
+    try {
+      const result = await getErrors();
+      if ("Ok" in result) {
+        adminBtn.classList.remove("hidden");
+        log.debug(COMPONENT_NAME, "Admin icon revealed");
+      } else {
+        adminBtn.classList.add("hidden");
+      }
+    } catch {
+      adminBtn.classList.add("hidden");
+    }
+  }
+
   // Initialize auth and notifications
   async function startup() {
     log.info(COMPONENT_NAME, "startup running");
     await initAuth();
     await notificationManager.init();
+    // initSatellite is required before any satellite API calls
+    await initSatellite();
 
     // Initial check
     updateProfileButtonState();
+    await updateAdminButtonState();
 
-    // Update profile button state when auth changes (ticket #199: store cleanup on navigation)
+    // Update profile button and admin icon state when auth changes
     const unsubAuth = subscribeToAuth(() => {
       updateProfileButtonState();
+      void updateAdminButtonState();
     });
 
     document.addEventListener(

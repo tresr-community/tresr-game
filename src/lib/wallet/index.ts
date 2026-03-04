@@ -21,7 +21,6 @@ export {
 export {
   getTargetChain,
   getEnvironmentKey,
-  getPublicClient,
   payFeeForGame,
   claimWin,
   getVaultBalance,
@@ -48,5 +47,5 @@ export {
 } from "./faucet";
 
 // ABI definitions
-export {VaultAbi, ERC20Abi} from "./VaultAbi";
-export {FaucetAbi} from "./FaucetAbi";
+export {VaultAbi, ERC20Abi} from "./abi/vault";
+export {FaucetAbi} from "./abi/faucet";

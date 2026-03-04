@@ -35,7 +35,13 @@ export function buildWalletLinkMessage(
   const nonce = crypto.randomUUID();
   const origin =
     domain ??
-    (typeof window !== "undefined" ? window.location.origin : "unknown");
+    (typeof window !== "undefined" ? window.location.origin : undefined);
+  if (!origin) {
+    throw new Error(
+      "buildWalletLinkMessage: domain origin could not be determined. " +
+        "Pass the 'domain' argument explicitly in non-browser contexts."
+    );
+  }
 
   return [
     "TRESR Wallet Link",
