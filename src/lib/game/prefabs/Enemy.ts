@@ -277,8 +277,13 @@ export class Enemy extends BaseEntity {
     }
 
     // Clamp x to walkable area (behaviors handle their own groundY clamping)
+    // If X was clamped, zero the X velocity so the enemy doesn't oscillate
+    // against the wall every frame (classic boundary-bounce stuck bug).
     if (this._walkableArea) {
       const clamped = this._walkableArea.clampToWalkable(this.x, this.groundY);
+      if (clamped.x !== this.x) {
+        this.setVelocityX(0);
+      }
       this.x = clamped.x;
     }
 
@@ -340,8 +345,7 @@ export class Enemy extends BaseEntity {
     rng: Phaser.Math.RandomDataGenerator,
     walkInTargetX: number,
     textureKey: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    aiOverride?: string // This is kept for the overload match
+    aiOverride?: string
   ) {
     this._rng = rng;
     this.setActive(true);
@@ -398,7 +402,9 @@ export class Enemy extends BaseEntity {
     this.setAlpha(1);
     this.clearTint();
     this.setVelocity(0, 0);
-    this._target = undefined;
+    // Note: _target is NOT cleared here — SpawnManager always calls setTarget()
+    // immediately after spawn(). Clearing it would create a 1-frame window where
+    // the AI has no target and produces erratic / idle movement.
 
     // Reset inherited state flags (ticket #231)
     this.isKnockedBack = false;
@@ -413,7 +419,31 @@ export class Enemy extends BaseEntity {
     ) as Phaser.Physics.Arcade.Group;
 
     // Select AI type and create fresh behavior (each holds its own state)
-    const aiType = selectRandomAIType(this.config, this._rng);
+    type AITypeKeys =
+      | "direct"
+      | "flanker"
+      | "cautious"
+      | "swarm"
+      | "erratic"
+      | "passive"
+      | "retardio";
+    let aiType: AITypeKeys;
+    if (
+      aiOverride &&
+      [
+        "direct",
+        "flanker",
+        "cautious",
+        "swarm",
+        "erratic",
+        "passive",
+        "retardio",
+      ].includes(aiOverride)
+    ) {
+      aiType = aiOverride as AITypeKeys;
+    } else {
+      aiType = selectRandomAIType(this.config, this._rng) as AITypeKeys;
+    }
     this.behavior = createBehavior(aiType);
     this.behavior.onSpawn(this._ctx);
 

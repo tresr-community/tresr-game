@@ -1,29 +1,9 @@
 ===/overview===
-<WideSection>
-  # Welcome to xAI Documentation
+# Welcome to xAI Documentation
 
-  <span className="mt-4 block text-sm font-medium text-subtle">
-    Build with Grok, the AI model designed to deliver truthful, insightful answers.
-  </span>
+## Get started
 
-  <div className="h-10" />
-
-  ***
-
-  ## Get started
-
-  <DocGroupCards />
-
-  <div className="h-5" />
-
-  <ModelsPromotionBanner />
-
-  <div className="h-5" />
-
-  ## Quick start with the API
-
-  <QuickActions />
-</WideSection>
+## Quick start with the API
 
 
 ===/console/billing===
@@ -866,10 +846,12 @@ print("\\nTotal cost: $%.4f" % cost_usd)
 * Each individual request that can be added to a batch has a maximum payload size of **25MB**.
 * A team can send up to **100** add-batch-requests API calls every **30 seconds** (this is a rolling limit shared across all batches in the team).
 
-**Unsupported Features**
+## Tool Use
 
-* **Agentic requests** using [server-side tools](/developers/guides/tools/overview) (such as web search, code execution, or MCP tools) are not supported in batch requests.
-* **Client-side tools** (function calling) are not supported in batch requests.
+Both [server-side tools](/developers/guides/tools/overview) and client-side function tools are supported in batch requests.
+
+* **Server-side tools** (web search, code execution, MCP, etc.) work the same as in the real-time API — they are executed during processing and the final response is returned.
+* **Client-side function tools** are supported: the model returns `tool_calls` in the response for you to handle offline. Multi-turn tool calling requires submitting a new batch request with the tool result messages included in the conversation.
 
 ## Related
 
@@ -1393,6 +1375,142 @@ Here is a list of potential errors and statuses arranged by status codes.
 If you believe you have encountered a bug and would like to contribute to our development process, [email API Bug Report](mailto:support@x.ai?subject=API%20Bug%20Report) to support@x.ai with your API request and response and relevant logs.
 
 You can also chat in the `#help` channel of our [xAI API Developer Discord](https://discord.gg/x-ai).
+
+
+===/developers/docs-mcp===
+#### Community
+
+# Docs MCP Server
+
+xAI hosts a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that gives AI assistants and agents direct access to the xAI documentation. Instead of copy-pasting docs into a prompt, you can point any MCP-compatible client at the server and let it pull the information it needs.
+
+You can use this with all popular IDEs/Editors of your choice.
+
+**Endpoint:**
+
+```
+https://docs.x.ai/api/mcp
+```
+
+The server uses the **Streamable HTTP** transport and runs in stateless mode — no session management required.
+
+## Quickstart
+
+### Cursor
+
+In Cursor, go to **Settings → MCP** and add a new server:
+
+* **Type:** `url` (Streamable HTTP)
+* **URL:** `https://docs.x.ai/api/mcp`
+
+### Zed
+
+In Zed, go to `agent: open settings` -> Model Context Protocol (MCP) Servers.
+
+Add the following to a new server configuration.
+
+```json
+{
+    "xai-docs": {
+       "url": "https://docs.x.ai/api/mcp"
+    }
+}
+```
+
+### Windsurf
+
+In Windsurf, go to **Settings → MCP** and add a new server using the same endpoint URL.
+
+### OpenCode
+
+In OpenCode Config under `mcp`, add the following config:
+
+```json
+{
+    "$schema": "https://opencode.ai/config.json",
+    "mcp": {
+        "xai-docs": {
+            "type": "remote",
+            "url": "https://docs.x.ai/api/mcp",
+            "enabled": true,
+        },
+    },
+}
+```
+
+### Any MCP-Compatible Client
+
+Any client that supports the **Streamable HTTP** transport can connect by pointing to the endpoint URL. For example, using the MCP TypeScript SDK:
+
+```javascript customLanguage="javascriptWithoutSDK"
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+
+const client = new Client({ name: 'my-app', version: '1.0.0' });
+
+const transport = new StreamableHTTPClientTransport(
+  new URL('https://docs.x.ai/api/mcp'),
+);
+
+await client.connect(transport);
+
+// List all available doc pages
+const result = await client.callTool({ name: 'list_doc_pages' });
+console.log(result);
+
+// Get a specific page
+const page = await client.callTool({
+  name: 'get_doc_page',
+  arguments: { slug: 'developers/quickstart' },
+});
+console.log(page);
+```
+
+### Using curl
+
+You can also interact with the MCP server directly via HTTP. The server accepts JSON-RPC requests:
+
+```bash customLanguage="bash"
+# Initialize (optional — the server is stateless)
+curl -X POST https://docs.x.ai/api/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "initialize",
+    "params": {
+      "capabilities": {},
+      "clientInfo": { "name": "curl", "version": "1.0.0" },
+      "protocolVersion": "2025-03-26"
+    },
+    "id": 1
+  }'
+
+# List available tools
+curl -X POST https://docs.x.ai/api/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/list",
+    "params": {},
+    "id": 2
+  }'
+
+# Call a tool
+curl -X POST https://docs.x.ai/api/mcp \
+  -H "Content-Type: application/json" \
+  -H "Accept: application/json, text/event-stream" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tools/call",
+    "params": {
+      "name": "search_docs",
+      "arguments": { "query": "rate limits", "max_results": 3 }
+    },
+    "id": 3
+  }'
+```
 
 
 ===/developers/faq/accounts===
@@ -2863,12 +2981,6 @@ Visit [xAI API Protobuf Definitions](https://github.com/xai-org/xai-proto) to vi
 
 ***
 
-<GrpcDocsSection title="Image" protoFileName={'xai/api/v1/image.proto'} serviceFullName={'xai_api.Image'} />
-
-<GrpcDocsSection title="Models" protoFileName={'xai/api/v1/models.proto'} serviceFullName={'xai_api.Models'} />
-
-<GrpcDocsSection title="Raw Sampling of a Language Model" protoFileName={'xai/api/v1/sample.proto'} serviceFullName={'xai_api.Sample'} />
-
 
 ===/developers/introduction===
 #### Introduction
@@ -3308,10 +3420,10 @@ The Grok Voice Agent API supports 5 different voice options, each with distinct 
 
 | Voice | Type | Tone | Description | Sample |
 |-------|------|------|-------------|:------:|
-| **`Ara`** | Female | Warm, friendly | Default voice, balanced and conversational |  |
+| **`Eve`** | Female | Energetic, upbeat | Default voice, engaging and enthusiastic |  |
+| **`Ara`** | Female | Warm, friendly | Balanced and conversational |  |
 | **`Rex`** | Male | Confident, clear | Professional and articulate, ideal for business applications |  |
 | **`Sal`** | Neutral | Smooth, balanced | Versatile voice suitable for various contexts |  |
-| **`Eve`** | Female | Energetic, upbeat | Engaging and enthusiastic, great for interactive experiences |  |
 | **`Leo`** | Male | Authoritative, strong | Decisive and commanding, suitable for instructional content |  |
 
 ### Selecting a Voice
@@ -3323,7 +3435,7 @@ Specify the voice in your session configuration using the `voice` parameter:
 session_config = {
     "type": "session.update",
     "session": {
-        "voice": "Ara",  # Choose from: Ara, Rex, Sal, Eve, Leo
+        "voice": "Eve",  # Choose from: Eve, Ara, Rex, Sal, Leo
         "instructions": "You are a helpful assistant.",
         # Audio format settings (these are the defaults if not specified)
         "audio": {
@@ -3341,7 +3453,7 @@ await ws.send(json.dumps(session_config))
 const sessionConfig = {
   type: "session.update",
   session: {
-    voice: "Ara", // Choose from: Ara, Rex, Sal, Eve, Leo
+    voice: "Eve", // Choose from: Eve, Ara, Rex, Sal, Leo
     instructions: "You are a helpful assistant.",
     // Audio format settings (these are the defaults if not specified)
     audio: {
@@ -3492,7 +3604,7 @@ async def on_open(ws: ClientConnection):
     session_config = {
         "type": "session.update",
         "session": {
-            "voice": "Ara",
+            "voice": "Eve",
             "instructions": "You are a helpful assistant.",
             "turn_detection": {"type": "server_vad"},
             "audio": {
@@ -3564,7 +3676,7 @@ ws.on("open", function open() {
   const sessionConfig = {
     type: "session.update",
     session: {
-      voice: "Ara",
+      voice: "Eve",
       instructions: "You are a helpful assistant.",
       turn_detection: { type: "server_vad" },
       audio: {
@@ -3618,7 +3730,7 @@ There are a few message types used in interacting with the models. [Client event
       "type": "session.update",
       "session": {
           "instructions": "pass a system prompt here",
-          "voice": "Ara",
+          "voice": "Eve",
           "turn_detection": {
               "type": "server_vad" or null,
           },
@@ -3645,7 +3757,7 @@ There are a few message types used in interacting with the models. [Client event
   | Parameter | Type | Description |
   |-----------|------|-------------|
   | `instructions` | string | System prompt |
-  | `voice` | string | Voice selection: `Ara`, `Rex`, `Sal`, `Eve`, `Leo` (see [Voice Options](#voice-options)) |
+  | `voice` | string | Voice selection: `Eve`, `Ara`, `Rex`, `Sal`, `Leo` (see [Voice Options](#voice-options)) |
   | `turn_detection.type` | string | null | `"server_vad"` for automatic detection, `null` for manual text turns |
   | `audio.input.format.type` | string | Input format: `"audio/pcm"`, `"audio/pcmu"`, or `"audio/pcma"` |
   | `audio.input.format.rate` | number | Input sample rate (PCM only): 8000, 16000, 21050, 24000, 32000, 44100, 48000 |
@@ -3665,7 +3777,7 @@ session_config = {
     "type": "session.update",
     "session": {
         "instructions": "You are a helpful assistant.",
-        "voice": "Ara",
+        "voice": "Eve",
         "turn_detection": {
             "type": "server_vad",
         },
@@ -3716,7 +3828,7 @@ const sessionConfig = {
   type: "session.update",
   session: {
     instructions: "You are a helpful assistant.",
-    voice: "Ara",
+    voice: "Eve",
     turn_detection: { type: "server_vad" },
     audio: {
       input: {
@@ -3778,7 +3890,7 @@ function base64PCM16ToFloat32(base64String) {
       "type": "session.updated",
       "session": {
           "instructions": "You are a helpful assistant.",
-          "voice": "Ara",
+          "voice": "Eve",
           "turn_detection": {
               "type": "server_vad"
           }
@@ -4473,6 +4585,116 @@ The client does not need to send messages to get these audio and transcription r
   }
   ```
 
+## Best Practices
+
+This section outlines key recommendations for building low-latency, reliable, and natural-feeling voice experiences using the xAI Voice Agent API.
+
+### Minimize Perceived Latency – Parallel Initialization
+
+**Start the WebSocket connection and microphone input streaming in parallel.**
+
+* Initiate the WebSocket connection (including authentication via ephemeral token or API key) **as early as possible** — ideally when the voice interface loads or the user opens the mic-enabled screen.
+* Simultaneously begin capturing microphone audio (using `getUserMedia` in browsers or equivalent APIs on mobile/native platforms).
+* Do **not** wait for the WebSocket `open` event before starting to collect microphone samples.
+
+**Why?**
+Even with fast networks, establishing a secure WebSocket (handshake + authentication) can take 100–800 ms. Starting microphone capture only after connection adds noticeable delay before the user can begin speaking, breaking natural conversation flow.
+
+**Recommended pattern**
+
+```javascript customLanguage="javascriptWithoutSDK"
+// 1. Immediately request mic access and start capturing
+const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+const audioContext = new AudioContext({ sampleRate: 24000 });
+const source = audioContext.createMediaStreamSource(stream);
+const processor = audioContext.createScriptProcessor(4096, 1, 1); // or AudioWorklet for better perf
+
+source.connect(processor);
+processor.connect(audioContext.destination); // optional
+
+// Buffer incoming PCM data immediately
+let earlyAudioBuffer = []; // Float32Array[] or Int16Array[]
+
+processor.onaudioprocess = (e) => {
+  const input = e.inputBuffer.getChannelData(0);
+  earlyAudioBuffer.push(new Float32Array(input)); // or convert to PCM16
+};
+
+// 2. In parallel – connect WebSocket (may take time)
+const ws = new WebSocket("wss://api.x.ai/v1/realtime", [
+  `xai-client-secret.${token}`,
+]);
+
+ws.onopen = () => {
+  // Send session.update configuration
+  ws.send(JSON.stringify({ type: "session.update", session: { ... } }));
+
+  // Flush any buffered audio now that we're connected
+  if (earlyAudioBuffer.length > 0) {
+    flushBufferedAudioToWS(earlyAudioBuffer);
+    earlyAudioBuffer = [];
+  }
+};
+```
+
+### Buffer Microphone Input Until WebSocket is Fully Ready
+
+**Critical Best Practice:** Always buffer the microphone input stream until the WebSocket is ready and those bytes can be sent upstream.
+
+The beginning of user speech is the part most commonly dropped in real-time voice agents. This happens because microphone capture almost always starts before the WebSocket handshake, authentication, and `session.update` complete.
+
+#### Implementation Requirements
+
+1. As soon as you receive the first audio sample from the microphone, immediately start pushing every chunk into a buffer (array of PCM data).
+2. Continue buffering continuously — even while the WebSocket is connecting, authenticating, or waiting for `session.updated`.
+3. Do **not** send any audio to the server until **both** conditions are met:
+   * WebSocket connection is open
+   * You have received the `session.updated` event
+4. Once both are true, flush the entire buffer in chronological order using multiple `input_audio_buffer.append` messages.
+5. After the buffer is flushed, immediately switch to normal real-time streaming for new microphone chunks.
+
+#### Why This is Essential
+
+Users often begin speaking within 100–300 ms of tapping the mic button. Without aggressive buffering, the first 200–700 ms of their utterance is permanently lost, making the agent feel unresponsive right from the start. This single practice dramatically improves perceived quality and user satisfaction.
+
+**Recommended pattern**
+
+```javascript customLanguage="javascriptWithoutSDK"
+let micBuffer = [];           // Array of PCM chunks
+let isSessionReady = false;
+
+processor.onaudioprocess = (e) => {
+  const input = e.inputBuffer.getChannelData(0);
+  const chunk = new Float32Array(input);   // or convert to Int16 PCM16
+  micBuffer.push(chunk);
+
+  if (isSessionReady) {
+    sendLiveAudioChunk(chunk);   // real-time streaming after flush
+  }
+};
+
+// After WebSocket opens + session.updated is received:
+isSessionReady = true;
+flushBufferedAudio(micBuffer);
+micBuffer = [];   // clear after successful flush
+```
+
+#### Tips for Production
+
+* Use a safety cap (e.g., 8–12 seconds max buffer) to avoid memory issues.
+* Convert to 24 kHz PCM16 little-endian before buffering or flushing.
+* Flush in reasonably sized messages (~400–800 samples each) for smooth transmission.
+* On reconnection, resume buffering immediately.
+
+### Additional High-Impact Recommendations
+
+* **Prefer ephemeral tokens** for client-side security. See [Authentication](#authentication) for details.
+* **Enable `server_vad`** for automatic, natural barge-in.
+* **Match input/output format** (24 kHz PCM) to avoid resampling.
+* **Stream output audio deltas** (`response.output_audio.delta`) to the speaker instantly — do not wait for the full response.
+* **Implement graceful reconnection** while continuing to buffer new audio.
+* **Monitor WebSocket health** and use exponential backoff if needed.
+
 
 ===/developers/model-capabilities/audio/voice===
 #### Model Capabilities
@@ -4487,7 +4709,7 @@ Build powerful real-time voice applications with the Grok Voice Agent API. Creat
 
 **WebSocket Endpoint:** `wss://api.x.ai/v1/realtime`
 
-## <NotificationBanner variant={"info"}>The Voice Agent API is only available in `us-east-1` region.</NotificationBanner>
+## The Voice Agent API is only available in `us-east-1` region.
 
 ### Enterprise Ready
 
@@ -4546,10 +4768,10 @@ Choose from 5 distinct voices, each with unique characteristics suited to differ
 
 | Voice | Type | Tone | Description | Sample |
 |-------|------|------|-------------|:------:|
-| **`Ara`** | Female | Warm, friendly | Default voice, balanced and conversational |  |
+| **`Eve`** | Female | Energetic, upbeat | Default voice, engaging and enthusiastic |  |
+| **`Ara`** | Female | Warm, friendly | Balanced and conversational |  |
 | **`Rex`** | Male | Confident, clear | Professional and articulate, ideal for business applications |  |
 | **`Sal`** | Neutral | Smooth, balanced | Versatile voice suitable for various contexts |  |
-| **`Eve`** | Female | Energetic, upbeat | Engaging and enthusiastic, great for interactive experiences |  |
 | **`Leo`** | Male | Authoritative, strong | Decisive and commanding, suitable for instructional content |  |
 
 ### Flexible Audio Formats
@@ -5174,13 +5396,13 @@ import xai_sdk
 client = xai_sdk.Client()
 
 # Load image from file and encode as base64
-with open("landmarks.jpg", "rb") as f:
+with open("photo.png", "rb") as f:
     image_data = base64.b64encode(f.read()).decode("utf-8")
 
 response = client.image.sample(
-    prompt="Change the landmarks to be New York City landmarks",
+    prompt="Render this as a pencil sketch with detailed shading",
     model="grok-imagine-image",
-    image_url=f"data:image/jpeg;base64,{image_data}",
+    image_url=f"data:image/png;base64,{image_data}",
 )
 
 print(response.url)
@@ -5193,9 +5415,9 @@ curl -X POST https://api.x.ai/v1/images/edits \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -d '{
     "model": "grok-imagine-image",
-    "prompt": "Change the landmarks to be New York City landmarks",
+    "prompt": "Render this as a pencil sketch with detailed shading",
     "image": {
-      "url": "https://example.com/landmarks.jpg",
+      "url": "https://docs.x.ai/assets/api-examples/images/style-realistic.png",
       "type": "image_url"
     }
   }'
@@ -5207,15 +5429,15 @@ import { generateImage } from "ai";
 import fs from "fs";
 
 // Load image and encode as base64
-const imageBuffer = fs.readFileSync("landmarks.jpg");
+const imageBuffer = fs.readFileSync("photo.png");
 const base64Image = imageBuffer.toString("base64");
 
 const { image } = await generateImage({
     model: xai.image("grok-imagine-image"),
-    prompt: "Change the landmarks to be New York City landmarks",
+    prompt: "Render this as a pencil sketch with detailed shading",
     providerOptions: {
         xai: {
-            image: `data:image/jpeg;base64,${base64Image}`,
+            image: `data:image/png;base64,${base64Image}`,
         },
     },
 });
@@ -5230,7 +5452,7 @@ You can provide the source image as:
 
 ## Editing with Multiple Images
 
-You can add up to three images for editing. You can specify the images in the order they are sent in the request. **The aspect ratio of the output image will follow the aspect ratio of the first input image.**
+You can add up to three images for editing. You can specify the images in the order they are sent in the request. By default, the aspect ratio of the output image follows the first input image. You can override this by setting the `aspect_ratio` parameter to a specific ratio (e.g., `"1:1"`, `"16:9"`).
 
 ```python customLanguage="pythonXAI"
 import xai_sdk
@@ -5238,11 +5460,11 @@ import xai_sdk
 client = xai_sdk.Client()
 
 response = client.image.sample(
-    prompt="Add the Starships from the second image to the moon landscape in the first image",
+    prompt="Add the cat from the first image to the second one.",
     model="grok-imagine-image",
     image_urls=[
-        "https://science.nasa.gov/wp-content/uploads/2023/03/2-apollo-15-on-moon-1.jpg",
-        "https://www.spacex.com/assets/images/vehicles/starship/starship_carousel2_card4_d.jpg",
+        "https://docs.x.ai/assets/api-examples/images/image-edit-1.jpeg",
+        "https://docs.x.ai/assets/api-examples/images/image-edit-2.jpeg",
     ],
 )
 
@@ -5256,14 +5478,14 @@ curl -X POST https://api.x.ai/v1/images/edits \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -d '{
     "model": "grok-imagine-image",
-    "prompt": "Add the Starships from the second image to the moon landscape in the first image",
+    "prompt": "Add the cat from the first image to the second one.",
     "images": [
       {
-        "url": "https://science.nasa.gov/wp-content/uploads/2023/03/2-apollo-15-on-moon-1.jpg",
+        "url": "https://docs.x.ai/assets/api-examples/images/image-edit-1.jpeg",
         "type": "image_url"
       },
       {
-        "url": "https://www.spacex.com/assets/images/vehicles/starship/starship_carousel2_card4_d.jpg",
+        "url": "https://docs.x.ai/assets/api-examples/images/image-edit-2.jpeg",
         "type": "image_url"
       }
     ]
@@ -5291,7 +5513,7 @@ import xai_sdk
 async def generate_concurrently():
     client = xai_sdk.AsyncClient()
 
-    source_image = "https://example.com/portrait.jpg"
+    source_image = "https://docs.x.ai/assets/api-examples/images/style-realistic.png"
 
     # Each request uses a different prompt
     prompts = [
@@ -5340,6 +5562,58 @@ for i, image in enumerate(responses):
     print(f"Variation {i + 1}: {image.url}")
 ```
 
+```python customLanguage="pythonOpenAISDK"
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.x.ai/v1",
+    api_key="YOUR_API_KEY",
+)
+
+response = client.images.generate(
+    model="grok-imagine-image",
+    prompt="A futuristic city skyline at night",
+    n=4,
+)
+
+for i, image in enumerate(response.data):
+    print(f"Variation {i + 1}: {image.url}")
+```
+
+```javascript customLanguage="javascriptOpenAISDK"
+import OpenAI from "openai";
+
+const client = new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: "https://api.x.ai/v1",
+});
+
+const response = await client.images.generate({
+    model: "grok-imagine-image",
+    prompt: "A futuristic city skyline at night",
+    n: 4,
+});
+
+response.data.forEach((image, i) => {
+    console.log(`Variation ${i + 1}: ${image.url}`);
+});
+```
+
+```javascript customLanguage="javascriptAISDK"
+import { xai } from "@ai-sdk/xai";
+import { generateImage } from "ai";
+
+const { images } = await generateImage({
+    model: xai.image("grok-imagine-image"),
+    prompt: "A futuristic city skyline at night",
+    n: 4,
+});
+
+images.forEach((image, i) => {
+    console.log(`Variation ${i + 1}: ${image.base64.slice(0, 50)}...`);
+});
+```
+
 ```bash
 curl -X POST https://api.x.ai/v1/images/generations \
   -H "Content-Type: application/json" \
@@ -5353,7 +5627,8 @@ curl -X POST https://api.x.ai/v1/images/generations \
 
 ### Aspect Ratio
 
-Control image dimensions with the `aspect_ratio` parameter:
+Control image dimensions with the `aspect_ratio` parameter. This works for image generation and image editing with multiple images.
+For image editing with single image, the output aspect ratio respects the input image's aspect ratio.
 
 | Ratio | Use case |
 |-------|----------|
@@ -5378,6 +5653,54 @@ response = client.image.sample(
 )
 
 print(response.url)
+```
+
+```python customLanguage="pythonOpenAISDK"
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.x.ai/v1",
+    api_key="YOUR_API_KEY",
+)
+
+response = client.images.generate(
+    model="grok-imagine-image",
+    prompt="Mountain landscape at sunrise",
+    extra_body={"aspect_ratio": "16:9"},
+)
+
+print(response.data[0].url)
+```
+
+```javascript customLanguage="javascriptOpenAISDK"
+import OpenAI from "openai";
+
+const client = new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: "https://api.x.ai/v1",
+});
+
+const response = await client.images.generate({
+    model: "grok-imagine-image",
+    prompt: "Mountain landscape at sunrise",
+    // @ts-expect-error — xAI-specific parameter
+    aspect_ratio: "16:9",
+});
+
+console.log(response.data[0].url);
+```
+
+```javascript customLanguage="javascriptAISDK"
+import { xai } from "@ai-sdk/xai";
+import { generateImage } from "ai";
+
+const { image } = await generateImage({
+    model: xai.image("grok-imagine-image"),
+    prompt: "Mountain landscape at sunrise",
+    aspectRatio: "16:9",
+});
+
+console.log(image.base64);
 ```
 
 ```bash
@@ -5409,6 +5732,42 @@ response = client.image.sample(
     resolution="2k"
 )
 
+print(response.url)
+```
+
+```python customLanguage="pythonOpenAISDK"
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.x.ai/v1",
+    api_key="YOUR_API_KEY",
+)
+
+response = client.images.generate(
+    model="grok-imagine-image",
+    prompt="An astronaut performing EVA in LEO.",
+    extra_body={"resolution": "2k"},
+)
+
+print(response.data[0].url)
+```
+
+```javascript customLanguage="javascriptOpenAISDK"
+import OpenAI from "openai";
+
+const client = new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: "https://api.x.ai/v1",
+});
+
+const response = await client.images.generate({
+    model: "grok-imagine-image",
+    prompt: "An astronaut performing EVA in LEO.",
+    // @ts-expect-error — xAI-specific parameter
+    resolution: "2k",
+});
+
+console.log(response.data[0].url);
 ```
 
 ```bash
@@ -5440,6 +5799,62 @@ response = client.image.sample(
 # Save to file
 with open("garden.jpg", "wb") as f:
     f.write(response.image)
+```
+
+```python customLanguage="pythonOpenAISDK"
+import base64
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.x.ai/v1",
+    api_key="YOUR_API_KEY",
+)
+
+response = client.images.generate(
+    model="grok-imagine-image",
+    prompt="A serene Japanese garden",
+    response_format="b64_json",
+)
+
+# Save to file
+image_bytes = base64.b64decode(response.data[0].b64_json)
+with open("garden.jpg", "wb") as f:
+    f.write(image_bytes)
+```
+
+```javascript customLanguage="javascriptOpenAISDK"
+import OpenAI from "openai";
+import fs from "fs";
+
+const client = new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: "https://api.x.ai/v1",
+});
+
+const response = await client.images.generate({
+    model: "grok-imagine-image",
+    prompt: "A serene Japanese garden",
+    response_format: "b64_json",
+});
+
+// Save to file
+const imageBuffer = Buffer.from(response.data[0].b64_json, "base64");
+fs.writeFileSync("garden.jpg", imageBuffer);
+```
+
+```javascript customLanguage="javascriptAISDK"
+import { xai } from "@ai-sdk/xai";
+import { generateImage } from "ai";
+import fs from "fs";
+
+const { image } = await generateImage({
+    model: xai.image("grok-imagine-image"),
+    prompt: "A serene Japanese garden",
+});
+
+// Save to file (AI SDK returns base64 by default)
+const imageBuffer = Buffer.from(image.base64, "base64");
+fs.writeFileSync("garden.jpg", imageBuffer);
 ```
 
 ```bash
@@ -6098,7 +6513,7 @@ import { xai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
 
 const result = await generateText({
-model: "grok-4",
+model: xai('grok-4'),
 messages: [
         {
             role: 'user',
@@ -7802,7 +8217,7 @@ const client = new OpenAI({
     baseURL: "https://api.x.ai/v1",
 });
 
-const completion = await client.beta.chat.completions.parse({
+const completion = await client.chat.completions.parse({
     model: "grok-4-1-fast-reasoning",
     messages: [
     { role: "system", content: "Given a raw invoice, carefully analyze the text and extract the invoice data into JSON format." },
@@ -8438,9 +8853,10 @@ Generate videos from text prompts, animate still images, or edit existing videos
 Generate a video with a single API call:
 
 ```python customLanguage="pythonXAI"
+import os
 import xai_sdk
 
-client = xai_sdk.Client()
+client = xai_sdk.Client(api_key=os.getenv("XAI_API_KEY"))
 
 response = client.video.generate(
     prompt="A glowing crystal-powered rocket launching from the red dunes of Mars, ancient alien ruins lighting up in the background as it soars into a sky full of unfamiliar constellations",
@@ -8451,6 +8867,65 @@ response = client.video.generate(
 )
 
 print(response.url)
+```
+
+```python customLanguage="pythonRequests"
+import os
+import time
+import requests
+
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {os.environ['XAI_API_KEY']}",
+}
+
+response = requests.post(
+    "https://api.x.ai/v1/videos/generations",
+    headers=headers,
+    json={
+        "model": "grok-imagine-video",
+        "prompt": "A glowing crystal-powered rocket launching from the red dunes of Mars, ancient alien ruins lighting up in the background as it soars into a sky full of unfamiliar constellations",
+        "duration": 10,
+        "aspect_ratio": "16:9",
+        "resolution": "720p",
+    },
+)
+
+request_id = response.json()["request_id"]
+
+# Poll until the video is ready
+while True:
+    result = requests.get(
+        f"https://api.x.ai/v1/videos/{request_id}",
+        headers={"Authorization": headers["Authorization"]},
+    )
+    data = result.json()
+    if data["status"] == "done":
+        print(data["video"]["url"])
+        break
+    elif data["status"] == "expired":
+        print("Request expired")
+        break
+    time.sleep(5)
+```
+
+```javascript customLanguage="javascriptAISDK"
+import { createXai } from "@ai-sdk/xai";
+import { experimental_generateVideo as generateVideo } from "ai";
+import fs from "fs";
+
+const xai = createXai({ apiKey: process.env.XAI_API_KEY });
+
+const { video } = await generateVideo({
+    model: xai.video("grok-imagine-video"),
+    prompt: "A glowing crystal-powered rocket launching from the red dunes of Mars, ancient alien ruins lighting up in the background as it soars into a sky full of unfamiliar constellations",
+    providerOptions: {
+        xai: { duration: 10, aspectRatio: "16:9", resolution: "720p" },
+    },
+});
+
+// The AI SDK downloads the video automatically — save the raw bytes
+fs.writeFileSync("output.mp4", video.uint8Array);
 ```
 
 ```bash
@@ -8539,37 +9014,6 @@ Videos are returned as temporary URLs — download or process them promptly.
 
 Transform a still image into a video by providing a source image along with your prompt. The model animates the image content based on your instructions.
 
-```python customLanguage="pythonXAI"
-import base64
-import xai_sdk
-
-client = xai_sdk.Client()
-
-# Load image from file and encode as base64
-with open("landscape.jpg", "rb") as f:
-    image_data = base64.b64encode(f.read()).decode("utf-8")
-
-response = client.video.generate(
-    prompt="Animate the clouds drifting across the sky and add gentle swaying to the trees",
-    model="grok-imagine-video",
-    image_url=f"data:image/jpeg;base64,{image_data}",
-)
-
-print(response.url)
-```
-
-```bash
-# Using a public URL as the source image
-curl -X POST https://api.x.ai/v1/videos/generations \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $XAI_API_KEY" \
-  -d '{
-    "model": "grok-imagine-video",
-    "prompt": "Animate the clouds drifting across the sky and add gentle swaying to the trees",
-    "image": {"url": "https://example.com/landscape.jpg"}
-  }'
-```
-
 You can provide the source image as:
 
 * A **public URL** pointing to an image
@@ -8590,13 +9034,14 @@ When you need to generate multiple videos or apply several edits to the same sou
 The example below applies all three edits from the interactive demo above — adding a necklace, changing the outfit color, and adding a hat — concurrently:
 
 ```python customLanguage="pythonXAI"
+import os
 import asyncio
 import xai_sdk
 
 async def edit_concurrently():
-    client = xai_sdk.AsyncClient()
+    client = xai_sdk.AsyncClient(api_key=os.getenv("XAI_API_KEY"))
 
-    source_video = "https://example.com/balcony-scene.mp4"
+    source_video = "https://data.x.ai/docs/video-generation/portrait-wave.mp4"
 
     # Each request applies a different edit to the same video
     prompts = [
@@ -8658,9 +9103,10 @@ Video editing does not support custom `resolution`. The output resolution matche
 ### Example
 
 ```python customLanguage="pythonXAI"
+import os
 import xai_sdk
 
-client = xai_sdk.Client()
+client = xai_sdk.Client(api_key=os.getenv("XAI_API_KEY"))
 
 response = client.video.generate(
     prompt="Timelapse of a flower blooming in a sunlit garden",
@@ -8672,6 +9118,65 @@ response = client.video.generate(
 
 print(f"Video URL: {response.url}")
 print(f"Duration: {response.duration}s")
+```
+
+```python customLanguage="pythonRequests"
+import os
+import time
+import requests
+
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {os.environ['XAI_API_KEY']}",
+}
+
+response = requests.post(
+    "https://api.x.ai/v1/videos/generations",
+    headers=headers,
+    json={
+        "model": "grok-imagine-video",
+        "prompt": "Timelapse of a flower blooming in a sunlit garden",
+        "duration": 10,
+        "aspect_ratio": "16:9",
+        "resolution": "720p",
+    },
+)
+
+request_id = response.json()["request_id"]
+
+while True:
+    result = requests.get(
+        f"https://api.x.ai/v1/videos/{request_id}",
+        headers={"Authorization": headers["Authorization"]},
+    )
+    data = result.json()
+    if data["status"] == "done":
+        print(f"Video URL: {data['video']['url']}")
+        print(f"Duration: {data['video']['duration']}s")
+        break
+    elif data["status"] == "expired":
+        print("Request expired")
+        break
+    time.sleep(5)
+```
+
+```javascript customLanguage="javascriptAISDK"
+import { createXai } from "@ai-sdk/xai";
+import { experimental_generateVideo as generateVideo } from "ai";
+import fs from "fs";
+
+const xai = createXai({ apiKey: process.env.XAI_API_KEY });
+
+const { video } = await generateVideo({
+    model: xai.video("grok-imagine-video"),
+    prompt: "Timelapse of a flower blooming in a sunlit garden",
+    providerOptions: {
+        xai: { duration: 10, aspectRatio: "16:9", resolution: "720p" },
+    },
+});
+
+// The AI SDK downloads the video automatically — save the raw bytes
+fs.writeFileSync("output.mp4", video.uint8Array);
 ```
 
 ```bash
@@ -8689,18 +9194,19 @@ curl -X POST https://api.x.ai/v1/videos/generations \
 
 ## Customize Polling Behavior
 
-When using the SDK's `generate()` method, you can control how long to wait and how frequently to check for results using the `timeout` and `interval` parameters:
+When using the SDK's `generate()` method, you can control how long to wait and how frequently to check for results:
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `timeout` | Maximum time to wait for the video to complete | 10 minutes |
-| `interval` | Time between status checks | 100 milliseconds |
+| Python SDK | AI SDK (`providerOptions.xai`) | Description | Default |
+|-----------|-------------|-------------|---------|
+| `timeout` | `pollTimeoutMs` | Maximum time to wait for the video to complete | 10 minutes |
+| `interval` | `pollIntervalMs` | Time between status checks | 100 milliseconds |
 
 ```python customLanguage="pythonXAI"
+import os
 from datetime import timedelta
 import xai_sdk
 
-client = xai_sdk.Client()
+client = xai_sdk.Client(api_key=os.getenv("XAI_API_KEY"))
 
 response = client.video.generate(
     prompt="Epic cinematic drone shot flying through mountain peaks",
@@ -8713,7 +9219,30 @@ response = client.video.generate(
 print(response.url)
 ```
 
-If the video isn't ready within the timeout period, a `TimeoutError` is raised. For even finer control, use the [manual polling approach](#handle-polling-manually) with `start()` and `get()`.
+```javascript customLanguage="javascriptAISDK"
+import { createXai } from "@ai-sdk/xai";
+import { experimental_generateVideo as generateVideo } from "ai";
+import fs from "fs";
+
+const xai = createXai({ apiKey: process.env.XAI_API_KEY });
+
+const { video } = await generateVideo({
+    model: xai.video("grok-imagine-video"),
+    prompt: "Epic cinematic drone shot flying through mountain peaks",
+    providerOptions: {
+        xai: {
+            duration: 15,
+            pollTimeoutMs: 15 * 60 * 1000,  // Wait up to 15 minutes
+            pollIntervalMs: 5 * 1000,        // Check every 5 seconds
+        },
+    },
+});
+
+// The AI SDK downloads the video automatically — save the raw bytes
+fs.writeFileSync("output.mp4", video.uint8Array);
+```
+
+If the video isn't ready within the timeout period, the Python SDK raises a `TimeoutError` and the AI SDK aborts via its `AbortSignal`. For even finer control, use the [manual polling approach](#handle-polling-manually) — the Python SDK provides `start()` and `get()` methods, while the AI SDK supports a custom `abortSignal` for cancellation.
 
 ## Handle Polling Manually
 
@@ -8722,11 +9251,12 @@ For fine-grained control over the generation lifecycle, use `start()` to initiat
 The `get()` method returns a response with a `status` field. Import the status enum from the SDK:
 
 ```python customLanguage="pythonXAI"
+import os
 import time
 import xai_sdk
 from xai_sdk.proto import deferred_pb2
 
-client = xai_sdk.Client()
+client = xai_sdk.Client(api_key=os.getenv("XAI_API_KEY"))
 
 # Start the generation request
 start_response = client.video.start(
@@ -8750,6 +9280,87 @@ while True:
     elif result.status == deferred_pb2.DeferredStatus.PENDING:
         print("Still processing...")
         time.sleep(5)
+```
+
+```python customLanguage="pythonRequests"
+import os
+import time
+import requests
+
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {os.environ['XAI_API_KEY']}",
+}
+
+# Step 1: Start generation
+response = requests.post(
+    "https://api.x.ai/v1/videos/generations",
+    headers=headers,
+    json={
+        "model": "grok-imagine-video",
+        "prompt": "A cat lounging in a sunbeam, tail gently swishing",
+        "duration": 5,
+    },
+)
+
+request_id = response.json()["request_id"]
+print(f"Request ID: {request_id}")
+
+# Step 2: Poll for results
+while True:
+    result = requests.get(
+        f"https://api.x.ai/v1/videos/{request_id}",
+        headers={"Authorization": headers["Authorization"]},
+    )
+    data = result.json()
+
+    if data["status"] == "done":
+        print(f"Video URL: {data['video']['url']}")
+        break
+    elif data["status"] == "expired":
+        print("Request expired")
+        break
+    else:
+        print("Still processing...")
+        time.sleep(5)
+```
+
+```javascript customLanguage="javascriptWithoutSDK"
+// Step 1: Start generation
+const response = await fetch("https://api.x.ai/v1/videos/generations", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.XAI_API_KEY}`,
+    },
+    body: JSON.stringify({
+        model: "grok-imagine-video",
+        prompt: "A cat lounging in a sunbeam, tail gently swishing",
+        duration: 5,
+    }),
+});
+
+const { request_id } = await response.json();
+console.log(`Request ID: ${request_id}`);
+
+// Step 2: Poll for results
+while (true) {
+    const result = await fetch(`https://api.x.ai/v1/videos/${request_id}`, {
+        headers: { "Authorization": `Bearer ${process.env.XAI_API_KEY}` },
+    });
+    const data = await result.json();
+
+    if (data.status === "done") {
+        console.log(`Video URL: ${data.video.url}`);
+        break;
+    } else if (data.status === "expired") {
+        console.log("Request expired");
+        break;
+    } else {
+        console.log("Still processing...");
+        await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+}
 ```
 
 ```bash
@@ -8845,12 +9456,8 @@ An overview of our models' capabilities and their associated pricing.
 | grok-3 | text → text | functions, structured | 131,072 | 600 RPM | $3.00 ($0.75) / $15.00 |
 | grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 480 RPM | $0.30 ($0.07) / $0.50 |
 | grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 480 RPM | $0.30 ($0.07) / $0.50 |
-| grok-2-image-1212 | text → image | - | - | 300 RPM | $0.07/image |
-| grok-2-image-1212 | text → image | - | - | 300 RPM | $0.07/image |
 | grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-2-vision-1212 | text, image → text | functions, structured | 32,768 | 600 RPM | $2.00 ($0.00) / $10.00 |
 | grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-2-vision-1212 | text, image → text | functions, structured | 32,768 | 600 RPM | $2.00 ($0.00) / $10.00 |
 | grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
 | grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
@@ -8919,7 +9526,7 @@ The [Voice Agent API](/developers/model-capabilities/audio/voice-agent) is a rea
 | | Details |
 |---|---|
 | **Pricing** | $0.05 / minute ($3.00 / hour) |
-| **Rate Limit** | 10 concurrent sessions per team |
+| **Rate Limit** | 100 concurrent sessions per team |
 | **Capabilities** | Function calling (web search, X search, collections, custom functions) |
 
 When using the Voice Agent API with tools such as function calling, web search, X search, or collections, you will be charged for the tool invocations in addition to the per-minute voice session cost. See [Tool Invocation Costs](#tool-invocation-costs) above for tool pricing details.
@@ -9042,69 +9649,58 @@ For details on the pricing, please refer to the pricing table above, or on [xAI 
 
 # Getting Started
 
-Welcome! In this guide, we'll walk you through the basics of using the xAI API.
+Welcome! In this guide, we'll walk you through the basics of using the xAI API, from creating an account to making your first request.
 
-## Step 1: Create an xAI Account
+## Step 1: Create an xAI account
 
-First, you'll need to create an xAI account to access xAI API. Sign up for an account [here](https://accounts.x.ai/sign-up?redirect=cloud-console).
+Sign up for an account at [accounts.x.ai](https://accounts.x.ai/sign-up?redirect=cloud-console), then load it with credits to start using the API.
 
-Once you've created an account, you'll need to load it with credits to start using the API.
+## Step 2: Generate an API key
 
-## Step 2: Generate an API Key
-
-Create an API key via the [API Keys Page](https://console.x.ai/team/default/api-keys) in the xAI API Console.
-
-After generating an API key, we need to save it somewhere safe! We recommend you export it as an environment variable in your terminal or save it to a `.env` file.
+Create an API key via the [API Keys page](https://console.x.ai/team/default/api-keys) in the xAI Console. Then make it available to your code. Either export it in your terminal:
 
 ```bash
 export XAI_API_KEY="your_api_key"
 ```
 
-## Step 3: Make your first request
-
-With your xAI API key exported as an environment variable, you're ready to make your first API request.
-
-Let's test out the API using `curl`. Paste the following directly into your terminal.
+Or add it to a `.env` file in your project directory:
 
 ```bash
-curl https://api.x.ai/v1/responses \\
--H "Content-Type: application/json" \\
--H "Authorization: Bearer $XAI_API_KEY" \\
--m 3600 \\
--d '{
-    "input": [
-        {
-            "role": "system",
-            "content": "You are Grok, a highly intelligent, helpful AI assistant."
-        },
-        {
-            "role": "user",
-            "content": "What is the meaning of life, the universe, and everything?"
-        }
-    ],
-    "model": "grok-4-1-fast-reasoning"
-}'
+XAI_API_KEY=your_api_key
 ```
 
-## Step 4: Make a request from Python or Javascript
+The xAI SDKs are configured to automatically read your API key from the `XAI_API_KEY` environment variable.
 
-As well as a native xAI Python SDK, the majority of our APIs are fully compatible with the OpenAI SDK (and the Anthropic SDK, although this is now deprecated). For example, we can make the same request from Python or JavaScript like so:
+## Step 3: Install an SDK
 
-**Anthropic SDK Deprecated**: The Anthropic SDK compatibility is fully deprecated. Please migrate to the [Responses API](/developers/rest-api-reference/inference/chat#create-new-response) or [gRPC](/developers/grpc-api-reference).
+Pick your language and install the SDK:
 
-```pythonXAI
-# In your terminal, first run:
-# pip install xai-sdk
+```bash customLanguage="pythonXAI"
+pip install xai-sdk
+```
 
+```bash customLanguage="pythonOpenAISDK"
+pip install openai
+```
+
+```bash customLanguage="javascriptAISDK"
+npm install ai @ai-sdk/xai zod
+```
+
+```bash customLanguage="javascriptOpenAISDK"
+npm install openai
+```
+
+## Step 4: Make your first request
+
+Send a prompt to Grok and get a response:
+
+```python customLanguage="pythonXAI"
 import os
-
 from xai_sdk import Client
 from xai_sdk.chat import user, system
 
-client = Client(
-    api_key=os.getenv("XAI_API_KEY"),
-    timeout=3600, # Override default timeout with longer timeout for reasoning models
-)
+client = Client(api_key=os.getenv("XAI_API_KEY"))
 
 chat = client.chat.create(model="grok-4-1-fast-reasoning")
 chat.append(system("You are Grok, a highly intelligent, helpful AI assistant."))
@@ -9114,130 +9710,91 @@ response = chat.sample()
 print(response.content)
 ```
 
-```pythonOpenAISDK
-# In your terminal, first run:
-
-# pip install openai
-
+```python customLanguage="pythonOpenAISDK"
 import os
-import httpx
 from openai import OpenAI
 
-XAI_API_KEY = os.getenv("XAI_API_KEY")
 client = OpenAI(
-    api_key=XAI_API_KEY,
+    api_key=os.getenv("XAI_API_KEY"),
     base_url="https://api.x.ai/v1",
-    timeout=httpx.Timeout(3600.0), # Override default timeout with longer timeout for reasoning models
 )
 
 completion = client.responses.create(
     model="grok-4-1-fast-reasoning",
     input=[
-        {
-            "role": "system",
-            "content": "You are Grok, a highly intelligent, helpful AI assistant."
-        },
-        {
-            "role": "user",
-            "content": "What is the meaning of life, the universe, and everything?"
-        },
+        {"role": "system", "content": "You are Grok, a highly intelligent, helpful AI assistant."},
+        {"role": "user", "content": "What is the meaning of life, the universe, and everything?"},
     ],
 )
 
-print(completion.output[0].content)
+print(completion.output_text)
 ```
 
-```javascriptAISDK
-// In your terminal, first run:
-// pnpm add ai @ai-sdk/xai
-
-import { xai } from '@ai-sdk/xai';
+```javascript customLanguage="javascriptAISDK"
+import { createXai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
 
-const result = await generateText({
-    model: xai.responses('grok-4'),
+const xai = createXai({ apiKey: process.env.XAI_API_KEY });
+
+const { text } = await generateText({
+    model: xai.responses('grok-4-1-fast-reasoning'),
     system: 'You are Grok, a highly intelligent, helpful AI assistant.',
     prompt: 'What is the meaning of life, the universe, and everything?',
 });
 
-console.log(result.text);
+console.log(text);
 ```
 
-```javascriptOpenAISDK
-// In your terminal, first run:
-// npm install openai
-
+```javascript customLanguage="javascriptOpenAISDK"
 import OpenAI from 'openai';
 
 const client = new OpenAI({
-    apiKey: "your_api_key",
-    baseURL: "https://api.x.ai/v1",
-    timeout: 360000, // Override default timeout with longer timeout for reasoning models
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: 'https://api.x.ai/v1',
 });
 
 const response = await client.responses.create({
-    model: "grok-4-1-fast-reasoning",
+    model: 'grok-4-1-fast-reasoning',
     input: [
-        {
-            role: "system",
-            content:
-            "You are Grok, a highly intelligent, helpful AI assistant.",
-        },
-        {
-            role: "user",
-            content:
-            "What is the meaning of life, the universe, and everything?",
-        },
+        { role: 'system', content: 'You are Grok, a highly intelligent, helpful AI assistant.' },
+        { role: 'user', content: 'What is the meaning of life, the universe, and everything?' },
     ],
 });
 
-console.log(response.output[0].content);
+console.log(response.output_text);
 ```
 
 ```bash
-curl https://api.x.ai/v1/chat/completions \\
--H "Content-Type: application/json" \\
--H "Authorization: Bearer $XAI_API_KEY" \\
--m 3600 \\
--d '{
-    "messages": [
-        {
-            "role": "system",
-            "content": "You are Grok, a highly intelligent, helpful AI assistant."
-        },
-        {
-            "role": "user",
-            "content": "What is the meaning of life, the universe, and everything?"
-        }
-    ],
-    "model": "grok-4-1-fast-reasoning"
-}'
+curl https://api.x.ai/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -d '{
+    "model": "grok-4-1-fast-reasoning",
+    "input": [
+        {"role": "system", "content": "You are Grok, a highly intelligent, helpful AI assistant."},
+        {"role": "user", "content": "What is the meaning of life, the universe, and everything?"}
+    ]
+  }'
 ```
 
-Certain models also support [Structured Outputs](/developers/model-capabilities/text/structured-outputs), which allows you to enforce a schema for the LLM output.
+Certain models also support [Structured Outputs](/developers/model-capabilities/text/structured-outputs), which allows you to enforce a schema for the LLM output. For an in-depth guide about using Grok for text responses, check out the [Text Generation Guide](/developers/model-capabilities/text/generate-text).
 
-For an in-depth guide about using Grok for text responses, check out our [Text Generation Guide](/developers/model-capabilities/text/generate-text).
+## Step 5: Analyze an image
 
-## Step 5: Use Grok to analyze images
+Grok can accept both text and images as input. Pass an image URL alongside your prompt:
 
-Certain grok models can accept both text AND images as an input. For example:
-
-```pythonXAI
+```python customLanguage="pythonXAI"
 import os
-
 from xai_sdk import Client
 from xai_sdk.chat import user, image
 
-client = Client(
-    api_key=os.getenv("XAI_API_KEY"),
-    timeout=3600, # Override default timeout with longer timeout for reasoning models
-)
+client = Client(api_key=os.getenv("XAI_API_KEY"))
 
 chat = client.chat.create(model="grok-4")
 chat.append(
     user(
         "What's in this image?",
-        image("https://science.nasa.gov/wp-content/uploads/2023/09/web-first-images-release.png")
+        image("https://science.nasa.gov/wp-content/uploads/2023/09/web-first-images-release.png"),
     )
 )
 
@@ -9245,131 +9802,99 @@ response = chat.sample()
 print(response.content)
 ```
 
-```pythonOpenAISDK
+```python customLanguage="pythonOpenAISDK"
 import os
-import httpx
 from openai import OpenAI
 
-XAI_API_KEY = os.getenv("XAI_API_KEY")
-image_url = "https://science.nasa.gov/wp-content/uploads/2023/09/web-first-images-release.png"
-
 client = OpenAI(
-    api_key=XAI_API_KEY,
+    api_key=os.getenv("XAI_API_KEY"),
     base_url="https://api.x.ai/v1",
-    timeout=httpx.Timeout(3600.0), # Override default timeout with longer timeout for reasoning models
 )
 
 completion = client.responses.create(
     model="grok-4",
-    input=[
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "input_image",
-                    "image_url": image_url,
-                    "detail": "high",
-                },
-                {
-                    "type": "input_text",
-                    "text": "What's in this image?",
-                },
-            ],
-        },
-    ],
+    input=[{
+        "role": "user",
+        "content": [
+            {"type": "input_image", "image_url": "https://science.nasa.gov/wp-content/uploads/2023/09/web-first-images-release.png"},
+            {"type": "input_text", "text": "What's in this image?"},
+        ],
+    }],
 )
-print(completion.output[0].content)
+
+print(completion.output_text)
 ```
 
-```javascriptAISDK
-import { xai } from '@ai-sdk/xai';
+```javascript customLanguage="javascriptAISDK"
+import { createXai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
 
-const imageUrl =
-'https://science.nasa.gov/wp-content/uploads/2023/09/web-first-images-release.png';
+const xai = createXai({ apiKey: process.env.XAI_API_KEY });
 
-const result = await generateText({
+const { text } = await generateText({
     model: xai.responses('grok-4'),
-    messages: [
-        {
-            role: 'user',
-            content: [
-                { type: 'image', image: imageUrl },
-                { text: "What's in this image?", type: 'text' },
-            ],
-        },
-    ],
+    messages: [{
+        role: 'user',
+        content: [
+            { type: 'image', image: 'https://science.nasa.gov/wp-content/uploads/2023/09/web-first-images-release.png' },
+            { type: 'text', text: "What's in this image?" },
+        ],
+    }],
 });
 
-console.log(result.text);
+console.log(text);
 ```
 
-```javascriptOpenAISDK
-import OpenAI from "openai";
+```javascript customLanguage="javascriptOpenAISDK"
+import OpenAI from 'openai';
 
 const client = new OpenAI({
     apiKey: process.env.XAI_API_KEY,
-    baseURL: "https://api.x.ai/v1",
-    timeout: 360000, // Override default timeout with longer timeout for reasoning models
+    baseURL: 'https://api.x.ai/v1',
 });
-
-const image_url =
-"https://science.nasa.gov/wp-content/uploads/2023/09/web-first-images-release.png";
 
 const completion = await client.responses.create({
-    model: "grok-4",
-    input: [
-        {
-            role: "user",
-            content: [
-                {
-                    type: "input_image",
-                    image_url: image_url,
-                    detail: "high",
-                },
-                {
-                    type: "input_text",
-                    text: "What's in this image?",
-                },
-            ],
-        },
-    ],
+    model: 'grok-4',
+    input: [{
+        role: 'user',
+        content: [
+            { type: 'input_image', image_url: 'https://science.nasa.gov/wp-content/uploads/2023/09/web-first-images-release.png' },
+            { type: 'input_text', text: "What's in this image?" },
+        ],
+    }],
 });
 
-console.log(completion.output[0].content);
+console.log(completion.output_text);
 ```
 
 ```bash
-curl https://api.x.ai/v1/responses \\
--H "Content-Type: application/json" \\
--H "Authorization: Bearer $XAI_API_KEY" \\
--m 3600 \\
--d '{
+curl https://api.x.ai/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -d '{
     "model": "grok-4",
-    "input": [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "input_image",
-                    "image_url": "https://science.nasa.gov/wp-content/uploads/2023/09/web-first-images-release.png",
-                    "detail": "high"
-                },
-                {
-                    "type": "input_text",
-                    "text": "Describe this image"
-                }
-            ]
-        }
-    ]
-}'
+    "input": [{
+        "role": "user",
+        "content": [
+            {"type": "input_image", "image_url": "https://science.nasa.gov/wp-content/uploads/2023/09/web-first-images-release.png"},
+            {"type": "input_text", "text": "What'\''s in this image?"}
+        ]
+    }]
+  }'
 ```
 
-And voila! Grok will tell you exactly what's in the image:
+To learn how to use Grok vision for more advanced use cases, check out [Image Understanding](/developers/model-capabilities/images/understanding).
 
-> This image is a photograph of a region in space, specifically a part of the Carina Nebula, captured by the James Webb Space Telescope. It showcases a stunning view of interstellar gas and dust, illuminated by young, hot stars. The bright points of light are stars, and the colorful clouds are composed of various gases and dust particles. The image highlights the intricate details and beauty of star formation within a nebula.
+## What's next
 
-To learn how to use Grok vision for more advanced use cases, check out our [Image Understanding](/developers/model-capabilities/images/understanding).
+Now that you've made your first request, explore what Grok can do:
+
+### Resources
+
+* [Streaming](/developers/model-capabilities/text/streaming) - Stream responses in real time
+* [Files & Collections](/developers/files) - Upload documents and build RAG pipelines
+* [Tools](/developers/tools/overview) - Web search, X search, code execution, and function calling
+* [Models & Pricing](/developers/models) - Compare available models and their capabilities
 
 
 ===/developers/rate-limits===
@@ -10459,6 +10984,28 @@ API endpoint for GET requests to /v1/image-generation-models/\{model\_id}.
 ```
 Method: GET
 Path: /v1/image-generation-models/{model_id}
+```
+
+***
+
+## GET /v1/video-generation-models
+
+API endpoint for GET requests to /v1/video-generation-models.
+
+```
+Method: GET
+Path: /v1/video-generation-models
+```
+
+***
+
+## GET /v1/video-generation-models/\{model\_id}
+
+API endpoint for GET requests to /v1/video-generation-models/\{model\_id}.
+
+```
+Method: GET
+Path: /v1/video-generation-models/{model_id}
 ```
 
 
@@ -11772,6 +12319,82 @@ The format is `[[N]](url)` where:
 * `url` is the source URL
 
 **Citation numbering**: Citation numbers always start from 1 and increment sequentially. If the same source is cited again later in the response, the original citation number will be reused.
+
+### Disabling Inline Citations
+
+To disable inline citations in the Responses API, add `"no_inline_citations"` to the `include` field. For the xAI SDK, simply omit `"inline_citations"` from the `include` field (inline citations are opt-in for the xAI SDK).
+
+When disabled, the response text will not contain any `[[N]](url)` markdown links. The `annotations` field on `output_text` content blocks will still be present, but the annotations will only represent the sources that the tool encountered during the search — they will not have positional references into the response text.
+
+```python customLanguage="pythonOpenAISDK" highlightedLines="17"
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.getenv("XAI_API_KEY"),
+    base_url="https://api.x.ai/v1",
+)
+
+response = client.responses.create(
+    model="grok-4-1-fast-reasoning",
+    input=[
+        {"role": "user", "content": "What is xAI?"}
+    ],
+    tools=[
+        {"type": "web_search"},
+    ],
+    include=["no_inline_citations"],  # Disable inline citations
+)
+
+# Response text will not contain inline citation markdown
+for item in response.output:
+    if item.type == "message":
+        for content in item.content:
+            if content.type == "output_text":
+                print(content.text)
+```
+
+```python customLanguage="pythonRequests" highlightedLines="12"
+import os
+import requests
+
+response = requests.post(
+    "https://api.x.ai/v1/responses",
+    headers={
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}",
+    },
+    json={
+        "model": "grok-4-1-fast-reasoning",
+        "include": ["no_inline_citations"],
+        "input": [
+            {"role": "user", "content": "What is xAI?"}
+        ],
+        "tools": [{"type": "web_search"}],
+    },
+)
+
+data = response.json()
+for item in data["output"]:
+    if item["type"] == "message":
+        for content in item["content"]:
+            if content["type"] == "output_text":
+                print(content["text"])
+```
+
+```bash customLanguage="bash" highlightedLines="6"
+curl https://api.x.ai/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -d '{
+  "model": "grok-4-1-fast-reasoning",
+  "include": ["no_inline_citations"],
+  "input": [
+    {"role": "user", "content": "What is xAI?"}
+  ],
+  "tools": [{"type": "web_search"}]
+}'
+```
 
 ## Accessing Structured Inline Citation Data
 
@@ -14899,7 +15522,7 @@ Available license types:
 To purchase:
 
 1. On the overview page, select the license type and quantity.
-2. Enter payment details if prompted <em>(requires billing read-write permissions)</em>.
+2. Enter payment details if prompted .
 3. Confirm the purchase—licenses will be added to your available pool for assignment.
 
 Purchased licenses become immediately available for provisioning to users.
@@ -14916,7 +15539,7 @@ To invite:
 
 1. On the overview page, click "Invite users to Grok Business".
 2. Enter the users' email addresses.
-3. Select a license type to auto-provision upon acceptance <em>(requires team read-write permissions)</em>.
+3. Select a license type to auto-provision upon acceptance .
 4. Send the invitation—the user will receive an email with a link to activate their account.
 
 Invited users gain access to the team workspace and basic team read permissions. (the latter is to allow for sharing conversations with your team members)
@@ -14949,7 +15572,7 @@ Reduce your team's commitment by canceling unused licenses.
 To cancel:
 
 1. On the overview page, select the license type and quantity to cancel.
-2. Submit the cancellation request <em>(requires billing read-write permissions)</em>.
+2. Submit the cancellation request .
 
 Cancellations may take a few days to process, and eligible refunds will be issued to your billing method. Canceled licenses are removed from your pool once processed.
 

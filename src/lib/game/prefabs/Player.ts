@@ -298,7 +298,7 @@ export class Player extends BaseEntity {
   public superAttack() {
     // Atomic check-and-reset to prevent race between read and reset (ticket #226)
     if (!gameActions.attemptSuperAttack(this.superMaxCharge)) {
-      log.info(
+      log.debug(
         COMPONENT_NAME,
         `Super not ready: ${gameState.get().superCharge}/${this.superMaxCharge}`
       );

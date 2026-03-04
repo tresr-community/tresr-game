@@ -1,0 +1,387 @@
+---
+// /admin - Error Viewer & Management
+// Access control is enforced by the satellite canister (get_errors returns Err if not admin).
+// This page is client-rendered: it calls get_errors after auth and shows the result.
+import BaseLayout from "@/layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="TRESR Admin — Error Log">
+  <div class="container mx-auto max-w-7xl px-4 py-8">
+    <!-- Page header -->
+    <div class="mb-6 flex items-center">
+      <h1 class="text-2xl font-bold">🛡 Admin — Error Log</h1>
+    </div>
+
+    <!-- Loading state -->
+    <div id="loading" class="flex justify-center py-20">
+      <span class="loading loading-ring loading-lg"></span>
+    </div>
+
+    <!-- Access denied -->
+    <div
+      id="unauthorized"
+      class="alert alert-error mx-auto mt-20 hidden max-w-md"
+    >
+      <span>⛔ Unauthorized — admin access only</span>
+    </div>
+
+    <!-- Error table -->
+    <div id="error-panel" class="hidden">
+      <!-- Toolbar -->
+      <div class="mb-4 flex flex-wrap items-center gap-3">
+        <h2 class="flex-1 text-xl font-bold">
+          Error Records (<span id="error-count">0</span>)
+        </h2>
+        <label class="input input-bordered input-sm flex items-center gap-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 16 16"
+            class="h-4 w-4 opacity-70"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"
+              clip-rule="evenodd"></path>
+          </svg>
+          <input id="search" type="text" placeholder="Search…" class="grow" />
+        </label>
+        <select id="filter-env" class="select select-bordered select-sm">
+          <option value="">All environments</option>
+          <option value="mainnet">mainnet</option>
+          <option value="testnet">testnet</option>
+          <option value="anvil">anvil</option>
+        </select>
+        <select id="filter-resolved" class="select select-bordered select-sm">
+          <option value="">All statuses</option>
+          <option value="false">Unresolved</option>
+          <option value="true">Resolved</option>
+        </select>
+        <button
+          id="delete-selected-btn"
+          class="btn btn-error btn-sm hidden"
+          disabled
+        >
+          🗑 Delete selected
+        </button>
+        <button id="refresh-btn" class="btn btn-ghost btn-sm">↺ Refresh</button>
+      </div>
+
+      <!-- Selection bar -->
+      <div
+        id="selection-bar"
+        class="bg-base-200 mb-2 flex hidden items-center gap-3 rounded p-2"
+      >
+        <label class="label cursor-pointer gap-2">
+          <input id="select-all" type="checkbox" class="checkbox checkbox-sm" />
+          <span class="label-text text-sm">Select all visible</span>
+        </label>
+        <span id="selected-count" class="text-sm opacity-70">0 selected</span>
+      </div>
+
+      <div class="rounded-box border-base-300 overflow-x-auto border">
+        <table class="table-sm table">
+          <thead>
+            <tr>
+              <th
+                ><input
+                  id="select-all-head"
+                  type="checkbox"
+                  class="checkbox checkbox-xs"
+                /></th
+              >
+              <th>Error ID</th>
+              <th>Component</th>
+              <th>Message</th>
+              <th>Principal</th>
+              <th>Env</th>
+              <th>Time</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="error-table-body"> </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin status footer -->
+  <footer
+    class="fixed inset-x-0 bottom-0 z-20 flex justify-center px-2 pt-2 pb-[env(safe-area-inset-bottom,0px)]"
+  >
+    <div
+      class="bg-base-300/80 border-primary/20 text-base-content/50 rounded-t-lg border-x border-t px-4 pt-1 font-mono text-xs backdrop-blur"
+    >
+      <span id="admin-status" class="opacity-75">Checking auth…</span>
+    </div>
+  </footer>
+
+  <!-- Error detail modal -->
+  <dialog id="error-detail-modal" class="modal modal-middle">
+    <div class="modal-box border-base-content/10 bg-base-300 max-w-2xl border">
+      <div class="mb-4 flex items-center justify-between">
+        <h3 class="font-display text-lg font-bold tracking-wide">
+          Error Detail
+        </h3>
+        <form method="dialog">
+          <button class="btn btn-circle btn-ghost btn-sm">✕</button>
+        </form>
+      </div>
+      <div class="space-y-3">
+        <div>
+          <div class="mb-1 text-xs font-bold uppercase opacity-50">
+            Principal
+          </div>
+          <div
+            id="detail-principal"
+            class="bg-base-200 rounded p-2 font-mono text-xs break-all opacity-80"
+          >
+          </div>
+        </div>
+        <div>
+          <div class="mb-1 text-xs font-bold uppercase opacity-50">
+            Raw Error
+          </div>
+          <pre
+            id="detail-raw-error"
+            class="bg-base-200 max-h-64 overflow-y-auto rounded p-3 font-mono text-xs break-all whitespace-pre-wrap">
+          </pre>
+        </div>
+      </div>
+      <div class="modal-action">
+        <form method="dialog">
+          <button class="btn btn-ghost btn-sm">Close</button>
+        </form>
+      </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+
+  <script>
+    import {initSatellite} from "@junobuild/core";
+    import {
+      getErrors,
+      deleteErrors,
+    } from "@/declarations/satellite/satellite.api";
+    import type {ErrorRecord} from "@/declarations/satellite/satellite.did";
+
+    // ─── State ────────────────────────────────────────────────────────────
+
+    let allErrors: ErrorRecord[] = [];
+    const selected = new Set<string>();
+
+    // ─── DOM refs ──────────────────────────────────────────────────────────
+
+    const loading = document.getElementById("loading")!;
+    const unauthorized = document.getElementById("unauthorized")!;
+    const errorPanel = document.getElementById("error-panel")!;
+    const tableBody = document.getElementById("error-table-body")!;
+    const errorCount = document.getElementById("error-count")!;
+    const deleteBtn = document.getElementById(
+      "delete-selected-btn"
+    ) as HTMLButtonElement;
+    const searchInput = document.getElementById("search") as HTMLInputElement;
+    const filterEnv = document.getElementById(
+      "filter-env"
+    ) as HTMLSelectElement;
+    const filterResolved = document.getElementById(
+      "filter-resolved"
+    ) as HTMLSelectElement;
+    const selectionBar = document.getElementById("selection-bar")!;
+    const selectedCount = document.getElementById("selected-count")!;
+    const selectAll = document.getElementById("select-all") as HTMLInputElement;
+    const selectAllHead = document.getElementById(
+      "select-all-head"
+    ) as HTMLInputElement;
+    const adminStatus = document.getElementById("admin-status")!;
+
+    // ─── Fetch ────────────────────────────────────────────────────────────
+
+    async function loadErrors() {
+      loading.classList.remove("hidden");
+      errorPanel.classList.add("hidden");
+      unauthorized.classList.add("hidden");
+
+      try {
+        const result = await getErrors();
+
+        if ("Err" in result) {
+          loading.classList.add("hidden");
+          unauthorized.classList.remove("hidden");
+          adminStatus.textContent = "⛔ Unauthorized";
+          adminStatus.className = "text-error font-bold";
+          return;
+        }
+
+        allErrors = result.Ok;
+        loading.classList.add("hidden");
+        errorPanel.classList.remove("hidden");
+        selectionBar.classList.remove("hidden");
+        adminStatus.textContent = "Admin ✓";
+        adminStatus.className = "text-success font-bold";
+        renderTable();
+      } catch (e) {
+        loading.classList.add("hidden");
+        unauthorized.classList.remove("hidden");
+        adminStatus.textContent = "Error loading";
+        adminStatus.className = "text-error";
+        console.error("Failed to load errors:", e);
+      }
+    }
+
+    // ─── Render ───────────────────────────────────────────────────────────
+
+    function getFiltered(): ErrorRecord[] {
+      const q = searchInput.value.toLowerCase();
+      const env = filterEnv.value;
+      const res = filterResolved.value;
+      return allErrors.filter((r) => {
+        if (env && r.environment !== env) return false;
+        if (res === "true" && !r.resolved) return false;
+        if (res === "false" && r.resolved) return false;
+        if (
+          q &&
+          !r.error_id.toLowerCase().includes(q) &&
+          !r.component.toLowerCase().includes(q) &&
+          !r.message.toLowerCase().includes(q) &&
+          !r.principal.toLowerCase().includes(q)
+        )
+          return false;
+        return true;
+      });
+    }
+
+    function renderTable() {
+      const rows = getFiltered();
+      errorCount.textContent = String(rows.length);
+      tableBody.innerHTML = "";
+
+      if (rows.length === 0) {
+        tableBody.innerHTML =
+          '<tr><td colspan="8" class="text-center opacity-50 py-8">No errors found</td></tr>';
+        return;
+      }
+
+      for (const r of rows) {
+        const ts = new Date(Number(r.timestamp_ms)).toLocaleString();
+        const tr = document.createElement("tr");
+        tr.className = `hover ${selected.has(r.error_id) ? "bg-base-300" : ""}`;
+        tr.innerHTML = `
+          <td><input type="checkbox" class="checkbox checkbox-xs row-check" data-id="${r.error_id}" ${selected.has(r.error_id) ? "checked" : ""} /></td>
+          <td><code class="text-xs font-mono">${r.error_id}</code></td>
+          <td class="text-xs font-mono">${escHtml(r.component)}</td>
+          <td class="max-w-xs truncate text-xs" title="${escHtml(r.message)}">${escHtml(r.message)}</td>
+          <td class="text-xs font-mono truncate max-w-[120px]" title="${escHtml(r.principal)}">${escHtml(r.principal.slice(0, 12))}…</td>
+          <td><span class="badge badge-xs ${r.environment === "mainnet" ? "badge-warning" : r.environment === "testnet" ? "badge-info" : "badge-ghost"}">${r.environment}</span></td>
+          <td class="text-xs whitespace-nowrap">${ts}</td>
+          <td>${r.resolved ? '<span class="badge badge-success badge-xs">resolved</span>' : '<span class="badge badge-error badge-xs">open</span>'}</td>
+        `;
+
+        // Expand raw_error on row click (not on checkbox)
+        tr.addEventListener("click", (e) => {
+          if ((e.target as HTMLInputElement).type === "checkbox") return;
+          const detailModal = document.getElementById(
+            "error-detail-modal"
+          ) as HTMLDialogElement;
+          const detailPrincipal = document.getElementById("detail-principal");
+          const detailRawError = document.getElementById("detail-raw-error");
+          if (detailPrincipal) detailPrincipal.textContent = r.principal;
+          if (detailRawError) detailRawError.textContent = r.raw_error;
+          detailModal?.showModal();
+        });
+
+        tableBody.appendChild(tr);
+      }
+
+      // Bind checkbox events
+      for (const cb of Array.from(
+        tableBody.querySelectorAll<HTMLInputElement>(".row-check")
+      )) {
+        cb.addEventListener("change", () => {
+          if (cb.checked) selected.add(cb.dataset.id!);
+          else selected.delete(cb.dataset.id!);
+          updateSelectionUI();
+        });
+      }
+    }
+
+    function updateSelectionUI() {
+      selectedCount.textContent = `${selected.size} selected`;
+      if (selected.size > 0) {
+        deleteBtn.classList.remove("hidden");
+        deleteBtn.disabled = false;
+      } else {
+        deleteBtn.classList.add("hidden");
+        deleteBtn.disabled = true;
+      }
+    }
+
+    // ─── Delete ───────────────────────────────────────────────────────────
+
+    deleteBtn.addEventListener("click", async () => {
+      if (selected.size === 0) return;
+      if (
+        !confirm(
+          `Delete ${selected.size} error record(s)? This cannot be undone.`
+        )
+      )
+        return;
+
+      try {
+        const result = await deleteErrors([...selected]);
+        if ("Err" in result) {
+          alert(`Delete failed: ${result.Err}`);
+          return;
+        }
+        selected.clear();
+        updateSelectionUI();
+        await loadErrors();
+      } catch (e) {
+        alert(`Delete failed: ${String(e)}`);
+      }
+    });
+
+    // ─── Filters & select-all ─────────────────────────────────────────────
+
+    document
+      .getElementById("refresh-btn")!
+      .addEventListener("click", loadErrors);
+    searchInput.addEventListener("input", renderTable);
+    filterEnv.addEventListener("change", renderTable);
+    filterResolved.addEventListener("change", renderTable);
+
+    selectAll.addEventListener("change", () => {
+      for (const r of getFiltered()) {
+        if (selectAll.checked) selected.add(r.error_id);
+        else selected.delete(r.error_id);
+      }
+      renderTable();
+      updateSelectionUI();
+    });
+
+    selectAllHead.addEventListener("change", () => {
+      selectAll.checked = selectAllHead.checked;
+      selectAll.dispatchEvent(new Event("change"));
+    });
+
+    // ─── Helpers ─────────────────────────────────────────────────────────
+
+    function escHtml(s: string) {
+      return s
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    // ─── Init ─────────────────────────────────────────────────────────────
+    // initSatellite() MUST be called before any satellite API functions.
+    // Without this, getSatelliteExtendedActor() throws "No satellite ID defined".
+
+    (async () => {
+      await initSatellite();
+      await loadErrors();
+    })();
+  </script>
+</BaseLayout>

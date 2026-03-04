@@ -145,17 +145,23 @@ fn parse_json_rpc_result(body: &str) -> Result<serde_json::Value, String> {
 
 /// Verify a fee transaction on Avalanche.
 /// Returns the parsed fee data including amount and sender address.
-pub async fn verify_avalanche_fee(tx_hash: &str) -> Result<ParsedFee, String> {
+/// `caller_wallet` is used by the ANVIL mock to return the correct `from` address
+/// so the wallet-match check in `on_fee_created` passes in local dev.
+pub async fn verify_avalanche_fee(
+    tx_hash: &str,
+    caller_wallet: Option<&str>,
+) -> Result<ParsedFee, String> {
     // Anvil mock: skip real RPC verification in local dev
     if crate::config::NETWORK_NAME == "anvil" {
         crate::logging::log_debug(
             "EvmRpc",
             &format!("ANVIL_MOCK: verify_avalanche_fee for {}", tx_hash),
         );
-        return Ok(ParsedFee {
-            amount: 10,
-            from: "0x0000000000000000000000000000000000000000".to_string(),
-        });
+        // Echo back the caller's wallet so the from-address check passes.
+        let from = caller_wallet
+            .unwrap_or("0x0000000000000000000000000000000000000000")
+            .to_string();
+        return Ok(ParsedFee { amount: 10, from });
     }
 
     // eth_getTransactionByHash — no typed binding, use raw JSON-RPC

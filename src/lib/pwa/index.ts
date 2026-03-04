@@ -376,7 +376,7 @@ class PWA {
     // before signing out.  Without this the notification reappears after reload.
     try {
       const {notificationManager} = await import("../notifications");
-      const {flushProfileWrites} = await import("../user/writeQueue");
+      const {flushProfileWrites} = await import("../user/write-queue");
       const updateNotifs = notificationManager
         .getNotifications()
         .filter((n) => n.data.type === "app_update");

@@ -102,7 +102,8 @@
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
         "vault_contract": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
         "faucet_contract": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-        "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13"
+        "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
+        "explorer_url": "http://localhost:8545/tx/"
       },
       "testnet": {
         "url": "https://game-testnet.tresr.community",
@@ -121,7 +122,8 @@
         "oracle_address": "0xf2ff695cae8cc886d3c03afd502a35fcee61b66f",
         "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
         "vault_contract": "0xf4a67b6beb1a54587468703ef877bf64c5f49dc7",
-        "faucet_contract": "0x29d16738c64566940a5543bc3e141e0e9057468e"
+        "faucet_contract": "0x29d16738c64566940a5543bc3e141e0e9057468e",
+        "explorer_url": "https://testnet.snowtrace.io/tx/"
       },
       "mainnet": {
         "url": "https://game.tresr.community",
@@ -139,7 +141,8 @@
         "tresr_token_contract": "0x9913BA363073Ca3e9eA0cD296E36B75aF9E40bef",
         "oracle_address": "0x0000000000000000000000000000000000000000",
         "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
-        "vault_contract": "0x0000000000000000000000000000000000000000"
+        "vault_contract": "0x0000000000000000000000000000000000000000",
+        "explorer_url": "https://snowtrace.io/tx/"
       }
     },
     "icp": {
@@ -552,16 +555,6 @@
           "attack_check_ms": 500
         },
         "ai": {
-          "direct": {},
-          "flanker": {
-            "speed_mult": 1.1,
-            "offset": 120,
-            "switch_time": 3,
-            "orbit_time": 2,
-            "lunge_speed_mult": 2.5,
-            "lunge_duration": 0.3,
-            "recovery_time": 0.8
-          },
           "cautious": {
             "speed_mult": 0.7,
             "preferred_distance": 180,
@@ -572,6 +565,7 @@
             "strafe_switch_time": 2,
             "check_frame_interval": 10
           },
+          "direct": {},
           "erratic": {
             "speed_mult": 1.2,
             "zigzag_frequency": 3,
@@ -579,14 +573,14 @@
             "jitter_x": 80,
             "jitter_y": 40
           },
-          "swarm": {
-            "speed_mult": 1,
-            "group_radius": 150,
-            "speed_bonus_per_ally": 0.15,
-            "max_speed_mult": 2,
-            "rush_threshold": 3,
-            "rush_tint": 65416,
-            "check_frame_interval": 10
+          "flanker": {
+            "speed_mult": 1.1,
+            "offset": 120,
+            "switch_time": 3,
+            "orbit_time": 2,
+            "lunge_speed_mult": 2.5,
+            "lunge_duration": 0.3,
+            "recovery_time": 0.8
           },
           "passive": {
             "speed_mult": 0.5,
@@ -600,14 +594,23 @@
             "attack_damage": 10,
             "attack_cooldown_s": 0.5
           },
+          "swarm": {
+            "speed_mult": 1,
+            "group_radius": 150,
+            "speed_bonus_per_ally": 0.15,
+            "max_speed_mult": 2,
+            "rush_threshold": 3,
+            "rush_tint": 65416,
+            "check_frame_interval": 10
+          },
           "weights": {
-            "direct": 0,
-            "flanker": 100,
             "cautious": 0,
-            "swarm": 0,
+            "direct": 0,
             "erratic": 0,
+            "flanker": 0,
             "passive": 0,
-            "retardio": 0
+            "retardio": 0,
+            "swarm": 100
           }
         },
         "health_bar": {
@@ -890,7 +893,7 @@
       "frameHeight": 512
     },
     "hero": {
-      "scaleFactor": 1,
+      "scaleFactor": 0.8,
       "anims": [
         {
           "name": "idle",
@@ -1013,7 +1016,7 @@
       ]
     },
     "enemies": {
-      "scaleFactor": 1,
+      "scaleFactor": 0.8,
       "count": 5,
       "anims": [
         {
@@ -1407,9 +1410,9 @@
   "changelog": {
     "versions": [
       {
-        "version": "TBD",
-        "date": "Planning",
-        "title": "",
+        "version": "0.4.0",
+        "date": "TBD: Planning stage...",
+        "title": "Prizes for losers",
         "notes": [
           "Consolation prize for expired #1 active score — a participation trophy for degens"
         ]
@@ -1423,14 +1426,14 @@
           "v2 Sprites with ridiculous big head animation",
           "Active score leaderboard with 24h TTL decay — your high score rugs itself",
           "Unit tests included to catch dem sneaky regressions",
-          "New enemy AI types — the bankers brought reinforcements from TradFi",
-          "AI 1. Direct: Charges straight at the player with no special movement",
-          "AI 2. Flanker: Orbits the player at a set radius, then lunges in to attack.",
-          "AI 3. Cautious: Strafes laterally at preferred distance when solo.",
-          "AI 4. Erratic: Snakes toward the player with continuous sine-wave zigzag.",
-          "AI 5. Swarm: Clusters with nearby allies. When rush_threshold allies are nearby, triggers a coordinated rush with a green tint visual cue.",
-          "AI 6. Passive (The Banker): Walks slowly across the screen, minding its own business.",
-          "AI 7. Retardio: Rare, chaotic enemy that attacks OTHER enemies."
+          "New Enemy AI types — the bankers brought reinforcements from TradFi",
+          "Added Enemy AI 1. Direct: Charges straight at the player with no special movement",
+          "Added Enemy AI 2. Flanker: Orbits the player at a set radius, then lunges in to attack.",
+          "Added Enemy AI 3. Cautious: Strafes laterally at preferred distance when solo.",
+          "Added Enemy AI 4. Erratic: Snakes toward the player with continuous sine-wave zigzag.",
+          "Added Enemy AI 5. Swarm: Clusters with nearby allies. When rush_threshold allies are nearby, triggers a coordinated rush with a green tint visual cue.",
+          "Added Enemy AI 6. Passive (The Banker): Walks slowly across the screen, minding its own business.",
+          "Added Enemy AI 7. Retardio: Rare, chaotic enemy that attacks OTHER enemies."
         ]
       },
       {
@@ -1438,17 +1441,21 @@
         "date": "2026-02-21",
         "title": "Mobile Friendly",
         "notes": [
-          "Game speed set to 1.5, because degens have no patience",
           "Mobile support so you can beat-up bankers from the toilet",
+          "Mobile touch controls and Game Pad support",
           "PWA Mobile support for that poor-man native app feel",
           "Portrait mode blocked — forced landscape, no vertical charts allowed",
-          "CI Pipelines — because yolo-pushing to main was getting old (it wasn't)",
+          "Game speed set to 1.5, because degens have no patience",
+          "Guest (normie) and authenticated (degen) play modes",
+          "SIWA enabled (Sign-In with Avalanche)",
+          "CI Pipelines — because yolo-pushing to main was getting old",
           "CI Pipeline caching — builds go brrr 🚀",
           "Game session tracking on victory and defeat — receipts for your bags and your L's",
           "Leaderboard — finally some on-chain clout to flex",
           "Countdown timers on active leaderboard entries — watch your clout evaporate in real time",
           "Screen wake lock — your phone won't paper-hand and go to sleep mid-boss",
-          "Two-tab leaderboard UI (ACTIVE + ALL TIME) — so you can cope in two dimensions"
+          "Two-tab leaderboard UI (ACTIVE + ALL TIME) — so you can cope in two dimensions",
+          "An initial half-arsed attempt at cheating prevention"
         ]
       },
       {
@@ -1457,21 +1464,18 @@
         "title": "Genesis Drop",
         "notes": [
           "Initial MVP release pushed straight to main like a savage",
+          "Guest(normie) play modes",
           "Beat-em-up combat with 2.5D physics",
           "Phaser 3 Arcade Engine",
           "Single enemy sprite with multiple AI behaviors",
           "Boss encounters with ground pound and charge attacks",
           "Key and loot drop system",
           "Bear Market of endless retardio bankers",
-          "Avalanche blockchain integration for fees and claims",
-          "Guest and authenticated play modes",
           "AI generated Art, SFX and Music",
-          "Mobile touch controls and Game Pad support",
-          "An initial half-arsed attempt at cheating prevention",
           "No working backend or smart contracts yet"
         ]
       }
     ]
   },
-  "configHash": "2d915ad8b2eb533ee5fed25f967cb981a8ea91eeb9b915cb8d038a268915e539"
+  "configHash": "483238f9d46205536e1cf277579fb3334c5f74b0b23660b7a5e2d103942defb0"
 }

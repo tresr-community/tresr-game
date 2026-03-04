@@ -8,7 +8,7 @@ import {loadConfigAsync} from "../config";
 import {log} from "../utils/log";
 import {getEnvironmentKey} from "./avalanche";
 import {getReadClient} from "./tx";
-import {ERC20Abi} from "./VaultAbi";
+import {ERC20Abi} from "./abi/vault";
 
 const COMPONENT_NAME = "Balance";
 

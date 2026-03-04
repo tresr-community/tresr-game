@@ -2,8 +2,29 @@
   "juno": {
     "satellite_id": "${VITE_SATELLITE_ID}",
     "orbiter_id": "${VITE_ORBITER_ID}",
+    "admins": [
+      "pegnp-gazih-6vb6n-cze6g-gei4h-y3dlc-i77bm-7ityv-rmome-rshwy-wqe"
+    ],
     "collections": {
       "datastore": [
+        {
+          "collection": "audit",
+          "read": "managed",
+          "write": "managed",
+          "memory": "stable"
+        },
+        {
+          "collection": "economy",
+          "read": "public",
+          "write": "managed",
+          "memory": "stable"
+        },
+        {
+          "collection": "scores",
+          "read": "public",
+          "write": "managed",
+          "memory": "stable"
+        },
         {
           "collection": "users",
           "read": "managed",
@@ -11,32 +32,8 @@
           "memory": "stable"
         },
         {
-          "collection": "fees",
+          "collection": "errors",
           "read": "managed",
-          "write": "managed",
-          "memory": "stable"
-        },
-        {
-          "collection": "claims",
-          "read": "managed",
-          "write": "managed",
-          "memory": "stable"
-        },
-        {
-          "collection": "game_sessions",
-          "read": "managed",
-          "write": "managed",
-          "memory": "stable"
-        },
-        {
-          "collection": "leaderboard",
-          "read": "public",
-          "write": "managed",
-          "memory": "stable"
-        },
-        {
-          "collection": "stats",
-          "read": "public",
           "write": "managed",
           "memory": "stable"
         }

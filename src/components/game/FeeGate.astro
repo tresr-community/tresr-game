@@ -58,8 +58,9 @@
 <script>
   import {config} from "@/lib/config/client";
   import {getEnvironmentKey} from "@/lib/wallet/avalanche";
+  import {setDoc} from "@junobuild/core";
   import {connectWallet, isConnected} from "@/lib/wallet/connection";
-  import {payFeeForGame} from "@/lib/wallet/avalanche";
+  import {payFeeForGame, getExplorerUrl} from "@/lib/wallet/avalanche";
   import {confirmReceipt} from "@/lib/wallet/tx";
   import {getTresrBalance, formatBalance} from "@/lib/wallet/balance";
   import {parseBalance} from "@/lib/wallet/balance";
@@ -70,6 +71,7 @@
   } from "@/lib/game/fee-gate";
   import {log} from "@/lib/utils/log";
   import {trackFeePaid, trackError} from "@/lib/metrics/analytics";
+  import {reportError} from "@/lib/utils/error-reporter";
 
   const COMPONENT_NAME = "FeeGate";
 
@@ -238,6 +240,20 @@
       // Store session info in the fee-gate module (async — generates HMAC signature)
       await markFeePaid(txHash, sessionId);
 
+      // Save fee to Juno audit collection
+      await setDoc({
+        collection: "audit",
+        doc: {
+          key: `fee_${txHash}`,
+          data: {
+            tx_hash: txHash,
+            tx_url: getExplorerUrl(txHash), // optional, stored for debugging
+            amount: feeAmount, // required by FeeRequest — tokens (not wei)
+            status: "pending", // The rust backend verification updates this
+          },
+        },
+      });
+
       trackFeePaid(txHash);
       log.info(COMPONENT_NAME, `Fee paid: ${txHash}, session: ${sessionId}`);
       showStatus("Payment confirmed! Starting mission...");
@@ -260,11 +276,20 @@
         message.includes("cancelled") ||
         message.includes("denied")
       ) {
+        // User intentionally rejected — no need to file an error report
         showStatus("Transaction rejected by user.", true);
-      } else if (message.includes("timeout")) {
-        showStatus("Connection timed out. Try again.", true);
       } else {
-        showStatus(`Payment failed: ${message}`, true);
+        // Unexpected error — report to satellite and show clean reference code
+        // Fire-and-forget: reportError never throws
+        const errorId = await reportError(
+          COMPONENT_NAME,
+          "Fee payment failed",
+          message
+        );
+        const refLine = errorId
+          ? `Payment error – ref: ${errorId}`
+          : `Payment error – contact support`;
+        showStatus(refLine, true);
       }
 
       paymentInProgress = false;

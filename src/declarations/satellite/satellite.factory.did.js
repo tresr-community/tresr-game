@@ -13,7 +13,27 @@ export const idlFactory = ({ IDL }) => {
     'Ok' : IDL.Tuple(IDL.Nat, IDL.Vec(IDL.Nat8)),
     'Err' : IDL.Text,
   });
-  const Result_1 = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text });
+  const Result_1 = IDL.Variant({ 'Ok' : IDL.Null, 'Err' : IDL.Text });
+  const ErrorRecord = IDL.Record({
+    'resolved' : IDL.Bool,
+    'component' : IDL.Text,
+    'principal' : IDL.Text,
+    'timestamp_ms' : IDL.Nat64,
+    'raw_error' : IDL.Text,
+    'message' : IDL.Text,
+    'environment' : IDL.Text,
+    'error_id' : IDL.Text,
+  });
+  const Result_2 = IDL.Variant({
+    'Ok' : IDL.Vec(ErrorRecord),
+    'Err' : IDL.Text,
+  });
+  const Result_3 = IDL.Variant({ 'Ok' : IDL.Text, 'Err' : IDL.Text });
+  const ErrorPayload = IDL.Record({
+    'component' : IDL.Text,
+    'raw_error' : IDL.Text,
+    'message' : IDL.Text,
+  });
   
   return IDL.Service({
     'claim_authorize' : IDL.Func(
@@ -21,7 +41,10 @@ export const idlFactory = ({ IDL }) => {
         [Result],
         [],
       ),
-    'get_oracle_address' : IDL.Func([], [Result_1], []),
+    'delete_errors' : IDL.Func([IDL.Vec(IDL.Text)], [Result_1], []),
+    'get_errors' : IDL.Func([], [Result_2], []),
+    'get_oracle_address' : IDL.Func([], [Result_3], []),
+    'report_error' : IDL.Func([ErrorPayload], [Result_3], []),
   });
 };
 

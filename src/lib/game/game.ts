@@ -57,6 +57,10 @@ export const getGameConfig = (
         game.registry.set("perf_tier", perfTier);
         game.registry.set("effects_multiplier", getEffectsMultiplier());
         game.registry.set("is_mobile", isMobile);
+
+        // Prevent WebAudio from suspending.
+        // When enabled this caused SFX stacking on focus return.
+        game.sound.pauseOnBlur = false;
       },
     },
     render: {

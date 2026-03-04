@@ -231,7 +231,7 @@ export class BaseEntity extends Phaser.Physics.Arcade.Sprite {
       this.groundY + s.offset_y * rs
     );
     this.shadow.setScale(rs);
-    this.shadow.setDepth(this.depth - 1);
+    this.shadow.setDepth(this.depth - 2);
     // Apply directional angle if configured (simulates angled light source)
     if (s.angle !== undefined) {
       this.shadow.setAngle(s.angle);

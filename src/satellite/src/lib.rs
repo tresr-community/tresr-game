@@ -33,10 +33,12 @@ use junobuild_macros::{
 };
 #[allow(clippy::single_component_path_imports)]
 use junobuild_satellite::{
-    AssertDeleteDocContext, AssertSetDocContext, OnDeleteAssetContext, OnDeleteDocContext,
+    AssertDeleteDocContext, AssertSetDocContext, DelDoc, OnDeleteAssetContext, OnDeleteDocContext,
     OnDeleteManyAssetsContext, OnDeleteManyDocsContext, OnSetDocContext, OnSetManyDocsContext,
-    OnUploadAssetContext, SetDoc, get_doc_store, include_satellite, set_doc_store,
+    OnUploadAssetContext, SetDoc, delete_doc_store, get_doc_store, include_satellite,
+    list_docs_store, set_doc_store,
 };
+use junobuild_shared::types::list::ListParams;
 use junobuild_utils::{decode_doc_data, encode_doc_data};
 use libsecp256k1::{Message, RecoveryId, Signature, recover};
 use tiny_keccak::{Hasher, Keccak};
@@ -44,8 +46,8 @@ use tiny_keccak::{Hasher, Keccak};
 use std::cell::RefCell;
 
 use types::{
-    BalanceRefreshRequest, ClaimRequest, ClaimStatus, FeeRequest, FeeStatus, GameSession,
-    GlobalStats, LeaderboardEntry, RefreshStatus, UserProfile,
+    BalanceRefreshRequest, ClaimRequest, ClaimStatus, ErrorPayload, ErrorRecord, FeeRequest,
+    FeeStatus, GameSession, GlobalStats, LeaderboardEntry, RefreshStatus, UserProfile,
 };
 
 /// Cached top active scorer to avoid full leaderboard scans on every session completion.
@@ -65,7 +67,7 @@ struct TopScorerCache {
 
 /// Serializable version of TopScorerCache for datastore persistence.
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 struct TopScorerCacheDoc {
     key: String,
     score: u64,
@@ -96,13 +98,33 @@ thread_local! {
 
 /// Single assertion handler for all collections
 /// Juno only allows one #[assert_set_doc] per module, so we dispatch by collection name
-#[assert_set_doc(collections = ["users", "fees", "claims", "game_sessions", "balance_refresh"])]
+#[assert_set_doc(collections = ["users", "audit", "balance_refresh"])]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     match context.data.collection.as_str() {
-        "users" => assert_user_profile(&context).map_err(|e| { crate::logging::log_error("Users", &e); e }),
-        "fees" => assert_fee_request(&context).map_err(|e| { crate::logging::log_error("Fees", &e); e }),
-        "claims" => assert_claim_request(&context).map_err(|e| { crate::logging::log_error("Claims", &e); e }),
-        "game_sessions" => assert_game_session(&context).map_err(|e| { crate::logging::log_error("GameSessions", &e); e }),
+        "users" => assert_user_profile(&context).map_err(|e| {
+            crate::logging::log_error("Users", &e);
+            e
+        }),
+        "audit" => {
+            if context.data.key.starts_with("fee_") {
+                assert_fee_request(&context).map_err(|e| {
+                    crate::logging::log_error("Fees", &e);
+                    e
+                })
+            } else if context.data.key.starts_with("claim_") {
+                assert_claim_request(&context).map_err(|e| {
+                    crate::logging::log_error("Claims", &e);
+                    e
+                })
+            } else if context.data.key.starts_with("session_") {
+                assert_game_session(&context).map_err(|e| {
+                    crate::logging::log_error("GameSessions", &e);
+                    e
+                })
+            } else {
+                Err("Invalid audit key prefix".to_string())
+            }
+        }
         "balance_refresh" => Ok(()), // No validation needed for refresh requests
         _ => Ok(()),
     }
@@ -326,17 +348,30 @@ fn assert_fee_request(context: &AssertSetDocContext) -> Result<(), String> {
         );
     }
 
-    // Only allow pending status on creation
-    if data.status != FeeStatus::Pending {
-        return Err("Fees must be created with 'pending' status.".to_string());
-    }
-
-    // Enforce document key == tx_hash to prevent fee replay (ticket #288).
+    // Enforce document key == "fee_" + tx_hash to prevent fee replay (ticket #288).
     // Juno enforces key uniqueness per user, so the same tx_hash cannot be
     // submitted twice under different keys. Combined with tx.from validation
     // (ticket #285), this prevents any user from replaying another's fee.
-    if context.data.key != data.tx_hash {
-        return Err("Fee document key must equal the transaction hash.".to_string());
+    let expected_key = format!("fee_{}", data.tx_hash);
+    if context.data.key != expected_key {
+        return Err("Fee document key must equal 'fee_' + transaction hash.".to_string());
+    }
+
+    // Only enforce Pending status on *creation* (no existing document).
+    // The backend timer writes Verified/Failed via set_doc_store — that also
+    // fires assert_set_doc, so we must allow those updates through.
+    // A pre-existing document means this is a backend update, not a user write.
+    let is_new_doc = get_doc_store(
+        context.caller,
+        "audit".to_string(),
+        context.data.key.clone(),
+    )
+    .ok()
+    .flatten()
+    .is_none();
+
+    if is_new_doc && data.status != FeeStatus::Pending {
+        return Err("Fees must be created with 'pending' status.".to_string());
     }
 
     Ok(())
@@ -385,24 +420,24 @@ fn assert_game_session(context: &AssertSetDocContext) -> Result<(), String> {
 
 /// Per-collection delete policy.
 /// Allow deletion for ephemeral / user-managed data; block for financial audit trails.
-#[assert_delete_doc(collections = ["users", "fees", "claims", "game_sessions", "leaderboard", "balance_refresh", "stats"])]
+#[assert_delete_doc(collections = ["users", "audit", "scores", "economy", "balance_refresh"])]
 fn assert_delete_doc(context: AssertDeleteDocContext) -> Result<(), String> {
     match context.data.collection.as_str() {
         // Users: allow self-deletion (e.g. account removal)
         "users" => Ok(()),
-        // Leaderboard: allow removal of own expired entries
-        "leaderboard" => Ok(()),
+        // Scores: allow removal of own expired entries
+        "scores" => Ok(()),
         // Balance refresh: ephemeral, allow cleanup
         "balance_refresh" => Ok(()),
         // Financial / game session data — block to preserve audit trail
-        "fees" | "claims" | "game_sessions" | "stats" => {
+        "audit" | "economy" => {
             let msg = format!(
                 "Deletion blocked for collection '{}' — audit trail must be preserved",
                 context.data.collection
             );
             crate::logging::log_error("Security", &msg);
             Err(msg)
-        },
+        }
         _ => Ok(()),
     }
 }
@@ -413,7 +448,7 @@ fn assert_delete_doc(context: AssertDeleteDocContext) -> Result<(), String> {
 
 /// Single hook handler for all collections
 /// Juno only allows one #[on_set_doc] per module, so we dispatch by collection name
-#[on_set_doc(collections = ["users", "fees", "claims", "game_sessions", "balance_refresh"])]
+#[on_set_doc(collections = ["users", "audit", "balance_refresh"])]
 async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
     let ic_start = ic_cdk::api::instruction_counter();
     let collection = context.data.collection.clone();
@@ -428,10 +463,18 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
     );
 
     let result = match context.data.collection.as_str() {
-        "fees" => on_fee_created(context).await,
-        "claims" => on_claim_created(context).await,
+        "audit" => {
+            if context.data.key.starts_with("fee_") {
+                on_fee_created(context).await
+            } else if context.data.key.starts_with("claim_") {
+                on_claim_created(context).await
+            } else if context.data.key.starts_with("session_") {
+                on_game_session_update(context).await
+            } else {
+                Ok(())
+            }
+        }
         "balance_refresh" => on_balance_refresh(context).await,
-        "game_sessions" => on_game_session_update(context).await,
         "users" => on_user_profile_updated(context).await,
         _ => Ok(()),
     };
@@ -461,15 +504,15 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
 async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String> {
     let profile: UserProfile = decode_doc_data(&context.data.data.after.data)?;
 
-    // Only create leaderboard entries for users who have played at least once
+    // Only create scores entries for users who have played at least once
     if profile.stats.high_score == 0 {
         return Ok(());
     }
 
-    // Preserve existing active score fields from the leaderboard entry
+    // Preserve existing active score fields from the scores entry
     let existing_doc = get_doc_store(
         context.caller,
-        "leaderboard".to_string(),
+        "scores".to_string(),
         context.data.key.clone(),
     )
     .ok()
@@ -479,7 +522,7 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
     let existing = existing_doc.and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
 
     // --- Re-trigger guard ---
-    // If the leaderboard already has exactly the same user-derived fields,
+    // If scores already has exactly the same user-derived fields,
     // skip the write to avoid a set_doc → on_set_doc → set_doc loop.
     if let Some(ref ex) = existing {
         if ex.nickname == profile.nickname
@@ -488,9 +531,9 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
             && ex.games_won == profile.stats.total_games_won
         {
             logging::log_debug(
-                "Leaderboard",
+                "Scores",
                 &format!(
-                    "Skipping leaderboard sync — no user-field changes for {}",
+                    "Skipping scores sync — no user-field changes for {}",
                     context.data.key
                 ),
             );
@@ -509,7 +552,7 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
         session_id: existing.as_ref().and_then(|e| e.session_id.clone()),
     };
 
-    let leaderboard_doc = SetDoc {
+    let scores_doc = SetDoc {
         data: encode_doc_data(&entry)?,
         description: Some("Leaderboard entry".to_string()),
         version: existing_version,
@@ -517,15 +560,15 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
 
     set_doc_store(
         context.caller,
-        "leaderboard".to_string(),
+        "scores".to_string(),
         context.data.key.clone(),
-        leaderboard_doc,
+        scores_doc,
     )?;
 
     logging::log_info(
-        "Leaderboard",
+        "Scores",
         &format!(
-            "Updated for user {}: score={}, nickname={}",
+            "[Scores] Updated collection scores for user {} with score={}, nickname={}",
             context.data.key, profile.stats.high_score, profile.nickname
         ),
     );
@@ -543,7 +586,19 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
     }
 
     // Verify the transaction on Avalanche
-    match evm_rpc::verify_avalanche_fee(&fee.tx_hash).await {
+    // Pass the caller's wallet so the ANVIL mock can echo it back and pass the from-check.
+    let caller_wallet_for_mock = if crate::config::NETWORK_NAME == "anvil" {
+        // Pre-fetch caller wallet only for the mock path to avoid an extra read on mainnet.
+        let user_key = context.caller.to_text();
+        get_doc_store(context.caller, "users".to_string(), user_key)
+            .ok()
+            .flatten()
+            .and_then(|doc| decode_doc_data::<UserProfile>(&doc.data).ok())
+            .and_then(|p| p.evm_wallet)
+    } else {
+        None
+    };
+    match evm_rpc::verify_avalanche_fee(&fee.tx_hash, caller_wallet_for_mock.as_deref()).await {
         Ok(parsed) => {
             // Validate tx.from matches the caller's linked EVM wallet (ticket #285)
             let user_key = context.caller.to_text();
@@ -683,6 +738,7 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
             let burn_amount = (verified_amount * config::BURN_RATE_BPS) / 10000;
             update_global_stats(|stats| {
                 stats.total_fees += verified_amount;
+                stats.total_collected += verified_amount; // Track total fees collected forever
                 stats.total_burned += burn_amount;
             })?;
         }
@@ -712,12 +768,12 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
 }
 
 /// Update global stats atomically (read-modify-write).
-/// Uses `ic_cdk::id()` as caller for the `write: "managed"` stats collection.
+/// Uses `ic_cdk::id()` as caller for the `write: "managed"` economy collection.
 fn update_global_stats<F: FnOnce(&mut GlobalStats)>(updater: F) -> Result<(), String> {
     let canister_id = ic_cdk::id();
     let key = "global".to_string();
 
-    let existing_doc = get_doc_store(canister_id, "stats".to_string(), key.clone())
+    let existing_doc = get_doc_store(canister_id, "economy".to_string(), key.clone())
         .ok()
         .flatten();
     let existing_version = existing_doc.as_ref().and_then(|d| d.version);
@@ -734,7 +790,15 @@ fn update_global_stats<F: FnOnce(&mut GlobalStats)>(updater: F) -> Result<(), St
         version: existing_version,
     };
 
-    set_doc_store(canister_id, "stats".to_string(), key, doc)?;
+    set_doc_store(canister_id, "economy".to_string(), key, doc)?;
+
+    logging::log_info(
+        "Economy",
+        &format!(
+            "[Economy] Updated collection economy (global) with total_collected={}, total_rewarded={}, total_burned={}",
+            stats.total_collected, stats.total_rewarded, stats.total_burned
+        ),
+    );
     Ok(())
 }
 
@@ -1201,13 +1265,9 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
         None => ("Unknown".to_string(), None),
     };
 
-    // Read existing leaderboard entry (keep raw Doc for version)
-    let existing_lb_doc = get_doc_store(
-        context.caller,
-        "leaderboard".to_string(),
-        caller_key.clone(),
-    )?
-    .map(|doc| doc);
+    // Read existing scores entry (keep raw Doc for version)
+    let existing_lb_doc =
+        get_doc_store(context.caller, "scores".to_string(), caller_key.clone())?.map(|doc| doc);
 
     let existing_lb_version = existing_lb_doc.as_ref().and_then(|d| d.version);
     let existing =
@@ -1216,7 +1276,7 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
     let prev_high = existing.as_ref().map_or(0, |e| e.high_score);
     let prev_won = existing.as_ref().map_or(0, |e| e.games_won);
 
-    // Update leaderboard entry with active score
+    // Update scores entry with active score
     let entry = LeaderboardEntry {
         nickname,
         avatar_url,
@@ -1240,17 +1300,17 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
 
     set_doc_store(
         context.caller,
-        "leaderboard".to_string(),
+        "scores".to_string(),
         caller_key.clone(),
         leaderboard_doc,
     )?;
 
     let new_expires = now_ms + config::SCORE_TTL_HOURS * 3_600_000;
     logging::log_info(
-        "Leaderboard",
+        "Scores",
         &format!(
-            "Active score updated for user {}: score={}, expires_at={}",
-            caller_key, session.score, new_expires
+            "[Scores] Updated collection scores for user {} with score={}, nickname={}, expires_at={}",
+            caller_key, session.score, entry.nickname, new_expires
         ),
     );
 
@@ -1315,12 +1375,8 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     let winner_key = cached.key;
     let winner_principal = cached.owner;
 
-    // Fetch the actual leaderboard doc to get the current entry
-    let winner_doc = get_doc_store(
-        winner_principal,
-        "leaderboard".to_string(),
-        winner_key.clone(),
-    )?;
+    // Fetch the actual scores doc to get the current entry
+    let winner_doc = get_doc_store(winner_principal, "scores".to_string(), winner_key.clone())?;
 
     let winner_entry: LeaderboardEntry = match winner_doc {
         Some(ref doc) => decode_doc_data(&doc.data)?,
@@ -1477,7 +1533,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
 /// This is an O(1) single-document read, replacing the previous O(N) full scan.
 fn load_persisted_top_scorer() -> Result<Option<TopScorerCache>, String> {
     let canister_id = ic_cdk::id();
-    let doc = get_doc_store(canister_id, "stats".to_string(), "top_scorer".to_string())
+    let doc = get_doc_store(canister_id, "scores".to_string(), "top_scorer".to_string())
         .ok()
         .flatten();
 
@@ -1503,12 +1559,12 @@ fn load_persisted_top_scorer() -> Result<Option<TopScorerCache>, String> {
 }
 
 /// Persist the top scorer cache to the datastore for cold-start recovery.
-/// Uses the `stats` collection with key `top_scorer` (same managed collection as GlobalStats).
+/// Uses the `scores` collection with key `top_scorer`.
 fn persist_top_scorer_cache(cache: &TopScorerCache) -> Result<(), String> {
     let canister_id = ic_cdk::id();
 
     let existing_version =
-        get_doc_store(canister_id, "stats".to_string(), "top_scorer".to_string())
+        get_doc_store(canister_id, "scores".to_string(), "top_scorer".to_string())
             .ok()
             .flatten()
             .and_then(|d| d.version);
@@ -1529,10 +1585,18 @@ fn persist_top_scorer_cache(cache: &TopScorerCache) -> Result<(), String> {
 
     set_doc_store(
         canister_id,
-        "stats".to_string(),
+        "scores".to_string(),
         "top_scorer".to_string(),
         doc,
     )?;
+
+    logging::log_info(
+        "Scores",
+        &format!(
+            "[Scores] Updated collection scores (top_scorer cache) with key={}, score={}",
+            cache.key, cache.score
+        ),
+    );
     Ok(())
 }
 
@@ -1541,7 +1605,7 @@ fn clear_persisted_top_scorer_cache() {
     // Write an empty/zeroed entry rather than deleting, to avoid needing delete_doc_store
     let canister_id = ic_cdk::id();
     let existing_version =
-        get_doc_store(canister_id, "stats".to_string(), "top_scorer".to_string())
+        get_doc_store(canister_id, "scores".to_string(), "top_scorer".to_string())
             .ok()
             .flatten()
             .and_then(|d| d.version);
@@ -1562,20 +1626,20 @@ fn clear_persisted_top_scorer_cache() {
 
     let _ = set_doc_store(
         canister_id,
-        "stats".to_string(),
+        "scores".to_string(),
         "top_scorer".to_string(),
         doc,
     );
 }
 
-/// Clear the expires_at on a leaderboard entry to prevent re-processing.
+/// Clear the expires_at on a scores entry to prevent re-processing.
 fn clear_leaderboard_expiry(
     key: &str,
     entry: &LeaderboardEntry,
     owner: candid::Principal,
 ) -> Result<(), String> {
     // Fetch existing doc version for optimistic concurrency
-    let existing_version = get_doc_store(owner, "leaderboard".to_string(), key.to_string())
+    let existing_version = get_doc_store(owner, "scores".to_string(), key.to_string())
         .ok()
         .flatten()
         .and_then(|d| d.version);
@@ -1589,7 +1653,7 @@ fn clear_leaderboard_expiry(
         version: existing_version,
     };
 
-    set_doc_store(owner, "leaderboard".to_string(), key.to_string(), doc)?;
+    set_doc_store(owner, "scores".to_string(), key.to_string(), doc)?;
 
     Ok(())
 }
@@ -1799,7 +1863,8 @@ async fn claim_authorize(
     }
 
     // 2. Verify fee transaction on-chain and get actual fee amount
-    let parsed_fee = evm_rpc::verify_avalanche_fee(&fee_tx_hash).await?;
+    // Pass wallet_addr to the mock so the from-address check passes in local dev.
+    let parsed_fee = evm_rpc::verify_avalanche_fee(&fee_tx_hash, Some(&wallet_addr)).await?;
 
     // Validate that the fee sender matches the caller's linked wallet
     if !parsed_fee.from.eq_ignore_ascii_case(&wallet_addr) {
@@ -2016,6 +2081,125 @@ fn juno_on_init_random_seed() {
 #[update]
 async fn get_oracle_address() -> Result<String, String> {
     evm_rpc::get_eth_address().await
+}
+
+// =============================================================================
+// Error Tracking
+// =============================================================================
+
+/// Report a client-side error. Anyone (including unauthenticated callers) can
+/// report errors. The satellite generates the `error_id` server-side so the
+/// client cannot forge it.
+///
+/// Returns the `error_id` (e.g. "err_1772598984825320076") which is also the
+/// Juno document key. Users give this to support; admins filter by it.
+#[update]
+fn report_error(payload: ErrorPayload) -> Result<String, String> {
+    let now_ns = time();
+    let now_ms = now_ns / 1_000_000;
+
+    // error_id IS the Juno document key: "err_{nanosecond_timestamp}".
+    // Nanosecond IC time guarantees uniqueness across concurrent callers.
+    // Users see this code and give it to support; devs filter by it in admin.
+    let error_id = format!("err_{}", now_ns);
+
+    let principal = ic_cdk::caller().to_text();
+    let environment = config::NETWORK_NAME.to_string();
+
+    let record = ErrorRecord {
+        error_id: error_id.clone(),
+        component: payload.component.chars().take(100).collect(),
+        message: payload.message.chars().take(500).collect(),
+        raw_error: payload.raw_error.chars().take(2000).collect(),
+        principal,
+        environment,
+        timestamp_ms: now_ms,
+        resolved: false,
+    };
+
+    let canister_id = ic_cdk::id();
+    let doc = SetDoc {
+        data: encode_doc_data(&record)?,
+        description: Some(format!(
+            "Error from {} at {}",
+            record.component, record.timestamp_ms
+        )),
+        version: None,
+    };
+
+    // Store with error_id as key — it is both the doc key and the user-facing code
+    set_doc_store(canister_id, "errors".to_string(), error_id.clone(), doc)?;
+
+    logging::log_info(
+        "Errors",
+        &format!(
+            "Error recorded: {} from component='{}' principal='{}'",
+            error_id, record.component, record.principal
+        ),
+    );
+
+    Ok(error_id)
+}
+
+/// Returns all `ErrorRecord` documents from the errors collection.
+/// Only callable by principals listed in `config::ADMIN_PRINCIPALS`.
+#[update]
+fn get_errors() -> Result<Vec<ErrorRecord>, String> {
+    let caller = ic_cdk::caller().to_text();
+    if !config::ADMIN_PRINCIPALS.contains(&caller.as_str()) {
+        return Err("Unauthorized: admin access required".to_string());
+    }
+
+    let canister_id = ic_cdk::id();
+    let params = ListParams {
+        matcher: None,
+        order: None,
+        paginate: None,
+        owner: None,
+    };
+
+    let result = list_docs_store(canister_id, "errors".to_string(), &params)
+        .map_err(|e| format!("Failed to list errors: {}", e))?;
+
+    let records: Vec<ErrorRecord> = result
+        .items
+        .into_iter()
+        .filter_map(|(_key, doc)| {
+            // error_id is the doc key — no backfill needed
+            decode_doc_data::<ErrorRecord>(&doc.data).ok()
+        })
+        .collect();
+
+    Ok(records)
+}
+
+/// Deletes specific error records by key. Admin-only.
+/// Accepts a list of `error_id` strings matching the Juno document keys.
+#[update]
+fn delete_errors(keys: Vec<String>) -> Result<(), String> {
+    let caller = ic_cdk::caller().to_text();
+    if !config::ADMIN_PRINCIPALS.contains(&caller.as_str()) {
+        return Err("Unauthorized: admin access required".to_string());
+    }
+
+    let canister_id = ic_cdk::id();
+    for key in &keys {
+        // delete_doc_store returns Ok(()) if doc doesn't exist — idempotent
+        delete_doc_store(
+            canister_id,
+            "errors".to_string(),
+            key.clone(),
+            DelDoc { version: None },
+        )
+        .map_err(|e| format!("Failed to delete error {}: {}", key, e))?;
+    }
+
+    logging::log_info(
+        "Errors",
+        &format!("Admin deleted {} error record(s)", keys.len()),
+    );
+
+    Ok(())
 }
 
 // =============================================================================

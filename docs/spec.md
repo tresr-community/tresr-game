@@ -229,27 +229,49 @@ Only if logged in and player defeats the boss does claim unlock.
 
 ### Data Layer
 
-- **User Profiles** (stored in Juno Collections):
+Four Juno Datastore collections are used:
+
+| Collection | Access         | Purpose                                                                                                           |
+| ---------- | -------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `audit`    | Managed        | Private admin audit trail: fee records, claim records, game sessions. Keys prefixed `fee_`, `claim_`, `session_`. |
+| `economy`  | Public/Managed | Public economy metrics. Single document keyed `global`: `total_collected`, `total_rewarded`, `total_burned`.      |
+| `scores`   | Public/Managed | Public leaderboard entries (keyed by Principal ID) and top-scorer cache (`top_scorer` key).                       |
+| `users`    | Managed        | Private per-user preferences: nickname, avatar, wallet link, game stats, ban status, notifications.               |
+
+- **`audit` collection**:
+  - `key`: Prefixed ID (`fee_<id>`, `claim_<id>`, `session_<id>`)
+  - `data`: FeeRequest | ClaimRequest | GameSession struct
+
+- **`economy` collection** (key: `global`):
+  - `total_collected`: u64 — Total $TRESR collected in fees
+  - `total_rewarded`: u64 — Total $TRESR rewards paid out
+  - `total_burned`: u64 — Total $TRESR burned
+
+- **`scores` collection**:
+  - Per-user entry keyed by Principal ID:
+    - `nickname`: `String`
+    - `avatar_url`: `Option<String>`
+    - `high_score`: `u64`
+    - `games_won`: `u64`
+    - `active_score`: `u64`
+    - `scored_at`: `Option<u64>` (epoch ms)
+    - `expires_at`: `Option<u64>` (epoch ms, TTL for active score)
+    - `session_id`: `Option<String>`
+  - `top_scorer` key: canister-managed cache for O(1) top-scorer lookup
+
+- **`users` collection**:
   - `key`: User Principal ID
-  - `userId`: Principal ID
+  - `user_id`: Principal ID
   - `nickname`: String
-  - `stats`: { highScore: BigInt, totalGamesPlayed: BigInt, totalGamesWon: BigInt, totalGamesLost: BigInt }
-  - `wallet`: { balance: BigInt, evmWalletLinked: Boolean }
-  - `preferences`: { theme: String, narration?: Boolean (default: true), music?: { track, volume, sfxVolume, isPaused } }
-  - `banned_until`: Number (epoch ms) | null — Timestamp until which the user is banned. `null` = not banned. Expired bans (in the past) are kept for audit trail.
-  - `offence_count`: Number — Cumulative cheat detection count. Escalates ban duration (24h -> 72h -> 168h -> permanent after 4th offence).
-- **Game Session** (stored in Juno Collections):
-  - `key`: Session ID
-  - `user`: Principal ID
-  - `status`: 'active' | 'completed' | 'claimed'
-  - `feeTx`: Hash
-  - `replayData`: Blob/Hash of inputs/outcomes
-- **Leaderboard** (derived from User Profiles):
-  - Sorted by `stats.highScore` descending
-  - Top 10 displayed with rank, nickname, truncated principal ID, score, last updated date
-- **Notifications** (nested in user doc):
-  - Stored at `users/{principal}.data.notifications: NotificationItem[]`
-  - Persistent for logged-in users, ephemeral for guests.
+  - `stats`: { high_score, total_games_played, total_games_won, total_games_lost }
+  - `wallet`: { balance, evm_wallet_linked }
+  - `preferences`: { theme, narration?, has_read_instructions, music: { favorite_track, playback_mode, volume, sfx_volume, is_paused } }
+  - `banned_until`: `Option<u64>` (epoch ms) — `null` = not banned
+  - `offence_count`: u64 — Escalating ban counter
+  - `notifications`: NotificationItem[] — Nested in doc
+
+- **Juno Storage**:
+  - `images` bucket — User avatar uploads (write-restricted to owner)
 
 ## Phaser Engine Architecture
 
@@ -949,9 +971,9 @@ Modal triggered by `gameStore.isPaused`:
 
 DaisyUI modal showing top 10 players:
 
-- Rank, avatar (first letter), nickname, truncated principal ID, high score, last updated date.
-- Fetches from Juno `users` collection, sorted by `stats.highScore` descending.
-- Loading/error states.
+- **Active tab**: Fetches from `scores` collection, sorted by `active_score` descending, filtered client-side to entries with non-expired `expires_at`. Shows rank, avatar, nickname, score, countdown timer.
+- **All-Time tab**: Fetches from `scores` collection, sorted by `high_score` descending. Shows top 10 with rank, avatar, nickname, score, date.
+- Loading/error states with timeout handling.
 
 ### WalletLink (`src/components/wallet/WalletLink.astro`)
 

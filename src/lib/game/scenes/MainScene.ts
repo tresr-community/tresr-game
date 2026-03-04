@@ -1320,12 +1320,14 @@ export class MainScene extends Phaser.Scene {
               ...profile,
               stats: {
                 ...profile.stats,
-                totalGamesPlayed: (profile.stats.totalGamesPlayed || 0n) + 1n,
-                totalGamesWon: (profile.stats.totalGamesWon || 0n) + 1n,
-                highScore:
-                  score > profile.stats.highScore
+                total_games_played:
+                  BigInt(profile.stats.total_games_played ?? 0) + 1n,
+                total_games_won:
+                  BigInt(profile.stats.total_games_won ?? 0) + 1n,
+                high_score:
+                  score > BigInt(profile.stats.high_score ?? 0)
                     ? score
-                    : profile.stats.highScore,
+                    : BigInt(profile.stats.high_score ?? 0),
               },
             }));
             log.info(COMPONENT_NAME, "Win stats saved to Juno.");
@@ -1356,19 +1358,19 @@ export class MainScene extends Phaser.Scene {
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       try {
         await setDoc({
-          collection: "game_sessions",
+          collection: "audit",
           doc: {
-            key: this.sessionId,
+            key: `session_${this.sessionId}`,
             data: {
-              startedAt:
+              started_at:
                 Date.now() -
                 (this.gameplayConfig.time_limit_seconds - this.survivalTimer) *
                   1000,
-              endedAt: Date.now(),
-              keysCollected: this.collectedKeys,
-              bossDefeated,
+              ended_at: Date.now(),
+              keys_collected: this.collectedKeys,
+              boss_defeated: bossDefeated,
               score: this.score,
-              rewardClaimed: false,
+              reward_claimed: false,
             },
           },
         });
@@ -1437,10 +1439,13 @@ export class MainScene extends Phaser.Scene {
           ...profile,
           stats: {
             ...profile.stats,
-            totalGamesPlayed: (profile.stats.totalGamesPlayed || 0n) + 1n,
-            totalGamesLost: (profile.stats.totalGamesLost || 0n) + 1n,
-            highScore:
-              score > profile.stats.highScore ? score : profile.stats.highScore,
+            total_games_played:
+              BigInt(profile.stats.total_games_played ?? 0) + 1n,
+            total_games_lost: BigInt(profile.stats.total_games_lost ?? 0) + 1n,
+            high_score:
+              score > BigInt(profile.stats.high_score ?? 0)
+                ? score
+                : BigInt(profile.stats.high_score ?? 0),
           },
         }));
         log.info(COMPONENT_NAME, "Loss stats saved to Juno.");

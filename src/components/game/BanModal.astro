@@ -75,17 +75,17 @@
 
   function handleBanModalOpen(e: Event) {
     const detail = (
-      e as CustomEvent<{bannedUntil: number; offenceCount: number}>
+      e as CustomEvent<{banned_until: number; offence_count: number}>
     ).detail;
 
-    if (detail.bannedUntil === Number.MAX_SAFE_INTEGER) {
+    if (detail.banned_until === Number.MAX_SAFE_INTEGER) {
       expiresEl.textContent = "Permanent";
     } else {
-      const date = new Date(detail.bannedUntil);
+      const date = new Date(detail.banned_until);
       expiresEl.textContent = date.toLocaleString();
     }
 
-    offenceEl.textContent = String(detail.offenceCount);
+    offenceEl.textContent = String(detail.offence_count);
     modal.showModal();
   }
   document.addEventListener("tresr:ban-modal-open", handleBanModalOpen);

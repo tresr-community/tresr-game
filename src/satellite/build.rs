@@ -18,8 +18,15 @@ struct Config {
 
 #[derive(Deserialize)]
 struct Server {
+    juno: Juno,
     anti_cheat: AntiCheat,
     highscore: Highscore,
+}
+
+#[derive(Deserialize)]
+struct Juno {
+    #[serde(default)]
+    admins: Vec<String>,
 }
 
 #[derive(Deserialize)]
@@ -164,6 +171,16 @@ fn main() {
         .collect::<Vec<_>>()
         .join(", ");
 
+    // Format admin principals as Rust array literal
+    let admin_principals = config
+        .server
+        .juno
+        .admins
+        .iter()
+        .map(|p| format!(r#""{}""#, p))
+        .collect::<Vec<_>>()
+        .join(", ");
+
     // Generate Rust constants
     let ecdsa_key_name = match network.as_str() {
         "mainnet" => "key_1",
@@ -230,6 +247,9 @@ pub const CONSOLATION_PRIZE_MIN_GAMES: u64 = {consolation_prize_min_games};
 
 /// SHA-256 config hash for anti-cheat validation (from server-constants.ts, ticket #41)
 pub const CONFIG_HASH: &str = "{config_hash}";
+
+/// Admin principals allowed to call admin-only satellite functions (from server.juno.admins)
+pub const ADMIN_PRINCIPALS: &[&str] = &[{admin_principals}];
 "#,
         network = network,
         ban_durations = ban_durations,
@@ -250,6 +270,7 @@ pub const CONFIG_HASH: &str = "{config_hash}";
         consolation_prize_max = config.server.highscore.consolation_prize_max,
         consolation_prize_min_games = config.server.highscore.consolation_prize_min_games,
         config_hash = config_hash,
+        admin_principals = admin_principals,
     );
 
     // Write to OUT_DIR

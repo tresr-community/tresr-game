@@ -106,7 +106,7 @@ export class Key extends BaseEntity {
       this.shadow.setVisible(true);
     }
     this.groundY = groundY;
-    this.setDepth(this.groundY);
+    this.setDepth(this.groundY + 1);
 
     const keyConfig = this.config.gameplay.entities.key;
     const startZ = keyConfig.spawner.start_z;

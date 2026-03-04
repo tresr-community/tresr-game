@@ -585,9 +585,9 @@ export async function signInWithAvalanche(): Promise<void> {
 
       await enqueueProfileWrite(principal, (profile) => ({
         ...profile,
-        evmWallet: address,
-        wallet: {...profile.wallet, evmWalletLinked: true},
-        loginMethod: "siwa" as const,
+        evm_wallet: address,
+        wallet: {...profile.wallet, evm_wallet_linked: true},
+        login_method: "siwa" as const,
       }));
 
       // Read back the profile to populate the store

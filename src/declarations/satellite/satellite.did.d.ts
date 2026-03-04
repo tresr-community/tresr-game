@@ -10,9 +10,28 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface ErrorPayload {
+  'component' : string,
+  'raw_error' : string,
+  'message' : string,
+}
+export interface ErrorRecord {
+  'resolved' : boolean,
+  'component' : string,
+  'principal' : string,
+  'timestamp_ms' : bigint,
+  'raw_error' : string,
+  'message' : string,
+  'environment' : string,
+  'error_id' : string,
+}
 export type Result = { 'Ok' : [bigint, Uint8Array] } |
   { 'Err' : string };
-export type Result_1 = { 'Ok' : string } |
+export type Result_1 = { 'Ok' : null } |
+  { 'Err' : string };
+export type Result_2 = { 'Ok' : Array<ErrorRecord> } |
+  { 'Err' : string };
+export type Result_3 = { 'Ok' : string } |
   { 'Err' : string };
 export interface _SERVICE {
   /**
@@ -20,10 +39,29 @@ export interface _SERVICE {
    */
   'claim_authorize' : ActorMethod<[string, bigint, string, Uint8Array], Result>,
   /**
+   * Deletes specific error records by key. Admin-only.
+   * Accepts a list of `error_id` strings matching the Juno document keys.
+   */
+  'delete_errors' : ActorMethod<[Array<string>], Result_1>,
+  /**
+   * Returns all `ErrorRecord` documents from the errors collection.
+   * Only callable by principals listed in `config::ADMIN_PRINCIPALS`.
+   */
+  'get_errors' : ActorMethod<[], Result_2>,
+  /**
    * Returns the satellite's Public Ethereum address derived from its threshold ECDSA key.
    * This is the oracle address used for on-chain signature verification.
    */
-  'get_oracle_address' : ActorMethod<[], Result_1>,
+  'get_oracle_address' : ActorMethod<[], Result_3>,
+  /**
+   * Report a client-side error. Anyone (including unauthenticated callers) can
+   * report errors. The satellite generates the `error_id` server-side so the
+   * client cannot forge it.
+   * 
+   * Returns the `error_id` (e.g. "err_1772598984825320076") which is also the
+   * Juno document key. Users give this to support; admins filter by it.
+   */
+  'report_error' : ActorMethod<[ErrorPayload], Result_3>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

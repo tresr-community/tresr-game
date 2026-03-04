@@ -335,9 +335,9 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     // Authenticated user - check profile for wallet link
     const profile = profileStore.get();
 
-    if (profile?.wallet?.evmWalletLinked && profile.evmWallet) {
+    if (profile?.wallet?.evm_wallet_linked && profile.evm_wallet) {
       // Wallet is linked (either IID+linked or SIWA)
-      await showLinkedState(profile.evmWallet);
+      await showLinkedState(profile.evm_wallet);
       return;
     }
 
@@ -346,8 +346,8 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
       try {
         const doc = await getUserProfile(authState.user.key);
         if (gen !== updateGeneration) return; // Stale — newer update superseded
-        if (doc?.data?.wallet?.evmWalletLinked && doc.data.evmWallet) {
-          await showLinkedState(doc.data.evmWallet);
+        if (doc?.data?.wallet?.evm_wallet_linked && doc.data.evm_wallet) {
+          await showLinkedState(doc.data.evm_wallet);
           return;
         }
       } catch (e) {
@@ -382,8 +382,8 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
       if (authState.user) {
         const doc = await getUserProfile(authState.user.key);
         if (
-          doc?.data?.wallet?.evmWalletLinked &&
-          doc.data.evmWallet?.toLowerCase() === address.toLowerCase()
+          doc?.data?.wallet?.evm_wallet_linked &&
+          doc.data.evm_wallet?.toLowerCase() === address.toLowerCase()
         ) {
           await showLinkedState(address);
         } else {
@@ -418,11 +418,11 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
       const existingProfile = await getUserProfile(principal);
       const profile = {
         ...(existingProfile?.data || createDefaultProfile(principal)),
-        evmWallet: address,
+        evm_wallet: address,
         verification_signature: signature,
         verification_message: message,
       };
-      profile.wallet.evmWalletLinked = true;
+      profile.wallet.evm_wallet_linked = true;
 
       await saveUserProfile(principal, profile, existingProfile?.version);
       profileStore.set(profile);
@@ -443,10 +443,12 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
   });
 
   const unsubProfile = profileStore.subscribe((profile) => {
-    if (profile?.wallet?.evmWalletLinked && profile.evmWallet) {
+    if (profile?.wallet?.evm_wallet_linked && profile.evm_wallet) {
       const authState = getAuthState();
       if (authState.isAuthenticated && !authState.isGuest) {
-        showLinkedState(profile.evmWallet);
+        // Skip if the auth subscription already handled this address
+        if (currentAddress === profile.evm_wallet) return;
+        showLinkedState(profile.evm_wallet);
       }
     }
   });

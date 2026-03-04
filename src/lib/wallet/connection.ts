@@ -160,7 +160,11 @@ export async function getWalletClient(): Promise<WalletClient> {
   // Rehydrate connector from localStorage after full page reload.
   // Without this, the connector's transport methods (getChainId, etc.)
   // are missing, causing "connector.getChainId is not a function" errors.
-  await reconnect(config);
+  //
+  // IMPORTANT: We capture the reconnect result to extract the live connector
+  // object. Passing it explicitly to getWalletClient bypasses wagmi's fallback
+  // to the serialized (un-hydrated) connector from its internal state store.
+  const reconnected = await reconnect(config);
 
   const account = getConnection(config);
 
@@ -168,7 +172,12 @@ export async function getWalletClient(): Promise<WalletClient> {
     throw new Error("No wallet connected. Call connectWallet() first.");
   }
 
-  const client = await wagmiGetWalletClient(config);
+  // Use the live connector from reconnect if available — avoids the
+  // "connector.getChainId is not a function" error on first call after page load.
+  const liveConnector = reconnected[0]?.connector;
+  const client = liveConnector
+    ? await wagmiGetWalletClient(config, {connector: liveConnector})
+    : await wagmiGetWalletClient(config);
 
   if (!client) {
     throw new Error("Failed to get wallet client");

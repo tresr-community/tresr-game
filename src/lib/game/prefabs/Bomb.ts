@@ -48,7 +48,7 @@ export class Bomb extends BaseEntity {
     }
 
     this.groundY = groundY;
-    this.setDepth(this.groundY);
+    this.setDepth(this.groundY + 1);
     this.z = startZ;
     this.vz = 0;
     this.hasExploded = false;

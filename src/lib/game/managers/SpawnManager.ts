@@ -282,6 +282,9 @@ export class SpawnManager {
           textureKey,
           forcedAiOverride
         );
+        // Set target AFTER spawn() so it is never cleared by the pool-reset inside spawn().
+        // spawn() does not clear _target anymore — see Enemy.ts — but this ordering
+        // is kept explicit so the intent is clear.
         enemy.setTarget(this.player);
         const enemyScale = SpriteManager.getScaleFactor(
           spritesConfig,

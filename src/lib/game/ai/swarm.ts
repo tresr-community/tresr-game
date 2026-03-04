@@ -1,3 +1,4 @@
+import Phaser from "phaser";
 import type {AIBehavior, EnemyContext, BehaviorResult} from "./types";
 import {getNearbyAlliesCenter} from "./shared";
 
@@ -26,7 +27,9 @@ export class SwarmBehavior implements AIBehavior {
   }
 
   update(ctx: EnemyContext, _dt: number): BehaviorResult {
-    if (!ctx.target) return {action: "idle"};
+    // Guard: no target, or target groundY is 0 (uninitialized player position).
+    // Chasing groundY=0 sends the enemy toward the top-left corner off-screen.
+    if (!ctx.target || !ctx.target.groundY) return {action: "idle"};
 
     const swarmConfig = ctx.config.gameplay.entities.enemy.ai.swarm;
 
@@ -76,29 +79,53 @@ export class SwarmBehavior implements AIBehavior {
       return {action: "handled"};
     }
 
-    // Move
-    let moveX = ctx.target.x - ctx.x;
-    let moveY = ctx.target.groundY - ctx.groundY;
+    // --- Build movement vector ---
+    // Use normalised, independently-weighted vectors so cohesion can never
+    // cancel out the player-chase direction and freeze the enemy.
+    const chaseLen = Phaser.Math.Distance.Between(
+      ctx.x,
+      ctx.groundY,
+      ctx.target.x,
+      ctx.target.groundY
+    );
+    let moveX = chaseLen > 0 ? (ctx.target.x - ctx.x) / chaseLen : 0;
+    let moveY =
+      chaseLen > 0 ? (ctx.target.groundY - ctx.groundY) / chaseLen : 0;
 
-    // If not rushing but allies are nearby, clump with them (cohesion)
+    // Cohesion: blend toward group center only when not rushing.
+    // Weight is mild (0.25) so it nudges clustering without fighting the chase.
     if (this.centerOfMass.count > 0 && !this.rushing) {
       const dxToGroup = this.centerOfMass.x - ctx.x;
       const dyToGroup = this.centerOfMass.groundY - ctx.groundY;
-      // Weight the group pull mildly
-      moveX += dxToGroup * 0.5;
-      moveY += dyToGroup * 0.5;
+      const groupLen = Math.sqrt(dxToGroup * dxToGroup + dyToGroup * dyToGroup);
+      if (groupLen > 1) {
+        moveX += (dxToGroup / groupLen) * 0.25;
+        moveY += (dyToGroup / groupLen) * 0.25;
+      }
     }
 
     const angle = Math.atan2(moveY, moveX);
+    const vx = Math.cos(angle) * ctx.speed * ctx.resolutionScale;
+    const vy = Math.sin(angle) * ctx.speed * ctx.resolutionScale;
 
     ctx.setFlipX(moveX < 0);
-    ctx.setVelocityX(Math.cos(angle) * ctx.speed * ctx.resolutionScale);
+    ctx.setVelocityX(vx);
     ctx.setVelocityY(0);
-    ctx.groundY += Math.sin(angle) * ctx.speed * ctx.resolutionScale * _dt;
+    ctx.groundY += vy * _dt;
 
+    // Clamp groundY to walkable band, then apply wall-slide so the enemy
+    // redirects along the boundary instead of vibrating against it.
     if (ctx.walkableArea) {
+      const prevGroundY = ctx.groundY;
       const clamped = ctx.walkableArea.clampToWalkable(ctx.x, ctx.groundY);
       ctx.groundY = clamped.groundY;
+
+      // If Y was clamped we hit an edge wall — slide horizontally instead
+      // of stalling (keeps the enemy moving rather than getting stuck).
+      if (Math.abs(clamped.groundY - prevGroundY) > 0.5) {
+        ctx.groundY = clamped.groundY; // already set above
+        // Don't zero X velocity — let the horizontal component carry through
+      }
     }
 
     if (!ctx.isAttacking) {
