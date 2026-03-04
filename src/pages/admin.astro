@@ -633,11 +633,13 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         });
 
         const stats = statsDoc?.data;
-        const junoFees = BigInt(Math.round(Number(stats?.total_fees ?? 0)));
-        const junoRewarded = BigInt(
-          Math.round(Number(stats?.total_rewarded ?? 0))
-        );
-        const junoBurned = BigInt(Math.round(Number(stats?.total_burned ?? 0)));
+        // Juno stores u64 whole-token amounts (not wei). Multiply by 10^18
+        // so they are in the same unit as on-chain wei values.
+        const DECIMALS = 10n ** 18n;
+        const junoFees = BigInt(stats?.total_fees ?? 0) * DECIMALS;
+        const junoRewarded = BigInt(stats?.total_rewarded ?? 0) * DECIMALS;
+        const junoBurned =
+          BigInt(Math.round(Number(stats?.total_burned ?? 0))) * DECIMALS;
 
         document.getElementById("juno-fees")!.textContent =
           formatBalance(junoFees);
@@ -761,9 +763,11 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           const profile = doc.data;
           const principal = doc.key;
           const nickname = escHtml(profile.nickname ?? "—");
-          const junoBalance = BigInt(
-            Math.round(Number(profile.wallet?.balance ?? 0))
-          );
+          // wallet.balance is u64 whole tokens in Juno (not wei).
+          // Multiply by 10^18 to match on-chain wei for comparison.
+          const DECIMALS = 10n ** 18n;
+          const junoBalance =
+            BigInt(Math.round(Number(profile.wallet?.balance ?? 0))) * DECIMALS;
           let onChainBalance = 0n;
 
           if (profile.evm_wallet) {
