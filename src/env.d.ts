@@ -51,7 +51,7 @@ declare module "/config-client.json" {
           token_ticker: string;
           tresr_token_contract: string;
           oracle_address: string;
-          safe_address: string;
+          admin_address: string;
           vault_contract: string;
           faucet_contract: string;
           explorer_url: string;
@@ -795,7 +795,7 @@ declare module "../../../public/config-client.json" {
           token_ticker: string;
           tresr_token_contract: string;
           oracle_address: string;
-          safe_address: string;
+          admin_address: string;
           vault_contract: string;
           faucet_contract: string;
           explorer_url: string;

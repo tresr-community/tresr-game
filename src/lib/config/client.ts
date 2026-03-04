@@ -122,11 +122,11 @@ export const config: ConfigTypes = {
           "https://game-testnet.tresr.community"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0x04fd42a3ab3e287019489e3bdac934e344779e36",
+        "tresr_token_contract": "0x0000000000000000000000000000000000000000",
         "oracle_address": "0xf2ff695cae8cc886d3c03afd502a35fcee61b66f",
-        "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
-        "vault_contract": "0xf4a67b6beb1a54587468703ef877bf64c5f49dc7",
-        "faucet_contract": "0x29d16738c64566940a5543bc3e141e0e9057468e",
+        "admin_address": "0x628F3Df70dd2F19e28842c9AB64c64A9700a929e",
+        "vault_contract": "0x0000000000000000000000000000000000000000",
+        "faucet_contract": "0x0000000000000000000000000000000000000000",
         "explorer_url": "https://testnet.snowtrace.io/tx/"
       },
       "mainnet": {
