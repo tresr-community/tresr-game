@@ -136,7 +136,7 @@ function cmd_juno_deploy() {
 		return 1
 	fi
 	local url
-	url="http://${VITE_SATELLITE_ID}.localhost:5987/"
+	url="http://${VITE_DEVELOPMENT_SATELLITE_ID}.localhost:5987/"
 	log_success "Satellite live: $url"
 	echo "$url" # For piping
 }
@@ -460,7 +460,7 @@ function cmd_setup() {
 		5. Secure the ${MAGENTA}Satellite ID${NC}.
 		6. Update your local configuration (${YELLOW}.env${NC}):
 
-		    ${CYAN}VITE_SATELLITE_ID=...${NC}
+		    ${CYAN}VITE_DEVELOPMENT_SATELLITE_ID=...${NC}
 
 		${RED}======================================${NC}
 		${RED}     Termination Protocol:${NC}
@@ -926,7 +926,7 @@ oneshot | loop)
 		log_error "Deploy failed!"
 		exit 13
 	fi
-	url="http://${VITE_SATELLITE_ID}.localhost:5987/"
+	url="http://${VITE_DEVELOPMENT_SATELLITE_ID}.localhost:5987/"
 	log_success "Satellite live: $url"
 	cmd_functions_deploy development || {
 		log_error "Could not deploy serverless functions."
