@@ -356,7 +356,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     // Authenticated user — check in-memory store first to avoid a redundant
     // Juno read when auth fires before loadProfile has completed (e.g. SIWA).
     const cachedProfile = profileStore.get();
-    if (cachedProfile?.wallet?.evm_wallet_linked && cachedProfile.evm_wallet) {
+    if (cachedProfile?.evm_wallet) {
       await showLinkedState(cachedProfile.evm_wallet);
       return;
     }
@@ -366,7 +366,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
       try {
         const doc = await getUserProfile(authState.user.key);
         if (gen !== updateGeneration) return; // Stale — newer update superseded
-        if (doc?.data?.wallet?.evm_wallet_linked && doc.data.evm_wallet) {
+        if (doc?.data?.evm_wallet) {
           await showLinkedState(doc.data.evm_wallet);
           return;
         }
@@ -431,10 +431,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
       const authState = getAuthState();
       if (authState.user) {
         const doc = await getUserProfile(authState.user.key);
-        if (
-          doc?.data?.wallet?.evm_wallet_linked &&
-          doc.data.evm_wallet?.toLowerCase() === address.toLowerCase()
-        ) {
+        if (doc?.data?.evm_wallet?.toLowerCase() === address.toLowerCase()) {
           await showLinkedState(address);
         } else {
           connectBtn.classList.add("hidden");
@@ -477,7 +474,6 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
         verification_signature: signature,
         verification_message: message,
       };
-      profile.wallet.evm_wallet_linked = true;
 
       await saveUserProfile(principal, profile, existingProfile?.version);
       profileStore.set(profile);
@@ -498,7 +494,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
   });
 
   const unsubProfile = profileStore.subscribe((profile) => {
-    if (profile?.wallet?.evm_wallet_linked && profile.evm_wallet) {
+    if (profile?.evm_wallet) {
       const authState = getAuthState();
       if (authState.isAuthenticated && !authState.isGuest) {
         // Skip if the auth subscription already handled this address

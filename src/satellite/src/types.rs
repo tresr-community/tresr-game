@@ -162,10 +162,6 @@ pub struct UserProfile {
     #[serde(default)]
     pub stats: UserStats,
 
-    /// Wallet info (nested object)
-    #[serde(default)]
-    pub wallet: UserWallet,
-
     /// User preferences (nested object)
     #[serde(default)]
     pub preferences: UserPreferences,
@@ -223,16 +219,6 @@ pub struct UserStats {
     pub total_games_won: u64,
     #[serde(default, deserialize_with = "deserialize_flexible_u64")]
     pub total_games_lost: u64,
-}
-
-/// Nested wallet object matching TypeScript `wallet` field
-#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub struct UserWallet {
-    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
-    pub balance: u64,
-    #[serde(default)]
-    pub evm_wallet_linked: bool,
 }
 
 /// Nested preferences object matching TypeScript `preferences` field

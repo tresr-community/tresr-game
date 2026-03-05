@@ -266,6 +266,7 @@ client:
     icp:
       evm_rpc_canister_id: 7hfb6-caaaa-aaaar-qadga-cai
   wallet:
+    faucet_cooldown_hours: 24
     balance_refresh_cooldown_ms: 30000
     vault_poll_interval_ms: 60000 # Vault balance background polling interval
     connect_timeout_ms: 300000 # AppKit connect wallet timeout (5 mins)
@@ -313,6 +314,7 @@ client:
     # Vault economics
     # Reference: docs/fomo.md
     vault:
+      max_score: 20000
       # Below this cap, paid mode is locked out.
       minimum_cap: 1000
       tiers:

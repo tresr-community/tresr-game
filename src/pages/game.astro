@@ -108,7 +108,7 @@ import Loader from "@/components/game/Loader.astro";
 
       // IID users without a linked wallet cannot pay the fee
       const profile = profileStore.get();
-      if (profile && !profile.wallet.evm_wallet_linked) {
+      if (profile && !profile.evm_wallet) {
         log.info(COMPONENT_NAME, "No wallet linked, cannot enter fee gate");
         window.showWarningToast("You need to link a wallet first");
         window.location.href = "/";

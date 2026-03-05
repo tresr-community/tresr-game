@@ -113,12 +113,9 @@
   }
 
   // Subscribe to auth
-  import {initSatellite} from "@junobuild/core";
-
   subscribeToAuth(async (user) => {
     currentUser = user;
     if (user && !user.isGuest) {
-      await initSatellite();
       await fetchClaims();
     } else {
       claimsLoading.classList.add("hidden");

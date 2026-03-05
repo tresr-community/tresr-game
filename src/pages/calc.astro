@@ -128,6 +128,8 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 </BaseLayout>
 
 <script>
+  import {getVaultCurrentBalance} from "@/lib/blockchain/contracts/vault";
+
   // Game constants replicating config/tresr.yaml and satellite/src/lib.rs exactly
   const VAULT_TIER_BUILDING = 10000n * 10n ** 18n;
   const VAULT_TIER_SWEET_SPOT = 50000n * 10n ** 18n;
@@ -138,7 +140,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
   const PAYOUT_PERCENT_FOMO = 25n;
   const PAYOUT_PERCENT_LEGENDARY = 50n;
 
-  const MAX_KEYS_COLLECTED = 150n;
+  const MAX_SCORE = 20000n;
 
   const inputs = {
     vaultBalance: document.getElementById("vault_balance") as HTMLInputElement,
@@ -182,8 +184,8 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
       }
 
       // 3. Performance scalar calculation
-      // Following `max_perf = max_payout.checked_mul(reported_keys)...` from Rust
-      let maxPerfWei = (maxPayoutWei * score) / MAX_KEYS_COLLECTED;
+      // Following `max_perf = max_payout.checked_mul(session.score)...` from Rust
+      let maxPerfWei = (maxPayoutWei * score) / MAX_SCORE;
 
       // Safety cap: never drain more than 50%
       const halfVault = vaultBalanceWei / 2n;
@@ -223,4 +225,19 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 
   // Calculate immediately
   calculate();
+
+  // Fetch actual vault balance
+  async function init() {
+    try {
+      const balWei = await getVaultCurrentBalance();
+      if (balWei > 0n && inputs.vaultBalance) {
+        inputs.vaultBalance.value = (Number(balWei) / 1e18).toFixed(2);
+        calculate();
+      }
+    } catch (e) {
+      console.warn("Could not fetch on-chain vault balance", e);
+    }
+  }
+
+  init();
 </script>

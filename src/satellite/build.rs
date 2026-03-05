@@ -57,6 +57,7 @@ struct Gameplay {
 
 #[derive(Deserialize)]
 struct VaultConfig {
+    max_score: u64,
     tiers: VaultTiers,
     payout_fixed: PayoutFixed,
     payout_percentages: PayoutPercentages,
@@ -227,6 +228,9 @@ pub const PERMANENT_AFTER_OFFENCE: u64 = {permanent};
 /// Maximum keys a player can collect per session (from client.gameplay.max_keys)
 pub const MAX_KEYS_COLLECTED: u64 = {max_keys};
 
+/// Maximum score a player can realistically achieve (from client.gameplay.vault.max_score)
+pub const MAX_SCORE: u64 = {max_score};
+
 /// EVM RPC canister ID on the Internet Computer (from client.blockchain.icp.evm_rpc_canister_id)
 pub const EVM_RPC_CANISTER_ID: &str = "{evm_rpc_canister_id}";
 
@@ -315,6 +319,7 @@ pub const REPLAY_GRACE_MS: u64 = 5_000;
         ban_durations = ban_durations,
         permanent = config.server.anti_cheat.permanent_after_offence,
         max_keys = config.client.gameplay.max_keys,
+        max_score = config.client.gameplay.vault.max_score,
         evm_rpc_canister_id = config.client.blockchain.icp.evm_rpc_canister_id,
         chain_id = chain.chain_id,
         vault_contract = chain.vault_contract,

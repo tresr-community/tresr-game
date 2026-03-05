@@ -366,10 +366,6 @@
             theme: "synthwave",
             has_read_instructions: false,
           },
-          wallet: {
-            balance: 0n,
-            evm_wallet_linked: false,
-          },
           stats: {
             high_score: 0n,
             total_games_played: 0n,
@@ -562,17 +558,12 @@
             evm_wallet: address,
             verification_signature: sig,
             verification_message: message,
-            wallet: {
-              ...profile.wallet,
-              evm_wallet_linked: true,
-            },
           }));
         }
         // Update local state
         currentProfile.evm_wallet = address;
         currentProfile.verification_signature = sig;
         currentProfile.verification_message = message;
-        currentProfile.wallet.evm_wallet_linked = true;
         updateWalletUI();
         trackWalletLink();
         window.showInfoToast("Avalanche Wallet link established");
@@ -610,14 +601,9 @@
             ...profile,
             evm_wallet: undefined,
             wallet_proof: undefined,
-            wallet: {
-              ...profile.wallet,
-              evm_wallet_linked: false,
-            },
           }));
         }
         // Update local state
-        currentProfile.wallet.evm_wallet_linked = false;
         currentProfile.evm_wallet = undefined;
         currentProfile.wallet_proof = undefined;
         updateWalletUI();

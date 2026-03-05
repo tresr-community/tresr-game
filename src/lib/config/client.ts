@@ -154,6 +154,7 @@ export const config: ConfigTypes = {
     }
   },
   "wallet": {
+    "faucet_cooldown_hours": 24,
     "balance_refresh_cooldown_ms": 30000,
     "vault_poll_interval_ms": 60000,
     "connect_timeout_ms": 300000,
@@ -403,6 +404,7 @@ export const config: ConfigTypes = {
       "base_delay_ms": 100
     },
     "vault": {
+      "max_score": 20000,
       "minimum_cap": 1000,
       "tiers": {
         "building": 10000,
@@ -1505,5 +1507,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "5bdf1652025ed84f213a9efaf0feca3f9465eb8bb5d98bcfef147076d96cf424"
+  "configHash": "845457ad413f10a94609e60fa2fbb5161d154985ef7543b521b353b12de15f41"
 };

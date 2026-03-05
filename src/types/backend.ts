@@ -30,12 +30,6 @@ export interface UserProfile {
     total_games_lost: bigint;
   };
 
-  // Wallet
-  wallet: {
-    balance: bigint;
-    evm_wallet_linked: boolean;
-  };
-
   // Preferences
   preferences: {
     avatar_url?: string;

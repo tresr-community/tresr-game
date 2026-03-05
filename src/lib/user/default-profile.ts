@@ -76,8 +76,6 @@ export function createDefaultProfile(
   userId: string,
   options?: CreateProfileOptions
 ): UserProfile {
-  const isWalletLinked = Boolean(options?.evm_wallet);
-
   return {
     user_id: userId,
     nickname: genNickName(),
@@ -87,10 +85,6 @@ export function createDefaultProfile(
       total_games_played: 0n,
       total_games_won: 0n,
       total_games_lost: 0n,
-    },
-    wallet: {
-      balance: 0n,
-      evm_wallet_linked: isWalletLinked,
     },
     preferences: {
       theme: "synthwave",

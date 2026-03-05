@@ -73,7 +73,8 @@ declare module "/config-client.json" {
       icp: {        evm_rpc_canister_id: string;
       };
     };
-    wallet: {      balance_refresh_cooldown_ms: number;
+    wallet: {      faucet_cooldown_hours: number;
+      balance_refresh_cooldown_ms: number;
       vault_poll_interval_ms: number;
       connect_timeout_ms: number;
       tx_timeout_ms: number;
@@ -107,7 +108,8 @@ declare module "/config-client.json" {
       claim_retries: {        max_attempts: number;
         base_delay_ms: number;
       };
-      vault: {        minimum_cap: number;
+      vault: {        max_score: number;
+        minimum_cap: number;
         tiers: {          building: number;
           sweet_spot: number;
           fomo: number;
@@ -824,7 +826,8 @@ declare module "../../../public/config-client.json" {
       icp: {        evm_rpc_canister_id: string;
       };
     };
-    wallet: {      balance_refresh_cooldown_ms: number;
+    wallet: {      faucet_cooldown_hours: number;
+      balance_refresh_cooldown_ms: number;
       vault_poll_interval_ms: number;
       connect_timeout_ms: number;
       tx_timeout_ms: number;
@@ -858,7 +861,8 @@ declare module "../../../public/config-client.json" {
       claim_retries: {        max_attempts: number;
         base_delay_ms: number;
       };
-      vault: {        minimum_cap: number;
+      vault: {        max_score: number;
+        minimum_cap: number;
         tiers: {          building: number;
           sweet_spot: number;
           fomo: number;

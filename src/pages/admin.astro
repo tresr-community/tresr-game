@@ -105,97 +105,118 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           class="tab-content bg-base-100 border-base-300 rounded-box p-4"
         >
           <!-- ─── Errors Tab ─────────────────────────────────────────────── -->
-          <div class="mb-4 flex flex-wrap items-center gap-3">
-            <h2 class="flex-1 text-xl font-bold">
+          <div class="mb-6 flex flex-col gap-4">
+            <h2 class="text-xl font-bold">
               Error Records (<span id="error-count">0</span>)
             </h2>
-            <label
-              class="input input-bordered input-sm flex items-center gap-2"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 16 16"
-                class="h-4 w-4 opacity-70"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"
-                  clip-rule="evenodd"></path>
-              </svg>
-              <input
-                id="search"
-                type="text"
-                placeholder="Search…"
-                class="grow"
-              />
-            </label>
-            <select id="filter-env" class="select select-bordered select-sm">
-              <option value="">All environments</option>
-              <option value="mainnet">mainnet</option>
-              <option value="testnet">testnet</option>
-              <option value="anvil">anvil</option>
-            </select>
-            <select
-              id="filter-resolved"
-              class="select select-bordered select-sm"
-            >
-              <option value="">All statuses</option>
-              <option value="false">Unresolved</option>
-              <option value="true">Resolved</option>
-            </select>
-            <button
-              id="delete-selected-btn"
-              class="btn btn-error btn-sm hidden"
-              disabled
-            >
-              🗑 Delete selected
-            </button>
-            <button id="refresh-btn" class="btn btn-ghost btn-sm"
-              >↺ Refresh</button
-            >
-          </div>
 
-          <!-- Selection bar -->
-          <div
-            id="selection-bar"
-            class="bg-base-200 mb-2 flex hidden items-center gap-3 rounded p-2"
-          >
-            <label class="label cursor-pointer gap-2">
-              <input
-                id="select-all"
-                type="checkbox"
-                class="checkbox checkbox-sm"
-              />
-              <span class="label-text text-sm">Select all visible</span>
-            </label>
-            <span id="selected-count" class="text-sm opacity-70"
-              >0 selected</span
+            <!-- Filter & Controls Bar -->
+            <div
+              class="bg-base-200 border-base-300 rounded-t-box flex flex-wrap items-center justify-between gap-4 border border-b-0 p-3"
             >
-          </div>
-
-          <div class="rounded-box border-base-300 overflow-x-auto border">
-            <table class="table-sm table">
-              <thead>
-                <tr>
-                  <th
-                    ><input
-                      id="select-all-head"
-                      type="checkbox"
-                      class="checkbox checkbox-xs"
-                    /></th
+              <!-- Filters (Left) -->
+              <div class="flex flex-1 flex-wrap items-center gap-3">
+                <label
+                  class="input input-bordered input-sm flex w-full max-w-xs items-center gap-2"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 16 16"
+                    class="h-4 w-4 opacity-70"
                   >
-                  <th>Error ID</th>
-                  <th>Component</th>
-                  <th>Message</th>
-                  <th>Principal</th>
-                  <th>Env</th>
-                  <th>Time</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="error-table-body"> </tbody>
-            </table>
+                    <path
+                      fill-rule="evenodd"
+                      d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"
+                      clip-rule="evenodd"></path>
+                  </svg>
+                  <input
+                    id="search"
+                    type="text"
+                    placeholder="Search ID, Component, Message..."
+                    class="grow"
+                  />
+                </label>
+                <select
+                  id="filter-env"
+                  class="select select-bordered select-sm"
+                >
+                  <option value="">All environments</option>
+                  <option value="mainnet">mainnet</option>
+                  <option value="testnet">testnet</option>
+                  <option value="anvil">anvil</option>
+                </select>
+                <select
+                  id="filter-resolved"
+                  class="select select-bordered select-sm"
+                >
+                  <option value="">All statuses</option>
+                  <option value="false">Unresolved</option>
+                  <option value="true">Resolved</option>
+                </select>
+              </div>
+
+              <!-- Actions & Selection (Right) -->
+              <div class="flex flex-wrap items-center gap-3">
+                <div
+                  id="selection-bar"
+                  class="border-base-300 hidden items-center gap-3 border-r pr-3"
+                >
+                  <label class="label cursor-pointer gap-2 p-0">
+                    <input
+                      id="select-all"
+                      type="checkbox"
+                      class="checkbox checkbox-sm"
+                    />
+                    <span class="label-text text-sm font-semibold"
+                      >Select all</span
+                    >
+                  </label>
+                  <span id="selected-count" class="badge badge-neutral badge-sm"
+                    >0</span
+                  >
+                </div>
+
+                <div class="flex gap-2">
+                  <button
+                    id="delete-selected-btn"
+                    class="btn btn-error btn-sm hidden"
+                    disabled
+                  >
+                    🗑 Delete
+                  </button>
+                  <button id="refresh-btn" class="btn btn-ghost btn-sm">
+                    ↺ Refresh
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="border-base-300 rounded-b-box overflow-x-auto border border-t-0"
+            >
+              <table class="table-sm table">
+                <thead>
+                  <tr>
+                    <th
+                      ><input
+                        id="select-all-head"
+                        type="checkbox"
+                        class="checkbox checkbox-xs"
+                      /></th
+                    >
+                    <th>Error ID</th>
+                    <th>Component</th>
+                    <th>Message</th>
+                    <th>Principal</th>
+                    <th>Env</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="error-table-body"> </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -285,14 +306,12 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
                   <tr>
                     <th>Principal</th>
                     <th>Nickname</th>
-                    <th>Juno Balance</th>
-                    <th>On-Chain</th>
-                    <th>Difference</th>
+                    <th>On-Chain Balance</th>
                   </tr>
                 </thead>
                 <tbody id="economy-table-body">
                   <tr>
-                    <td colspan="5" class="py-8 text-center opacity-50"
+                    <td colspan="3" class="py-8 text-center opacity-50"
                       >Click Refresh to load economy data</td
                     >
                   </tr>
@@ -744,11 +763,6 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           const profile = doc.data;
           const principal = doc.key;
           const nickname = escHtml(profile.nickname ?? "—");
-          // wallet.balance is u64 whole tokens in Juno (not wei).
-          // Multiply by 10^18 to match on-chain wei for comparison.
-          const DECIMALS = 10n ** 18n;
-          const junoBalance =
-            BigInt(Math.round(Number(profile.wallet?.balance ?? 0))) * DECIMALS;
           let onChainBalance = 0n;
 
           if (profile.evm_wallet) {
@@ -759,30 +773,11 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
             }
           }
 
-          const diff = onChainBalance - junoBalance;
-          const hasDiff = diff !== 0n;
-          const diffLabel = hasDiff
-            ? `<span class="text-error font-bold">${formatBalance(diff < 0n ? -diff : diff)}${diff < 0n ? " ↓" : " ↑"}</span>`
-            : `<span class="text-success">0</span>`;
-
-          const diffCell = hasDiff
-            ? `<td class="relative">
-                ${diffLabel}
-                <span class="inline-grid *:[grid-area:1/1] ml-1 align-middle">
-                  <span class="status status-error animate-ping"></span>
-                  <span class="status status-error"></span>
-                </span>
-              </td>`
-            : `<td>${diffLabel}</td>`;
-
-          const rowClass = hasDiff ? "bg-error/10" : "";
           rows.push(
-            `<tr class="${rowClass}">` +
+            `<tr>` +
               `<td class="text-xs font-mono truncate max-w-[120px]" title="${escHtml(principal)}">${escHtml(principal.slice(0, 14))}…</td>` +
               `<td>${nickname}</td>` +
-              `<td class="font-mono text-xs">${formatBalance(junoBalance)}</td>` +
               `<td class="font-mono text-xs">${formatBalance(onChainBalance)}</td>` +
-              diffCell +
               `</tr>`
           );
         }
@@ -792,11 +787,11 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         econBody.innerHTML =
           rows.length > 0
             ? rows.join("")
-            : '<tr><td colspan="5" class="py-8 text-center opacity-50">No users found</td></tr>';
+            : '<tr><td colspan="3" class="py-8 text-center opacity-50">No users found</td></tr>';
       } catch (e) {
         econLoading.classList.add("hidden");
         econComparison.classList.remove("hidden");
-        econBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-error">Failed to load economy data: ${escHtml(String(e))}</td></tr>`;
+        econBody.innerHTML = `<tr><td colspan="3" class="py-8 text-center text-error">Failed to load economy data: ${escHtml(String(e))}</td></tr>`;
       }
     }
 

@@ -717,46 +717,13 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                 updated_doc,
             )?;
 
-            // Credit verified fee to user's wallet balance.
-            // Re-read the user doc to get the latest version — the frontend may
-            // have written a newer version during the async EVM RPC verification
-            // (the original read at line 489 can be seconds stale by now).
-            let fresh_user_doc =
-                get_doc_store(context.caller, "users".to_string(), user_key.clone())?;
-            if let Some(fresh_doc) = fresh_user_doc {
-                let mut user_profile: UserProfile = decode_doc_data(&fresh_doc.data)?;
-                user_profile.wallet.balance = user_profile
-                    .wallet
-                    .balance
-                    .checked_add(verified_amount)
-                    .ok_or("Balance overflow on deposit credit")?;
-                let updated_user = SetDoc {
-                    data: encode_doc_data(&user_profile)?,
-                    description: fresh_doc.description.clone(),
-                    version: fresh_doc.version,
-                };
-                set_doc_store(
-                    context.caller,
-                    "users".to_string(),
-                    user_key.clone(),
-                    updated_user,
-                )?;
-                logging::log_info(
-                    "Fees",
-                    &format!(
-                        "Fee verified: {} tokens for user {}. New balance: {}",
-                        verified_amount, user_key, user_profile.wallet.balance
-                    ),
-                );
-            } else {
-                logging::log_warn(
-                    "Fees",
-                    &format!(
-                        "Fee verified but user profile not found for {}",
-                        context.caller.to_text()
-                    ),
-                );
-            }
+            logging::log_info(
+                "Fees",
+                &format!(
+                    "Fee verified: {} tokens for user {}",
+                    verified_amount, user_key
+                ),
+            );
         }
         Err(e) => {
             // Mark fee as failed
@@ -1930,12 +1897,12 @@ async fn claim_authorize(
             .unwrap_or(0)
     };
 
-    // Calculate performance multiplier based on keys
-    // perf_mult = reported_keys / MAX_KEYS
-    // => max_perf = max_payout * reported_keys / MAX_KEYS
+    // Calculate performance multiplier based on score
+    // perf_mult = session.score / MAX_SCORE
+    // => max_perf = max_payout * session.score / MAX_SCORE
     let max_perf = max_payout
-        .checked_mul(reported_keys as u128)
-        .map(|v| v / (config::MAX_KEYS_COLLECTED as u128))
+        .checked_mul(session.score as u128)
+        .map(|v| v / (config::MAX_SCORE as u128))
         .unwrap_or(0)
         .min(vault_balance / 2); // safety cap: never drain more than 50%
     let guaranteed = fee_amount

@@ -193,13 +193,7 @@ export async function getFaucetCooldownStatus(
     return {remainingSeconds: 0, canClaim: true};
   }
 
-  const cooldownSeconds = Number(
-    await publicClient.readContract({
-      address: faucetAddress,
-      abi: FaucetAbi,
-      functionName: "cooldown",
-    })
-  );
+  const cooldownSeconds = (cfg.wallet.faucet_cooldown_hours ?? 24) * 3600;
 
   const nowSeconds = Math.floor(Date.now() / 1000);
   const nextClaimTime = Number(lastDripTime) + cooldownSeconds;
