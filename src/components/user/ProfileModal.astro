@@ -520,10 +520,6 @@
       modal?.close();
     } catch (error) {
       log.error(COMPONENT_NAME, "Failed to save profile:", error);
-      window.showErrorToast(
-        "Failed to save profile",
-        (error as Error).message || ""
-      );
     } finally {
       saveBtn.classList.remove("loading");
     }
@@ -575,16 +571,20 @@
       }
     } catch (err: unknown) {
       const error = err as {message?: string; code?: number};
-      log.error(COMPONENT_NAME, "Wallet link failed", err);
-      let msg = "Wallet link failed";
-      if (error.message?.includes("rejected") || error.code === 4001) {
-        msg = "Connection cancelled or rejected";
+      if (
+        error.message?.includes("rejected") ||
+        error.code === 4001 ||
+        error.message?.includes("cancelled")
+      ) {
+        // User rejected — no error report needed
+        window.showWarningToast?.("Wallet connection cancelled or rejected");
       } else if (error.message?.includes("switch") || error.code === 4902) {
-        msg = error.message || "Please switch to the correct network";
-      } else if (error.message?.includes("cancelled")) {
-        msg = "Wallet connection cancelled";
+        // Network switch needed — clean static message
+        log.error(COMPONENT_NAME, "Wrong network — please switch chain", err);
+      } else {
+        // Unexpected — log.error handles report + clean toast
+        log.error(COMPONENT_NAME, "Wallet link failed", err);
       }
-      window.showErrorToast(msg, error.message || "Unknown error");
     } finally {
       loadingModal?.close();
     }
@@ -618,10 +618,7 @@
       }
     } catch (err) {
       log.error(COMPONENT_NAME, "Wallet unlink failed", err);
-      window.showErrorToast(
-        "Failed to sever Avalanche Wallet link",
-        (err as Error).message
-      );
+      window.showErrorToast("Failed to sever Avalanche Wallet link");
     }
   }
 
@@ -727,7 +724,7 @@
       log.info(COMPONENT_NAME, "Avatar uploaded successfully:", url);
     } catch (err) {
       log.error(COMPONENT_NAME, "Avatar upload failed:", err);
-      window.showErrorToast("Avatar upload failed", (err as Error).message);
+      window.showErrorToast("Avatar upload failed");
     } finally {
       avatarUploading?.classList.add("hidden");
       // Reset input so the same file can be re-selected

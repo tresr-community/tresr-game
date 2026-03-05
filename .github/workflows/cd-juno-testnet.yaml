@@ -166,16 +166,12 @@ jobs:
         name: Deploy Hosting
         uses: junobuild/juno-action@main
         with:
-          args: hosting deploy --mode staging
-
-      # NOTE: config apply requires Admin controller access.
-      # OIDC automation keys are Editor/Submitter only.
-      # Apply config changes locally: juno config apply --mode staging
-      # - id: apply_config
-      #   name: Apply Configuration
-      #   uses: junobuild/juno-action@main
-      #   with:
-      #     args: config apply --force --mode staging
+          # --clear removes stale hashed chunks from previous releases.
+          # Safe for CI: Submitter/Editor permission is sufficient.
+          # NOTE: --config is intentionally omitted — set_storage_config requires
+          # Admin controller access. The OIDC automation key is Editor/Submitter only.
+          # Apply config changes manually: juno config apply --mode staging
+          args: hosting deploy --clear --mode staging
 
       - id: publish_functions
         name: Publish Functions

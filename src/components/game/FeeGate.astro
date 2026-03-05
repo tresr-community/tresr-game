@@ -57,10 +57,10 @@
 
 <script>
   import {config} from "@/lib/config/client";
-  import {getEnvironmentKey} from "@/lib/wallet/avalanche";
+  import {getEnvironmentKey, getExplorerUrl} from "@/lib/wallet/avalanche";
+  import {payFeeForGame} from "@/lib/wallet/avalanche/vault";
   import {setDoc} from "@junobuild/core";
   import {connectWallet, isConnected} from "@/lib/wallet/connection";
-  import {payFeeForGame, getExplorerUrl} from "@/lib/wallet/avalanche";
   import {confirmReceipt} from "@/lib/wallet/tx";
   import {getTresrBalance, formatBalance} from "@/lib/wallet/balance";
   import {parseBalance} from "@/lib/wallet/balance";

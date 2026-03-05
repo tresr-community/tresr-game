@@ -734,13 +734,10 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                 );
             }
 
-            // Update global stats: track total fees and burned amount
-            let burn_amount = (verified_amount * config::BURN_RATE_BPS) / 10000;
-            update_global_stats(|stats| {
-                stats.total_fees += verified_amount;
-                stats.total_collected += verified_amount; // Track total fees collected forever
-                stats.total_burned += burn_amount;
-            })?;
+            // Snapshot the full vault state after this fee — all 4 values from a
+            // single pass so economy/blockchain is always a consistent point-in-time
+            // view (mirrors blockchain-sync.ts multicall behaviour).
+            sync_economy_snapshot().await;
         }
         Err(e) => {
             // Mark fee as failed
@@ -767,39 +764,80 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
     Ok(())
 }
 
-/// Update global stats atomically (read-modify-write).
-/// Uses `ic_cdk::id()` as caller for the `write: "managed"` economy collection.
-fn update_global_stats<F: FnOnce(&mut GlobalStats)>(updater: F) -> Result<(), String> {
-    let canister_id = ic_cdk::id();
-    let key = "global".to_string();
+/// Read all 4 vault contract values in parallel and write a complete, consistent
+/// snapshot to economy/blockchain.
+///
+/// This is the Rust counterpart to `blockchain-sync.ts` on the frontend — a single
+/// function that captures the full vault state atomically so every field in
+/// economy/blockchain reflects the same point in time.
+///
+/// Called after every fee payment and reward claim. Non-fatal: if the EVM RPC
+/// fails the error is logged but does not abort the hook.
+async fn sync_economy_snapshot() {
+    let snapshot = match evm_rpc::get_vault_snapshot().await {
+        Ok(s) => s,
+        Err(e) => {
+            logging::log_warn(
+                "Economy",
+                &format!(
+                    "[Economy] get_vault_snapshot failed (cache not updated): {}",
+                    e
+                ),
+            );
+            return;
+        }
+    };
 
+    let canister_id = ic_cdk::id();
+    let key = "blockchain".to_string();
+
+    // Read existing doc to preserve version for optimistic concurrency
     let existing_doc = get_doc_store(canister_id, "economy".to_string(), key.clone())
         .ok()
         .flatten();
     let existing_version = existing_doc.as_ref().and_then(|d| d.version);
 
+    // Preserve any fields Rust tracks incrementally (total_collected)
     let mut stats = existing_doc
         .and_then(|doc| decode_doc_data::<GlobalStats>(&doc.data).ok())
         .unwrap_or_default();
 
-    updater(&mut stats);
+    // Overwrite all on-chain sourced fields with fresh chain values
+    stats.total_fees = snapshot.total_fees_collected;
+    stats.total_rewarded = snapshot.total_rewards_paid;
+    stats.total_burned = snapshot.total_burned;
+    stats.total_vault = snapshot.vault_balance;
+    // total_collected is kept from the existing doc — it's the Juno-tracked
+    // running total of fees credited, complementing the on-chain totalFeesCollected.
 
     let doc = SetDoc {
-        data: encode_doc_data(&stats)?,
+        data: match encode_doc_data(&stats) {
+            Ok(d) => d,
+            Err(e) => {
+                logging::log_error(
+                    "Economy",
+                    &format!("[Economy] encode snapshot failed: {}", e),
+                );
+                return;
+            }
+        },
         description: Some("Global burn/payout stats".to_string()),
         version: existing_version,
     };
 
-    set_doc_store(canister_id, "economy".to_string(), key, doc)?;
-
-    logging::log_info(
-        "Economy",
-        &format!(
-            "[Economy] Updated collection economy (global) with total_collected={}, total_rewarded={}, total_burned={}",
-            stats.total_collected, stats.total_rewarded, stats.total_burned
+    match set_doc_store(canister_id, "economy".to_string(), key, doc) {
+        Ok(_) => logging::log_info(
+            "Economy",
+            &format!(
+                "[Economy] Snapshot written: fees={} rewards={} burned={} vault={}",
+                stats.total_fees, stats.total_rewarded, stats.total_burned, stats.total_vault
+            ),
         ),
-    );
-    Ok(())
+        Err(e) => logging::log_warn(
+            "Economy",
+            &format!("[Economy] Failed to write economy snapshot: {}", e),
+        ),
+    }
 }
 
 /// Generate ECDSA signature for claim authorization using IC threshold ECDSA.
@@ -1102,10 +1140,8 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
 
         update_claim_doc(&context, &claim).await?;
 
-        // Update global stats: track total rewards paid out
-        update_global_stats(|stats| {
-            stats.total_rewarded += claim.amount;
-        })?;
+        // Snapshot the full vault state after this claim — all 4 values in parallel
+        sync_economy_snapshot().await;
 
         logging::log_info(
             "Claims",
@@ -1886,40 +1922,11 @@ async fn claim_authorize(
         return Err("Low pot".to_string());
     }
 
-    // 4. Verify replay
-    // TODO(#171): Replace with real deterministic replay verification engine
-    // For now, use stub that trusts reported values
-    let (verified_keys, boss_killed) = replay_verify_stub(
-        &replay_inputs,
-        vault_balance,
-        reported_keys,
-        session.boss_defeated,
-    )
-    .await?;
-    if verified_keys != reported_keys || !boss_killed {
-        // Cheat detected — apply ban
-        apply_ban(&mut user_profile);
-        let ban_doc = SetDoc {
-            data: encode_doc_data(&user_profile)?,
-            description: Some("Ban applied: replay validation failure".to_string()),
-            version: user_doc_version,
-        };
-        set_doc_store(caller, "users".to_string(), caller_text.clone(), ban_doc)?;
+    // 4. Parse and plausibility-check the replay input log (#171 Phase 1)
+    // Reported keys are still trusted; Phase 2 will derive them from the log.
+    let actions = extract_action_log(&replay_inputs)?;
+    replay_verify_plausibility(&actions)?;
 
-        logging::log_error(
-            "AntiCheat",
-            &format!(
-                "CHEAT_DETECTED: replay invalid for user {}. Offence #{}, banned_until={:?}",
-                caller_text, user_profile.offence_count, user_profile.banned_until
-            ),
-        );
-
-        return Err(format!(
-            "CHEAT_DETECTED: Replay invalid. Offence #{}, banned_until={}",
-            user_profile.offence_count,
-            user_profile.banned_until.unwrap_or(0)
-        ));
-    }
     if reported_keys > config::MAX_KEYS_COLLECTED {
         // Cheat detected — apply ban
         apply_ban(&mut user_profile);
@@ -2008,16 +2015,117 @@ async fn claim_authorize(
     Ok((amount, signature_bytes))
 }
 
-/// Replay verification stub — trusts reported values until the real replay engine is implemented.
-/// TODO(#171): Replace with deterministic game replay engine that parses `_inputs` to independently
-/// verify keys collected and boss defeat.
-async fn replay_verify_stub(
-    _inputs: &[u8],
-    _pot: u128,
-    reported_keys: u64,
-    boss_defeated: bool,
-) -> Result<(u64, bool), String> {
-    Ok((reported_keys, boss_defeated))
+/// A single player action as recorded by the TypeScript Recorder class.
+/// Mirrors `GameAction` in `src/lib/game/Recorder.ts`.
+#[derive(serde::Deserialize)]
+struct GameAction {
+    /// Relative timestamp in milliseconds since session start.
+    t: u64,
+    /// Action identifier — one of the VALID_ACTIONS set in the TS Recorder.
+    a: String,
+}
+
+/// Parse the JSON action log from the front of the binary replay payload (#171).
+///
+/// Payload format (same as `extract_config_hash`):
+///   [4B input_len][JSON action log][64B config hash][4B seed_len][seed]
+///
+/// Returns the deserialized action list, or an error if the payload is malformed.
+fn extract_action_log(payload: &[u8]) -> Result<Vec<GameAction>, String> {
+    if payload.len() < 4 {
+        return Err("Payload too short: missing input length".to_string());
+    }
+    let input_len = u32::from_be_bytes(
+        payload[0..4]
+            .try_into()
+            .map_err(|_| "Failed to read input length")?,
+    ) as usize;
+    let json_end = 4 + input_len;
+    if payload.len() < json_end {
+        return Err(format!(
+            "Payload too short for action log: need {} bytes, have {}",
+            json_end,
+            payload.len()
+        ));
+    }
+    let json_bytes = &payload[4..json_end];
+    let actions: Vec<GameAction> = serde_json::from_slice(json_bytes)
+        .map_err(|e| format!("Invalid action log JSON: {}", e))?;
+    Ok(actions)
+}
+
+/// Phase 1 plausibility checks — guards against automated submissions and obvious cheating (#171).
+///
+/// Checks:
+/// 1. Action count ≤ REPLAY_MAX_ACTIONS (matches Recorder::MAX_ACTIONS).
+/// 2. No two consecutive events < REPLAY_MIN_ACTION_GAP_MS apart (< 1 browser frame).
+/// 3. Consecutive `attack` events not faster than REPLAY_MIN_ATTACK_GAP_MS.
+/// 4. Last event timestamp ≤ TIME_LIMIT_MS + REPLAY_GRACE_MS.
+///
+/// Reported keys are still trusted in Phase 1 (physics replay is Phase 2).
+fn replay_verify_plausibility(actions: &[GameAction]) -> Result<(), String> {
+    // 1. Action count sanity
+    if actions.len() as u64 > config::REPLAY_MAX_ACTIONS {
+        return Err(format!(
+            "CHEAT_DETECTED: action count {} exceeds cap {}",
+            actions.len(),
+            config::REPLAY_MAX_ACTIONS
+        ));
+    }
+
+    let max_duration_ms = config::TIME_LIMIT_MS + config::REPLAY_GRACE_MS;
+    let mut last_attack_t: Option<u64> = None;
+
+    for i in 0..actions.len() {
+        let action = &actions[i];
+
+        // 4. Total duration — any action beyond max session window is suspicious
+        if action.t > max_duration_ms {
+            return Err(format!(
+                "CHEAT_DETECTED: action timestamp {}ms exceeds max session duration {}ms",
+                action.t, max_duration_ms
+            ));
+        }
+
+        // 2. Minimum gap between consecutive actions (catch sub-frame injection)
+        if i > 0 {
+            let prev_t = actions[i - 1].t;
+            if action.t < prev_t {
+                return Err(format!(
+                    "CHEAT_DETECTED: action timestamps not monotonic at index {} ({} < {})",
+                    i, action.t, prev_t
+                ));
+            }
+            let gap = action.t - prev_t;
+            if gap < config::REPLAY_MIN_ACTION_GAP_MS {
+                return Err(format!(
+                    "CHEAT_DETECTED: actions at index {} and {} are {}ms apart (min {}ms)",
+                    i - 1,
+                    i,
+                    gap,
+                    config::REPLAY_MIN_ACTION_GAP_MS
+                ));
+            }
+        }
+
+        // 3. Attack rate limit
+        if action.a == "attack" {
+            if let Some(prev_attack_t) = last_attack_t {
+                let gap = action.t.saturating_sub(prev_attack_t);
+                if gap < config::REPLAY_MIN_ATTACK_GAP_MS {
+                    return Err(format!(
+                        "CHEAT_DETECTED: attack at {}ms is only {}ms after previous attack (min {}ms)",
+                        action.t,
+                        gap,
+                        config::REPLAY_MIN_ATTACK_GAP_MS
+                    ));
+                }
+            }
+            last_attack_t = Some(action.t);
+        }
+    }
+
+    Ok(())
 }
 
 /// Parse the binary replay payload to extract the config hash (#41).
@@ -2184,12 +2292,22 @@ fn delete_errors(keys: Vec<String>) -> Result<(), String> {
 
     let canister_id = ic_cdk::id();
     for key in &keys {
-        // delete_doc_store returns Ok(()) if doc doesn't exist — idempotent
+        // Juno requires the current version on delete; fetch it first.
+        // If the doc doesn't exist, skip it (idempotent).
+        let existing = get_doc_store(canister_id, "errors".to_string(), key.clone())
+            .map_err(|e| format!("Failed to fetch error {}: {}", key, e))?;
+
+        let Some(doc) = existing else {
+            continue;
+        };
+
         delete_doc_store(
             canister_id,
             "errors".to_string(),
             key.clone(),
-            DelDoc { version: None },
+            DelDoc {
+                version: doc.version,
+            },
         )
         .map_err(|e| format!("Failed to delete error {}: {}", key, e))?;
     }
@@ -2245,6 +2363,156 @@ fn resolve_error(error_id: String, resolved: bool) -> Result<(), String> {
     );
 
     Ok(())
+}
+
+// =============================================================================
+// Replay verification tests (#171)
+// =============================================================================
+
+#[cfg(test)]
+mod replay_tests {
+    use super::*;
+
+    /// Build a minimal length-prefixed payload from a JSON action log string.
+    fn make_payload(json: &str) -> Vec<u8> {
+        let json_bytes = json.as_bytes();
+        let input_len = json_bytes.len() as u32;
+        // Pad with 64-byte dummy config hash + 4-byte seed len + dummy seed
+        let mut payload = Vec::new();
+        payload.extend_from_slice(&input_len.to_be_bytes());
+        payload.extend_from_slice(json_bytes);
+        payload
+            .extend_from_slice(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"); // 64-char hex
+        payload.extend_from_slice(&4u32.to_be_bytes()); // seed len
+        payload.extend_from_slice(b"1234"); // seed
+        payload
+    }
+
+    fn action(t: u64, a: &str) -> String {
+        format!(r#"{{"t":{},"a":"{}"}}"#, t, a)
+    }
+
+    fn actions_json(items: &[(u64, &str)]) -> String {
+        let parts: Vec<String> = items.iter().map(|(t, a)| action(*t, a)).collect();
+        format!("[{}]", parts.join(","))
+    }
+
+    #[test]
+    fn test_extract_action_log_valid() {
+        let json = actions_json(&[(0, "jump"), (500, "move_right"), (1000, "attack")]);
+        let payload = make_payload(&json);
+        let actions = extract_action_log(&payload).unwrap();
+        assert_eq!(actions.len(), 3);
+        assert_eq!(actions[0].t, 0);
+        assert_eq!(actions[0].a, "jump");
+        assert_eq!(actions[2].a, "attack");
+    }
+
+    #[test]
+    fn test_extract_action_log_malformed_json() {
+        let payload = make_payload("not-json");
+        let result = extract_action_log(&payload);
+        assert!(result.is_err(), "Expected error on malformed JSON");
+    }
+
+    #[test]
+    fn test_replay_plausibility_ok() {
+        // Valid session: 3 actions spread over 3 seconds
+        let actions: Vec<GameAction> = vec![
+            GameAction {
+                t: 0,
+                a: "jump".to_string(),
+            },
+            GameAction {
+                t: 500,
+                a: "move_right".to_string(),
+            },
+            GameAction {
+                t: 1000,
+                a: "attack".to_string(),
+            },
+        ];
+        assert!(replay_verify_plausibility(&actions).is_ok());
+    }
+
+    #[test]
+    fn test_replay_plausibility_sub_frame_gap() {
+        // Two events 10ms apart (below 16ms minimum)
+        let actions: Vec<GameAction> = vec![
+            GameAction {
+                t: 0,
+                a: "jump".to_string(),
+            },
+            GameAction {
+                t: 10,
+                a: "move_right".to_string(),
+            },
+        ];
+        let result = replay_verify_plausibility(&actions);
+        assert!(result.is_err(), "Expected error for sub-frame gap");
+        assert!(result.unwrap_err().contains("CHEAT_DETECTED"));
+    }
+
+    #[test]
+    fn test_replay_plausibility_attack_too_fast() {
+        // Two attack events 100ms apart (below 200ms minimum)
+        let actions: Vec<GameAction> = vec![
+            GameAction {
+                t: 0,
+                a: "attack".to_string(),
+            },
+            GameAction {
+                t: 100,
+                a: "attack".to_string(),
+            },
+        ];
+        let result = replay_verify_plausibility(&actions);
+        assert!(result.is_err(), "Expected error for rapid attack");
+        assert!(result.unwrap_err().contains("CHEAT_DETECTED"));
+    }
+
+    #[test]
+    fn test_replay_plausibility_exceeds_duration() {
+        // Action at TIME_LIMIT_MS + REPLAY_GRACE_MS + 1ms
+        let too_late = config::TIME_LIMIT_MS + config::REPLAY_GRACE_MS + 1;
+        let actions: Vec<GameAction> = vec![
+            GameAction {
+                t: 0,
+                a: "jump".to_string(),
+            },
+            GameAction {
+                t: too_late,
+                a: "move_right".to_string(),
+            },
+        ];
+        let result = replay_verify_plausibility(&actions);
+        assert!(
+            result.is_err(),
+            "Expected error for out-of-bounds timestamp"
+        );
+        assert!(result.unwrap_err().contains("CHEAT_DETECTED"));
+    }
+
+    #[test]
+    fn test_replay_plausibility_non_monotonic() {
+        // Timestamp decreases — clear sign of manipulation
+        let actions: Vec<GameAction> = vec![
+            GameAction {
+                t: 1000,
+                a: "jump".to_string(),
+            },
+            GameAction {
+                t: 500,
+                a: "move_right".to_string(),
+            },
+        ];
+        let result = replay_verify_plausibility(&actions);
+        assert!(
+            result.is_err(),
+            "Expected error for non-monotonic timestamps"
+        );
+        assert!(result.unwrap_err().contains("CHEAT_DETECTED"));
+    }
 }
 
 // =============================================================================

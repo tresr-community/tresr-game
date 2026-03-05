@@ -18,12 +18,15 @@ contract DeployTestToken is Script {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address deployer = vm.addr(deployerKey);
         uint256 faucetFundAmount = vm.envOr("FAUCET_FUND_AMOUNT", uint256(100_000e18));
+        string memory tokenName = vm.envOr("TOKEN_NAME", string("Ron Token"));
+        string memory tokenSymbol = vm.envOr("TOKEN_SYMBOL", string("tRON"));
 
         vm.startBroadcast(deployerKey);
 
         // 1. Deploy token (mints 468M to deployer)
-        RonToken token = new RonToken(deployer);
+        RonToken token = new RonToken(deployer, tokenName, tokenSymbol);
         console.log("RonToken deployed at:", address(token));
+        console.log("Token name:", tokenName, "| symbol:", tokenSymbol);
 
         // 2. Configure bootup — set deployer as LP and disable bootup
         //    so testnet operates without transfer restrictions

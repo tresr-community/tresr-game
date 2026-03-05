@@ -83,7 +83,10 @@ const isProduction = JUNO_ENVIRONMENT === "production";
       stopCooldownTick();
       if (cooldownRemaining <= 0) return;
       cooldownInterval = setInterval(() => {
-        if (disposed) return;
+        if (disposed) {
+          stopCooldownTick();
+          return;
+        }
         cooldownRemaining = Math.max(0, cooldownRemaining - 1);
         if (cooldownRemaining <= 0) {
           resetButton();
@@ -125,24 +128,31 @@ const isProduction = JUNO_ENVIRONMENT === "production";
         return;
       }
 
+      // Lock immediately — before any await — to prevent double-submit.
+      // A second click arriving during the async cooldown check would otherwise
+      // pass the isProcessing guard and send the same nonce twice ("already imported").
+      isProcessing = true;
+      setSpinner();
+
       // Check cooldown before attempting
       try {
         const status = await getFaucetCooldownStatus(address);
+        if (disposed) return;
         if (!status.canClaim) {
           log.warn(
             COMPONENT_NAME,
             `Faucet on cooldown: ${formatCooldownTime(status.remainingSeconds)}`
           );
           setCooldownState(status.remainingSeconds);
+          isProcessing = false;
           return;
         }
       } catch (err) {
         log.error(COMPONENT_NAME, "Failed to check cooldown", err);
+        isProcessing = false;
+        resetButton();
         return;
       }
-
-      isProcessing = true;
-      setSpinner();
 
       try {
         await claimFaucet();
@@ -172,6 +182,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
         // Start cooldown after successful claim
         try {
           const status = await getFaucetCooldownStatus(address);
+          if (disposed) return;
           if (!status.canClaim) {
             setCooldownState(status.remainingSeconds);
           }
@@ -185,24 +196,42 @@ const isProduction = JUNO_ENVIRONMENT === "production";
 
         // Show a friendly toast based on the revert reason
         if (message.includes("Balance too high")) {
-          let ticker = "tTRESR";
+          let tickerSuffix = "tokens";
           try {
             const env = (
               await import("@/lib/wallet/avalanche")
             ).getEnvironmentKey();
-            ticker = config.blockchain.avalanche[env].token_ticker;
+            const ticker = config.blockchain.avalanche[env].token_ticker;
+            tickerSuffix = `$${ticker} tokens`;
           } catch {
-            // fall back to default ticker
+            // Non-critical — show generic label
           }
           window.showWarningToast?.(
-            `Sorry degen, you already have too many $${ticker} tokens 🤑`
+            `Sorry degen, you already have too many ${tickerSuffix} 🤑`
           );
         } else if (message.includes("Cooldown active")) {
           window.showWarningToast?.("Hold up — faucet is on cooldown ⏳");
         } else if (message.includes("Faucet empty")) {
           window.showWarningToast?.("Faucet is dry — no tokens left 🏜️");
+        } else if (message.includes("not broadcast to the network")) {
+          // Wallet returned a ghost hash but never sent the tx — surface a clear
+          // actionable message instead of a generic error ID.
+          window.showWarningToast?.(
+            "Transaction not sent — check your wallet activity and try again 🔄"
+          );
+        } else if (
+          message.includes("already imported") ||
+          message.includes("nonce too low") ||
+          message.includes("replacement transaction underpriced")
+        ) {
+          // Stale tx replay — MetaMask replayed an old signed tx with the same nonce.
+          // Tell the user to reset their wallet activity and retry.
+          window.showWarningToast?.(
+            "Duplicate transaction detected — reset your wallet activity and try again 🔄"
+          );
         } else {
-          window.showErrorToast?.("Faucet claim failed — try again later");
+          // log.error() already calls reportError and shows showErrorToast with
+          // the error_id internally — no manual reportError/showErrorToast needed here.
         }
       } finally {
         isProcessing = false;
@@ -221,6 +250,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
       if (!address) return;
       try {
         const status = await getFaucetCooldownStatus(address);
+        if (disposed) return;
         if (!status.canClaim) {
           setCooldownState(status.remainingSeconds);
         }

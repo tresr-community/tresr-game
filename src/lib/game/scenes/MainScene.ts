@@ -1412,6 +1412,16 @@ export class MainScene extends Phaser.Scene {
             `Game session version conflict (attempt ${attempt + 1}/${MAX_ATTEMPTS}), retrying in ${backoff}ms...`
           );
           await new Promise((r) => setTimeout(r, backoff));
+
+          // If the scene or its systems were destroyed during the timeout (e.g., user navigated away), abort safely.
+          if (!this.sys || !this.scene || !this.scene.manager) {
+            log.warn(
+              COMPONENT_NAME,
+              "Scene destroyed during delay, aborting saveGameSession retry."
+            );
+            return;
+          }
+
           continue;
         }
         log.error(COMPONENT_NAME, "Failed to save game session:", err);

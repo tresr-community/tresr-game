@@ -25,6 +25,45 @@ export default defineConfig(({mode}) => ({
       production: satelliteId,
     },
     source: "dist",
+    storage: {
+      headers: [
+        // Hashed JS/CSS chunks from Vite — immutable, 1 year
+        {
+          source: "**/*.{js,css}",
+          headers: [["Cache-Control", "public, max-age=31536000, immutable"]],
+        },
+        // Self-hosted fonts (woff2) in /fonts/ — 1 year, immutable
+        {
+          source: "fonts/**/*.woff2",
+          headers: [["Cache-Control", "public, max-age=31536000, immutable"]],
+        },
+        // Image assets — 1 year, immutable (Vite hashes filenames)
+        {
+          source: "assets/images/**",
+          headers: [["Cache-Control", "public, max-age=31536000, immutable"]],
+        },
+        // Icons and static assets
+        {
+          source: "assets/icons/**",
+          headers: [["Cache-Control", "public, max-age=31536000, immutable"]],
+        },
+        // Service worker — must revalidate quickly so updates propagate
+        {
+          source: "sw.js",
+          headers: [["Cache-Control", "public, max-age=3600, must-revalidate"]],
+        },
+        // Manifest — short cache so PWA metadata stays fresh
+        {
+          source: "manifest.json",
+          headers: [["Cache-Control", "public, max-age=86400"]],
+        },
+        // HTML shells — always revalidate so deploys land immediately
+        {
+          source: "**/*.html",
+          headers: [["Cache-Control", "no-cache"]],
+        },
+      ],
+    },
     automation: {
       github: {
         repositories: [

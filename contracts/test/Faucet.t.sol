@@ -18,7 +18,7 @@ contract TresrFaucetTest is Test {
 
         vm.startPrank(owner);
 
-        token = new RonToken(owner);
+        token = new RonToken(owner, "Ron Token", "tRON");
 
         // Disable bootup restrictions so faucet drip transfers work
         token.setLiquidityPool(owner);

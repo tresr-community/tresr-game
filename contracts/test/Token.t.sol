@@ -14,7 +14,7 @@ contract RonTokenTest is Test {
 
     function setUp() public {
         vm.prank(owner);
-        token = new RonToken(owner);
+        token = new RonToken(owner, "Ron Token", "tRON");
     }
 
     // ─── Basic ERC20 ───────────────────────────────────────────────────
@@ -24,6 +24,7 @@ contract RonTokenTest is Test {
     }
 
     function testNameAndSymbol() public view {
+        // Values are passed at deploy time — not hard-coded in the contract.
         assertEq(token.name(), "Ron Token");
         assertEq(token.symbol(), "tRON");
     }

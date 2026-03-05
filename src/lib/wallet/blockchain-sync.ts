@@ -2,9 +2,8 @@
  * Blockchain Sync — single source of truth for all on-chain reads.
  *
  * `syncBlockchainData(walletAddress)` reads the wallet balance + all vault
- * stats in one pass, writes the global stats to the Juno `economy/global`
- * cache, and dispatches custom DOM events so UI components can react without
- * hitting the chain themselves.
+ * stats in one pass and dispatches custom DOM events so UI components can
+ * react without hitting the chain themselves.
  *
  * Trigger points (all guarded by the mutex):
  *   • WalletLink "Refresh" button (user-driven)
@@ -16,7 +15,6 @@
  * Guest / unauthenticated users never trigger this path.
  */
 
-import {getDoc, setDoc} from "@junobuild/core";
 import {
   getTresrBalance,
   getVaultTresrBalance,
@@ -27,7 +25,6 @@ import {getEnvironmentKey, isVaultDeployed} from "@/lib/wallet/avalanche";
 import {VaultAbi} from "@/lib/wallet/abi/vault";
 import {config} from "@/lib/config/client";
 import {log} from "@/lib/utils/log";
-import type {GlobalStats} from "@/types/backend";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -76,12 +73,6 @@ export function isSyncing(): boolean {
 // ── Core ─────────────────────────────────────────────────────────────────
 
 const COMPONENT_NAME = "BlockchainSync";
-const DECIMALS = 10n ** 18n;
-
-/** Convert wei (bigint) to whole-token number for Juno storage. */
-function toTokens(wei: bigint): number {
-  return Number(wei / DECIMALS);
-}
 
 /**
  * Read all on-chain data for a connected wallet, write global stats to the
@@ -155,50 +146,6 @@ export async function syncBlockchainData(
     }
 
     const syncedAt = Date.now();
-
-    // ── 2. Write to Juno cache ─────────────────────────────────────────────
-    if (vaultAddressValid) {
-      try {
-        const existingDoc = await getDoc<GlobalStats>({
-          collection: "economy",
-          key: "global",
-        });
-
-        const existing: GlobalStats = existingDoc?.data ?? {
-          total_fees: 0,
-          total_collected: 0,
-          total_burned: 0,
-          total_rewarded: 0,
-        };
-
-        await setDoc<GlobalStats>({
-          collection: "economy",
-          doc: {
-            key: "global",
-            data: {
-              ...existing,
-              total_fees: toTokens(totalFees),
-              total_rewarded: toTokens(totalRewarded),
-              total_burned: toTokens(totalBurned),
-              total_vault: toTokens(vaultBalance),
-            },
-            // Preserve the doc version for optimistic concurrency
-            ...(existingDoc ? {version: existingDoc.version} : {}),
-          },
-        });
-
-        log.info(COMPONENT_NAME, "Economy stats synced to Juno");
-      } catch (junoErr) {
-        // Juno write failure is non-fatal — we still broadcast the snapshot
-        // so the UI shows fresh data from the current read, even if the
-        // cache wasn't updated (it'll be corrected on the next sync).
-        log.error(
-          COMPONENT_NAME,
-          "Failed to write economy stats to Juno:",
-          junoErr instanceof Error ? junoErr.message : String(junoErr)
-        );
-      }
-    }
 
     // ── 3. Broadcast snapshot ──────────────────────────────────────────────
     const snapshot: BlockchainSnapshot = {

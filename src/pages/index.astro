@@ -90,26 +90,32 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
       class="tooltip tooltip-right fixed bottom-8 left-8 z-30"
       data-tip="Leaderboard"
     >
-      <button
+      <a
         id="btn-leaderboard"
+        href="#leaderboard"
+        role="button"
+        aria-label="Open Leaderboard"
         class="btn btn-ghost text-primary hover:bg-primary/10 hover:border-primary/50 gap-2 border border-transparent font-mono"
       >
         <span class="text-xl">🏆</span>
         <span class="hidden lg:inline">LEADERBOARD</span>
-      </button>
+      </a>
     </div>
 
     <div
       class="tooltip tooltip-left fixed right-8 bottom-8 z-30"
       data-tip="Manual"
     >
-      <button
+      <a
         id="btn-manual"
+        href="#manual"
+        role="button"
+        aria-label="Open Game Manual"
         class="btn btn-ghost text-primary hover:bg-primary/10 hover:border-primary/50 gap-2 border border-transparent font-mono"
       >
         <span class="hidden lg:inline">MANUAL</span>
         <span class="text-xl">❓</span>
-      </button>
+      </a>
     </div>
 
     <Footer />

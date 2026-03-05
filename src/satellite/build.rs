@@ -52,6 +52,7 @@ struct Client {
 #[derive(Deserialize)]
 struct Gameplay {
     max_keys: u64,
+    time_limit_seconds: u64,
 }
 
 #[derive(Deserialize)]
@@ -250,6 +251,21 @@ pub const CONFIG_HASH: &str = "{config_hash}";
 
 /// Admin principals allowed to call admin-only satellite functions (from server.juno.admins)
 pub const ADMIN_PRINCIPALS: &[&str] = &[{admin_principals}];
+
+/// Game time limit in milliseconds — used to sanity-check replay duration (#171)
+pub const TIME_LIMIT_MS: u64 = {time_limit_ms};
+
+/// Maximum recorded actions per session — must match Recorder::MAX_ACTIONS in TS (#171)
+pub const REPLAY_MAX_ACTIONS: u64 = 50_000;
+
+/// Minimum gap between any two consecutive actions in ms — one browser frame (#171)
+pub const REPLAY_MIN_ACTION_GAP_MS: u64 = 16;
+
+/// Minimum gap between consecutive attack actions — conservative human limit (#171)
+pub const REPLAY_MIN_ATTACK_GAP_MS: u64 = 200;
+
+/// Grace period added to TIME_LIMIT_MS for replay timestamp validation (#171)
+pub const REPLAY_GRACE_MS: u64 = 5_000;
 "#,
         network = network,
         ban_durations = ban_durations,
@@ -271,6 +287,7 @@ pub const ADMIN_PRINCIPALS: &[&str] = &[{admin_principals}];
         consolation_prize_min_games = config.server.highscore.consolation_prize_min_games,
         config_hash = config_hash,
         admin_principals = admin_principals,
+        time_limit_ms = config.client.gameplay.time_limit_seconds * 1000,
     );
 
     // Write to OUT_DIR

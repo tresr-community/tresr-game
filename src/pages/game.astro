@@ -7,7 +7,17 @@ import Loader from "@/components/game/Loader.astro";
 ---
 
 <BaseLayout title="TRESR Game | Active Session">
-  <Loader minTime={1500} id="game-loader" />
+  <!--
+    Game-specific viewport: disable pinch-zoom so canvas input works correctly.
+    Overrides the accessible viewport in BaseLayout via the named head slot.
+  -->
+  <meta
+    slot="head"
+    name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
+  />
+  <Loader minTime={250} id="game-loader" />
+
   <FeeGate />
   <BanModal />
 

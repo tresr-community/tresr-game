@@ -12,7 +12,7 @@ import {log} from "../utils/log";
 import {FaucetAbi} from "./abi/faucet";
 import {getWalletClient} from "./connection";
 import {getTargetChain, getEnvironmentKey} from "./avalanche";
-import {confirmReceipt, getReadClient} from "./tx";
+import {getReadClient} from "./tx";
 
 const COMPONENT_NAME = "Faucet";
 
@@ -36,7 +36,53 @@ export function isFaucetDeployed(cfg: ConfigTypes): boolean {
 }
 
 /**
+ * Verify a submitted transaction actually exists on-chain.
+ *
+ * After `writeContract()` returns a hash the wallet extension may have created
+ * a local "pending" hash without broadcasting to the node (e.g. MetaMask on
+ * Anvil silently drops the tx due to fee estimation or nonce conflicts).
+ * Polling `waitForTransactionReceipt` for 30 s on a ghost hash wastes time and
+ * produces a cryptic timeout error.
+ *
+ * This helper retries `getTransaction(hash)` up to `maxAttempts` times at
+ * `intervalMs` intervals. If the tx never appears it throws a descriptive,
+ * user-actionable error immediately so the caller can surface a clear warning
+ * instead of waiting for the full receipt timeout.
+ *
+ * @param getTransaction - Bound `getTransaction` from a viem client
+ * @param hash           - The transaction hash returned by `writeContract`
+ * @param maxAttempts    - Maximum polling attempts (default: 10 → ~1 s at 100 ms)
+ * @param intervalMs     - Delay between attempts in ms (default: 100)
+ */
+async function verifyTxExists(
+  getTransaction: (args: {hash: `0x${string}`}) => Promise<unknown>,
+  hash: `0x${string}`,
+  maxAttempts = 10,
+  intervalMs = 100
+): Promise<void> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const tx = await getTransaction({hash}).catch(() => null);
+    if (tx) return; // found — proceed to waitForTransactionReceipt
+    await new Promise<void>((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error(
+    "Transaction was not broadcast to the network. " +
+      "Your wallet may have rejected it — check your wallet activity and try again."
+  );
+}
+
+/**
  * Claim tokens from the faucet.
+ *
+ * Receipt confirmation strategy:
+ *  A) Extend the wallet client with publicActions so that gas estimation,
+ *     getTransaction, and waitForTransactionReceipt all share the SAME provider
+ *     transport that submitted the tx. This avoids the "two clients / ghost hash"
+ *     receipt-timeout on Anvil where a separate buildDirectClient() polls a
+ *     different connection that never saw the tx.
+ *  B) Run a fast verifyTxExists check (~1 s) before the long polling loop so
+ *     that a ghost hash surfaces a user-actionable error immediately instead of
+ *     waiting the full tx_timeout_ms (default 30 s).
  *
  * @returns Transaction hash
  */
@@ -60,9 +106,11 @@ export async function claimFaucet(): Promise<`0x${string}`> {
     throw new Error("Faucet contract is not deployed for this environment.");
   }
 
-  // Use wagmi's managed public client — its transport is shared with the
-  // wallet provider, avoiding receipt hangs on Anvil.
-  const publicClient = getReadClient();
+  // Option A: extend wallet client with publicActions so that gas estimation,
+  // getTransaction, and waitForTransactionReceipt all share the same provider
+  // transport as writeContract — avoids ghost-hash receipt timeout on Anvil.
+  const {publicActions} = await import("viem");
+  const extendedClient = walletClient.extend(publicActions);
 
   log.info(COMPONENT_NAME, "Claiming tokens from faucet...");
 
@@ -71,13 +119,13 @@ export async function claimFaucet(): Promise<`0x${string}`> {
     functionName: "drip",
   });
 
-  const dripGas = await publicClient.estimateGas({
+  const dripGas = await extendedClient.estimateGas({
     account: accounts[0],
     to: faucetAddress,
     data: dripData,
   });
 
-  const hash = await walletClient.writeContract({
+  const hash = await extendedClient.writeContract({
     account: accounts[0],
     address: faucetAddress,
     abi: FaucetAbi,
@@ -88,8 +136,27 @@ export async function claimFaucet(): Promise<`0x${string}`> {
 
   log.info(COMPONENT_NAME, "Faucet claim tx:", hash);
 
-  // Confirm receipt through wagmi's managed transport (works on Anvil + live)
-  await confirmReceipt(hash, {component: COMPONENT_NAME});
+  // Option B: fast existence check — fails in ~1 s with a clear message if the
+  // tx was never actually broadcast (ghost hash from the wallet extension).
+  // We explicitly use the public read client so that we ask the Anvil node directly
+  // rather than asking MetaMask (which sometimes caches failed broadcasts).
+  const publicClient = getReadClient();
+  await verifyTxExists((args) => publicClient.getTransaction(args), hash);
+
+  log.info(COMPONENT_NAME, `Waiting for receipt (1 confirmation): ${hash}`);
+
+  const receipt = await extendedClient.waitForTransactionReceipt({
+    hash,
+    confirmations: 1,
+    pollingInterval: 100,
+    timeout: config.wallet.tx_timeout_ms,
+  });
+
+  if (receipt.status !== "success") {
+    throw new Error("Transaction reverted on-chain");
+  }
+
+  log.info(COMPONENT_NAME, "Confirmed in block", receipt.blockNumber);
 
   return hash;
 }

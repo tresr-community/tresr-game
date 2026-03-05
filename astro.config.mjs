@@ -90,6 +90,8 @@ export default defineConfig({
             icp: ["@dfinity/agent", "@dfinity/auth-client", "ic-siwa"],
             // viem — used by wallet-kit but large enough to split
             viem: ["viem"],
+            // Phaser — only loaded on /game, large engine gets its own chunk
+            phaser: ["phaser"],
           },
         },
       },

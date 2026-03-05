@@ -97,7 +97,13 @@ export async function connectWallet(): Promise<WalletConnection> {
     );
 
     try {
-      await switchChain(config, {chainId: targetChainId});
+      const activeConnector =
+        config.connectors.find((c) => c.uid === account.connector?.uid) ||
+        account.connector;
+      await switchChain(config, {
+        chainId: targetChainId,
+        connector: activeConnector,
+      });
     } catch (switchErr: unknown) {
       const err = switchErr as {code?: number; message?: string};
       const env = getEnvironmentKey();
@@ -172,9 +178,13 @@ export async function getWalletClient(): Promise<WalletClient> {
     throw new Error("No wallet connected. Call connectWallet() first.");
   }
 
-  // Use the live connector from reconnect if available — avoids the
-  // "connector.getChainId is not a function" error on first call after page load.
-  const liveConnector = reconnected[0]?.connector;
+  // Use the live connector from reconnect if available, or fall back to
+  // searching the config.connectors array which holds the hydrated class
+  // instances. Avoids "connector.getChainId is not a function" error.
+  const liveConnector =
+    reconnected[0]?.connector ||
+    config.connectors.find((c) => c.uid === account.connector?.uid) ||
+    account.connector;
   const client = liveConnector
     ? await wagmiGetWalletClient(config, {connector: liveConnector})
     : await wagmiGetWalletClient(config);

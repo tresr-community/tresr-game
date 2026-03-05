@@ -79,6 +79,7 @@
 
   let countdownInterval: ReturnType<typeof setInterval> | null = null;
   let currentTab: "active" | "alltime" = "active";
+  let disposed = false;
 
   function openLeaderboardModal() {
     modal?.showModal();
@@ -229,6 +230,7 @@
         },
       });
 
+      if (disposed) return;
       const now = Date.now();
 
       // Client-side filter: only show entries with active (non-expired) scores
@@ -457,6 +459,7 @@
   document.addEventListener(
     "astro:before-preparation",
     () => {
+      disposed = true;
       clearCountdownInterval();
       document.removeEventListener(
         "tresr:open-leaderboard",

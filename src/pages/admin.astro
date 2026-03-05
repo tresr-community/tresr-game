@@ -8,14 +8,8 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 <BaseLayout title="TRESR Admin">
   <div class="container mx-auto max-w-7xl px-4 py-8">
     <!-- Page header -->
-    <div class="mb-6 flex items-center gap-3">
-      <h1 class="flex-1 text-2xl font-bold">🛡 Admin Dashboard</h1>
-      <a
-        href="/"
-        class="btn btn-outline btn-primary btn-sm font-mono tracking-widest"
-      >
-        RETURN TO BASE
-      </a>
+    <div class="mb-6 text-center">
+      <h1 class="text-2xl font-bold">🛡 Admin Dashboard</h1>
     </div>
 
     <!-- Loading state -->
@@ -24,11 +18,73 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
     </div>
 
     <!-- Access denied -->
-    <div
-      id="unauthorized"
-      class="alert alert-error mx-auto mt-20 hidden max-w-md"
-    >
-      <span>⛔ Unauthorized — admin access only</span>
+    <div id="unauthorized" class="hero hidden min-h-[80vh]">
+      <div class="hero-content flex-col text-center">
+        <!-- Pulsing skull -->
+        <div class="relative mb-4">
+          <div class="bg-error/20 absolute inset-0 animate-ping rounded-full">
+          </div>
+          <div
+            class="border-error/60 bg-error/10 relative flex h-28 w-28 items-center justify-center rounded-full border-2 text-6xl shadow-[0_0_40px_rgba(239,68,68,0.4)]"
+          >
+            💀
+          </div>
+        </div>
+
+        <!-- Heading -->
+        <h2
+          class="font-display text-error text-5xl font-black tracking-[0.2em] uppercase drop-shadow-[0_0_20px_rgba(239,68,68,0.8)] sm:text-7xl"
+        >
+          Access Denied
+        </h2>
+
+        <!-- Alert box -->
+        <div
+          role="alert"
+          class="alert alert-error alert-vertical sm:alert-horizontal mt-6 max-w-sm"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6 shrink-0 stroke-current"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
+          <div>
+            <h3 class="font-bold">Unauthorized territory</h3>
+            <div class="text-xs opacity-80">
+              This session has been flagged. Admin access only.
+            </div>
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <a
+          href="/"
+          class="btn btn-error btn-lg mt-8 gap-2 shadow-[0_0_20px_rgba(239,68,68,0.5)]"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+          </svg>
+          Return to Base
+        </a>
+      </div>
     </div>
 
     <!-- Tab panel (shown after auth confirmed) -->
@@ -158,12 +214,6 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           <!-- ─── Economy Tab ─────────────────────────────────────────────── -->
           <div class="mb-4 flex flex-wrap items-center gap-3">
             <h2 class="flex-1 text-xl font-bold">Economy</h2>
-            <span
-              id="sync-cooldown-badge"
-              class="badge badge-warning badge-sm hidden font-mono"></span>
-            <button id="sync-economy-btn" class="btn btn-primary btn-sm"
-              >⚡ Sync to Juno</button
-            >
             <button id="refresh-economy-btn" class="btn btn-ghost btn-sm"
               >↺ Refresh</button
             >
@@ -181,43 +231,45 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
               <div>
                 <div class="mb-2 flex items-center gap-2">
                   <span class="font-mono text-xs font-bold uppercase opacity-60"
-                    >🗄 Juno Datastore</span
+                    >🗄 JUNO DATASTORE (CACHE)</span
                   >
                 </div>
                 <div class="stats stats-vertical bg-base-200 w-full shadow">
                   <div class="stat">
-                    <div class="stat-title">Fees Collected</div>
+                    <div class="stat-title">Fees</div>
                     <div id="juno-fees" class="stat-value text-info text-lg">
                       —
                     </div>
-                    <div class="stat-desc">Total entry fees paid</div>
+                    <div class="stat-desc">Total entry fees collected</div>
                   </div>
                   <div class="stat">
-                    <div class="stat-title">Rewarded</div>
+                    <div class="stat-title">Rewards</div>
                     <div
                       id="juno-rewarded"
                       class="stat-value text-success text-lg"
                     >
                       —
                     </div>
-                    <div class="stat-desc">Total paid out to winners</div>
+                    <div class="stat-desc">
+                      Total rewards paid out to players
+                    </div>
                   </div>
                   <div class="stat">
                     <div class="stat-title">Burned</div>
                     <div id="juno-burned" class="stat-value text-error text-lg">
                       —
                     </div>
-                    <div class="stat-desc">Total sent to burn address</div>
+                    <div class="stat-desc">Total sent to the burn address</div>
                   </div>
                   <div class="stat">
-                    <div class="stat-title">Vault Balance (cached)</div>
+                    <div class="stat-title">Vault Balance</div>
                     <div
                       id="juno-vault"
                       class="stat-value text-warning text-lg"
                     >
                       —
                     </div>
-                    <div class="stat-desc">Last synced snapshot</div>
+                    <div class="stat-desc">Current balance in the vault</div>
                   </div>
                 </div>
               </div>
@@ -234,14 +286,14 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
                 </div>
                 <div class="stats stats-vertical bg-base-200 w-full shadow">
                   <div class="stat">
-                    <div class="stat-title">Fees Collected</div>
+                    <div class="stat-title">Fees</div>
                     <div id="chain-fees" class="stat-value text-info text-lg">
                       —
                     </div>
                     <div class="stat-desc">vault.totalFeesCollected()</div>
                   </div>
                   <div class="stat">
-                    <div class="stat-title">Rewarded</div>
+                    <div class="stat-title">Rewards</div>
                     <div
                       id="chain-rewarded"
                       class="stat-value text-success text-lg"
@@ -268,7 +320,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
                     >
                       —
                     </div>
-                    <div class="stat-desc">Current prize pool</div>
+                    <div class="stat-desc">vault.currentBalance()</div>
                   </div>
                 </div>
               </div>
@@ -355,16 +407,15 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
     </div>
   </div>
 
-  <!-- Admin status footer -->
-  <footer
-    class="fixed inset-x-0 bottom-0 z-20 flex justify-center px-2 pt-2 pb-[env(safe-area-inset-bottom,0px)]"
-  >
-    <div
-      class="bg-base-300/80 border-primary/20 text-base-content/50 rounded-t-lg border-x border-t px-4 pt-1 font-mono text-xs backdrop-blur"
+  <!-- Return to base -->
+  <div class="mt-10 mb-8 flex justify-center">
+    <a
+      href="/"
+      class="btn btn-outline btn-primary btn-sm font-mono tracking-widest"
     >
-      <span id="admin-status" class="opacity-75">Checking auth…</span>
-    </div>
-  </footer>
+      ← RETURN TO BASE
+    </a>
+  </div>
 
   <!-- Error detail modal -->
   <dialog id="error-detail-modal" class="modal modal-middle">
@@ -424,11 +475,11 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
       formatBalance,
     } from "@/lib/wallet/balance";
     import {getReadClient} from "@/lib/wallet/tx";
-    import {syncBlockchainData, isSyncing} from "@/lib/wallet/blockchain-sync";
-    import {getConnectedAddress} from "@/lib/wallet/connection";
+
     import {getEnvironmentKey} from "@/lib/wallet/avalanche";
     import {VaultAbi} from "@/lib/wallet/abi/vault";
     import {config} from "@/lib/config/client";
+    import {log} from "@/lib/utils/log";
 
     // ─── State ────────────────────────────────────────────────────────────
 
@@ -458,7 +509,6 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
     const selectAllHead = document.getElementById(
       "select-all-head"
     ) as HTMLInputElement;
-    const adminStatus = document.getElementById("admin-status")!;
 
     // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -483,8 +533,6 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         if ("Err" in result) {
           loading.classList.add("hidden");
           unauthorized.classList.remove("hidden");
-          adminStatus.textContent = "⛔ Unauthorized";
-          adminStatus.className = "text-error font-bold";
           return;
         }
 
@@ -492,15 +540,11 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         loading.classList.add("hidden");
         adminPanel.classList.remove("hidden");
         selectionBar.classList.remove("hidden");
-        adminStatus.textContent = "Admin ✓";
-        adminStatus.className = "text-success font-bold";
         renderErrorTable();
       } catch (e) {
         loading.classList.add("hidden");
         unauthorized.classList.remove("hidden");
-        adminStatus.textContent = "Error loading";
-        adminStatus.className = "text-error";
-        console.error("Failed to load errors:", e);
+        log.error("Admin", "Failed to load error records", e);
       }
     }
 
@@ -685,7 +729,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         // ── 1. Juno Datastore ─────────────────────────────────────────────
         const statsDoc = await getDoc<GlobalStats>({
           collection: "economy",
-          key: "global",
+          key: "blockchain",
         });
 
         const stats = statsDoc?.data;
@@ -780,6 +824,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
             {label: "Fees", juno: junoFees, chain: chainFees},
             {label: "Rewarded", juno: junoRewarded, chain: chainRewarded},
             {label: "Burned", juno: junoBurned, chain: chainBurned},
+            {label: "Vault Balance", juno: junoVault, chain: chainVault},
           ];
 
           const alerts: string[] = [];
@@ -883,53 +928,6 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
       .getElementById("refresh-economy-btn")!
       .addEventListener("click", loadEconomy);
 
-    // ─── Sync to Juno ─────────────────────────────────────────────────────
-    async function syncEconomyToJuno() {
-      const syncCooldownBadge = document.getElementById("sync-cooldown-badge")!;
-      const syncBtn = document.getElementById(
-        "sync-economy-btn"
-      ) as HTMLButtonElement;
-
-      // Guard: only when a wallet is connected
-      const address = getConnectedAddress();
-      if (!address) {
-        alert("Connect a wallet to sync economy data.");
-        return;
-      }
-
-      // Guard: don't fire if already in progress
-      if (isSyncing()) {
-        return;
-      }
-
-      syncBtn.disabled = true;
-      syncBtn.textContent = "⏳ Syncing…";
-      syncCooldownBadge.classList.add("hidden");
-
-      try {
-        const snapshot = await syncBlockchainData(address);
-        if (!snapshot) {
-          alert("Sync skipped — RPC unavailable or already in progress.");
-          return;
-        }
-        syncBtn.textContent = "✅ Synced!";
-        setTimeout(() => {
-          syncBtn.textContent = "⚡ Sync to Juno";
-          syncBtn.disabled = false;
-        }, 2000);
-        // Refresh Economy display from Juno
-        await loadEconomy();
-      } catch (err) {
-        alert(`Sync failed: ${String(err)}`);
-        syncBtn.textContent = "⚡ Sync to Juno";
-        syncBtn.disabled = false;
-      }
-    }
-
-    document
-      .getElementById("sync-economy-btn")!
-      .addEventListener("click", syncEconomyToJuno);
-
     // ─── Anti-Cheat Tab ───────────────────────────────────────────────────
 
     async function loadBans() {
@@ -947,7 +945,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         const now = Date.now();
         const banned = usersResult.items.filter(
           (doc) =>
-            doc.data.banned_until != null && (doc.data.banned_until ?? 0) > 0
+            doc.data.banned_until != null && (doc.data.banned_until ?? 0) > now
         );
 
         bannedCountEl.textContent = String(banned.length);

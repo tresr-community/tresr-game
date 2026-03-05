@@ -44,7 +44,7 @@
     shortenAddress,
   } from "@/lib/wallet/avalanche";
   import {getReadClient} from "@/lib/wallet/tx";
-  import {getClaimCooldownStatus} from "@/lib/wallet/avalanche";
+  import {getClaimCooldownStatus} from "@/lib/wallet/avalanche/vault";
   import {
     subscribeToConnection,
     getConnectedAddress,
@@ -98,7 +98,7 @@
   // Difficulty badge
   // -----------------------------------------------------------------------
   function updateDifficultyBadge(balanceWei: bigint) {
-    if (!difficultyEl) return;
+    if (!difficultyEl || disposed) return;
     const tier = getVaultTier(balanceWei);
 
     difficultyEl.textContent = `${tier.emoji} ${tier.label}`;
@@ -126,6 +126,7 @@
       const address = getConnectedAddress();
       if (!address) return;
       const status = await getClaimCooldownStatus(address);
+      if (disposed) return;
       cooldownRemaining = status.remainingSeconds;
       updateCooldownDisplay();
       startCooldownTick();
@@ -151,6 +152,10 @@
     stopCooldownTick();
     if (cooldownRemaining <= 0) return;
     cooldownInterval = setInterval(() => {
+      if (disposed) {
+        stopCooldownTick();
+        return;
+      }
       cooldownRemaining = Math.max(0, cooldownRemaining - 1);
       updateCooldownDisplay();
       if (cooldownRemaining <= 0) stopCooldownTick();
