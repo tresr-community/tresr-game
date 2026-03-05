@@ -116,7 +116,7 @@ import Loader from "@/components/game/Loader.astro";
       }
 
       // Skip fee gate if vault contract hasn't been deployed yet (zero address)
-      const {isVaultDeployed} = await import("@/lib/wallet/avalanche");
+      const {isVaultDeployed} = await import("@/lib/blockchain/networks/chain");
       if (!isVaultDeployed(config)) {
         log.info(COMPONENT_NAME, "Vault not deployed, skipping fee gate");
         startGame();

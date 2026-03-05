@@ -177,6 +177,7 @@ publicnode
 Rabby
 rboard
 rdist
+readyforchain
 recid
 reentrancy
 regen

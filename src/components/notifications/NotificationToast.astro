@@ -115,11 +115,21 @@
     toast.appendChild(actionsRow);
 
     // Make entire toast clickable for updates (except buttons)
+    const isConsolation =
+      message.toLowerCase().includes("consolation") ||
+      (details && details.toLowerCase().includes("consolation"));
+
     if (isUpdate) {
       toast.style.cursor = "pointer";
       toast.addEventListener("click", (e) => {
         if ((e.target as HTMLElement).tagName === "BUTTON") return;
         PWA.getInstance().showUpdatePrompt();
+      });
+    } else if (isConsolation) {
+      toast.style.cursor = "pointer";
+      toast.addEventListener("click", (e) => {
+        if ((e.target as HTMLElement).tagName === "BUTTON") return;
+        window.location.href = "/claims";
       });
     }
 

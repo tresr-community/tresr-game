@@ -375,8 +375,21 @@
         return;
       }
 
+      // Filter out the backend cache document
+      const validItems = items.filter((item) => item.key !== "top_scorer");
+
+      if (validItems.length === 0) {
+        alltimeList.replaceChildren(
+          createMessageRow(
+            "No scores yet. Be the first!",
+            "text-info opacity-60"
+          )
+        );
+        return;
+      }
+
       // Show top 10
-      const top10 = items.slice(0, 10);
+      const top10 = validItems.slice(0, 10);
 
       top10.forEach((item, index) => {
         const entry = item.data as Record<string, unknown> | undefined;

@@ -10,8 +10,8 @@ import type {ConfigTypes} from "@/types/config";
 import {loadConfigAsync} from "../config";
 import {log} from "../utils/log";
 import {FaucetAbi} from "./abi/faucet";
-import {getWalletClient} from "./connection";
-import {getTargetChain, getEnvironmentKey} from "./avalanche";
+import {getWalletClient} from "../wallet/connection";
+import {getTargetChain, getEnvironmentKey} from "./networks/chain";
 import {getReadClient} from "./tx";
 
 const COMPONENT_NAME = "Faucet";

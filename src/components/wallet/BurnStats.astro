@@ -37,11 +37,15 @@
 </div>
 
 <script>
-  import {listDocs} from "@junobuild/core";
-  import {getEnvironmentKey} from "@/lib/wallet/avalanche";
+  import {getEnvironmentKey} from "@/lib/blockchain/networks/chain";
+  import {
+    getTotalFees,
+    getTotalRewards,
+    getVaultTotalBurned,
+  } from "@/lib/blockchain/contracts/vault";
+  import {formatBalance} from "@/lib/blockchain/balance";
   import {config} from "@/lib/config/client";
   import {log} from "@/lib/utils/log";
-  import type {GlobalStats} from "@/types/backend";
 
   const COMPONENT_NAME = "BurnStats";
 
@@ -63,39 +67,30 @@
   if (rewardedTickerEl) rewardedTickerEl.textContent = `$${ticker}`;
   if (burnedTickerEl) burnedTickerEl.textContent = `$${ticker}`;
 
-  function formatAmount(amount: number): string {
-    if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(1)}M`;
-    if (amount >= 1_000) return `${(amount / 1_000).toFixed(1)}K`;
-    return amount.toLocaleString();
-  }
-
   async function loadStats() {
     try {
-      const {items} = await listDocs<GlobalStats>({
-        collection: "economy",
-        filter: {
-          owner: import.meta.env.VITE_SATELLITE_ID,
-          matcher: {
-            key: "blockchain",
-          },
-        },
-      });
+      const [fees, rewarded, burned] = await Promise.all([
+        getTotalFees(),
+        getTotalRewards(),
+        getVaultTotalBurned(),
+      ]);
 
-      const doc = items[0];
+      // Format from BigInt wei to formatted numbers (1K, 1M, etc)
+      // Since formatBalance returns a string like "1,000.0", we need a clean abbreviation function
 
-      if (doc?.data) {
-        const stats = doc.data;
-        if (collectedEl)
-          collectedEl.textContent = formatAmount(stats.total_fees ?? 0);
-        if (rewardedEl)
-          rewardedEl.textContent = formatAmount(stats.total_rewarded ?? 0);
-        if (burnedEl)
-          burnedEl.textContent = formatAmount(stats.total_burned ?? 0);
-      } else {
-        if (collectedEl) collectedEl.textContent = "0";
-        if (rewardedEl) rewardedEl.textContent = "0";
-        if (burnedEl) burnedEl.textContent = "0";
-      }
+      const formatWeiAbbr = (weiStr: string) => {
+        const num = parseFloat(weiStr.replace(/,/g, ""));
+        if (isNaN(num)) return "0";
+        if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+        if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
+        return num.toLocaleString();
+      };
+
+      if (collectedEl)
+        collectedEl.textContent = formatWeiAbbr(formatBalance(fees));
+      if (rewardedEl)
+        rewardedEl.textContent = formatWeiAbbr(formatBalance(rewarded));
+      if (burnedEl) burnedEl.textContent = formatWeiAbbr(formatBalance(burned));
 
       if (cardEl) cardEl.classList.remove("hidden");
     } catch (err) {

@@ -11,7 +11,12 @@ import {config} from "@/lib/config/client";
 // Types
 // ---------------------------------------------------------------------------
 
-export type VaultTier = "locked" | "easy" | "normal" | "hard" | "extreme";
+export type VaultTier =
+  | "locked"
+  | "building"
+  | "sweet_spot"
+  | "fomo"
+  | "legendary";
 
 export interface VaultTierInfo {
   tier: VaultTier;
@@ -34,9 +39,9 @@ function getThresholds() {
   const v = config.gameplay.vault;
   return {
     minimumCap: BigInt(v.minimum_cap) * ONE_TOKEN,
-    easy: BigInt(v.tiers.easy) * ONE_TOKEN,
-    normal: BigInt(v.tiers.normal) * ONE_TOKEN,
-    hard: BigInt(v.tiers.hard) * ONE_TOKEN,
+    building: BigInt(v.tiers.building) * ONE_TOKEN,
+    sweet_spot: BigInt(v.tiers.sweet_spot) * ONE_TOKEN,
+    fomo: BigInt(v.tiers.fomo) * ONE_TOKEN,
   };
 }
 
@@ -61,42 +66,42 @@ export function getVaultTier(balanceWei: bigint): VaultTierInfo {
     };
   }
 
-  if (balanceWei < t.easy) {
+  if (balanceWei < t.building) {
     return {
-      tier: "easy",
-      label: "Easy",
+      tier: "building",
+      label: "BUILDING",
       emoji: "🟢",
       colorClass: "text-success",
-      multiplier: m.easy,
+      multiplier: m.building,
     };
   }
 
-  if (balanceWei < t.normal) {
+  if (balanceWei < t.sweet_spot) {
     return {
-      tier: "normal",
-      label: "Normal",
+      tier: "sweet_spot",
+      label: "SWEET SPOT",
       emoji: "🟡",
       colorClass: "text-warning",
-      multiplier: m.normal,
+      multiplier: m.sweet_spot,
     };
   }
 
-  if (balanceWei < t.hard) {
+  if (balanceWei < t.fomo) {
     return {
-      tier: "hard",
-      label: "Hard",
+      tier: "fomo",
+      label: "FOMO",
       emoji: "🔴",
       colorClass: "text-error",
-      multiplier: m.hard,
+      multiplier: m.fomo,
     };
   }
 
   return {
-    tier: "extreme",
-    label: "EXTREME",
+    tier: "legendary",
+    label: "LEGENDARY",
     emoji: "🟣",
     colorClass: "text-secondary",
-    multiplier: m.extreme,
+    multiplier: m.legendary,
   };
 }
 

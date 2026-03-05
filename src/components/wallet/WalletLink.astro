@@ -155,10 +155,9 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     formatBalance,
     isRpcAvailable,
     resetRpcAvailability,
-  } from "@/lib/wallet/balance";
-  import {syncBlockchainData, isSyncing} from "@/lib/wallet/blockchain-sync";
-  import {shortenAddress} from "@/lib/wallet/avalanche";
-  import {JUNO_ENVIRONMENT} from "@/lib/utils/log";
+  } from "@/lib/blockchain/balance";
+  import {shortenAddress} from "@/lib/blockchain/networks/display";
+  import {JUNO_ENVIRONMENT} from "@/lib/config/constants";
   import {log} from "@/lib/utils/log";
   import {config} from "@/lib/config/client";
 
@@ -287,23 +286,28 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     lastRefreshTime = Date.now();
     startCooldownTimer();
     showBalanceLoading();
-    const snapshot = await syncBlockchainData(currentAddress);
-    if (snapshot) {
-      showBalanceValue(formatBalance(snapshot.walletBalance));
-      addressEl.textContent = shortenAddress(currentAddress);
-    } else {
-      // Sync was skipped (mutex) or RPC down — fall back to cached read
-      try {
-        const balance = await getTresrBalance(currentAddress, true);
-        if (isRpcAvailable()) {
-          showBalanceValue(formatBalance(balance));
-          addressEl.textContent = shortenAddress(currentAddress);
-        } else {
-          showBalanceError();
-        }
-      } catch {
+
+    // Fall back to cached read
+    try {
+      const balance = await getTresrBalance(currentAddress, false);
+      if (isRpcAvailable()) {
+        showBalanceValue(formatBalance(balance));
+        addressEl.textContent = shortenAddress(currentAddress);
+        // Refresh Vault Balance independently
+        const {getVaultCurrentBalance} = await import(
+          "@/lib/blockchain/contracts/vault"
+        );
+        const vaultBal = await getVaultCurrentBalance();
+        document.dispatchEvent(
+          new CustomEvent("tresr:blockchain-synced", {
+            detail: {vaultBalance: vaultBal},
+          })
+        );
+      } else {
         showBalanceError();
       }
+    } catch {
+      showBalanceError();
     }
   }
 
@@ -316,14 +320,22 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     // in the background so Juno gets updated without blocking the UI.
     showBalanceLoading();
     try {
-      const balance = await getTresrBalance(address, true);
+      const balance = await getTresrBalance(address, false);
       showBalanceValue(formatBalance(balance));
       addressEl.textContent = shortenAddress(address);
+
+      const {getVaultCurrentBalance} = await import(
+        "@/lib/blockchain/contracts/vault"
+      );
+      const vaultBal = await getVaultCurrentBalance();
+      document.dispatchEvent(
+        new CustomEvent("tresr:blockchain-synced", {
+          detail: {vaultBalance: vaultBal},
+        })
+      );
     } catch {
       showBalanceError();
     }
-    // Kick off a background sync (non-blocking) — updates Juno + vault stats
-    void syncBlockchainData(address);
   }
 
   async function updateUI(authState: AuthState) {
@@ -390,12 +402,10 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
 
   // Page-focus trigger: re-sync when user tabs back, if wallet is connected
   function handleVisibilityChange() {
-    if (
-      document.visibilityState === "visible" &&
-      currentAddress &&
-      !isSyncing()
-    ) {
-      void syncBlockchainData(currentAddress);
+    if (document.visibilityState === "visible" && currentAddress) {
+      void getTresrBalance(currentAddress, false).then((balance) => {
+        showBalanceValue(formatBalance(balance));
+      });
     }
   }
   document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -412,7 +422,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
       // Lazy-load the AppKit bundle only when user clicks Connect
       const [{connectWallet}, {shortenAddress: shortAddr}] = await Promise.all([
         import("@/lib/wallet/connection"),
-        import("@/lib/wallet/avalanche"),
+        import("@/lib/blockchain/networks/display"),
       ]);
       const connection = await connectWallet();
       const address = connection.address;

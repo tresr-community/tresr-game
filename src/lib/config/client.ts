@@ -405,15 +405,23 @@ export const config: ConfigTypes = {
     "vault": {
       "minimum_cap": 1000,
       "tiers": {
-        "easy": 5000,
-        "normal": 25000,
-        "hard": 100000
+        "building": 10000,
+        "sweet_spot": 50000,
+        "fomo": 100000
       },
       "difficulty_multipliers": {
-        "easy": 0.5,
-        "normal": 1,
-        "hard": 1.5,
-        "extreme": 2
+        "building": 1,
+        "sweet_spot": 1.5,
+        "fomo": 2,
+        "legendary": 3
+      },
+      "payout_fixed": {
+        "building": 500
+      },
+      "payout_percentages": {
+        "sweet_spot": 10,
+        "fomo": 25,
+        "legendary": 50
       }
     },
     "physics": {
@@ -561,9 +569,9 @@ export const config: ConfigTypes = {
         "ai": {
           "cautious": {
             "speed_mult": 0.7,
-            "preferred_distance": 180,
+            "preferred_distance": 250,
             "group_radius": 200,
-            "pack_threshold": 2,
+            "pack_threshold": 4,
             "charge_speed_mult": 1.3,
             "strafe_speed_mult": 0.9,
             "strafe_switch_time": 2,
@@ -572,14 +580,14 @@ export const config: ConfigTypes = {
           "direct": {},
           "erratic": {
             "speed_mult": 1.2,
-            "zigzag_frequency": 3,
-            "zigzag_amplitude": 80,
+            "zigzag_frequency": 1.5,
+            "zigzag_amplitude": 1.5,
             "jitter_x": 80,
             "jitter_y": 40
           },
           "flanker": {
             "speed_mult": 1.1,
-            "offset": 120,
+            "offset": 200,
             "switch_time": 3,
             "orbit_time": 2,
             "lunge_speed_mult": 2.5,
@@ -596,7 +604,8 @@ export const config: ConfigTypes = {
             "jitter_time": 0.3,
             "retarget_time": 4,
             "attack_damage": 10,
-            "attack_cooldown_s": 0.5
+            "attack_cooldown_s": 0.5,
+            "rage_tint": 16711680
           },
           "swarm": {
             "speed_mult": 1,
@@ -1496,5 +1505,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "9f4831461b14891390b4e2818e99b360ca013186cb306c461a084dd25d216dd0"
+  "configHash": "5bdf1652025ed84f213a9efaf0feca3f9465eb8bb5d98bcfef147076d96cf424"
 };

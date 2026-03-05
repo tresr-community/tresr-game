@@ -80,14 +80,6 @@ export interface LeaderboardEntry {
   session_id?: string;
 }
 
-export interface GlobalStats {
-  total_fees: number;
-  total_collected: number;
-  total_burned: number;
-  total_rewarded: number;
-  total_vault?: number;
-}
-
 export type EvmRpcResult = {Ok: string} | {Err: string};
 
 export interface BackendActor {

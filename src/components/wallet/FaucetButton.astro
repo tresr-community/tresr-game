@@ -27,8 +27,8 @@ const isProduction = JUNO_ENVIRONMENT === "production";
     getFaucetCooldownStatus,
     getFaucetDripAmount,
     isFaucetDeployed,
-  } from "@/lib/wallet/faucet";
-  import {clearCachedBalance, formatBalance} from "@/lib/wallet/balance";
+  } from "@/lib/blockchain/faucet";
+  import {clearCachedBalance, formatBalance} from "@/lib/blockchain/balance";
   import {config} from "@/lib/config/client";
   import {log} from "@/lib/utils/log";
   import {trackFaucetClaim, trackError} from "@/lib/metrics/analytics";
@@ -162,7 +162,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
         try {
           const dripAmount = await getFaucetDripAmount();
           const env = (
-            await import("@/lib/wallet/avalanche")
+            await import("@/lib/blockchain/networks/chain")
           ).getEnvironmentKey();
           const ticker = config.blockchain.avalanche[env].token_ticker;
           amountDisplay = `${formatBalance(dripAmount)} $${ticker}`;
@@ -199,7 +199,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
           let tickerSuffix = "tokens";
           try {
             const env = (
-              await import("@/lib/wallet/avalanche")
+              await import("@/lib/blockchain/networks/chain")
             ).getEnvironmentKey();
             const ticker = config.blockchain.avalanche[env].token_ticker;
             tickerSuffix = `$${ticker} tokens`;

@@ -39,7 +39,6 @@ struct AntiCheat {
 struct Highscore {
     score_ttl_hours: u64,
     consolation_prize_percent: u64,
-    consolation_prize_max: u64,
     consolation_prize_min_games: u64,
 }
 
@@ -53,6 +52,33 @@ struct Client {
 struct Gameplay {
     max_keys: u64,
     time_limit_seconds: u64,
+    vault: VaultConfig,
+}
+
+#[derive(Deserialize)]
+struct VaultConfig {
+    tiers: VaultTiers,
+    payout_fixed: PayoutFixed,
+    payout_percentages: PayoutPercentages,
+}
+
+#[derive(Deserialize)]
+struct VaultTiers {
+    building: u64,
+    sweet_spot: u64,
+    fomo: u64,
+}
+
+#[derive(Deserialize)]
+struct PayoutFixed {
+    building: u64,
+}
+
+#[derive(Deserialize)]
+struct PayoutPercentages {
+    sweet_spot: u64,
+    fomo: u64,
+    legendary: u64,
 }
 
 #[derive(Deserialize)]
@@ -240,11 +266,29 @@ pub const SCORE_TTL_HOURS: u64 = {score_ttl_hours};
 /// Consolation prize percentage of vault balance (from server.highscore.consolation_prize_percent)
 pub const CONSOLATION_PRIZE_PERCENT: u64 = {consolation_prize_percent};
 
-/// Maximum consolation prize in tokens (from server.highscore.consolation_prize_max)
-pub const CONSOLATION_PRIZE_MAX: u64 = {consolation_prize_max};
-
 /// Minimum games played to qualify for consolation prize (from server.highscore.consolation_prize_min_games)
 pub const CONSOLATION_PRIZE_MIN_GAMES: u64 = {consolation_prize_min_games};
+
+/// Vault Tier Building threshold in tokens
+pub const VAULT_TIER_BUILDING: u64 = {vault_tier_building};
+
+/// Vault Tier Sweet Spot threshold in tokens
+pub const VAULT_TIER_SWEET_SPOT: u64 = {vault_tier_sweet_spot};
+
+/// Vault Tier FOMO threshold in tokens
+pub const VAULT_TIER_FOMO: u64 = {vault_tier_fomo};
+
+/// Fixed Payout for Building Tier in tokens
+pub const PAYOUT_FIXED_BUILDING: u64 = {payout_fixed_building};
+
+/// Payout percentage for Sweet Spot Tier
+pub const PAYOUT_PERCENT_SWEET_SPOT: u64 = {payout_percent_sweet_spot};
+
+/// Payout percentage for FOMO Tier
+pub const PAYOUT_PERCENT_FOMO: u64 = {payout_percent_fomo};
+
+/// Payout percentage for Legendary Tier
+pub const PAYOUT_PERCENT_LEGENDARY: u64 = {payout_percent_legendary};
 
 /// SHA-256 config hash for anti-cheat validation (from server-constants.ts, ticket #41)
 pub const CONFIG_HASH: &str = "{config_hash}";
@@ -283,8 +327,14 @@ pub const REPLAY_GRACE_MS: u64 = 5_000;
         ecdsa_key_name = ecdsa_key_name,
         score_ttl_hours = config.server.highscore.score_ttl_hours,
         consolation_prize_percent = config.server.highscore.consolation_prize_percent,
-        consolation_prize_max = config.server.highscore.consolation_prize_max,
         consolation_prize_min_games = config.server.highscore.consolation_prize_min_games,
+        vault_tier_building = config.client.gameplay.vault.tiers.building,
+        vault_tier_sweet_spot = config.client.gameplay.vault.tiers.sweet_spot,
+        vault_tier_fomo = config.client.gameplay.vault.tiers.fomo,
+        payout_fixed_building = config.client.gameplay.vault.payout_fixed.building,
+        payout_percent_sweet_spot = config.client.gameplay.vault.payout_percentages.sweet_spot,
+        payout_percent_fomo = config.client.gameplay.vault.payout_percentages.fomo,
+        payout_percent_legendary = config.client.gameplay.vault.payout_percentages.legendary,
         config_hash = config_hash,
         admin_principals = admin_principals,
         time_limit_ms = config.client.gameplay.time_limit_seconds * 1000,

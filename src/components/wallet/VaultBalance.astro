@@ -35,16 +35,17 @@
 </div>
 
 <script>
-  import {syncBlockchainData} from "@/lib/wallet/blockchain-sync";
-  import type {BlockchainSnapshot} from "@/lib/wallet/blockchain-sync";
-  import {isRpcAvailable} from "@/lib/wallet/balance";
+  import {isRpcAvailable} from "@/lib/blockchain/balance";
   import {
     getEnvironmentKey,
     isVaultDeployed,
-    shortenAddress,
-  } from "@/lib/wallet/avalanche";
-  import {getReadClient} from "@/lib/wallet/tx";
-  import {getClaimCooldownStatus} from "@/lib/wallet/avalanche/vault";
+  } from "@/lib/blockchain/networks/chain";
+  import {shortenAddress} from "@/lib/blockchain/networks/display";
+  import {getReadClient} from "@/lib/blockchain/tx";
+  import {
+    getClaimCooldownStatus,
+    getVaultCurrentBalance,
+  } from "@/lib/blockchain/contracts/vault";
   import {
     subscribeToConnection,
     getConnectedAddress,
@@ -56,8 +57,8 @@
     getVaultTier,
     formatCooldown,
     formatVaultDisplay,
-  } from "@/lib/wallet/vault-status";
-  import {VaultAbi} from "@/lib/wallet/abi/vault";
+  } from "@/lib/blockchain/vault-status";
+  import {VaultAbi} from "@/lib/blockchain/abi/vault";
 
   const COMPONENT_NAME = "VaultBalance";
   if (!config.wallet?.vault_poll_interval_ms) {
@@ -244,10 +245,10 @@
 
   function onBlockchainSynced(e: Event) {
     if (disposed) return;
-    const snapshot = (e as CustomEvent<BlockchainSnapshot>).detail;
-    const balance = snapshot.vaultBalance;
+    const detail = (e as CustomEvent).detail;
+    if (!detail || detail.vaultBalance === undefined) return;
 
-    if (disposed) return;
+    const balance = detail.vaultBalance;
 
     if (!isRpcAvailable()) {
       if (balanceEl) balanceEl.textContent = "Offline";
@@ -270,8 +271,10 @@
   async function updateBalance() {
     if (disposed || !connectedAddress) return;
     try {
-      await syncBlockchainData(connectedAddress);
-      // Display update happens via the tresr:blockchain-synced event above
+      const balance = await getVaultCurrentBalance();
+      if (balanceEl) balanceEl.textContent = formatVaultDisplay(balance);
+      updateDifficultyBadge(balance);
+      consecutiveErrors = 0;
     } catch (err) {
       if (disposed) return;
       consecutiveErrors++;

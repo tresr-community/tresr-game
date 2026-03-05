@@ -1262,6 +1262,16 @@ export class MainScene extends Phaser.Scene {
 
     this.playSound("victory");
     this.uiManager.showPhaseAnnouncement("VICTORY");
+
+    // Fire global confetti event
+    document.dispatchEvent(
+      new CustomEvent("tresr:confetti", {
+        detail: {
+          count: 200,
+          colors: ["#facc15", "#f59e0b", "#fbbf24", "#34d399", "#60a5fa"],
+        },
+      })
+    );
     const winDuration = Math.round(
       this.gameplayConfig.time_limit_seconds - this.survivalTimer
     );

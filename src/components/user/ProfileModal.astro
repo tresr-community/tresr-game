@@ -236,7 +236,15 @@
       <div class="divider"></div>
 
       <!-- Actions -->
-      <div class="flex justify-end gap-2">
+      <div class="mt-2 flex items-center justify-between">
+        <a
+          href="/claims"
+          id="btn-claims"
+          class="btn btn-warning btn-outline gap-2 px-6"
+        >
+          <span class="text-lg">🏆</span>
+          Rewards
+        </a>
         <button id="btn-save-profile" class="btn btn-primary px-8"
           >Update Identity</button
         >
@@ -274,7 +282,7 @@
     disconnectWallet,
   } from "@/lib/wallet/connection";
   import {buildWalletLinkMessage} from "@/lib/wallet/wallet-message";
-  import {shortenAddress} from "@/lib/wallet/avalanche";
+  import {shortenAddress} from "@/lib/blockchain/networks/display";
   import type {UserProfile} from "@/types/backend";
   import {log} from "@/lib/utils/log";
   import {profileStore} from "@/lib/user/store";

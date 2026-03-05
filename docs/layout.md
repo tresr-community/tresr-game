@@ -3,10 +3,12 @@
 The folder layout for `src` is as follows:
 
 ```bash
-tree  -Ld 2 src
+tree  -Ld 3 src
+
 src
 ├── components
 │   ├── auth
+│   ├── effects
 │   ├── game
 │   ├── notifications
 │   ├── pwa
@@ -20,12 +22,19 @@ src
 │   ├── auth
 │   ├── config
 │   ├── game
+│   │   ├── ai
+│   │   ├── managers
+│   │   ├── prefabs
+│   │   ├── scenes
+│   │   └── utils
 │   ├── metrics
 │   ├── notifications
 │   ├── pwa
 │   ├── user
 │   ├── utils
 │   └── wallet
+│       ├── abi
+│       └── avalanche
 ├── pages
 │   └── api
 ├── satellite

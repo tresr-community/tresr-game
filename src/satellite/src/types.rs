@@ -305,29 +305,6 @@ pub struct LeaderboardEntry {
 }
 
 // =============================================================================
-// Global Stats (stored in "economy" collection)
-// =============================================================================
-
-/// Aggregate burn and payout statistics.
-/// Single document with key "blockchain", written by satellite hooks.
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "snake_case")]
-pub struct GlobalStats {
-    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
-    pub total_fees: u64,
-    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
-    pub total_earned: u64,
-    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
-    pub total_collected: u64,
-    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
-    pub total_burned: u64,
-    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
-    pub total_rewarded: u64,
-    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
-    pub total_vault: u64,
-}
-
-// =============================================================================
 // Fee Request (stored in "fees" collection)
 // =============================================================================
 

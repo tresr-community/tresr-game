@@ -82,7 +82,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
               stroke-width="2"
               d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
           </svg>
-          Return to Base
+          Return Home
         </a>
       </div>
     </div>
@@ -225,103 +225,49 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 
           <!-- Global comparison -->
           <div id="economy-comparison" class="hidden">
-            <!-- Juno vs Blockchain side-by-side stats -->
-            <div class="mb-2 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <!-- Juno Datastore -->
-              <div>
-                <div class="mb-2 flex items-center gap-2">
-                  <span class="font-mono text-xs font-bold uppercase opacity-60"
-                    >🗄 JUNO DATASTORE (CACHE)</span
-                  >
-                </div>
-                <div class="stats stats-vertical bg-base-200 w-full shadow">
-                  <div class="stat">
-                    <div class="stat-title">Fees</div>
-                    <div id="juno-fees" class="stat-value text-info text-lg">
-                      —
-                    </div>
-                    <div class="stat-desc">Total entry fees collected</div>
-                  </div>
-                  <div class="stat">
-                    <div class="stat-title">Rewards</div>
-                    <div
-                      id="juno-rewarded"
-                      class="stat-value text-success text-lg"
-                    >
-                      —
-                    </div>
-                    <div class="stat-desc">
-                      Total rewards paid out to players
-                    </div>
-                  </div>
-                  <div class="stat">
-                    <div class="stat-title">Burned</div>
-                    <div id="juno-burned" class="stat-value text-error text-lg">
-                      —
-                    </div>
-                    <div class="stat-desc">Total sent to the burn address</div>
-                  </div>
-                  <div class="stat">
-                    <div class="stat-title">Vault Balance</div>
-                    <div
-                      id="juno-vault"
-                      class="stat-value text-warning text-lg"
-                    >
-                      —
-                    </div>
-                    <div class="stat-desc">Current balance in the vault</div>
-                  </div>
-                </div>
+            <!-- Blockchain -->
+            <div class="mb-4">
+              <div class="mb-2 flex items-center gap-2">
+                <span class="font-mono text-xs font-bold uppercase opacity-60"
+                  >⛓ Blockchain (Live)</span
+                >
+                <span id="chain-status" class="badge badge-xs badge-ghost"
+                  >loading…</span
+                >
               </div>
-
-              <!-- Blockchain -->
-              <div>
-                <div class="mb-2 flex items-center gap-2">
-                  <span class="font-mono text-xs font-bold uppercase opacity-60"
-                    >⛓ Blockchain (Live)</span
-                  >
-                  <span id="chain-status" class="badge badge-xs badge-ghost"
-                    >loading…</span
-                  >
+              <div
+                class="stats stats-vertical bg-base-200 md:stats-horizontal w-full shadow"
+              >
+                <div class="stat">
+                  <div class="stat-title">Fees</div>
+                  <div id="chain-fees" class="stat-value text-info text-lg">
+                    —
+                  </div>
+                  <div class="stat-desc">vault.totalFeesCollected()</div>
                 </div>
-                <div class="stats stats-vertical bg-base-200 w-full shadow">
-                  <div class="stat">
-                    <div class="stat-title">Fees</div>
-                    <div id="chain-fees" class="stat-value text-info text-lg">
-                      —
-                    </div>
-                    <div class="stat-desc">vault.totalFeesCollected()</div>
+                <div class="stat">
+                  <div class="stat-title">Rewards</div>
+                  <div
+                    id="chain-rewarded"
+                    class="stat-value text-success text-lg"
+                  >
+                    —
                   </div>
-                  <div class="stat">
-                    <div class="stat-title">Rewards</div>
-                    <div
-                      id="chain-rewarded"
-                      class="stat-value text-success text-lg"
-                    >
-                      —
-                    </div>
-                    <div class="stat-desc">vault.totalRewardsPaid()</div>
+                  <div class="stat-desc">vault.totalRewardsPaid()</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-title">Burned</div>
+                  <div id="chain-burned" class="stat-value text-error text-lg">
+                    —
                   </div>
-                  <div class="stat">
-                    <div class="stat-title">Burned</div>
-                    <div
-                      id="chain-burned"
-                      class="stat-value text-error text-lg"
-                    >
-                      —
-                    </div>
-                    <div class="stat-desc">vault.totalBurned()</div>
+                  <div class="stat-desc">vault.totalBurned()</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-title">Vault Balance</div>
+                  <div id="chain-vault" class="stat-value text-warning text-lg">
+                    —
                   </div>
-                  <div class="stat">
-                    <div class="stat-title">Vault Balance</div>
-                    <div
-                      id="chain-vault"
-                      class="stat-value text-warning text-lg"
-                    >
-                      —
-                    </div>
-                    <div class="stat-desc">vault.currentBalance()</div>
-                  </div>
+                  <div class="stat-desc">vault.currentBalance()</div>
                 </div>
               </div>
             </div>
@@ -407,13 +353,20 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
     </div>
   </div>
 
-  <!-- Return to base -->
-  <div class="mt-10 mb-8 flex justify-center">
+  <!-- Return Home & Calculator -->
+  <div class="mt-10 mb-8 flex justify-center gap-4">
     <a
       href="/"
       class="btn btn-outline btn-primary btn-sm font-mono tracking-widest"
     >
-      ← RETURN TO BASE
+      ← RETURN HOME
+    </a>
+    <a
+      href="/calc"
+      class="btn btn-outline btn-secondary btn-sm font-mono tracking-widest"
+      title="Secret Prize Calculator"
+    >
+      🧮 CALCULATOR
     </a>
   </div>
 
@@ -461,23 +414,22 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
   </dialog>
 
   <script>
-    import {initSatellite, listDocs, getDoc} from "@junobuild/core";
+    import {initSatellite, listDocs} from "@junobuild/core";
     import {
       getErrors,
       deleteErrors,
       resolveError,
     } from "@/declarations/satellite/satellite.api";
     import type {ErrorRecord} from "@/declarations/satellite/satellite.did";
-    import type {UserProfile, GlobalStats} from "@/types/backend";
+    import type {UserProfile} from "@/types/backend";
+    import {getTresrBalance, formatBalance} from "@/lib/blockchain/balance";
+    import {getEnvironmentKey} from "@/lib/blockchain/networks/chain";
     import {
-      getTresrBalance,
-      getVaultTresrBalance,
-      formatBalance,
-    } from "@/lib/wallet/balance";
-    import {getReadClient} from "@/lib/wallet/tx";
-
-    import {getEnvironmentKey} from "@/lib/wallet/avalanche";
-    import {VaultAbi} from "@/lib/wallet/abi/vault";
+      getTotalFees,
+      getTotalRewards,
+      getVaultTotalBurned,
+      getVaultCurrentBalance,
+    } from "@/lib/blockchain/contracts/vault";
     import {config} from "@/lib/config/client";
     import {log} from "@/lib/utils/log";
 
@@ -726,33 +678,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
       alertsEl.innerHTML = "";
 
       try {
-        // ── 1. Juno Datastore ─────────────────────────────────────────────
-        const statsDoc = await getDoc<GlobalStats>({
-          collection: "economy",
-          key: "blockchain",
-        });
-
-        const stats = statsDoc?.data;
-        // Juno stores u64 whole-token amounts (not wei). Multiply by 10^18
-        // so they are in the same unit as on-chain wei values.
-        const DECIMALS = 10n ** 18n;
-        const junoFees = BigInt(stats?.total_fees ?? 0) * DECIMALS;
-        const junoRewarded = BigInt(stats?.total_rewarded ?? 0) * DECIMALS;
-        const junoBurned =
-          BigInt(Math.round(Number(stats?.total_burned ?? 0))) * DECIMALS;
-
-        document.getElementById("juno-fees")!.textContent =
-          formatBalance(junoFees);
-        document.getElementById("juno-rewarded")!.textContent =
-          formatBalance(junoRewarded);
-        document.getElementById("juno-burned")!.textContent =
-          formatBalance(junoBurned);
-        const junoVault =
-          BigInt(Math.round(Number(stats?.total_vault ?? 0))) * DECIMALS;
-        document.getElementById("juno-vault")!.textContent =
-          stats?.total_vault != null ? formatBalance(junoVault) : "—";
-
-        // ── 2. Blockchain ─────────────────────────────────────────────────
+        // ── 1. Blockchain ─────────────────────────────────────────────────
         let chainFees = 0n;
         let chainRewarded = 0n;
         let chainBurned = 0n;
@@ -768,24 +694,11 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
             vaultAddr &&
             vaultAddr !== "0x0000000000000000000000000000000000000000"
           ) {
-            const client = getReadClient();
             const [fees, rewarded, burned, vault] = await Promise.all([
-              client.readContract({
-                address: vaultAddr,
-                abi: VaultAbi,
-                functionName: "totalFeesCollected",
-              }),
-              client.readContract({
-                address: vaultAddr,
-                abi: VaultAbi,
-                functionName: "totalRewardsPaid",
-              }),
-              client.readContract({
-                address: vaultAddr,
-                abi: VaultAbi,
-                functionName: "totalBurned",
-              }),
-              getVaultTresrBalance(false),
+              getTotalFees(),
+              getTotalRewards(),
+              getVaultTotalBurned(),
+              getVaultCurrentBalance(),
             ]);
             chainFees = fees as bigint;
             chainRewarded = rewarded as bigint;
@@ -818,46 +731,9 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           ? formatBalance(chainVault)
           : "—";
 
-        // ── 3. Discrepancy alerts ─────────────────────────────────────────
-        if (chainOnline) {
-          const checks: Array<{label: string; juno: bigint; chain: bigint}> = [
-            {label: "Fees", juno: junoFees, chain: chainFees},
-            {label: "Rewarded", juno: junoRewarded, chain: chainRewarded},
-            {label: "Burned", juno: junoBurned, chain: chainBurned},
-            {label: "Vault Balance", juno: junoVault, chain: chainVault},
-          ];
+        alertsEl.innerHTML = "";
 
-          const alerts: string[] = [];
-          for (const {label, juno, chain: ch} of checks) {
-            if (juno !== ch) {
-              const diff = ch > juno ? ch - juno : juno - ch;
-              const direction = ch > juno ? "chain > juno" : "juno > chain";
-              alerts.push(`
-                <div class="alert alert-error flex items-center gap-3">
-                  <span class="inline-grid *:[grid-area:1/1]">
-                    <span class="status status-error animate-ping"></span>
-                    <span class="status status-error"></span>
-                  </span>
-                  <span class="font-mono text-sm">
-                    <strong>${label}</strong> discrepancy: Juno ${formatBalance(juno)} vs Chain ${formatBalance(ch)}
-                    &mdash; delta <strong>${formatBalance(diff)}</strong> (${direction})
-                  </span>
-                </div>
-              `);
-            }
-          }
-
-          if (alerts.length === 0) {
-            alertsEl.innerHTML = `
-              <div class="alert alert-success">
-                <span>✅ Juno and blockchain are in sync</span>
-              </div>`;
-          } else {
-            alertsEl.innerHTML = alerts.join("");
-          }
-        }
-
-        // ── 4. Per-user audit ─────────────────────────────────────────────
+        // ── 2. Per-user audit ─────────────────────────────────────────────
         const usersResult = await listDocs<UserProfile>({
           collection: "users",
         });

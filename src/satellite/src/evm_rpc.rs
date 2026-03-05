@@ -848,12 +848,21 @@ fn parse_balance_hex(hex_result: &str) -> Result<u64, String> {
     }
 
     let wei = BigUint::parse_bytes(hex_clean.as_bytes(), 16)
-        .ok_or_else(|| format!("Failed to parse balance hex: {}", hex_clean))?;
+        .ok_or_else(|| format!("Failed to parse balance: {}", hex_result))?;
+
     let one_token = BigUint::from(10u64).pow(18);
     let tokens = &wei / &one_token;
-    tokens
+
+    let amount = tokens
         .to_u64()
-        .ok_or_else(|| "Balance too large for u64".to_string())
+        .ok_or_else(|| format!("Balance too large for u64: {} wei", wei))?;
+
+    Ok(amount)
+}
+
+/// Get the ERC-20 token balance of the Vault contract.
+pub async fn get_vault_balance() -> Result<u64, String> {
+    get_token_balance(crate::config::VAULT_CONTRACT_ADDRESS).await
 }
 
 // ---------------------------------------------------------------------------
@@ -909,90 +918,6 @@ pub async fn estimate_gas(
         .ok_or_else(|| "eth_estimateGas result is not a string".to_string())?;
     let clean = hex_str.strip_prefix("0x").unwrap_or(hex_str);
     u64::from_str_radix(clean, 16).map_err(|e| format!("Failed to parse gas estimate: {}", e))
-}
-
-// ---------------------------------------------------------------------------
-// Public API: Vault contract view functions and snapshot
-// ---------------------------------------------------------------------------
-
-/// A point-in-time snapshot of all vault contract state, matching the
-/// fields in GlobalStats. Mirrors what blockchain-sync.ts reads via multicall.
-pub struct VaultSnapshot {
-    /// vault.totalFeesCollected()  — cumulative TRESR fees received (tokens)
-    pub total_fees_collected: u64,
-    /// vault.totalRewardsPaid()   — cumulative rewards paid out (tokens)
-    pub total_rewards_paid: u64,
-    /// vault.totalBurned()        — cumulative tokens sent to burn address (tokens)
-    pub total_burned: u64,
-    /// vault.balanceOf()          — current vault TRESR balance (tokens)
-    pub vault_balance: u64,
-}
-
-/// Read all 4 vault view functions in parallel using ICP's join! macro.
-/// Each is an independent eth_call so they can be issued concurrently.
-/// Returns a `VaultSnapshot` with all values from the same block.
-pub async fn get_vault_snapshot() -> Result<VaultSnapshot, String> {
-    // Anvil mock: return sensible fixed values for local dev
-    if crate::config::NETWORK_NAME == "anvil" {
-        crate::logging::log_debug("EvmRpc", "ANVIL_MOCK: get_vault_snapshot");
-        return Ok(VaultSnapshot {
-            total_fees_collected: 100,
-            total_rewards_paid: 50,
-            total_burned: 10,
-            vault_balance: 1000,
-        });
-    }
-
-    // Fire all 4 reads concurrently — each is an independent HTTP outcall
-    let (fees_res, rewards_res, burned_res, balance_res) = futures::join!(
-        vault_call_u64("0x60c6d8ae"), // totalFeesCollected()
-        vault_call_u64("0x74958e35"), // totalRewardsPaid()
-        vault_call_u64("0xd89135cd"), // totalBurned()
-        vault_call_u64("0x722713f7"), // balanceOf()  (vault, no-arg)
-    );
-
-    Ok(VaultSnapshot {
-        total_fees_collected: fees_res?,
-        total_rewards_paid: rewards_res?,
-        total_burned: burned_res?,
-        vault_balance: balance_res?,
-    })
-}
-
-/// Internal helper: call a no-argument vault view function that returns uint256.
-/// Selector is a 4-byte hex string with 0x prefix, e.g. "0x60c6d8ae".
-async fn vault_call_u64(selector: &str) -> Result<u64, String> {
-    let canister = evm_rpc_canister()?;
-
-    let call_args = CallArgs {
-        transaction: TransactionRequest {
-            to: Some(crate::config::VAULT_CONTRACT_ADDRESS.to_string()),
-            input: Some(selector.to_string()),
-            ..TransactionRequest::default()
-        },
-        block: Some(BlockTag::Latest),
-    };
-
-    let result = canister
-        .eth_call(
-            avalanche_rpc_services(),
-            default_rpc_config(),
-            call_args,
-            cycles_for_call(256),
-        )
-        .await?;
-
-    match result.0 {
-        MultiCallResult::Consistent(call_result) => match call_result {
-            EvmCallResult::Ok(hex_result) => parse_balance_hex(&hex_result),
-            EvmCallResult::Err(e) => Err(format!("vault eth_call {} error: {:?}", selector, e)),
-        },
-        MultiCallResult::Inconsistent(results) => Err(format!(
-            "Inconsistent vault eth_call {} results from {} providers",
-            selector,
-            results.len()
-        )),
-    }
 }
 
 // ---------------------------------------------------------------------------

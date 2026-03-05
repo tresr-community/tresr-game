@@ -33,11 +33,35 @@ use junobuild_macros::{
 };
 #[allow(clippy::single_component_path_imports)]
 use junobuild_satellite::{
-    AssertDeleteDocContext, AssertSetDocContext, DelDoc, OnDeleteAssetContext, OnDeleteDocContext,
-    OnDeleteManyAssetsContext, OnDeleteManyDocsContext, OnSetDocContext, OnSetManyDocsContext,
-    OnUploadAssetContext, SetDoc, delete_doc_store, get_doc_store, include_satellite,
-    list_docs_store, set_doc_store,
+    AssertDeleteDocContext, AssertSetDocContext, DelDoc, DocContext, DocUpsert,
+    OnDeleteAssetContext, OnDeleteDocContext, OnDeleteManyAssetsContext, OnDeleteManyDocsContext,
+    OnSetDocContext, OnSetManyDocsContext, OnUploadAssetContext, SetDoc, delete_doc_store,
+    get_doc_store, include_satellite, list_docs_store, set_doc_store as juno_set_doc_store,
 };
+
+/// Wrapper around Juno's `set_doc_store` that automatically logs write errors to the console.
+/// Ensures we never silently fail on permission or logic errors on background database operations (e.g. cron syncs).
+fn set_doc_store(
+    caller: candid::Principal,
+    collection: String,
+    key: String,
+    doc: SetDoc,
+) -> Result<DocContext<DocUpsert>, String> {
+    match juno_set_doc_store(caller, collection.clone(), key.clone(), doc) {
+        Ok(res) => Ok(res),
+        Err(e) => {
+            crate::logging::log_error(
+                "Datastore",
+                &format!(
+                    "CRITICAL: Failed to write to collection '{}' with key '{}': {}",
+                    collection, key, e
+                ),
+            );
+            // Return exactly what juno_set_doc_store does
+            Err(e)
+        }
+    }
+}
 use junobuild_shared::types::list::ListParams;
 use junobuild_utils::{decode_doc_data, encode_doc_data};
 use libsecp256k1::{Message, RecoveryId, Signature, recover};
@@ -47,7 +71,7 @@ use std::cell::RefCell;
 
 use types::{
     BalanceRefreshRequest, ClaimRequest, ClaimStatus, ErrorPayload, ErrorRecord, FeeRequest,
-    FeeStatus, GameSession, GlobalStats, LeaderboardEntry, RefreshStatus, UserProfile,
+    FeeStatus, GameSession, LeaderboardEntry, RefreshStatus, UserProfile,
 };
 
 /// Cached top active scorer to avoid full leaderboard scans on every session completion.
@@ -420,7 +444,7 @@ fn assert_game_session(context: &AssertSetDocContext) -> Result<(), String> {
 
 /// Per-collection delete policy.
 /// Allow deletion for ephemeral / user-managed data; block for financial audit trails.
-#[assert_delete_doc(collections = ["users", "audit", "scores", "economy", "balance_refresh"])]
+#[assert_delete_doc(collections = ["users", "audit", "scores", "balance_refresh"])]
 fn assert_delete_doc(context: AssertDeleteDocContext) -> Result<(), String> {
     match context.data.collection.as_str() {
         // Users: allow self-deletion (e.g. account removal)
@@ -430,7 +454,7 @@ fn assert_delete_doc(context: AssertDeleteDocContext) -> Result<(), String> {
         // Balance refresh: ephemeral, allow cleanup
         "balance_refresh" => Ok(()),
         // Financial / game session data — block to preserve audit trail
-        "audit" | "economy" => {
+        "audit" => {
             let msg = format!(
                 "Deletion blocked for collection '{}' — audit trail must be preserved",
                 context.data.collection
@@ -733,11 +757,6 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                     ),
                 );
             }
-
-            // Snapshot the full vault state after this fee — all 4 values from a
-            // single pass so economy/blockchain is always a consistent point-in-time
-            // view (mirrors blockchain-sync.ts multicall behaviour).
-            sync_economy_snapshot().await;
         }
         Err(e) => {
             // Mark fee as failed
@@ -764,79 +783,13 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
     Ok(())
 }
 
-/// Read all 4 vault contract values in parallel and write a complete, consistent
-/// snapshot to economy/blockchain.
-///
-/// This is the Rust counterpart to `blockchain-sync.ts` on the frontend — a single
-/// function that captures the full vault state atomically so every field in
-/// economy/blockchain reflects the same point in time.
-///
-/// Called after every fee payment and reward claim. Non-fatal: if the EVM RPC
-/// fails the error is logged but does not abort the hook.
-async fn sync_economy_snapshot() {
-    let snapshot = match evm_rpc::get_vault_snapshot().await {
-        Ok(s) => s,
-        Err(e) => {
-            logging::log_warn(
-                "Economy",
-                &format!(
-                    "[Economy] get_vault_snapshot failed (cache not updated): {}",
-                    e
-                ),
-            );
-            return;
-        }
-    };
-
-    let canister_id = ic_cdk::id();
-    let key = "blockchain".to_string();
-
-    // Read existing doc to preserve version for optimistic concurrency
-    let existing_doc = get_doc_store(canister_id, "economy".to_string(), key.clone())
-        .ok()
-        .flatten();
-    let existing_version = existing_doc.as_ref().and_then(|d| d.version);
-
-    // Preserve any fields Rust tracks incrementally (total_collected)
-    let mut stats = existing_doc
-        .and_then(|doc| decode_doc_data::<GlobalStats>(&doc.data).ok())
-        .unwrap_or_default();
-
-    // Overwrite all on-chain sourced fields with fresh chain values
-    stats.total_fees = snapshot.total_fees_collected;
-    stats.total_rewarded = snapshot.total_rewards_paid;
-    stats.total_burned = snapshot.total_burned;
-    stats.total_vault = snapshot.vault_balance;
-    // total_collected is kept from the existing doc — it's the Juno-tracked
-    // running total of fees credited, complementing the on-chain totalFeesCollected.
-
-    let doc = SetDoc {
-        data: match encode_doc_data(&stats) {
-            Ok(d) => d,
-            Err(e) => {
-                logging::log_error(
-                    "Economy",
-                    &format!("[Economy] encode snapshot failed: {}", e),
-                );
-                return;
-            }
-        },
-        description: Some("Global burn/payout stats".to_string()),
-        version: existing_version,
-    };
-
-    match set_doc_store(canister_id, "economy".to_string(), key, doc) {
-        Ok(_) => logging::log_info(
-            "Economy",
-            &format!(
-                "[Economy] Snapshot written: fees={} rewards={} burned={} vault={}",
-                stats.total_fees, stats.total_rewarded, stats.total_burned, stats.total_vault
-            ),
-        ),
-        Err(e) => logging::log_warn(
-            "Economy",
-            &format!("[Economy] Failed to write economy snapshot: {}", e),
-        ),
+/// Helper to get the first configured admin principal, falling back to canister_id.
+/// Used to bypass `managed` collection permissions when the canister needs to write.
+fn admin_caller() -> candid::Principal {
+    if let Some(admin) = crate::config::ADMIN_PRINCIPALS.first() {
+        candid::Principal::from_text(admin).unwrap_or(ic_cdk::id())
+    } else {
+        ic_cdk::id()
     }
 }
 
@@ -1139,9 +1092,6 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
         claim.status = ClaimStatus::Completed;
 
         update_claim_doc(&context, &claim).await?;
-
-        // Snapshot the full vault state after this claim — all 4 values in parallel
-        sync_economy_snapshot().await;
 
         logging::log_info(
             "Claims",
@@ -1474,8 +1424,21 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         return Ok(());
     }
 
-    // Calculate consolation amount (use fixed max for simplicity, avoiding expensive vault query)
-    let consolation_amount = config::CONSOLATION_PRIZE_MAX;
+    // Calculate consolation amount (dynamically 1% of vault balance)
+    let vault_balance = match evm_rpc::get_vault_balance().await {
+        Ok(bal) => bal,
+        Err(e) => {
+            logging::log_error(
+                "Consolation",
+                &format!("Failed to get vault balance for consolation prize: {}", e),
+            );
+            // Rather than crash, we can safely return here. The active scorer cache
+            // won't be cleared, so it will simply retry on the next game loop/check.
+            return Ok(());
+        }
+    };
+    let consolation_amount =
+        ((vault_balance as u128 * config::CONSOLATION_PRIZE_PERCENT as u128) / 100) as u64;
 
     // Create consolation claim
     let claim_key = format!("consolation_{}_{}", winner_key, now_ms);
@@ -1568,8 +1531,8 @@ async fn resolve_expired_top_score() -> Result<(), String> {
 /// Returns None if no cache document exists (no one has scored yet).
 /// This is an O(1) single-document read, replacing the previous O(N) full scan.
 fn load_persisted_top_scorer() -> Result<Option<TopScorerCache>, String> {
-    let canister_id = ic_cdk::id();
-    let doc = get_doc_store(canister_id, "scores".to_string(), "top_scorer".to_string())
+    let admin = admin_caller();
+    let doc = get_doc_store(admin, "scores".to_string(), "top_scorer".to_string())
         .ok()
         .flatten();
 
@@ -1597,13 +1560,12 @@ fn load_persisted_top_scorer() -> Result<Option<TopScorerCache>, String> {
 /// Persist the top scorer cache to the datastore for cold-start recovery.
 /// Uses the `scores` collection with key `top_scorer`.
 fn persist_top_scorer_cache(cache: &TopScorerCache) -> Result<(), String> {
-    let canister_id = ic_cdk::id();
+    let admin = admin_caller();
 
-    let existing_version =
-        get_doc_store(canister_id, "scores".to_string(), "top_scorer".to_string())
-            .ok()
-            .flatten()
-            .and_then(|d| d.version);
+    let existing_version = get_doc_store(admin, "scores".to_string(), "top_scorer".to_string())
+        .ok()
+        .flatten()
+        .and_then(|d| d.version);
 
     let cache_doc = TopScorerCacheDoc {
         key: cache.key.clone(),
@@ -1619,12 +1581,7 @@ fn persist_top_scorer_cache(cache: &TopScorerCache) -> Result<(), String> {
         version: existing_version,
     };
 
-    set_doc_store(
-        canister_id,
-        "scores".to_string(),
-        "top_scorer".to_string(),
-        doc,
-    )?;
+    set_doc_store(admin, "scores".to_string(), "top_scorer".to_string(), doc)?;
 
     logging::log_info(
         "Scores",
@@ -1639,12 +1596,11 @@ fn persist_top_scorer_cache(cache: &TopScorerCache) -> Result<(), String> {
 /// Clear the persisted top scorer cache (e.g., after consolation prize awarded).
 fn clear_persisted_top_scorer_cache() {
     // Write an empty/zeroed entry rather than deleting, to avoid needing delete_doc_store
-    let canister_id = ic_cdk::id();
-    let existing_version =
-        get_doc_store(canister_id, "scores".to_string(), "top_scorer".to_string())
-            .ok()
-            .flatten()
-            .and_then(|d| d.version);
+    let admin = admin_caller();
+    let existing_version = get_doc_store(admin, "scores".to_string(), "top_scorer".to_string())
+        .ok()
+        .flatten()
+        .and_then(|d| d.version);
 
     let empty = TopScorerCacheDoc {
         key: String::new(),
@@ -1660,12 +1616,7 @@ fn clear_persisted_top_scorer_cache() {
         version: existing_version,
     };
 
-    let _ = set_doc_store(
-        canister_id,
-        "scores".to_string(),
-        "top_scorer".to_string(),
-        doc,
-    );
+    let _ = set_doc_store(admin, "scores".to_string(), "top_scorer".to_string(), doc);
 }
 
 /// Clear the expires_at on a scores entry to prevent re-processing.
@@ -1954,14 +1905,39 @@ async fn claim_authorize(
     }
 
     // 5. Calc amount — integer-only arithmetic (no f64 precision loss)
-    // perf_mult = (reported_keys / MAX_KEYS) * 0.5
-    // => max_perf = vault_balance * reported_keys * 50 / (MAX_KEYS * 100)
-    let max_perf = vault_balance
+    // Determine maximum possible payout for this vault tier
+    let vault_tier_building = (config::VAULT_TIER_BUILDING as u128) * 1_000_000_000_000_000_000u128;
+    let vault_tier_sweet_spot =
+        (config::VAULT_TIER_SWEET_SPOT as u128) * 1_000_000_000_000_000_000u128;
+    let vault_tier_fomo = (config::VAULT_TIER_FOMO as u128) * 1_000_000_000_000_000_000u128;
+
+    let max_payout = if vault_balance <= vault_tier_building {
+        (config::PAYOUT_FIXED_BUILDING as u128) * 1_000_000_000_000_000_000u128
+    } else if vault_balance <= vault_tier_sweet_spot {
+        vault_balance
+            .checked_mul(config::PAYOUT_PERCENT_SWEET_SPOT as u128)
+            .map(|v| v / 100)
+            .unwrap_or(0)
+    } else if vault_balance <= vault_tier_fomo {
+        vault_balance
+            .checked_mul(config::PAYOUT_PERCENT_FOMO as u128)
+            .map(|v| v / 100)
+            .unwrap_or(0)
+    } else {
+        vault_balance
+            .checked_mul(config::PAYOUT_PERCENT_LEGENDARY as u128)
+            .map(|v| v / 100)
+            .unwrap_or(0)
+    };
+
+    // Calculate performance multiplier based on keys
+    // perf_mult = reported_keys / MAX_KEYS
+    // => max_perf = max_payout * reported_keys / MAX_KEYS
+    let max_perf = max_payout
         .checked_mul(reported_keys as u128)
-        .and_then(|v| v.checked_mul(50))
-        .map(|v| v / (config::MAX_KEYS_COLLECTED as u128 * 100))
+        .map(|v| v / (config::MAX_KEYS_COLLECTED as u128))
         .unwrap_or(0)
-        .min(vault_balance / 2);
+        .min(vault_balance / 2); // safety cap: never drain more than 50%
     let guaranteed = fee_amount
         .checked_mul(11)
         .map(|v| v / 10)
@@ -2225,7 +2201,7 @@ fn report_error(payload: ErrorPayload) -> Result<String, String> {
         resolved: false,
     };
 
-    let canister_id = ic_cdk::id();
+    let admin = admin_caller();
     let doc = SetDoc {
         data: encode_doc_data(&record)?,
         description: Some(format!(
@@ -2236,7 +2212,7 @@ fn report_error(payload: ErrorPayload) -> Result<String, String> {
     };
 
     // Store with error_id as key — it is both the doc key and the user-facing code
-    set_doc_store(canister_id, "errors".to_string(), error_id.clone(), doc)?;
+    set_doc_store(admin, "errors".to_string(), error_id.clone(), doc)?;
 
     logging::log_info(
         "Errors",
@@ -2258,7 +2234,7 @@ fn get_errors() -> Result<Vec<ErrorRecord>, String> {
         return Err("Unauthorized: admin access required".to_string());
     }
 
-    let canister_id = ic_cdk::id();
+    let admin = admin_caller();
     let params = ListParams {
         matcher: None,
         order: None,
@@ -2266,7 +2242,7 @@ fn get_errors() -> Result<Vec<ErrorRecord>, String> {
         owner: None,
     };
 
-    let result = list_docs_store(canister_id, "errors".to_string(), &params)
+    let result = list_docs_store(admin, "errors".to_string(), &params)
         .map_err(|e| format!("Failed to list errors: {}", e))?;
 
     let records: Vec<ErrorRecord> = result
@@ -2290,11 +2266,11 @@ fn delete_errors(keys: Vec<String>) -> Result<(), String> {
         return Err("Unauthorized: admin access required".to_string());
     }
 
-    let canister_id = ic_cdk::id();
+    let admin = admin_caller();
     for key in &keys {
         // Juno requires the current version on delete; fetch it first.
         // If the doc doesn't exist, skip it (idempotent).
-        let existing = get_doc_store(canister_id, "errors".to_string(), key.clone())
+        let existing = get_doc_store(admin, "errors".to_string(), key.clone())
             .map_err(|e| format!("Failed to fetch error {}: {}", key, e))?;
 
         let Some(doc) = existing else {
@@ -2302,7 +2278,7 @@ fn delete_errors(keys: Vec<String>) -> Result<(), String> {
         };
 
         delete_doc_store(
-            canister_id,
+            admin,
             "errors".to_string(),
             key.clone(),
             DelDoc {
@@ -2329,10 +2305,10 @@ fn resolve_error(error_id: String, resolved: bool) -> Result<(), String> {
         return Err("Unauthorized: admin access required".to_string());
     }
 
-    let canister_id = ic_cdk::id();
+    let admin = admin_caller();
 
     // Fetch existing doc so we can read the current version (optimistic concurrency)
-    let existing = get_doc_store(canister_id, "errors".to_string(), error_id.clone())
+    let existing = get_doc_store(admin, "errors".to_string(), error_id.clone())
         .map_err(|e| format!("Failed to fetch error {}: {}", error_id, e))?
         .ok_or_else(|| format!("Error not found: {}", error_id))?;
 
@@ -2352,7 +2328,7 @@ fn resolve_error(error_id: String, resolved: bool) -> Result<(), String> {
         version: existing_version,
     };
 
-    set_doc_store(canister_id, "errors".to_string(), error_id.clone(), doc)?;
+    set_doc_store(admin, "errors".to_string(), error_id.clone(), doc)?;
 
     logging::log_info(
         "Errors",

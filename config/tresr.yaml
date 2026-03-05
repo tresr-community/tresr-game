@@ -14,35 +14,40 @@ server:
       - "pegnp-gazih-6vb6n-cze6g-gei4h-y3dlc-i77bm-7ityv-rmome-rshwy-wqe"
     collections:
       datastore:
-        # Audit: Private admin collection for auditing blockchain transactions mapped to users.
+        # Audit
+        #   - Private admin collection for auditing blockchain transactions mapped to users.
         - collection: "audit"
           read: "managed"
           write: "managed"
           memory: "stable"
-        # Economy: Public collection for economy metrics (total_collected, total_rewarded, total_burned).
-        # Written by the Rust satellite from authoritative fee/claim events.
-        - collection: "economy"
-          read: "public"
-          write: "managed"
-          memory: "stable"
-        # Scores: Public collection for leaderboard entries per user and the top_scorer cache.
+        # Scores
+        #   - Public collection for leaderboard entries per user and the top_scorer cache.
         - collection: "scores"
           read: "public"
           write: "managed"
           memory: "stable"
-        # Users: Private collection for per-user preferences (nickname, avatar, wallet, settings).
+        # Users
+        #   - Private collection for per-user preferences (nickname, avatar, wallet, settings).
         - collection: "users"
           read: "managed"
           write: "managed"
           memory: "stable"
-        # Errors: Private admin-only collection for error tracking.
-        # Satellite functions write here; clients cannot read or write directly.
+        # Claims
+        #   - Private collection for tracking user reward claims on the blockchain.
+        - collection: "claims"
+          read: "managed"
+          write: "managed"
+          memory: "stable"
+        # Errors
+        #   - Private admin-only collection for error tracking.
+        #   - Satellite functions write here; clients cannot read or write directly.
         - collection: "errors"
           read: "managed"
           write: "managed"
           memory: "stable"
       storage:
-        # Images: Public images like Avatars
+        # Images
+        #   - Public images like Avatars
         - collection: "images"
           read: "public"
           write: "managed"
@@ -61,8 +66,7 @@ server:
       - wallet_tampering
   highscore:
     score_ttl_hours: 24
-    consolation_prize_percent: 5
-    consolation_prize_max: 100
+    consolation_prize_percent: 1
     consolation_prize_min_games: 3
 
 ##################################################
@@ -312,18 +316,20 @@ client:
       # Below this cap, paid mode is locked out.
       minimum_cap: 1000
       tiers:
-        # 500 - 5,000 TRESR
-        easy: 5000
-        # 5,000 - 25,000 TRESR
-        normal: 25000
-        # 25,000 - 100,000 TRESR
-        hard: 100000
-        # > 100,000 = extreme
+        building: 10000 # less than or equal to this number = "building"
+        sweet_spot: 50000 # less than or equal to this number = "sweet_spot"
+        fomo: 100000 # less than or equal to this number = "fomo"
       difficulty_multipliers:
-        easy: 0.5
-        normal: 1.0
-        hard: 1.5
-        extreme: 2.0
+        building: 1.0
+        sweet_spot: 1.5
+        fomo: 2.0
+        legendary: 3.0
+      payout_fixed:
+        building: 500
+      payout_percentages:
+        sweet_spot: 10 # 10%
+        fomo: 25 # 25%
+        legendary: 50 # 50%
     # Global physics (shared by all entities)
     physics:
       fps: 60
@@ -461,9 +467,9 @@ client:
           #   - If allies die mid-charge and count drops, retreats to strafe.
           cautious:
             speed_mult: 0.7
-            preferred_distance: 180
+            preferred_distance: 250
             group_radius: 200
-            pack_threshold: 2
+            pack_threshold: 4
             charge_speed_mult: 1.3
             strafe_speed_mult: 0.9 # Lateral strafe speed when solo
             strafe_switch_time: 2.0 # Seconds between strafe direction changes
@@ -477,8 +483,8 @@ client:
           #   - Visibly weaves side-to-side — hard to track and predict.
           erratic:
             speed_mult: 1.2
-            zigzag_frequency: 3.0 # Sine oscillations per second
-            zigzag_amplitude: 80 # Pixels of lateral swing
+            zigzag_frequency: 1.5 # Sine oscillations per second
+            zigzag_amplitude: 1.5 # Radians of lateral swing
             jitter_x: 80
             jitter_y: 40
           # Flanker
@@ -486,7 +492,7 @@ client:
           #   - Creates a circling-then-striking pattern that feels distinct.
           flanker:
             speed_mult: 1.1
-            offset: 120 # Orbit radius (px)
+            offset: 200 # Orbit radius (px)
             switch_time: 3 # Seconds between flank direction switches
             orbit_time: 2.0 # Seconds to orbit before lunging
             lunge_speed_mult: 2.5 # Speed multiplier during lunge dash
@@ -509,6 +515,7 @@ client:
             retarget_time: 4
             attack_damage: 10
             attack_cooldown_s: 0.5
+            rage_tint: 0xff0000 # Red glow when hunting another enemy
           # Swarm
           #   - Clusters with nearby allies.
           #   - When rush_threshold allies are nearby, triggers the "hulk" green rush.
@@ -521,13 +528,13 @@ client:
             rush_tint: 0x00ff88 # Green glow when rushing
             check_frame_interval: 10 # Frames between AI checks
           weights:
-            cautious: 10 # TODO: Test RESULT: TODO
-            direct: 20 # TODO: Test RESULT: TODO
-            erratic: 20 # TODO: Test RESULT: TODO
-            flanker: 20 # TODO: Test RESULT: TODO
-            passive: 10 # TODO: Test RESULT: TODO
-            retardio: 10 # TODO: Test RESULT: TODO
-            swarm: 10 # TODO: Test RESULT: TODO
+            cautious: 10
+            direct: 20
+            erratic: 20
+            flanker: 20
+            passive: 10
+            retardio: 10
+            swarm: 10
         health_bar:
           width: 30
           height: 4

@@ -12,8 +12,9 @@
 
 import {createPublicClient, http, fallback} from "viem";
 import type {TransactionReceipt, PublicClient} from "viem";
-import {getTargetChain, getEnvironmentKey} from "./avalanche";
+import {getTargetChain, getEnvironmentKey} from "./networks/chain";
 import {config} from "../config/client";
+import type {ConfigTypes} from "@/types/config";
 import {log} from "../utils/log";
 
 const COMPONENT_NAME = "Tx";
@@ -38,15 +39,18 @@ function buildDirectClient(): PublicClient {
     return cachedClient;
   }
 
-  const chainConfig = config.blockchain.avalanche[env];
+  const chainConfig =
+    config.blockchain.avalanche[
+      env as keyof ConfigTypes["blockchain"]["avalanche"]
+    ];
   const chain = getTargetChain(chainConfig.rpc_urls[0]);
 
-  const transports = chainConfig.rpc_urls.map((url) => http(url));
+  const transports = chainConfig.rpc_urls.map((url: string) => http(url));
 
   cachedClient = createPublicClient({
     chain,
     transport: fallback(transports),
-  }) as PublicClient;
+  }) as unknown as PublicClient;
   cachedEnv = env;
 
   return cachedClient;

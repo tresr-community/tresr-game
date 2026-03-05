@@ -1,0 +1,226 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Prize Calculator | TRESR">
+  <div class="min-h-screen pt-20 pb-10">
+    <div class="container mx-auto max-w-2xl px-4 text-center">
+      <h1
+        class="text-primary font-display mb-12 text-4xl font-black tracking-widest drop-shadow-[0_0_10px_rgba(var(--primary),0.8)] sm:text-5xl"
+      >
+        PRIZE CALCULATOR
+      </h1>
+
+      <div class="mb-12 w-full text-left">
+        <div class="card bg-base-200/50 border-primary/20 border shadow-xl">
+          <div class="card-body p-6 sm:p-8">
+            <h2
+              class="text-secondary mb-4 font-mono text-xl tracking-widest uppercase"
+            >
+              Simulation Inputs
+            </h2>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div class="form-control">
+                <label class="label py-1"
+                  ><span class="label-text font-mono text-xs opacity-70"
+                    >Vault Balance (TRESR)</span
+                  ></label
+                >
+                <input
+                  type="number"
+                  id="vault_balance"
+                  class="input input-bordered bg-base-300 focus:border-primary w-full font-mono"
+                  value="50000"
+                  min="0"
+                  step="1000"
+                />
+              </div>
+              <div class="form-control">
+                <label class="label py-1"
+                  ><span class="label-text font-mono text-xs opacity-70"
+                    >Keys Collected</span
+                  ></label
+                >
+                <input
+                  type="number"
+                  id="keys"
+                  class="input input-bordered bg-base-300 focus:border-primary w-full font-mono"
+                  value="50"
+                  min="0"
+                />
+              </div>
+              <div class="form-control">
+                <label class="label py-1"
+                  ><span class="label-text font-mono text-xs opacity-70"
+                    >Enemy Kills</span
+                  ></label
+                >
+                <input
+                  type="number"
+                  id="kills"
+                  class="input input-bordered bg-base-300 focus:border-primary w-full font-mono"
+                  value="10"
+                  min="0"
+                />
+              </div>
+              <div class="form-control">
+                <label class="label py-1"
+                  ><span class="label-text font-mono text-xs opacity-70"
+                    >Boss Hits</span
+                  ></label
+                >
+                <input
+                  type="number"
+                  id="boss_hits"
+                  class="input input-bordered bg-base-300 focus:border-primary w-full font-mono"
+                  value="0"
+                  min="0"
+                />
+              </div>
+              <div class="form-control sm:col-span-2">
+                <label class="label py-1"
+                  ><span class="label-text font-mono text-xs opacity-70"
+                    >Super Hits</span
+                  ></label
+                >
+                <input
+                  type="number"
+                  id="super_hits"
+                  class="input input-bordered bg-base-300 focus:border-primary w-full font-mono"
+                  value="0"
+                  min="0"
+                />
+              </div>
+            </div>
+
+            <div class="divider border-primary/20 my-8"></div>
+
+            <div class="text-center font-mono">
+              <div
+                class="text-secondary mb-2 text-sm tracking-widest uppercase opacity-70"
+              >
+                Calculated Payout
+              </div>
+              <div
+                class="text-primary text-4xl font-black break-words drop-shadow-[0_0_8px_rgba(var(--primary),0.8)] sm:text-5xl"
+                id="prize_result"
+              >
+                0.00 TRESR
+              </div>
+              <div class="mt-2 text-xs opacity-50">
+                Determined strictly by on-chain algorithm variables
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <a
+          href="/"
+          class="btn btn-outline btn-primary font-mono tracking-widest"
+        >
+          RETURN HOME
+        </a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script>
+  // Game constants replicating config/tresr.yaml and satellite/src/lib.rs exactly
+  const VAULT_TIER_BUILDING = 10000n * 10n ** 18n;
+  const VAULT_TIER_SWEET_SPOT = 50000n * 10n ** 18n;
+  const VAULT_TIER_FOMO = 100000n * 10n ** 18n;
+
+  const PAYOUT_FIXED_BUILDING = 500n * 10n ** 18n;
+  const PAYOUT_PERCENT_SWEET_SPOT = 10n;
+  const PAYOUT_PERCENT_FOMO = 25n;
+  const PAYOUT_PERCENT_LEGENDARY = 50n;
+
+  const MAX_KEYS_COLLECTED = 150n;
+
+  const inputs = {
+    vaultBalance: document.getElementById("vault_balance") as HTMLInputElement,
+    keys: document.getElementById("keys") as HTMLInputElement,
+    kills: document.getElementById("kills") as HTMLInputElement,
+    bossHits: document.getElementById("boss_hits") as HTMLInputElement,
+    superHits: document.getElementById("super_hits") as HTMLInputElement,
+  };
+  const resultEl = document.getElementById("prize_result");
+
+  function calculate() {
+    if (!resultEl) return;
+
+    try {
+      // 1. Inputs
+      const vaultInput = parseFloat(inputs.vaultBalance?.value || "0");
+      // Safe precision scaling up to 18 decimals
+      const vaultBalanceWei =
+        BigInt(Math.floor(vaultInput * 1000000)) * 10n ** 12n;
+
+      const keys = parseInt(inputs.keys?.value || "0");
+      const kills = parseInt(inputs.kills?.value || "0");
+      const bossHits = parseInt(inputs.bossHits?.value || "0");
+      const superHits = parseInt(inputs.superHits?.value || "0");
+
+      // Score evaluation matching gameplayConfig parameters exactly
+      const score = BigInt(
+        keys * 100 + kills * 10 + bossHits * 25 + superHits * 25
+      );
+
+      // 2. Maximum payout tier mapping
+      let maxPayoutWei = 0n;
+      if (vaultBalanceWei <= VAULT_TIER_BUILDING) {
+        maxPayoutWei = PAYOUT_FIXED_BUILDING;
+      } else if (vaultBalanceWei <= VAULT_TIER_SWEET_SPOT) {
+        maxPayoutWei = (vaultBalanceWei * PAYOUT_PERCENT_SWEET_SPOT) / 100n;
+      } else if (vaultBalanceWei <= VAULT_TIER_FOMO) {
+        maxPayoutWei = (vaultBalanceWei * PAYOUT_PERCENT_FOMO) / 100n;
+      } else {
+        maxPayoutWei = (vaultBalanceWei * PAYOUT_PERCENT_LEGENDARY) / 100n;
+      }
+
+      // 3. Performance scalar calculation
+      // Following `max_perf = max_payout.checked_mul(reported_keys)...` from Rust
+      let maxPerfWei = (maxPayoutWei * score) / MAX_KEYS_COLLECTED;
+
+      // Safety cap: never drain more than 50%
+      const halfVault = vaultBalanceWei / 2n;
+      if (maxPerfWei > halfVault) {
+        maxPerfWei = halfVault;
+      }
+
+      // 4. Fixed guaranteed compensation (assumes base entry fee)
+      // `let guaranteed = fee_amount * 11 / 10;`
+      // Assumes generic feeAmount = 1 TRESR
+      const feeAmountWei = 1n * 10n ** 18n;
+      const guaranteedWei = (feeAmountWei * 11n) / 10n;
+
+      // 5. Final resolution
+      let amountWei = maxPerfWei > guaranteedWei ? maxPerfWei : guaranteedWei;
+      if (amountWei > vaultBalanceWei) {
+        amountWei = vaultBalanceWei;
+      }
+
+      const formatted = (Number(amountWei) / 1e18).toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 5,
+      });
+      resultEl.textContent = `${formatted} TRESR`;
+    } catch (e) {
+      console.error(e);
+      resultEl.textContent = "0.00 TRESR";
+    }
+  }
+
+  // Bind interactions
+  Object.values(inputs).forEach((input) => {
+    if (input) {
+      input.addEventListener("input", calculate);
+    }
+  });
+
+  // Calculate immediately
+  calculate();
+</script>

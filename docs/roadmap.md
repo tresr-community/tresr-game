@@ -255,7 +255,7 @@ This document outlines the feature and bug fix roadmap for the Tresr game, organ
 - [x] Update detection (SW byte-comparison + version polling)
 - [x] Update notification system (UpdatePrompt component)
 - [x] Install prompt handling
-- [ ] Verify offline gameplay works end-to-end
+- [ ] Verify offline gameplay works end-to-end (normie mode only)
 - [ ] Test install prompt on mobile devices
 
 ### 7.2 Version Management & Anti-Cheat
@@ -270,7 +270,6 @@ This document outlines the feature and bug fix roadmap for the Tresr game, organ
 - [x] Ban modal escape key bypass fix (#155)
 - [x] Timing-safe hash comparison (#156)
 - [x] Guest user ban bypass prevention (#166)
-- [ ] Ensure `app.version` in tresr.yaml is bumped per release
 
 ---
 

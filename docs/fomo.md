@@ -1,6 +1,8 @@
-# FOMO Game Loop — Economic Design
+# Economic Design
 
 ## Overview
+
+The FOMO game loop.
 
 The goal for the TresrVault is to create a self-sustaining economic flywheel where;
 
@@ -14,11 +16,11 @@ No manual refilling should be required after the initial seed.
 
 ```mermaid
 graph LR
-    A[Players pay 10 TRESR fee] --> B[Vault gets fatter]
+    A[Players pay 100 TRESR fee] --> B[Vault gets fatter]
     B --> C[Difficulty scales UP]
     C --> D[More attempts needed = more fees]
     D --> B
-    B --> E[Someone wins 50%]
+    B --> E[Someone wins]
     E --> F[Vault halves, difficulty drops]
     F --> A
 ```
@@ -27,13 +29,13 @@ graph LR
 
 All values denominated in whole $TRESR tokens (18 decimals).
 
-| Tier        | Vault Balance    | Difficulty | Color     | Behaviour                               |
-| ----------- | ---------------- | ---------- | --------- | --------------------------------------- |
-| **LOCKED**  | < 500            | N/A        | ⚫ Grey   | Paid mode disabled. "Vault recharging"  |
-| **Easy**    | 500 – 5,000      | 0.6x       | 🟢 Green  | Attracts players, vault refills quickly |
-| **Normal**  | 5,000 – 25,000   | 1.0x       | 🟡 Yellow | Balanced gameplay                       |
-| **Hard**    | 25,000 – 100,000 | 1.5x       | 🔴 Red    | FOMO zone: big prize, hard to claim     |
-| **Extreme** | > 100,000        | 2.0x       | 🟣 Purple | Legendary territory                     |
+| Tier           | Vault Balance    | Difficulty | Payout | Color     | Behaviour                               |
+| -------------- | ---------------- | ---------- | ------ | --------- | --------------------------------------- |
+| **LOCKED**     | < 1,000          | N/A        | N/A    | ⚫ Grey   | Paid mode disabled. "Vault recharging"  |
+| **Building**   | 1,000 – 10,000   | 1.0x       | 500    | 🟢 Green  | Attracts players, vault refills quickly |
+| **Sweet Spot** | 10,000 – 50,000  | 1.5x       | 10%    | 🟡 Yellow | Balanced gameplay                       |
+| **FOMO**       | 50,000 – 100,000 | 2.0x       | 25%    | 🔴 Red    | FOMO zone: big prize, hard to claim     |
+| **Legendary**  | > 100,000        | 3.0x       | 50%    | 🟣 Purple | Legendary territory                     |
 
 ### Difficulty Multiplier Effects
 
@@ -47,7 +49,7 @@ The multiplier adjusts (future implementation in satellite):
 
 | Parameter         | Value                 | Rationale                              |
 | ----------------- | --------------------- | -------------------------------------- |
-| Entry fee         | 10 TRESR              | Low barrier, steady inflow             |
+| Entry fee         | 100 TRESR             | Low barrier, steady inflow             |
 | Burn rate         | 10% of fee            | Deflationary — 1 TRESR burned per play |
 | Max claim         | 50% of vault          | Vault never fully drains               |
 | Minimum claim     | 50 TRESR              | Prevents dust claims                   |
@@ -101,15 +103,22 @@ Added to `tresr.yaml` under `gameplay.vault`:
 
 ```yaml
 vault:
-  minimum_cap: 500 # Below this, paid mode is locked
+  minimum_cap: 1000 # Below this, paid mode is locked
   tiers:
-    easy: 5000 # 500 - 5,000
-    normal: 25000 # 5,000 - 25,000
-    hard: 100000 # 25,000 - 100,000
-    extreme: 100001 # > 100,000
+    building: 10000 # less than or equal to this number = "building"
+    sweet_spot: 50000 # less than or equal to this number = "sweet_spot"
+    fomo:
+      100000 # less than or equal to this number = "fomo"
+      # greater than 100,000 = legendary
   difficulty_multipliers:
-    easy: 0.6
-    normal: 1.0
-    hard: 1.5
-    extreme: 2.0
+    building: 1.0
+    sweet_spot: 1.5
+    fomo: 2.0
+    legendary: 3.0
+  payout_fixed:
+    building: 500
+  payout_percentages:
+    sweet_spot: 10
+    fomo: 25
+    legendary: 50
 ```

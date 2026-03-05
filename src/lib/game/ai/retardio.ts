@@ -29,6 +29,7 @@ export class RetardioBehavior implements AIBehavior {
     this.attackTimer = 0;
     this.jitterOffset = {x: 0, y: 0};
     this.jitterTimer = 0;
+    ctx.clearTint();
   }
 
   update(ctx: EnemyContext, dt: number): BehaviorResult {
@@ -48,6 +49,12 @@ export class RetardioBehavior implements AIBehavior {
     ) {
       this.retargetTimer = 0;
       this.retardioTarget = findNearestEnemy(ctx);
+
+      if (this.retardioTarget) {
+        ctx.setTint(retardioConfig?.rage_tint ?? 0xff0000);
+      } else {
+        ctx.clearTint();
+      }
     }
 
     if (this.retardioTarget) {
