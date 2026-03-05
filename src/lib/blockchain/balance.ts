@@ -6,7 +6,7 @@
 
 import {loadConfigAsync} from "../config";
 import {log} from "../utils/log";
-import {getEnvironmentKey} from "./avalanche";
+import {getEnvironmentKey} from "./networks/chain";
 import {getReadClient} from "./tx";
 import {ERC20Abi} from "./abi/vault";
 

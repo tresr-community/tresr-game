@@ -20,12 +20,27 @@ const {title, description = "A 2.5D platformer for the Tresr Community"} =
     <meta charset="utf-8" />
     <meta
       name="viewport"
-      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
     <meta name="description" content={description} />
     <meta name="theme-color" content="#1a1025" />
     <link rel="icon" type="image/png" href="/assets/icons/ios/32.png" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- Self-hosted Orbitron — no external DNS, no render-block -->
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/orbitron-v35-latin-700.woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/orbitron-v35-latin-900.woff2"
+      crossorigin
+    />
     <script is:inline>
       window.startTime = Date.now();
       // Apply saved theme immediately to prevent flash of wrong theme colors
@@ -34,6 +49,7 @@ const {title, description = "A 2.5D platformer for the Tresr Community"} =
         if (t) document.documentElement.setAttribute("data-theme", t);
       })();
     </script>
+    <slot name="head" />
     <title>{title}</title>
   </head>
   <body
@@ -159,6 +175,23 @@ const {title, description = "A 2.5D platformer for the Tresr Community"} =
 
 <style is:global>
   @import "../styles/global.css";
+
+  /* Self-hosted Orbitron — eliminates Google Fonts dependency */
+  @font-face {
+    font-family: "Orbitron";
+    src: url("/fonts/orbitron-v35-latin-700.woff2") format("woff2");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+  }
+
+  @font-face {
+    font-family: "Orbitron";
+    src: url("/fonts/orbitron-v35-latin-900.woff2") format("woff2");
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+  }
 
   /* Orbitron for headings - cyberpunk style */
   h1,

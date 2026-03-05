@@ -1,7 +1,7 @@
 ---
 import type {ConfigTypes} from "@/types/config.ts";
 import {config} from "@/lib/config/client.ts";
-import {isVaultDeployed} from "@/lib/wallet/avalanche";
+import {isVaultDeployed} from "@/lib/blockchain/networks/chain";
 
 interface Props {
   hideTrigger?: boolean;
@@ -233,24 +233,30 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
     }
   }
 
-  import {
-    getAuthState,
-    subscribeToAuth,
-    signInAsGuest,
-    signInWithInternetIdentity,
-    signInWithPasskey,
-    signUpWithPasskey,
-    signInWithAvalanche,
-    handleSignOut,
-    getDisplayName,
-    checkPasskeyAvailability,
-  } from "@/lib/auth";
-  import {isGuestRateLimited} from "@/lib/auth/guest";
+  // Only eagerly import the tiny state getters needed to update the button
+  // on initial render. Everything else is deferred until modal open.
+  import {getAuthState, subscribeToAuth, getDisplayName} from "@/lib/auth";
   import {profileStore} from "@/lib/user/store";
-  import {trackLogin} from "@/lib/metrics/analytics";
   import {log} from "@/lib/utils/log";
 
   const COMPONENT_NAME = "Auth";
+
+  /** Lazily import the full auth module — only when the modal opens */
+  async function getAuth() {
+    return import("@/lib/auth");
+  }
+
+  /** Lazily import the guest rate-limit check — only when needed */
+  async function getGuestRateLimit() {
+    const {isGuestRateLimited} = await import("@/lib/auth/guest");
+    return isGuestRateLimited;
+  }
+
+  /** Lazily import analytics — only when a login actually happens */
+  async function getAnalytics() {
+    const {trackLogin} = await import("@/lib/metrics/analytics");
+    return trackLogin;
+  }
 
   /** Set a button to loading state (DaisyUI spinner + disabled). */
   function setButtonLoading(btn: HTMLButtonElement, text?: string) {
@@ -347,65 +353,68 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
       // handshake that happens after the user selects a wallet and signs.
       showAuthOverlay("Awaiting wallet connection...");
 
-      // This opens the AppKit modal with all wallet options
-      // (injected wallets + WalletConnect QR code)
-      // The overlay text updates via tresr:auth-progress events
-      // dispatched from signInWithAvalanche().
+      // Lazy-load the Avalanche sign-in function (pulls in the SIWA bundle)
+      const {signInWithAvalanche} = await getAuth();
       await signInWithAvalanche();
       hideAuthOverlay();
+      const trackLogin = await getAnalytics();
       trackLogin("avalanche");
     } catch (error: unknown) {
       hideAuthOverlay();
       clearButtonLoading(btnLoginAvalanche, "Login with Wallet");
-      log.error(COMPONENT_NAME, "Avalanche Auth failed", error);
       const message = error instanceof Error ? error.message : String(error);
-      let msg = "Wallet login failed";
 
-      if (message.includes("cancelled") || message.includes("rejected")) {
-        msg = "Login cancelled or rejected";
+      if (
+        message.includes("cancelled") ||
+        message.includes("rejected") ||
+        message.includes("disconnected")
+      ) {
+        // User intentionally cancelled — no error report needed
+        window.showWarningToast?.("Login cancelled or rejected");
       } else if (message.includes("SIWA") || message.includes("canister")) {
-        msg =
-          "Unable to connect to the IC-SIWA service. Please check network and try again.";
+        log.error(COMPONENT_NAME, "SIWA canister error", error);
       } else if (message.includes("chain") || message.includes("network")) {
-        msg = message;
-      } else if (message.includes("disconnected")) {
-        msg = "Wallet disconnected. Please try again.";
+        log.error(COMPONENT_NAME, "Network/chain mismatch", error);
+      } else {
+        // Unexpected error — log.error will report to canister and show clean toast
+        log.error(COMPONENT_NAME, "Avalanche Auth failed", error);
       }
 
-      window.showErrorToast(msg, message);
       // Re-open the login modal so the user can try again
       loginModal.showModal();
     }
   }
 
-  // Normie Handler
+  // Normie Handler — lazy-load full auth on first use
   btnLoginNormie?.addEventListener("click", async () => {
     if (btnLoginNormie instanceof HTMLButtonElement)
       setButtonLoading(btnLoginNormie, "Connecting...");
     try {
+      const {signInAsGuest} = await getAuth();
       await signInAsGuest();
+      const trackLogin = await getAnalytics();
       trackLogin("guest");
       loginModal.close();
     } catch (error) {
       log.error(COMPONENT_NAME, "Guest login failed", error);
-      window.showErrorToast("Login failed", (error as Error).message);
     } finally {
       if (btnLoginNormie instanceof HTMLButtonElement)
         clearButtonLoading(btnLoginNormie, "Login as Normie");
     }
   });
 
-  // II Handler
+  // II Handler — lazy-load full auth on first use
   btnLoginII?.addEventListener("click", async () => {
     if (btnLoginII instanceof HTMLButtonElement)
       setButtonLoading(btnLoginII, "Connecting...");
     try {
+      const {signInWithInternetIdentity} = await getAuth();
       await signInWithInternetIdentity();
+      const trackLogin = await getAnalytics();
       trackLogin("internet_identity");
       loginModal.close();
     } catch (error) {
       log.error(COMPONENT_NAME, "II Auth failed", error);
-      window.showErrorToast("Authentication failed", (error as Error).message);
     } finally {
       if (btnLoginII instanceof HTMLButtonElement)
         clearButtonLoading(btnLoginII, "Internet Identity");
@@ -415,8 +424,9 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
   // Avalanche Handler (single button - opens AppKit modal)
   btnLoginAvalanche?.addEventListener("click", handleAvalancheLogin);
 
-  // WebAuthN Handlers
+  // WebAuthN Handlers — lazy-load
   btnLoginWebAuthN?.addEventListener("click", async () => {
+    const {checkPasskeyAvailability, signInWithPasskey} = await getAuth();
     if (!(await checkPasskeyAvailability())) {
       window.showErrorToast(
         "Passkey not supported",
@@ -426,15 +436,16 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
     }
     try {
       await signInWithPasskey();
+      const trackLogin = await getAnalytics();
       trackLogin("passkey_login");
       loginModal.close();
     } catch (error) {
       log.error(COMPONENT_NAME, "Passkey login failed", error);
-      window.showErrorToast("Login failed", (error as Error).message);
     }
   });
 
   btnRegisterWebAuthN?.addEventListener("click", async () => {
+    const {checkPasskeyAvailability} = await getAuth();
     if (!(await checkPasskeyAvailability())) {
       window.showErrorToast(
         "Passkey not supported",
@@ -451,13 +462,14 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
 
   btnConfirmRegister?.addEventListener("click", async () => {
     try {
+      const {signUpWithPasskey} = await getAuth();
       await signUpWithPasskey(registerNickname?.value || "PassKey");
+      const trackLogin = await getAnalytics();
       trackLogin("passkey_signup");
       registerModal?.close();
       loginModal.close();
     } catch (error) {
       log.error(COMPONENT_NAME, "Passkey registration failed", error);
-      window.showErrorToast("Registration failed", (error as Error).message);
     }
   });
 
@@ -478,14 +490,17 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
   });
 
   // Modal Open Trigger / Action Trigger
-  loginButton?.addEventListener("click", () => {
+  loginButton?.addEventListener("click", async () => {
     const state = getAuthState();
     if (state.isAuthenticated) {
       // Block guests who have exhausted daily sessions
-      if (state.isGuest && isGuestRateLimited()) {
-        log.info(COMPONENT_NAME, "Guest rate limit reached, showing modal");
-        guestLimitModal?.showModal();
-        return;
+      if (state.isGuest) {
+        const isGuestRateLimited = await getGuestRateLimit();
+        if (isGuestRateLimited()) {
+          log.info(COMPONENT_NAME, "Guest rate limit reached, showing modal");
+          guestLimitModal?.showModal();
+          return;
+        }
       }
       window.location.href = "/game";
     } else {
@@ -494,6 +509,7 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
   });
 
   btnLogout?.addEventListener("click", async () => {
+    const {handleSignOut} = await getAuth();
     await handleSignOut();
   });
 

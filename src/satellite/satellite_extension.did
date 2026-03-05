@@ -39,4 +39,7 @@ service : {
   // Returns the `error_id` (e.g. "err_1772598984825320076") which is also the
   // Juno document key. Users give this to support; admins filter by it.
   report_error : (ErrorPayload) -> (Result_3);
+  // Toggle the resolved status of a single error record. Admin-only.
+  // Fetches the current document version for optimistic concurrency before writing.
+  resolve_error : (text, bool) -> (Result_1);
 }

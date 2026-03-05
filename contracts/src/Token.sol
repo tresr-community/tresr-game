@@ -17,6 +17,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
  *        - renounceTokenOwnership()
  *
  *      Differences from real TRESR (intentional):
+ *        - Name and symbol are passed at deploy time (not hard-coded)
  *        - Owner can mint additional supply for faucet funding
  *        - Uses OZ v5 _update() instead of OZ v4 _beforeTokenTransfer()
  */
@@ -26,7 +27,12 @@ contract RonToken is ERC20, Ownable, ERC20Burnable {
     // 1% of TRESR will be put into the LP, 1% of the LP can be purchased
     uint256 public constant initialLimit = 100 * 100;
 
-    constructor(address initialOwner) ERC20("Ron Token", "tRON") Ownable(initialOwner) {
+    /// @param tokenName  Full token name, e.g. "Ron Token" (anvil/testnet) or "TRESR" (mainnet).
+    /// @param tokenSymbol Token ticker, e.g. "tRON" (anvil/testnet) or "TRESR" (mainnet).
+    constructor(address initialOwner, string memory tokenName, string memory tokenSymbol)
+        ERC20(tokenName, tokenSymbol)
+        Ownable(initialOwner)
+    {
         // Match real TRESR initial supply
         _mint(initialOwner, 468_541_325 ether);
     }

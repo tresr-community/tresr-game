@@ -12,8 +12,9 @@
 
 import {createPublicClient, http, fallback} from "viem";
 import type {TransactionReceipt, PublicClient} from "viem";
-import {getTargetChain, getEnvironmentKey} from "./avalanche";
+import {getTargetChain, getEnvironmentKey} from "./networks/chain";
 import {config} from "../config/client";
+import type {ConfigTypes} from "@/types/config";
 import {log} from "../utils/log";
 
 const COMPONENT_NAME = "Tx";
@@ -38,15 +39,18 @@ function buildDirectClient(): PublicClient {
     return cachedClient;
   }
 
-  const chainConfig = config.blockchain.avalanche[env];
+  const chainConfig =
+    config.blockchain.avalanche[
+      env as keyof ConfigTypes["blockchain"]["avalanche"]
+    ];
   const chain = getTargetChain(chainConfig.rpc_urls[0]);
 
-  const transports = chainConfig.rpc_urls.map((url) => http(url));
+  const transports = chainConfig.rpc_urls.map((url: string) => http(url));
 
   cachedClient = createPublicClient({
     chain,
     transport: fallback(transports),
-  }) as PublicClient;
+  }) as unknown as PublicClient;
   cachedEnv = env;
 
   return cachedClient;
@@ -56,10 +60,11 @@ function buildDirectClient(): PublicClient {
  * Confirm a transaction receipt via direct RPC polling.
  *
  * Creates a viem public client pointed at the configured RPC URL and
- * polls for the receipt there. Uses environment-aware confirmation counts:
+ * polls for the receipt. Uses environment-aware confirmation counts:
  * 0 for local/anvil, 1 for testnet/Fuji, and 2 for production/Mainnet.
- * Resolving with 0 confirmations is critical for Anvil's auto-mine mode
- * where no additional blocks are produced after a transaction.
+ *
+ * pollingInterval is fixed at 100 ms so that Anvil auto-mined transactions
+ * are caught on the very first poll without any env-specific code paths.
  *
  * Throws if the transaction reverts on-chain or if the timeout elapses.
  *
@@ -74,11 +79,6 @@ export async function confirmReceipt(
 ): Promise<TransactionReceipt> {
   if (!config.wallet.tx_timeout_ms) {
     throw new Error("Missing required config value: wallet.tx_timeout_ms");
-  }
-  if (!config.wallet.tx_polling_interval_ms) {
-    throw new Error(
-      "Missing required config value: wallet.tx_polling_interval_ms"
-    );
   }
   const timeout = options?.timeout ?? config.wallet.tx_timeout_ms;
   const component = options?.component ?? COMPONENT_NAME;
@@ -97,11 +97,13 @@ export async function confirmReceipt(
     hash
   );
 
+  // pollingInterval of 100ms catches Anvil auto-mined receipts on the first
+  // poll and is fast enough for testnet/mainnet — no env-specific branches.
   const client = buildDirectClient();
   const receipt = await client.waitForTransactionReceipt({
     hash,
     timeout,
-    pollingInterval: config.wallet.tx_polling_interval_ms,
+    pollingInterval: 100,
     confirmations,
   });
 

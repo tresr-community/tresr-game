@@ -67,7 +67,9 @@ export function showToast(
       }
       if (typeof window !== "undefined" && window.showWarningToast) {
         try {
-          window.showWarningToast(`${component}: ${message}`, details || "");
+          // Never pass raw technical details to the notification bell.
+          // Warning labels are enough for users; details stay in the console.
+          window.showWarningToast(`${component}: ${message}`);
         } catch (e) {
           console.error(
             `[${component}] [ERROR] Failed to show warning toast`,
@@ -140,7 +142,9 @@ export const log = {
             try {
               window.showErrorToast(
                 `${component}: ${message}`,
-                details || undefined,
+                // Never expose raw technical details in the notification bell —
+                // users quote the errorId to devs; devs read the console/canister.
+                errorId ? undefined : "Contact support for assistance.",
                 errorId ?? undefined
               );
             } catch (toastErr) {

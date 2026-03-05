@@ -33,11 +33,35 @@ use junobuild_macros::{
 };
 #[allow(clippy::single_component_path_imports)]
 use junobuild_satellite::{
-    AssertDeleteDocContext, AssertSetDocContext, DelDoc, OnDeleteAssetContext, OnDeleteDocContext,
-    OnDeleteManyAssetsContext, OnDeleteManyDocsContext, OnSetDocContext, OnSetManyDocsContext,
-    OnUploadAssetContext, SetDoc, delete_doc_store, get_doc_store, include_satellite,
-    list_docs_store, set_doc_store,
+    AssertDeleteDocContext, AssertSetDocContext, DelDoc, DocContext, DocUpsert,
+    OnDeleteAssetContext, OnDeleteDocContext, OnDeleteManyAssetsContext, OnDeleteManyDocsContext,
+    OnSetDocContext, OnSetManyDocsContext, OnUploadAssetContext, SetDoc, delete_doc_store,
+    get_doc_store, include_satellite, list_docs_store, set_doc_store as juno_set_doc_store,
 };
+
+/// Wrapper around Juno's `set_doc_store` that automatically logs write errors to the console.
+/// Ensures we never silently fail on permission or logic errors on background database operations (e.g. cron syncs).
+fn set_doc_store(
+    caller: candid::Principal,
+    collection: String,
+    key: String,
+    doc: SetDoc,
+) -> Result<DocContext<DocUpsert>, String> {
+    match juno_set_doc_store(caller, collection.clone(), key.clone(), doc) {
+        Ok(res) => Ok(res),
+        Err(e) => {
+            crate::logging::log_error(
+                "Datastore",
+                &format!(
+                    "CRITICAL: Failed to write to collection '{}' with key '{}': {}",
+                    collection, key, e
+                ),
+            );
+            // Return exactly what juno_set_doc_store does
+            Err(e)
+        }
+    }
+}
 use junobuild_shared::types::list::ListParams;
 use junobuild_utils::{decode_doc_data, encode_doc_data};
 use libsecp256k1::{Message, RecoveryId, Signature, recover};
@@ -47,7 +71,7 @@ use std::cell::RefCell;
 
 use types::{
     BalanceRefreshRequest, ClaimRequest, ClaimStatus, ErrorPayload, ErrorRecord, FeeRequest,
-    FeeStatus, GameSession, GlobalStats, LeaderboardEntry, RefreshStatus, UserProfile,
+    FeeStatus, GameSession, LeaderboardEntry, RefreshStatus, UserProfile,
 };
 
 /// Cached top active scorer to avoid full leaderboard scans on every session completion.
@@ -420,7 +444,7 @@ fn assert_game_session(context: &AssertSetDocContext) -> Result<(), String> {
 
 /// Per-collection delete policy.
 /// Allow deletion for ephemeral / user-managed data; block for financial audit trails.
-#[assert_delete_doc(collections = ["users", "audit", "scores", "economy", "balance_refresh"])]
+#[assert_delete_doc(collections = ["users", "audit", "scores", "balance_refresh"])]
 fn assert_delete_doc(context: AssertDeleteDocContext) -> Result<(), String> {
     match context.data.collection.as_str() {
         // Users: allow self-deletion (e.g. account removal)
@@ -430,7 +454,7 @@ fn assert_delete_doc(context: AssertDeleteDocContext) -> Result<(), String> {
         // Balance refresh: ephemeral, allow cleanup
         "balance_refresh" => Ok(()),
         // Financial / game session data — block to preserve audit trail
-        "audit" | "economy" => {
+        "audit" => {
             let msg = format!(
                 "Deletion blocked for collection '{}' — audit trail must be preserved",
                 context.data.collection
@@ -693,54 +717,13 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                 updated_doc,
             )?;
 
-            // Credit verified fee to user's wallet balance.
-            // Re-read the user doc to get the latest version — the frontend may
-            // have written a newer version during the async EVM RPC verification
-            // (the original read at line 489 can be seconds stale by now).
-            let fresh_user_doc =
-                get_doc_store(context.caller, "users".to_string(), user_key.clone())?;
-            if let Some(fresh_doc) = fresh_user_doc {
-                let mut user_profile: UserProfile = decode_doc_data(&fresh_doc.data)?;
-                user_profile.wallet.balance = user_profile
-                    .wallet
-                    .balance
-                    .checked_add(verified_amount)
-                    .ok_or("Balance overflow on deposit credit")?;
-                let updated_user = SetDoc {
-                    data: encode_doc_data(&user_profile)?,
-                    description: fresh_doc.description.clone(),
-                    version: fresh_doc.version,
-                };
-                set_doc_store(
-                    context.caller,
-                    "users".to_string(),
-                    user_key.clone(),
-                    updated_user,
-                )?;
-                logging::log_info(
-                    "Fees",
-                    &format!(
-                        "Fee verified: {} tokens for user {}. New balance: {}",
-                        verified_amount, user_key, user_profile.wallet.balance
-                    ),
-                );
-            } else {
-                logging::log_warn(
-                    "Fees",
-                    &format!(
-                        "Fee verified but user profile not found for {}",
-                        context.caller.to_text()
-                    ),
-                );
-            }
-
-            // Update global stats: track total fees and burned amount
-            let burn_amount = (verified_amount * config::BURN_RATE_BPS) / 10000;
-            update_global_stats(|stats| {
-                stats.total_fees += verified_amount;
-                stats.total_collected += verified_amount; // Track total fees collected forever
-                stats.total_burned += burn_amount;
-            })?;
+            logging::log_info(
+                "Fees",
+                &format!(
+                    "Fee verified: {} tokens for user {}",
+                    verified_amount, user_key
+                ),
+            );
         }
         Err(e) => {
             // Mark fee as failed
@@ -767,39 +750,14 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
     Ok(())
 }
 
-/// Update global stats atomically (read-modify-write).
-/// Uses `ic_cdk::id()` as caller for the `write: "managed"` economy collection.
-fn update_global_stats<F: FnOnce(&mut GlobalStats)>(updater: F) -> Result<(), String> {
-    let canister_id = ic_cdk::id();
-    let key = "global".to_string();
-
-    let existing_doc = get_doc_store(canister_id, "economy".to_string(), key.clone())
-        .ok()
-        .flatten();
-    let existing_version = existing_doc.as_ref().and_then(|d| d.version);
-
-    let mut stats = existing_doc
-        .and_then(|doc| decode_doc_data::<GlobalStats>(&doc.data).ok())
-        .unwrap_or_default();
-
-    updater(&mut stats);
-
-    let doc = SetDoc {
-        data: encode_doc_data(&stats)?,
-        description: Some("Global burn/payout stats".to_string()),
-        version: existing_version,
-    };
-
-    set_doc_store(canister_id, "economy".to_string(), key, doc)?;
-
-    logging::log_info(
-        "Economy",
-        &format!(
-            "[Economy] Updated collection economy (global) with total_collected={}, total_rewarded={}, total_burned={}",
-            stats.total_collected, stats.total_rewarded, stats.total_burned
-        ),
-    );
-    Ok(())
+/// Helper to get the first configured admin principal, falling back to canister_id.
+/// Used to bypass `managed` collection permissions when the canister needs to write.
+fn admin_caller() -> candid::Principal {
+    if let Some(admin) = crate::config::ADMIN_PRINCIPALS.first() {
+        candid::Principal::from_text(admin).unwrap_or(ic_cdk::id())
+    } else {
+        ic_cdk::id()
+    }
 }
 
 /// Generate ECDSA signature for claim authorization using IC threshold ECDSA.
@@ -1101,11 +1059,6 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
         claim.status = ClaimStatus::Completed;
 
         update_claim_doc(&context, &claim).await?;
-
-        // Update global stats: track total rewards paid out
-        update_global_stats(|stats| {
-            stats.total_rewarded += claim.amount;
-        })?;
 
         logging::log_info(
             "Claims",
@@ -1438,8 +1391,21 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         return Ok(());
     }
 
-    // Calculate consolation amount (use fixed max for simplicity, avoiding expensive vault query)
-    let consolation_amount = config::CONSOLATION_PRIZE_MAX;
+    // Calculate consolation amount (dynamically 1% of vault balance)
+    let vault_balance = match evm_rpc::get_vault_balance().await {
+        Ok(bal) => bal,
+        Err(e) => {
+            logging::log_error(
+                "Consolation",
+                &format!("Failed to get vault balance for consolation prize: {}", e),
+            );
+            // Rather than crash, we can safely return here. The active scorer cache
+            // won't be cleared, so it will simply retry on the next game loop/check.
+            return Ok(());
+        }
+    };
+    let consolation_amount =
+        ((vault_balance as u128 * config::CONSOLATION_PRIZE_PERCENT as u128) / 100) as u64;
 
     // Create consolation claim
     let claim_key = format!("consolation_{}_{}", winner_key, now_ms);
@@ -1532,8 +1498,8 @@ async fn resolve_expired_top_score() -> Result<(), String> {
 /// Returns None if no cache document exists (no one has scored yet).
 /// This is an O(1) single-document read, replacing the previous O(N) full scan.
 fn load_persisted_top_scorer() -> Result<Option<TopScorerCache>, String> {
-    let canister_id = ic_cdk::id();
-    let doc = get_doc_store(canister_id, "scores".to_string(), "top_scorer".to_string())
+    let admin = admin_caller();
+    let doc = get_doc_store(admin, "scores".to_string(), "top_scorer".to_string())
         .ok()
         .flatten();
 
@@ -1561,13 +1527,12 @@ fn load_persisted_top_scorer() -> Result<Option<TopScorerCache>, String> {
 /// Persist the top scorer cache to the datastore for cold-start recovery.
 /// Uses the `scores` collection with key `top_scorer`.
 fn persist_top_scorer_cache(cache: &TopScorerCache) -> Result<(), String> {
-    let canister_id = ic_cdk::id();
+    let admin = admin_caller();
 
-    let existing_version =
-        get_doc_store(canister_id, "scores".to_string(), "top_scorer".to_string())
-            .ok()
-            .flatten()
-            .and_then(|d| d.version);
+    let existing_version = get_doc_store(admin, "scores".to_string(), "top_scorer".to_string())
+        .ok()
+        .flatten()
+        .and_then(|d| d.version);
 
     let cache_doc = TopScorerCacheDoc {
         key: cache.key.clone(),
@@ -1583,12 +1548,7 @@ fn persist_top_scorer_cache(cache: &TopScorerCache) -> Result<(), String> {
         version: existing_version,
     };
 
-    set_doc_store(
-        canister_id,
-        "scores".to_string(),
-        "top_scorer".to_string(),
-        doc,
-    )?;
+    set_doc_store(admin, "scores".to_string(), "top_scorer".to_string(), doc)?;
 
     logging::log_info(
         "Scores",
@@ -1603,12 +1563,11 @@ fn persist_top_scorer_cache(cache: &TopScorerCache) -> Result<(), String> {
 /// Clear the persisted top scorer cache (e.g., after consolation prize awarded).
 fn clear_persisted_top_scorer_cache() {
     // Write an empty/zeroed entry rather than deleting, to avoid needing delete_doc_store
-    let canister_id = ic_cdk::id();
-    let existing_version =
-        get_doc_store(canister_id, "scores".to_string(), "top_scorer".to_string())
-            .ok()
-            .flatten()
-            .and_then(|d| d.version);
+    let admin = admin_caller();
+    let existing_version = get_doc_store(admin, "scores".to_string(), "top_scorer".to_string())
+        .ok()
+        .flatten()
+        .and_then(|d| d.version);
 
     let empty = TopScorerCacheDoc {
         key: String::new(),
@@ -1624,12 +1583,7 @@ fn clear_persisted_top_scorer_cache() {
         version: existing_version,
     };
 
-    let _ = set_doc_store(
-        canister_id,
-        "scores".to_string(),
-        "top_scorer".to_string(),
-        doc,
-    );
+    let _ = set_doc_store(admin, "scores".to_string(), "top_scorer".to_string(), doc);
 }
 
 /// Clear the expires_at on a scores entry to prevent re-processing.
@@ -1886,40 +1840,11 @@ async fn claim_authorize(
         return Err("Low pot".to_string());
     }
 
-    // 4. Verify replay
-    // TODO(#171): Replace with real deterministic replay verification engine
-    // For now, use stub that trusts reported values
-    let (verified_keys, boss_killed) = replay_verify_stub(
-        &replay_inputs,
-        vault_balance,
-        reported_keys,
-        session.boss_defeated,
-    )
-    .await?;
-    if verified_keys != reported_keys || !boss_killed {
-        // Cheat detected — apply ban
-        apply_ban(&mut user_profile);
-        let ban_doc = SetDoc {
-            data: encode_doc_data(&user_profile)?,
-            description: Some("Ban applied: replay validation failure".to_string()),
-            version: user_doc_version,
-        };
-        set_doc_store(caller, "users".to_string(), caller_text.clone(), ban_doc)?;
+    // 4. Parse and plausibility-check the replay input log (#171 Phase 1)
+    // Reported keys are still trusted; Phase 2 will derive them from the log.
+    let actions = extract_action_log(&replay_inputs)?;
+    replay_verify_plausibility(&actions)?;
 
-        logging::log_error(
-            "AntiCheat",
-            &format!(
-                "CHEAT_DETECTED: replay invalid for user {}. Offence #{}, banned_until={:?}",
-                caller_text, user_profile.offence_count, user_profile.banned_until
-            ),
-        );
-
-        return Err(format!(
-            "CHEAT_DETECTED: Replay invalid. Offence #{}, banned_until={}",
-            user_profile.offence_count,
-            user_profile.banned_until.unwrap_or(0)
-        ));
-    }
     if reported_keys > config::MAX_KEYS_COLLECTED {
         // Cheat detected — apply ban
         apply_ban(&mut user_profile);
@@ -1947,14 +1872,39 @@ async fn claim_authorize(
     }
 
     // 5. Calc amount — integer-only arithmetic (no f64 precision loss)
-    // perf_mult = (reported_keys / MAX_KEYS) * 0.5
-    // => max_perf = vault_balance * reported_keys * 50 / (MAX_KEYS * 100)
-    let max_perf = vault_balance
-        .checked_mul(reported_keys as u128)
-        .and_then(|v| v.checked_mul(50))
-        .map(|v| v / (config::MAX_KEYS_COLLECTED as u128 * 100))
+    // Determine maximum possible payout for this vault tier
+    let vault_tier_building = (config::VAULT_TIER_BUILDING as u128) * 1_000_000_000_000_000_000u128;
+    let vault_tier_sweet_spot =
+        (config::VAULT_TIER_SWEET_SPOT as u128) * 1_000_000_000_000_000_000u128;
+    let vault_tier_fomo = (config::VAULT_TIER_FOMO as u128) * 1_000_000_000_000_000_000u128;
+
+    let max_payout = if vault_balance <= vault_tier_building {
+        (config::PAYOUT_FIXED_BUILDING as u128) * 1_000_000_000_000_000_000u128
+    } else if vault_balance <= vault_tier_sweet_spot {
+        vault_balance
+            .checked_mul(config::PAYOUT_PERCENT_SWEET_SPOT as u128)
+            .map(|v| v / 100)
+            .unwrap_or(0)
+    } else if vault_balance <= vault_tier_fomo {
+        vault_balance
+            .checked_mul(config::PAYOUT_PERCENT_FOMO as u128)
+            .map(|v| v / 100)
+            .unwrap_or(0)
+    } else {
+        vault_balance
+            .checked_mul(config::PAYOUT_PERCENT_LEGENDARY as u128)
+            .map(|v| v / 100)
+            .unwrap_or(0)
+    };
+
+    // Calculate performance multiplier based on score
+    // perf_mult = session.score / MAX_SCORE
+    // => max_perf = max_payout * session.score / MAX_SCORE
+    let max_perf = max_payout
+        .checked_mul(session.score as u128)
+        .map(|v| v / (config::MAX_SCORE as u128))
         .unwrap_or(0)
-        .min(vault_balance / 2);
+        .min(vault_balance / 2); // safety cap: never drain more than 50%
     let guaranteed = fee_amount
         .checked_mul(11)
         .map(|v| v / 10)
@@ -2008,16 +1958,117 @@ async fn claim_authorize(
     Ok((amount, signature_bytes))
 }
 
-/// Replay verification stub — trusts reported values until the real replay engine is implemented.
-/// TODO(#171): Replace with deterministic game replay engine that parses `_inputs` to independently
-/// verify keys collected and boss defeat.
-async fn replay_verify_stub(
-    _inputs: &[u8],
-    _pot: u128,
-    reported_keys: u64,
-    boss_defeated: bool,
-) -> Result<(u64, bool), String> {
-    Ok((reported_keys, boss_defeated))
+/// A single player action as recorded by the TypeScript Recorder class.
+/// Mirrors `GameAction` in `src/lib/game/Recorder.ts`.
+#[derive(serde::Deserialize)]
+struct GameAction {
+    /// Relative timestamp in milliseconds since session start.
+    t: u64,
+    /// Action identifier — one of the VALID_ACTIONS set in the TS Recorder.
+    a: String,
+}
+
+/// Parse the JSON action log from the front of the binary replay payload (#171).
+///
+/// Payload format (same as `extract_config_hash`):
+///   [4B input_len][JSON action log][64B config hash][4B seed_len][seed]
+///
+/// Returns the deserialized action list, or an error if the payload is malformed.
+fn extract_action_log(payload: &[u8]) -> Result<Vec<GameAction>, String> {
+    if payload.len() < 4 {
+        return Err("Payload too short: missing input length".to_string());
+    }
+    let input_len = u32::from_be_bytes(
+        payload[0..4]
+            .try_into()
+            .map_err(|_| "Failed to read input length")?,
+    ) as usize;
+    let json_end = 4 + input_len;
+    if payload.len() < json_end {
+        return Err(format!(
+            "Payload too short for action log: need {} bytes, have {}",
+            json_end,
+            payload.len()
+        ));
+    }
+    let json_bytes = &payload[4..json_end];
+    let actions: Vec<GameAction> = serde_json::from_slice(json_bytes)
+        .map_err(|e| format!("Invalid action log JSON: {}", e))?;
+    Ok(actions)
+}
+
+/// Phase 1 plausibility checks — guards against automated submissions and obvious cheating (#171).
+///
+/// Checks:
+/// 1. Action count ≤ REPLAY_MAX_ACTIONS (matches Recorder::MAX_ACTIONS).
+/// 2. No two consecutive events < REPLAY_MIN_ACTION_GAP_MS apart (< 1 browser frame).
+/// 3. Consecutive `attack` events not faster than REPLAY_MIN_ATTACK_GAP_MS.
+/// 4. Last event timestamp ≤ TIME_LIMIT_MS + REPLAY_GRACE_MS.
+///
+/// Reported keys are still trusted in Phase 1 (physics replay is Phase 2).
+fn replay_verify_plausibility(actions: &[GameAction]) -> Result<(), String> {
+    // 1. Action count sanity
+    if actions.len() as u64 > config::REPLAY_MAX_ACTIONS {
+        return Err(format!(
+            "CHEAT_DETECTED: action count {} exceeds cap {}",
+            actions.len(),
+            config::REPLAY_MAX_ACTIONS
+        ));
+    }
+
+    let max_duration_ms = config::TIME_LIMIT_MS + config::REPLAY_GRACE_MS;
+    let mut last_attack_t: Option<u64> = None;
+
+    for i in 0..actions.len() {
+        let action = &actions[i];
+
+        // 4. Total duration — any action beyond max session window is suspicious
+        if action.t > max_duration_ms {
+            return Err(format!(
+                "CHEAT_DETECTED: action timestamp {}ms exceeds max session duration {}ms",
+                action.t, max_duration_ms
+            ));
+        }
+
+        // 2. Minimum gap between consecutive actions (catch sub-frame injection)
+        if i > 0 {
+            let prev_t = actions[i - 1].t;
+            if action.t < prev_t {
+                return Err(format!(
+                    "CHEAT_DETECTED: action timestamps not monotonic at index {} ({} < {})",
+                    i, action.t, prev_t
+                ));
+            }
+            let gap = action.t - prev_t;
+            if gap < config::REPLAY_MIN_ACTION_GAP_MS {
+                return Err(format!(
+                    "CHEAT_DETECTED: actions at index {} and {} are {}ms apart (min {}ms)",
+                    i - 1,
+                    i,
+                    gap,
+                    config::REPLAY_MIN_ACTION_GAP_MS
+                ));
+            }
+        }
+
+        // 3. Attack rate limit
+        if action.a == "attack" {
+            if let Some(prev_attack_t) = last_attack_t {
+                let gap = action.t.saturating_sub(prev_attack_t);
+                if gap < config::REPLAY_MIN_ATTACK_GAP_MS {
+                    return Err(format!(
+                        "CHEAT_DETECTED: attack at {}ms is only {}ms after previous attack (min {}ms)",
+                        action.t,
+                        gap,
+                        config::REPLAY_MIN_ATTACK_GAP_MS
+                    ));
+                }
+            }
+            last_attack_t = Some(action.t);
+        }
+    }
+
+    Ok(())
 }
 
 /// Parse the binary replay payload to extract the config hash (#41).
@@ -2117,7 +2168,7 @@ fn report_error(payload: ErrorPayload) -> Result<String, String> {
         resolved: false,
     };
 
-    let canister_id = ic_cdk::id();
+    let admin = admin_caller();
     let doc = SetDoc {
         data: encode_doc_data(&record)?,
         description: Some(format!(
@@ -2128,7 +2179,7 @@ fn report_error(payload: ErrorPayload) -> Result<String, String> {
     };
 
     // Store with error_id as key — it is both the doc key and the user-facing code
-    set_doc_store(canister_id, "errors".to_string(), error_id.clone(), doc)?;
+    set_doc_store(admin, "errors".to_string(), error_id.clone(), doc)?;
 
     logging::log_info(
         "Errors",
@@ -2150,7 +2201,7 @@ fn get_errors() -> Result<Vec<ErrorRecord>, String> {
         return Err("Unauthorized: admin access required".to_string());
     }
 
-    let canister_id = ic_cdk::id();
+    let admin = admin_caller();
     let params = ListParams {
         matcher: None,
         order: None,
@@ -2158,7 +2209,7 @@ fn get_errors() -> Result<Vec<ErrorRecord>, String> {
         owner: None,
     };
 
-    let result = list_docs_store(canister_id, "errors".to_string(), &params)
+    let result = list_docs_store(admin, "errors".to_string(), &params)
         .map_err(|e| format!("Failed to list errors: {}", e))?;
 
     let records: Vec<ErrorRecord> = result
@@ -2182,14 +2233,24 @@ fn delete_errors(keys: Vec<String>) -> Result<(), String> {
         return Err("Unauthorized: admin access required".to_string());
     }
 
-    let canister_id = ic_cdk::id();
+    let admin = admin_caller();
     for key in &keys {
-        // delete_doc_store returns Ok(()) if doc doesn't exist — idempotent
+        // Juno requires the current version on delete; fetch it first.
+        // If the doc doesn't exist, skip it (idempotent).
+        let existing = get_doc_store(admin, "errors".to_string(), key.clone())
+            .map_err(|e| format!("Failed to fetch error {}: {}", key, e))?;
+
+        let Some(doc) = existing else {
+            continue;
+        };
+
         delete_doc_store(
-            canister_id,
+            admin,
             "errors".to_string(),
             key.clone(),
-            DelDoc { version: None },
+            DelDoc {
+                version: doc.version,
+            },
         )
         .map_err(|e| format!("Failed to delete error {}: {}", key, e))?;
     }
@@ -2200,6 +2261,201 @@ fn delete_errors(keys: Vec<String>) -> Result<(), String> {
     );
 
     Ok(())
+}
+
+/// Toggle the resolved status of a single error record. Admin-only.
+/// Fetches the current document version for optimistic concurrency before writing.
+#[update]
+fn resolve_error(error_id: String, resolved: bool) -> Result<(), String> {
+    let caller = ic_cdk::caller().to_text();
+    if !config::ADMIN_PRINCIPALS.contains(&caller.as_str()) {
+        return Err("Unauthorized: admin access required".to_string());
+    }
+
+    let admin = admin_caller();
+
+    // Fetch existing doc so we can read the current version (optimistic concurrency)
+    let existing = get_doc_store(admin, "errors".to_string(), error_id.clone())
+        .map_err(|e| format!("Failed to fetch error {}: {}", error_id, e))?
+        .ok_or_else(|| format!("Error not found: {}", error_id))?;
+
+    let existing_version = existing.version;
+    let mut record: ErrorRecord = decode_doc_data(&existing.data)
+        .map_err(|e| format!("Failed to decode error record: {}", e))?;
+
+    record.resolved = resolved;
+
+    let doc = SetDoc {
+        data: encode_doc_data(&record)?,
+        description: Some(format!(
+            "Admin {} error {}",
+            if resolved { "resolved" } else { "reopened" },
+            error_id
+        )),
+        version: existing_version,
+    };
+
+    set_doc_store(admin, "errors".to_string(), error_id.clone(), doc)?;
+
+    logging::log_info(
+        "Errors",
+        &format!(
+            "Error {} marked as resolved={} by admin",
+            error_id, resolved
+        ),
+    );
+
+    Ok(())
+}
+
+// =============================================================================
+// Replay verification tests (#171)
+// =============================================================================
+
+#[cfg(test)]
+mod replay_tests {
+    use super::*;
+
+    /// Build a minimal length-prefixed payload from a JSON action log string.
+    fn make_payload(json: &str) -> Vec<u8> {
+        let json_bytes = json.as_bytes();
+        let input_len = json_bytes.len() as u32;
+        // Pad with 64-byte dummy config hash + 4-byte seed len + dummy seed
+        let mut payload = Vec::new();
+        payload.extend_from_slice(&input_len.to_be_bytes());
+        payload.extend_from_slice(json_bytes);
+        payload
+            .extend_from_slice(b"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"); // 64-char hex
+        payload.extend_from_slice(&4u32.to_be_bytes()); // seed len
+        payload.extend_from_slice(b"1234"); // seed
+        payload
+    }
+
+    fn action(t: u64, a: &str) -> String {
+        format!(r#"{{"t":{},"a":"{}"}}"#, t, a)
+    }
+
+    fn actions_json(items: &[(u64, &str)]) -> String {
+        let parts: Vec<String> = items.iter().map(|(t, a)| action(*t, a)).collect();
+        format!("[{}]", parts.join(","))
+    }
+
+    #[test]
+    fn test_extract_action_log_valid() {
+        let json = actions_json(&[(0, "jump"), (500, "move_right"), (1000, "attack")]);
+        let payload = make_payload(&json);
+        let actions = extract_action_log(&payload).unwrap();
+        assert_eq!(actions.len(), 3);
+        assert_eq!(actions[0].t, 0);
+        assert_eq!(actions[0].a, "jump");
+        assert_eq!(actions[2].a, "attack");
+    }
+
+    #[test]
+    fn test_extract_action_log_malformed_json() {
+        let payload = make_payload("not-json");
+        let result = extract_action_log(&payload);
+        assert!(result.is_err(), "Expected error on malformed JSON");
+    }
+
+    #[test]
+    fn test_replay_plausibility_ok() {
+        // Valid session: 3 actions spread over 3 seconds
+        let actions: Vec<GameAction> = vec![
+            GameAction {
+                t: 0,
+                a: "jump".to_string(),
+            },
+            GameAction {
+                t: 500,
+                a: "move_right".to_string(),
+            },
+            GameAction {
+                t: 1000,
+                a: "attack".to_string(),
+            },
+        ];
+        assert!(replay_verify_plausibility(&actions).is_ok());
+    }
+
+    #[test]
+    fn test_replay_plausibility_sub_frame_gap() {
+        // Two events 10ms apart (below 16ms minimum)
+        let actions: Vec<GameAction> = vec![
+            GameAction {
+                t: 0,
+                a: "jump".to_string(),
+            },
+            GameAction {
+                t: 10,
+                a: "move_right".to_string(),
+            },
+        ];
+        let result = replay_verify_plausibility(&actions);
+        assert!(result.is_err(), "Expected error for sub-frame gap");
+        assert!(result.unwrap_err().contains("CHEAT_DETECTED"));
+    }
+
+    #[test]
+    fn test_replay_plausibility_attack_too_fast() {
+        // Two attack events 100ms apart (below 200ms minimum)
+        let actions: Vec<GameAction> = vec![
+            GameAction {
+                t: 0,
+                a: "attack".to_string(),
+            },
+            GameAction {
+                t: 100,
+                a: "attack".to_string(),
+            },
+        ];
+        let result = replay_verify_plausibility(&actions);
+        assert!(result.is_err(), "Expected error for rapid attack");
+        assert!(result.unwrap_err().contains("CHEAT_DETECTED"));
+    }
+
+    #[test]
+    fn test_replay_plausibility_exceeds_duration() {
+        // Action at TIME_LIMIT_MS + REPLAY_GRACE_MS + 1ms
+        let too_late = config::TIME_LIMIT_MS + config::REPLAY_GRACE_MS + 1;
+        let actions: Vec<GameAction> = vec![
+            GameAction {
+                t: 0,
+                a: "jump".to_string(),
+            },
+            GameAction {
+                t: too_late,
+                a: "move_right".to_string(),
+            },
+        ];
+        let result = replay_verify_plausibility(&actions);
+        assert!(
+            result.is_err(),
+            "Expected error for out-of-bounds timestamp"
+        );
+        assert!(result.unwrap_err().contains("CHEAT_DETECTED"));
+    }
+
+    #[test]
+    fn test_replay_plausibility_non_monotonic() {
+        // Timestamp decreases — clear sign of manipulation
+        let actions: Vec<GameAction> = vec![
+            GameAction {
+                t: 1000,
+                a: "jump".to_string(),
+            },
+            GameAction {
+                t: 500,
+                a: "move_right".to_string(),
+            },
+        ];
+        let result = replay_verify_plausibility(&actions);
+        assert!(
+            result.is_err(),
+            "Expected error for non-monotonic timestamps"
+        );
+        assert!(result.unwrap_err().contains("CHEAT_DETECTED"));
+    }
 }
 
 // =============================================================================

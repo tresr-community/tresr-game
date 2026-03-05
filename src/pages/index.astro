@@ -29,7 +29,7 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
   >
   </div>
 
-  <div id="main-content" class="opacity-0 transition-opacity duration-1000">
+  <div id="main-content" class="transition-opacity duration-1000">
     <div
       class="hero relative flex min-h-dvh flex-col justify-end pb-8 md:justify-center md:pb-12"
     >
@@ -90,26 +90,32 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
       class="tooltip tooltip-right fixed bottom-8 left-8 z-30"
       data-tip="Leaderboard"
     >
-      <button
+      <a
         id="btn-leaderboard"
+        href="#leaderboard"
+        role="button"
+        aria-label="Open Leaderboard"
         class="btn btn-ghost text-primary hover:bg-primary/10 hover:border-primary/50 gap-2 border border-transparent font-mono"
       >
         <span class="text-xl">🏆</span>
         <span class="hidden lg:inline">LEADERBOARD</span>
-      </button>
+      </a>
     </div>
 
     <div
       class="tooltip tooltip-left fixed right-8 bottom-8 z-30"
       data-tip="Manual"
     >
-      <button
+      <a
         id="btn-manual"
+        href="#manual"
+        role="button"
+        aria-label="Open Game Manual"
         class="btn btn-ghost text-primary hover:bg-primary/10 hover:border-primary/50 gap-2 border border-transparent font-mono"
       >
         <span class="hidden lg:inline">MANUAL</span>
         <span class="text-xl">❓</span>
-      </button>
+      </a>
     </div>
 
     <Footer />
@@ -169,9 +175,9 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
     }
   }
 
-  // Handle fade-in after loader
+  // Handle fade-in after loader — no-op now (opacity-0 removed for FCP/LCP)
   function handleLoaderReady() {
-    document.getElementById("main-content")?.classList.remove("opacity-0");
+    // Content is already visible; Loader overlay fades out independently
   }
   window.addEventListener("loader-ready", handleLoaderReady);
 

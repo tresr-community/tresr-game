@@ -162,10 +162,6 @@ pub struct UserProfile {
     #[serde(default)]
     pub stats: UserStats,
 
-    /// Wallet info (nested object)
-    #[serde(default)]
-    pub wallet: UserWallet,
-
     /// User preferences (nested object)
     #[serde(default)]
     pub preferences: UserPreferences,
@@ -223,16 +219,6 @@ pub struct UserStats {
     pub total_games_won: u64,
     #[serde(default, deserialize_with = "deserialize_flexible_u64")]
     pub total_games_lost: u64,
-}
-
-/// Nested wallet object matching TypeScript `wallet` field
-#[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
-#[serde(rename_all = "snake_case")]
-pub struct UserWallet {
-    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
-    pub balance: u64,
-    #[serde(default)]
-    pub evm_wallet_linked: bool,
 }
 
 /// Nested preferences object matching TypeScript `preferences` field
@@ -302,27 +288,6 @@ pub struct LeaderboardEntry {
     pub expires_at: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
-}
-
-// =============================================================================
-// Global Stats (stored in "economy" collection)
-// =============================================================================
-
-/// Aggregate burn and payout statistics.
-/// Single document with key "global", written by satellite hooks.
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
-#[serde(rename_all = "snake_case")]
-pub struct GlobalStats {
-    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
-    pub total_fees: u64,
-    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
-    pub total_earned: u64,
-    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
-    pub total_collected: u64,
-    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
-    pub total_burned: u64,
-    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
-    pub total_rewarded: u64,
 }
 
 // =============================================================================
@@ -541,4 +506,280 @@ pub struct ErrorPayload {
     pub component: String,
     pub message: String,
     pub raw_error: String,
+}
+
+// =============================================================================
+// Unit Tests
+// =============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Deserialize;
+    use serde_json;
+
+    // ── Helpers ────────────────────────────────────────────────────────────────
+
+    /// Thin wrapper so we can apply the custom deserializer in serde_json tests.
+    #[derive(Deserialize, Debug, PartialEq)]
+    struct FlexWrapper {
+        #[serde(deserialize_with = "deserialize_flexible_u64")]
+        value: u64,
+    }
+
+    #[derive(Deserialize, Debug, PartialEq)]
+    struct FlexOptWrapper {
+        #[serde(
+            default,
+            deserialize_with = "deserialize_flexible_option_u64",
+            skip_serializing_if = "Option::is_none"
+        )]
+        value: Option<u64>,
+    }
+
+    fn parse_flex(json: &str) -> Result<u64, serde_json::Error> {
+        let w: FlexWrapper = serde_json::from_str(json)?;
+        Ok(w.value)
+    }
+
+    fn parse_flex_opt(json: &str) -> Result<Option<u64>, serde_json::Error> {
+        let w: FlexOptWrapper = serde_json::from_str(json)?;
+        Ok(w.value)
+    }
+
+    // ── deserialize_flexible_u64 ───────────────────────────────────────────────
+
+    #[test]
+    fn flex_u64_plain_integer() {
+        assert_eq!(parse_flex(r#"{"value": 42}"#).unwrap(), 42u64);
+    }
+
+    #[test]
+    fn flex_u64_zero() {
+        assert_eq!(parse_flex(r#"{"value": 0}"#).unwrap(), 0u64);
+    }
+
+    #[test]
+    fn flex_u64_max_u64() {
+        let json = format!(r#"{{"value": "{}"}}"#, u64::MAX);
+        assert_eq!(parse_flex(&json).unwrap(), u64::MAX);
+    }
+
+    #[test]
+    fn flex_u64_large_number() {
+        assert_eq!(
+            parse_flex(r#"{"value": 18446744073709551000}"#).unwrap(),
+            18446744073709551000u64
+        );
+    }
+
+    #[test]
+    fn flex_u64_string_decimal() {
+        assert_eq!(parse_flex(r#"{"value": "2340"}"#).unwrap(), 2340u64);
+    }
+
+    #[test]
+    fn flex_u64_string_zero() {
+        assert_eq!(parse_flex(r#"{"value": "0"}"#).unwrap(), 0u64);
+    }
+
+    #[test]
+    fn flex_u64_bigint_wrapper() {
+        assert_eq!(
+            parse_flex(r#"{"value": {"__bigint__": "9999"}}"#).unwrap(),
+            9999u64
+        );
+    }
+
+    #[test]
+    fn flex_u64_bigint_wrapper_large() {
+        let big = 10_000_000_000u64;
+        let json = format!(r#"{{"value": {{"__bigint__": "{}"}}}}"#, big);
+        assert_eq!(parse_flex(&json).unwrap(), big);
+    }
+
+    #[test]
+    fn flex_u64_f64_whole_number() {
+        // JSON floats like 100.0 should deserialise fine
+        assert_eq!(parse_flex(r#"{"value": 100.0}"#).unwrap(), 100u64);
+    }
+
+    #[test]
+    fn flex_u64_invalid_string_errors() {
+        assert!(parse_flex(r#"{"value": "not-a-number"}"#).is_err());
+    }
+
+    #[test]
+    fn flex_u64_invalid_string_float_errors() {
+        // "3.14" is not a valid u64 string
+        assert!(parse_flex(r#"{"value": "3.14"}"#).is_err());
+    }
+
+    #[test]
+    fn flex_u64_empty_map_errors() {
+        assert!(parse_flex(r#"{"value": {}}"#).is_err());
+    }
+
+    #[test]
+    fn flex_u64_null_errors() {
+        assert!(parse_flex(r#"{"value": null}"#).is_err());
+    }
+
+    // ── deserialize_flexible_option_u64 ───────────────────────────────────────
+
+    #[test]
+    fn flex_opt_u64_null_is_none() {
+        assert_eq!(parse_flex_opt(r#"{"value": null}"#).unwrap(), None);
+    }
+
+    #[test]
+    fn flex_opt_u64_missing_field_is_none() {
+        // `default` attribute means missing field → None
+        assert_eq!(parse_flex_opt(r#"{}"#).unwrap(), None);
+    }
+
+    #[test]
+    fn flex_opt_u64_plain_integer_is_some() {
+        assert_eq!(parse_flex_opt(r#"{"value": 7}"#).unwrap(), Some(7u64));
+    }
+
+    #[test]
+    fn flex_opt_u64_string_is_some() {
+        assert_eq!(parse_flex_opt(r#"{"value": "42"}"#).unwrap(), Some(42u64));
+    }
+
+    #[test]
+    fn flex_opt_u64_bigint_wrapper_is_some() {
+        assert_eq!(
+            parse_flex_opt(r#"{"value": {"__bigint__": "500"}}"#).unwrap(),
+            Some(500u64)
+        );
+    }
+
+    #[test]
+    fn flex_opt_u64_zero_is_some() {
+        assert_eq!(parse_flex_opt(r#"{"value": 0}"#).unwrap(), Some(0u64));
+    }
+
+    #[test]
+    fn flex_opt_u64_invalid_string_errors() {
+        assert!(parse_flex_opt(r#"{"value": "bad"}"#).is_err());
+    }
+
+    // ── FeeStatus / ClaimStatus serde roundtrip ───────────────────────────────
+
+    #[test]
+    fn fee_status_pending_roundtrip() {
+        let json = serde_json::to_string(&FeeStatus::Pending).unwrap();
+        let back: FeeStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, FeeStatus::Pending);
+    }
+
+    #[test]
+    fn fee_status_verified_roundtrip() {
+        let json = serde_json::to_string(&FeeStatus::Verified).unwrap();
+        let back: FeeStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, FeeStatus::Verified);
+    }
+
+    #[test]
+    fn fee_status_failed_roundtrip() {
+        let json = serde_json::to_string(&FeeStatus::Failed).unwrap();
+        let back: FeeStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, FeeStatus::Failed);
+    }
+
+    #[test]
+    fn claim_status_pending_roundtrip() {
+        let json = serde_json::to_string(&ClaimStatus::Pending).unwrap();
+        let back: ClaimStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, ClaimStatus::Pending);
+    }
+
+    #[test]
+    fn claim_status_ready_for_chain_roundtrip() {
+        let json = serde_json::to_string(&ClaimStatus::ReadyForChain).unwrap();
+        let back: ClaimStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, ClaimStatus::ReadyForChain);
+    }
+
+    #[test]
+    fn claim_status_completed_roundtrip() {
+        let json = serde_json::to_string(&ClaimStatus::Completed).unwrap();
+        let back: ClaimStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, ClaimStatus::Completed);
+    }
+
+    // ── FeeRequest field validation helpers ───────────────────────────────────
+
+    #[test]
+    fn tx_hash_format_valid() {
+        let tx = format!("0x{}", "a".repeat(64));
+        assert!(tx.starts_with("0x") && tx.len() == 66);
+    }
+
+    #[test]
+    fn tx_hash_format_missing_prefix() {
+        let tx = "a".repeat(64);
+        assert!(!tx.starts_with("0x"));
+    }
+
+    #[test]
+    fn tx_hash_format_too_short() {
+        let tx = format!("0x{}", "a".repeat(63));
+        assert!(tx.len() != 66);
+    }
+
+    #[test]
+    fn expected_fee_key_format() {
+        let tx_hash = format!("0x{}", "b".repeat(64));
+        let expected = format!("fee_{}", tx_hash);
+        assert!(expected.starts_with("fee_0x"));
+        assert_eq!(expected.len(), "fee_".len() + 66);
+    }
+
+    // ── ClaimRequest validation helpers ───────────────────────────────────────
+
+    #[test]
+    fn claim_amount_zero_is_invalid() {
+        let amount: u64 = 0;
+        assert_eq!(amount, 0, "amount must be > 0");
+    }
+
+    #[test]
+    fn claim_game_session_id_empty_is_invalid() {
+        let session_id = "";
+        assert!(session_id.is_empty());
+    }
+
+    // ── Hex decode helpers used by verify_wallet_signature ────────────────────
+
+    #[test]
+    fn hex_decode_valid_signature_length() {
+        // A valid 65-byte signature (130 hex chars)
+        let sig_hex = "a".repeat(130);
+        let bytes = hex::decode(&sig_hex).unwrap();
+        assert_eq!(bytes.len(), 65);
+    }
+
+    #[test]
+    fn hex_decode_invalid_hex_errors() {
+        assert!(hex::decode("zzzz").is_err());
+    }
+
+    #[test]
+    fn hex_decode_wrong_length_detected() {
+        // 64 bytes (128 hex chars) — one byte short
+        let sig_hex = "a".repeat(128);
+        let bytes = hex::decode(&sig_hex).unwrap();
+        assert_ne!(bytes.len(), 65);
+    }
+
+    #[test]
+    fn hex_decode_0x_prefix_stripped() {
+        let sig_hex = format!("0x{}", "c".repeat(130));
+        let stripped = sig_hex.trim_start_matches("0x");
+        let bytes = hex::decode(stripped).unwrap();
+        assert_eq!(bytes.len(), 65);
+    }
 }

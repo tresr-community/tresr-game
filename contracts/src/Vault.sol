@@ -172,6 +172,15 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
         token.safeTransfer(to, amount);
     }
 
+    // --- Views ---
+
+    /**
+     * @notice Returns the vault's current token balance (used by admin dashboard).
+     */
+    function currentBalance() external view returns (uint256) {
+        return token.balanceOf(address(this));
+    }
+
     // --- UUPS ---
 
     /**

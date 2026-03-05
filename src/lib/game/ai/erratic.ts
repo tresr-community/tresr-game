@@ -45,28 +45,17 @@ export class ErraticBehavior implements AIBehavior {
       dirY = dyCorrected / dist;
     }
 
-    // Tangential vector (perpendicular)
-    const perpX = -dirY;
-    const perpY = dirX;
+    // Base angle towards the player (in screen space)
+    const baseAngle = Math.atan2(dirY * 0.4, dirX);
 
-    // Apply lateral velocity based on the derivative of the sine wave
-    const lateralVelocity =
-      Math.cos(this.timer * erraticConfig.zigzag_frequency * Math.PI * 2) *
-      erraticConfig.zigzag_amplitude *
-      (erraticConfig.zigzag_frequency * Math.PI * 2);
+    // Smooth sinusoidal angular offset
+    const lateralAngleOffset =
+      Math.sin(this.timer * erraticConfig.zigzag_frequency * Math.PI * 2) *
+      erraticConfig.zigzag_amplitude;
 
-    let moveX = dirX * ctx.speed + perpX * lateralVelocity;
-    let moveY = dirY * ctx.speed + perpY * lateralVelocity;
+    const worldMoveAngle = baseAngle + lateralAngleOffset;
 
-    const mag = Math.sqrt(moveX * moveX + moveY * moveY);
-    if (mag > 0) {
-      moveX = (moveX / mag) * ctx.speed;
-      moveY = (moveY / mag) * ctx.speed;
-    }
-
-    const worldMoveAngle = Math.atan2(moveY * 0.4, moveX);
-
-    ctx.setFlipX(ctx.target.x < ctx.x);
+    ctx.setFlipX(Math.cos(worldMoveAngle) < 0);
     ctx.setVelocityX(
       Math.cos(worldMoveAngle) * ctx.speed * ctx.resolutionScale
     );

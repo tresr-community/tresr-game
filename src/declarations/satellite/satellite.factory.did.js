@@ -45,6 +45,7 @@ export const idlFactory = ({ IDL }) => {
     'get_errors' : IDL.Func([], [Result_2], []),
     'get_oracle_address' : IDL.Func([], [Result_3], []),
     'report_error' : IDL.Func([ErrorPayload], [Result_3], []),
+    'resolve_error' : IDL.Func([IDL.Text, IDL.Bool], [Result_1], []),
   });
 };
 

@@ -7,7 +7,17 @@ import Loader from "@/components/game/Loader.astro";
 ---
 
 <BaseLayout title="TRESR Game | Active Session">
-  <Loader minTime={1500} id="game-loader" />
+  <!--
+    Game-specific viewport: disable pinch-zoom so canvas input works correctly.
+    Overrides the accessible viewport in BaseLayout via the named head slot.
+  -->
+  <meta
+    slot="head"
+    name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
+  />
+  <Loader minTime={250} id="game-loader" />
+
   <FeeGate />
   <BanModal />
 
@@ -98,7 +108,7 @@ import Loader from "@/components/game/Loader.astro";
 
       // IID users without a linked wallet cannot pay the fee
       const profile = profileStore.get();
-      if (profile && !profile.wallet.evm_wallet_linked) {
+      if (profile && !profile.evm_wallet) {
         log.info(COMPONENT_NAME, "No wallet linked, cannot enter fee gate");
         window.showWarningToast("You need to link a wallet first");
         window.location.href = "/";
@@ -106,7 +116,7 @@ import Loader from "@/components/game/Loader.astro";
       }
 
       // Skip fee gate if vault contract hasn't been deployed yet (zero address)
-      const {isVaultDeployed} = await import("@/lib/wallet/avalanche");
+      const {isVaultDeployed} = await import("@/lib/blockchain/networks/chain");
       if (!isVaultDeployed(config)) {
         log.info(COMPONENT_NAME, "Vault not deployed, skipping fee gate");
         startGame();

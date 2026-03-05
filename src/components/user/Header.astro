@@ -318,7 +318,10 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
   log.debug(COMPONENT_NAME, `Updating user theme to ${savedTheme}`);
   populateThemes();
 
-  startup();
+  // Fire-and-forget: ICP satellite round-trips (initAuth, initSatellite) must
+  // never block DOMContentLoaded or script evaluation. Auth state starts as
+  // isAuthenticated=false and updates asynchronously via subscribeToAuth().
+  void startup();
 
   // Mutual-exclusion for all header dropdowns (details/summary pattern).
   // Opening one closes the others; clicking outside closes all.

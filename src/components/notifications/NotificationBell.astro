@@ -182,6 +182,11 @@
       }
 
       // Upgrade button for app updates
+      const isConsolation =
+        n.data.message.toLowerCase().includes("consolation") ||
+        (n.data.details &&
+          n.data.details.toLowerCase().includes("consolation"));
+
       if (n.data.type === "app_update") {
         const upgradeBtn = document.createElement("button");
         upgradeBtn.className = "btn btn-xs btn-primary mt-2 w-full";
@@ -191,6 +196,12 @@
           PWA.getInstance().applyUpdate();
         });
         content.appendChild(upgradeBtn);
+      } else if (isConsolation) {
+        const claimBtn = document.createElement("a");
+        claimBtn.className = "btn btn-xs btn-warning mt-2 w-full";
+        claimBtn.textContent = "Claim Reward 🏆";
+        claimBtn.href = "/claims";
+        content.appendChild(claimBtn);
       }
 
       const timeSpan = document.createElement("span");

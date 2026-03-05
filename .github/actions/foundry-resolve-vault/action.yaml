@@ -243,13 +243,14 @@ runs:
         fi
 
     - id: upgrade_summary
-      name: Upgrade Multisig Summary
+      name: Upgrade Summary
       if: steps.detect_vault_mode.outputs.mode == 'upgrade'
       shell: bash
       run: |
         CHAIN_ID="${{ inputs.chain-id }}"
         PROXY="${{ inputs.vault-address }}"
         NETWORK="${{ inputs.network }}"
+        ADMIN="${{ inputs.admin-address }}"
         LATEST="contracts/broadcast/UpgradeVault.s.sol/${CHAIN_ID}/run-latest.json"
 
         # Extract new implementation address from broadcast
@@ -276,32 +277,50 @@ runs:
         fi
 
         {
-          echo "## 🔐 Multisig Action Required"
-          echo ""
-          echo "A new Vault implementation was deployed. Submit the upgrade transaction to your Gnosis Safe."
-          echo ""
-          echo "### Addresses"
-          echo ""
-          echo "| | | |"
-          echo "|---|---|---|"
-          echo "| **Proxy** | \`${PROXY}\` | [View ↗](${EXPLORER}/address/${PROXY}) |"
-          echo "| **New Impl** | \`${NEW_IMPL}\` | [View ↗](${EXPLORER}/address/${NEW_IMPL}) |"
-          echo "| **Network** | ${NETWORK} | |"
-          echo ""
-          echo "### Safe Transaction"
-          echo ""
-          echo "| Field | Value |"
-          echo "|---|---|"
-          echo "| **To** | \`${PROXY}\` |"
-          echo "| **Value** | \`0\` |"
-          echo "| **Data** | _(see below)_ |"
-          echo ""
-          echo '```'
-          echo "${CALLDATA}"
-          echo '```'
-          echo ""
-          echo "---"
-          echo "*Paste the above calldata into your Safe's **Transaction Builder** → **Custom data**.*"
+          if [[ "$NETWORK" == "mainnet" ]]; then
+            echo "## 🔐 Multisig Action Required"
+            echo ""
+            echo "A new Vault implementation was deployed. Submit the upgrade transaction to your Gnosis Safe."
+            echo ""
+            echo "### Addresses"
+            echo ""
+            echo "| | | |"
+            echo "|---|---|---|"
+            echo "| **Proxy** | \`${PROXY}\` | [View ↗](${EXPLORER}/address/${PROXY}) |"
+            echo "| **New Impl** | \`${NEW_IMPL}\` | [View ↗](${EXPLORER}/address/${NEW_IMPL}) |"
+            echo "| **Network** | ${NETWORK} | |"
+            echo ""
+            echo "### Safe Transaction"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| **To** | \`${PROXY}\` |"
+            echo "| **Value** | \`0\` |"
+            echo "| **Data** | _(see below)_ |"
+            echo ""
+            echo '```'
+            echo "${CALLDATA}"
+            echo '```'
+            echo ""
+            echo "---"
+            echo "*Paste the above calldata into your Safe's **Transaction Builder** → **Custom data**.*"
+          else
+            echo "## ⬆️ Vault Upgrade Deployed"
+            echo ""
+            echo "A new Vault implementation was deployed and the upgrade was executed directly by the admin EOA."
+            echo ""
+            echo "### Addresses"
+            echo ""
+            echo "| | | |"
+            echo "|---|---|---|"
+            echo "| **Proxy** | \`${PROXY}\` | [View ↗](${EXPLORER}/address/${PROXY}) |"
+            echo "| **New Impl** | \`${NEW_IMPL}\` | [View ↗](${EXPLORER}/address/${NEW_IMPL}) |"
+            echo "| **Network** | ${NETWORK} (Fuji) | |"
+            echo ""
+            echo "> ℹ️ **Testnet note:** Safe{Wallet} does not support Avalanche Fuji. The upgrade was broadcast"
+            echo "> directly from the admin EOA (\`${ADMIN}\`) which holds \`DEFAULT_ADMIN_ROLE\`."
+            echo "> No manual signing is required."
+          fi
         } >> "$GITHUB_STEP_SUMMARY"
 
     - id: check_vault_deploy

@@ -15,7 +15,6 @@ export class CautiousBehavior implements AIBehavior {
   private nearbyCount: number = 0;
   private strafeDir: number = 1;
   private strafeTimer: number = 0;
-  private strafePatienceTimer: number = 0;
 
   onSpawn(ctx: EnemyContext): void {
     const cautiousConfig = ctx.config.gameplay.entities.enemy.ai.cautious;
@@ -25,7 +24,6 @@ export class CautiousBehavior implements AIBehavior {
     this.nearbyCount = 0;
     this.strafeDir = ctx.rng.frac() < 0.5 ? 1 : -1;
     this.strafeTimer = 0;
-    this.strafePatienceTimer = 0;
   }
 
   update(ctx: EnemyContext, dt: number): BehaviorResult {
@@ -46,17 +44,12 @@ export class CautiousBehavior implements AIBehavior {
       this.checkCounter = 0;
       this.nearbyCount = countNearbyAllies(ctx, cautiousConfig.group_radius);
 
-      // Toggle charge state based on ally count OR patience limit
-      const lostPatience = this.strafePatienceTimer > 5.0;
-      if (
-        (this.nearbyCount >= cautiousConfig.pack_threshold || lostPatience) &&
-        !this.charging
-      ) {
+      // Toggle charge state based on ally count
+      if (this.nearbyCount >= cautiousConfig.pack_threshold && !this.charging) {
         this.charging = true;
         ctx.speed = ctx.baseSpeed * cautiousConfig.charge_speed_mult;
       } else if (
         this.nearbyCount < cautiousConfig.pack_threshold &&
-        !lostPatience &&
         this.charging
       ) {
         this.charging = false;
@@ -66,7 +59,6 @@ export class CautiousBehavior implements AIBehavior {
 
     // When not charging: strafe laterally at preferred distance
     if (!this.charging) {
-      this.strafePatienceTimer += dt;
       const preferred = cautiousConfig.preferred_distance;
 
       // Flip strafe direction periodically
@@ -131,10 +123,7 @@ export class CautiousBehavior implements AIBehavior {
       }
       // Too far — fall through to chase
     } else {
-      // If we made a successful attack in a charge, we reset patience
-      if (distToPlayer < ctx.attackRange) {
-        this.strafePatienceTimer = 0;
-      }
+      // We don't need to reset patience here anymore
     }
 
     // Charging or too far from preferred distance: chase the player

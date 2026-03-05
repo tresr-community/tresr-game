@@ -236,7 +236,15 @@
       <div class="divider"></div>
 
       <!-- Actions -->
-      <div class="flex justify-end gap-2">
+      <div class="mt-2 flex items-center justify-between">
+        <a
+          href="/claims"
+          id="btn-claims"
+          class="btn btn-warning btn-outline gap-2 px-6"
+        >
+          <span class="text-lg">🏆</span>
+          Rewards
+        </a>
         <button id="btn-save-profile" class="btn btn-primary px-8"
           >Update Identity</button
         >
@@ -274,7 +282,7 @@
     disconnectWallet,
   } from "@/lib/wallet/connection";
   import {buildWalletLinkMessage} from "@/lib/wallet/wallet-message";
-  import {shortenAddress} from "@/lib/wallet/avalanche";
+  import {shortenAddress} from "@/lib/blockchain/networks/display";
   import type {UserProfile} from "@/types/backend";
   import {log} from "@/lib/utils/log";
   import {profileStore} from "@/lib/user/store";
@@ -357,10 +365,6 @@
           preferences: {
             theme: "synthwave",
             has_read_instructions: false,
-          },
-          wallet: {
-            balance: 0n,
-            evm_wallet_linked: false,
           },
           stats: {
             high_score: 0n,
@@ -520,10 +524,6 @@
       modal?.close();
     } catch (error) {
       log.error(COMPONENT_NAME, "Failed to save profile:", error);
-      window.showErrorToast(
-        "Failed to save profile",
-        (error as Error).message || ""
-      );
     } finally {
       saveBtn.classList.remove("loading");
     }
@@ -558,33 +558,32 @@
             evm_wallet: address,
             verification_signature: sig,
             verification_message: message,
-            wallet: {
-              ...profile.wallet,
-              evm_wallet_linked: true,
-            },
           }));
         }
         // Update local state
         currentProfile.evm_wallet = address;
         currentProfile.verification_signature = sig;
         currentProfile.verification_message = message;
-        currentProfile.wallet.evm_wallet_linked = true;
         updateWalletUI();
         trackWalletLink();
         window.showInfoToast("Avalanche Wallet link established");
       }
     } catch (err: unknown) {
       const error = err as {message?: string; code?: number};
-      log.error(COMPONENT_NAME, "Wallet link failed", err);
-      let msg = "Wallet link failed";
-      if (error.message?.includes("rejected") || error.code === 4001) {
-        msg = "Connection cancelled or rejected";
+      if (
+        error.message?.includes("rejected") ||
+        error.code === 4001 ||
+        error.message?.includes("cancelled")
+      ) {
+        // User rejected — no error report needed
+        window.showWarningToast?.("Wallet connection cancelled or rejected");
       } else if (error.message?.includes("switch") || error.code === 4902) {
-        msg = error.message || "Please switch to the correct network";
-      } else if (error.message?.includes("cancelled")) {
-        msg = "Wallet connection cancelled";
+        // Network switch needed — clean static message
+        log.error(COMPONENT_NAME, "Wrong network — please switch chain", err);
+      } else {
+        // Unexpected — log.error handles report + clean toast
+        log.error(COMPONENT_NAME, "Wallet link failed", err);
       }
-      window.showErrorToast(msg, error.message || "Unknown error");
     } finally {
       loadingModal?.close();
     }
@@ -602,14 +601,9 @@
             ...profile,
             evm_wallet: undefined,
             wallet_proof: undefined,
-            wallet: {
-              ...profile.wallet,
-              evm_wallet_linked: false,
-            },
           }));
         }
         // Update local state
-        currentProfile.wallet.evm_wallet_linked = false;
         currentProfile.evm_wallet = undefined;
         currentProfile.wallet_proof = undefined;
         updateWalletUI();
@@ -618,10 +612,7 @@
       }
     } catch (err) {
       log.error(COMPONENT_NAME, "Wallet unlink failed", err);
-      window.showErrorToast(
-        "Failed to sever Avalanche Wallet link",
-        (err as Error).message
-      );
+      window.showErrorToast("Failed to sever Avalanche Wallet link");
     }
   }
 
@@ -727,7 +718,7 @@
       log.info(COMPONENT_NAME, "Avatar uploaded successfully:", url);
     } catch (err) {
       log.error(COMPONENT_NAME, "Avatar upload failed:", err);
-      window.showErrorToast("Avatar upload failed", (err as Error).message);
+      window.showErrorToast("Avatar upload failed");
     } finally {
       avatarUploading?.classList.add("hidden");
       // Reset input so the same file can be re-selected
