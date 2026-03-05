@@ -26,5 +26,6 @@ clean:
     - EDITOR
     - USER
     - GITHUB_TOKEN
+impure: true
 secretspec:
   enable: true
