@@ -13,16 +13,22 @@ const substitute = (val) => {
   return val.replace(/\${(\w+)}/g, (_, name) => process.env[name] || "");
 };
 
-const satelliteId = substitute(junoConfig.satellite_id);
+const devSatelliteId = substitute(junoConfig.development?.satellite_id);
+const stagingSatelliteId = substitute(junoConfig.staging?.satellite_id);
+const prodSatelliteId = substitute(junoConfig.production?.satellite_id);
+
+const devOrbiterId = substitute(junoConfig.development?.orbiter_id);
+const stagingOrbiterId = substitute(junoConfig.staging?.orbiter_id);
+const prodOrbiterId = substitute(junoConfig.production?.orbiter_id);
 
 /** @type {import('@junobuild/config').JunoConfig} */
 export default defineConfig(({mode}) => ({
   satellite: {
     ids: {
-      local: satelliteId,
-      development: satelliteId,
-      staging: satelliteId,
-      production: satelliteId,
+      local: devSatelliteId,
+      development: devSatelliteId,
+      staging: stagingSatelliteId || devSatelliteId,
+      production: prodSatelliteId || devSatelliteId,
     },
     source: "dist",
     storage: {
@@ -85,9 +91,9 @@ export default defineConfig(({mode}) => ({
   },
   orbiter: {
     ids: {
-      development: substitute(junoConfig.orbiter_id),
-      staging: substitute(junoConfig.orbiter_id),
-      production: substitute(junoConfig.orbiter_id),
+      development: devOrbiterId,
+      staging: stagingOrbiterId || devOrbiterId,
+      production: prodOrbiterId || devOrbiterId,
     },
   },
   emulator: {
