@@ -72,3 +72,7 @@ contracts/.snap
 # CodeQL local analysis
 .codeql-db/
 .codeql-results/
+
+# Nix
+result/
+
