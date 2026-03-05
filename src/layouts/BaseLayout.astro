@@ -26,6 +26,26 @@ const {title, description = "A 2.5D platformer for the Tresr Community"} =
     <meta name="theme-color" content="#1a1025" />
     <link rel="icon" type="image/png" href="/assets/icons/ios/32.png" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- Font performance: preconnect + preload for Orbitron (LCP/h1 font) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript
+      ><link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap"
+      /></noscript
+    >
     <script is:inline>
       window.startTime = Date.now();
       // Apply saved theme immediately to prevent flash of wrong theme colors

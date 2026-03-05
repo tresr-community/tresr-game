@@ -2202,6 +2202,51 @@ fn delete_errors(keys: Vec<String>) -> Result<(), String> {
     Ok(())
 }
 
+/// Toggle the resolved status of a single error record. Admin-only.
+/// Fetches the current document version for optimistic concurrency before writing.
+#[update]
+fn resolve_error(error_id: String, resolved: bool) -> Result<(), String> {
+    let caller = ic_cdk::caller().to_text();
+    if !config::ADMIN_PRINCIPALS.contains(&caller.as_str()) {
+        return Err("Unauthorized: admin access required".to_string());
+    }
+
+    let canister_id = ic_cdk::id();
+
+    // Fetch existing doc so we can read the current version (optimistic concurrency)
+    let existing = get_doc_store(canister_id, "errors".to_string(), error_id.clone())
+        .map_err(|e| format!("Failed to fetch error {}: {}", error_id, e))?
+        .ok_or_else(|| format!("Error not found: {}", error_id))?;
+
+    let existing_version = existing.version;
+    let mut record: ErrorRecord = decode_doc_data(&existing.data)
+        .map_err(|e| format!("Failed to decode error record: {}", e))?;
+
+    record.resolved = resolved;
+
+    let doc = SetDoc {
+        data: encode_doc_data(&record)?,
+        description: Some(format!(
+            "Admin {} error {}",
+            if resolved { "resolved" } else { "reopened" },
+            error_id
+        )),
+        version: existing_version,
+    };
+
+    set_doc_store(canister_id, "errors".to_string(), error_id.clone(), doc)?;
+
+    logging::log_info(
+        "Errors",
+        &format!(
+            "Error {} marked as resolved={} by admin",
+            error_id, resolved
+        ),
+    );
+
+    Ok(())
+}
+
 // =============================================================================
 // Include Juno Satellite - MUST be at the end
 // =============================================================================

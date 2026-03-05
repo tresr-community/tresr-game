@@ -6,6 +6,11 @@
   id="burn-stats-card"
   class="stats stats-horizontal bg-base-200/50 border-error/20 mt-6 hidden w-full max-w-4xl border shadow"
 >
+  <!-- syncing indicator -->
+  <span
+    id="burn-stats-syncing"
+    class="loading loading-xs loading-spinner absolute top-2 right-2 hidden opacity-40"
+  ></span>
   <div class="stat place-items-center">
     <div class="stat-title font-mono text-xs">FEES</div>
     <div id="burn-stat-collected" class="stat-value text-info text-2xl">
@@ -109,4 +114,34 @@
 
   // Load stats when the loader finishes
   window.addEventListener("loader-ready", () => loadStats(), {once: true});
+
+  // Re-load from Juno whenever a blockchain sync completes
+  function onBlockchainSynced() {
+    void loadStats();
+  }
+
+  // Show/hide syncing indicator
+  const syncingEl = document.getElementById("burn-stats-syncing")!;
+  function onBlockchainSyncing(e: Event) {
+    const {syncing} = (e as CustomEvent<{syncing: boolean}>).detail;
+    syncingEl.classList.toggle("hidden", !syncing);
+  }
+
+  document.addEventListener("tresr:blockchain-synced", onBlockchainSynced);
+  document.addEventListener("tresr:blockchain-syncing", onBlockchainSyncing);
+
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      document.removeEventListener(
+        "tresr:blockchain-synced",
+        onBlockchainSynced
+      );
+      document.removeEventListener(
+        "tresr:blockchain-syncing",
+        onBlockchainSyncing
+      );
+    },
+    {once: true}
+  );
 </script>

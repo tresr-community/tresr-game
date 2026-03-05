@@ -85,6 +85,7 @@ export interface GlobalStats {
   total_collected: number;
   total_burned: number;
   total_rewarded: number;
+  total_vault?: number;
 }
 
 export type EvmRpcResult = {Ok: string} | {Err: string};

@@ -45,3 +45,11 @@ export const reportError = async (value0: ErrorPayload): Promise<Result_3> => {
 
 	return await report_error(value0);
 }
+
+export const resolveError = async (value0: string, value1: boolean): Promise<Result_1> => {
+	const {resolve_error} = await getSatelliteExtendedActor<SatelliteActor>({
+		idlFactory
+	});
+
+	return await resolve_error(value0, value1);
+}

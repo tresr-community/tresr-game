@@ -135,6 +135,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
                   <th>Env</th>
                   <th>Time</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody id="error-table-body"> </tbody>
@@ -155,8 +156,14 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           class="tab-content bg-base-100 border-base-300 rounded-box p-4"
         >
           <!-- ─── Economy Tab ─────────────────────────────────────────────── -->
-          <div class="mb-4 flex items-center gap-3">
+          <div class="mb-4 flex flex-wrap items-center gap-3">
             <h2 class="flex-1 text-xl font-bold">Economy</h2>
+            <span
+              id="sync-cooldown-badge"
+              class="badge badge-warning badge-sm hidden font-mono"></span>
+            <button id="sync-economy-btn" class="btn btn-primary btn-sm"
+              >⚡ Sync to Juno</button
+            >
             <button id="refresh-economy-btn" class="btn btn-ghost btn-sm"
               >↺ Refresh</button
             >
@@ -201,6 +208,16 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
                       —
                     </div>
                     <div class="stat-desc">Total sent to burn address</div>
+                  </div>
+                  <div class="stat">
+                    <div class="stat-title">Vault Balance (cached)</div>
+                    <div
+                      id="juno-vault"
+                      class="stat-value text-warning text-lg"
+                    >
+                      —
+                    </div>
+                    <div class="stat-desc">Last synced snapshot</div>
                   </div>
                 </div>
               </div>
@@ -397,6 +414,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
     import {
       getErrors,
       deleteErrors,
+      resolveError,
     } from "@/declarations/satellite/satellite.api";
     import type {ErrorRecord} from "@/declarations/satellite/satellite.did";
     import type {UserProfile, GlobalStats} from "@/types/backend";
@@ -406,6 +424,8 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
       formatBalance,
     } from "@/lib/wallet/balance";
     import {getReadClient} from "@/lib/wallet/tx";
+    import {syncBlockchainData, isSyncing} from "@/lib/wallet/blockchain-sync";
+    import {getConnectedAddress} from "@/lib/wallet/connection";
     import {getEnvironmentKey} from "@/lib/wallet/avalanche";
     import {VaultAbi} from "@/lib/wallet/abi/vault";
     import {config} from "@/lib/config/client";
@@ -519,6 +539,10 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         const ts = new Date(Number(r.timestamp_ms)).toLocaleString();
         const tr = document.createElement("tr");
         tr.className = `hover ${selected.has(r.error_id) ? "bg-base-300" : ""}`;
+        const resolveLabel = r.resolved ? "↩ Reopen" : "✓ Resolve";
+        const resolveClass = r.resolved
+          ? "btn btn-xs btn-ghost text-warning"
+          : "btn btn-xs btn-ghost text-success";
         tr.innerHTML = `
           <td><input type="checkbox" class="checkbox checkbox-xs row-check" data-id="${r.error_id}" ${selected.has(r.error_id) ? "checked" : ""} /></td>
           <td><code class="text-xs font-mono">${r.error_id}</code></td>
@@ -528,6 +552,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           <td><span class="badge badge-xs ${r.environment === "mainnet" ? "badge-warning" : r.environment === "testnet" ? "badge-info" : "badge-ghost"}">${r.environment}</span></td>
           <td class="text-xs whitespace-nowrap">${ts}</td>
           <td>${r.resolved ? '<span class="badge badge-success badge-xs">resolved</span>' : '<span class="badge badge-error badge-xs">open</span>'}</td>
+          <td><button class="${resolveClass} resolve-btn" data-id="${r.error_id}" data-resolved="${r.resolved}">${resolveLabel}</button></td>
         `;
 
         tr.addEventListener("click", (e) => {
@@ -552,6 +577,37 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           if (cb.checked) selected.add(cb.dataset.id!);
           else selected.delete(cb.dataset.id!);
           updateSelectionUI();
+        });
+      }
+
+      // Resolve / Reopen buttons
+      for (const btn of Array.from(
+        tableBody.querySelectorAll<HTMLButtonElement>(".resolve-btn")
+      )) {
+        btn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const errorId = btn.dataset.id!;
+          const wasResolved = btn.dataset.resolved === "true";
+          btn.disabled = true;
+          btn.textContent = "…";
+          try {
+            const res = await resolveError(errorId, !wasResolved);
+            if ("Err" in res) {
+              alert(`Failed to update status: ${res.Err}`);
+              btn.disabled = false;
+              btn.textContent = wasResolved ? "↩ Reopen" : "✓ Resolve";
+              return;
+            }
+            // Update local state and re-render
+            const idx = allErrors.findIndex((r) => r.error_id === errorId);
+            if (idx !== -1)
+              allErrors[idx] = {...allErrors[idx], resolved: !wasResolved};
+            renderErrorTable();
+          } catch (err) {
+            alert(`Failed: ${String(err)}`);
+            btn.disabled = false;
+            btn.textContent = wasResolved ? "↩ Reopen" : "✓ Resolve";
+          }
         });
       }
     }
@@ -647,6 +703,10 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           formatBalance(junoRewarded);
         document.getElementById("juno-burned")!.textContent =
           formatBalance(junoBurned);
+        const junoVault =
+          BigInt(Math.round(Number(stats?.total_vault ?? 0))) * DECIMALS;
+        document.getElementById("juno-vault")!.textContent =
+          stats?.total_vault != null ? formatBalance(junoVault) : "—";
 
         // ── 2. Blockchain ─────────────────────────────────────────────────
         let chainFees = 0n;
@@ -823,6 +883,53 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
       .getElementById("refresh-economy-btn")!
       .addEventListener("click", loadEconomy);
 
+    // ─── Sync to Juno ─────────────────────────────────────────────────────
+    async function syncEconomyToJuno() {
+      const syncCooldownBadge = document.getElementById("sync-cooldown-badge")!;
+      const syncBtn = document.getElementById(
+        "sync-economy-btn"
+      ) as HTMLButtonElement;
+
+      // Guard: only when a wallet is connected
+      const address = getConnectedAddress();
+      if (!address) {
+        alert("Connect a wallet to sync economy data.");
+        return;
+      }
+
+      // Guard: don't fire if already in progress
+      if (isSyncing()) {
+        return;
+      }
+
+      syncBtn.disabled = true;
+      syncBtn.textContent = "⏳ Syncing…";
+      syncCooldownBadge.classList.add("hidden");
+
+      try {
+        const snapshot = await syncBlockchainData(address);
+        if (!snapshot) {
+          alert("Sync skipped — RPC unavailable or already in progress.");
+          return;
+        }
+        syncBtn.textContent = "✅ Synced!";
+        setTimeout(() => {
+          syncBtn.textContent = "⚡ Sync to Juno";
+          syncBtn.disabled = false;
+        }, 2000);
+        // Refresh Economy display from Juno
+        await loadEconomy();
+      } catch (err) {
+        alert(`Sync failed: ${String(err)}`);
+        syncBtn.textContent = "⚡ Sync to Juno";
+        syncBtn.disabled = false;
+      }
+    }
+
+    document
+      .getElementById("sync-economy-btn")!
+      .addEventListener("click", syncEconomyToJuno);
+
     // ─── Anti-Cheat Tab ───────────────────────────────────────────────────
 
     async function loadBans() {
@@ -900,7 +1007,10 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 
     (async () => {
       await initSatellite();
+      // Load all tabs in parallel after auth is confirmed via loadErrors
       await loadErrors();
+      // Economy and bans can load concurrently (they don't require auth gating)
+      void Promise.all([loadEconomy(), loadBans()]);
     })();
   </script>
 </BaseLayout>

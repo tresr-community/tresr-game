@@ -35,7 +35,9 @@
 </div>
 
 <script>
-  import {getVaultTresrBalance, isRpcAvailable} from "@/lib/wallet/balance";
+  import {syncBlockchainData} from "@/lib/wallet/blockchain-sync";
+  import type {BlockchainSnapshot} from "@/lib/wallet/blockchain-sync";
+  import {isRpcAvailable} from "@/lib/wallet/balance";
   import {
     getEnvironmentKey,
     isVaultDeployed,
@@ -232,41 +234,55 @@
   }
 
   // -----------------------------------------------------------------------
-  // Balance polling (existing logic, enhanced)
+  // Vault display — driven by tresr:blockchain-synced event
   // -----------------------------------------------------------------------
+
+  function onBlockchainSynced(e: Event) {
+    if (disposed) return;
+    const snapshot = (e as CustomEvent<BlockchainSnapshot>).detail;
+    const balance = snapshot.vaultBalance;
+
+    if (disposed) return;
+
+    if (!isRpcAvailable()) {
+      if (balanceEl) balanceEl.textContent = "Offline";
+      if (difficultyEl) difficultyEl.classList.add("hidden");
+      return;
+    }
+
+    if (balanceEl) balanceEl.textContent = formatVaultDisplay(balance);
+    updateDifficultyBadge(balance);
+    consecutiveErrors = 0;
+  }
+
+  document.addEventListener("tresr:blockchain-synced", onBlockchainSynced);
+
+  // -----------------------------------------------------------------------
+  // Polling — calls syncBlockchainData (which also writes to Juno)
+  // -----------------------------------------------------------------------
+  let connectedAddress: string | null = null;
+
   async function updateBalance() {
-    if (!balanceEl || disposed) return;
-
+    if (disposed || !connectedAddress) return;
     try {
-      const balance = await getVaultTresrBalance();
-      if (disposed) return;
-
-      // RPC went offline — getVaultTresrBalance returns 0n silently
-      if (!isRpcAvailable()) {
-        balanceEl.textContent = "Offline";
-        if (difficultyEl) difficultyEl.classList.add("hidden");
-        return;
-      }
-
-      balanceEl.textContent = formatVaultDisplay(balance);
-      updateDifficultyBadge(balance);
-      consecutiveErrors = 0;
+      await syncBlockchainData(connectedAddress);
+      // Display update happens via the tresr:blockchain-synced event above
     } catch (err) {
       if (disposed) return;
       consecutiveErrors++;
       if (consecutiveErrors <= MAX_CONSECUTIVE_ERRORS) {
         log.error(
           COMPONENT_NAME,
-          "Failed to fetch vault balance:",
+          "Vault sync failed:",
           err instanceof Error ? err.message : String(err)
         );
       } else if (consecutiveErrors === MAX_CONSECUTIVE_ERRORS + 1) {
         log.info(
           COMPONENT_NAME,
-          `Suppressing further vault balance errors (${consecutiveErrors} consecutive failures)`
+          `Suppressing further vault sync errors (${consecutiveErrors} consecutive failures)`
         );
       }
-      balanceEl.textContent = "--";
+      if (balanceEl) balanceEl.textContent = "--";
     }
   }
 
@@ -329,14 +345,16 @@
 
     // Only subscribe to wallet connection when authenticated (lazy init)
     if (isAuthenticatedNonGuest && !unsubWallet) {
-      unsubWallet = subscribeToConnection((connected) => {
+      unsubWallet = subscribeToConnection((connected, address) => {
         walletConnected = connected;
+        connectedAddress = connected && address ? address : null;
         evaluatePolling();
       });
     } else if (!isAuthenticatedNonGuest && unsubWallet) {
       unsubWallet();
       unsubWallet = null;
       walletConnected = false;
+      connectedAddress = null;
     }
 
     evaluatePolling();
@@ -359,6 +377,10 @@
       unsubAuth();
       if (unsubWallet) unsubWallet();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener(
+        "tresr:blockchain-synced",
+        onBlockchainSynced
+      );
       if (winToastTimeout) clearTimeout(winToastTimeout);
     },
     {once: true}

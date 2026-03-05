@@ -71,6 +71,29 @@ export default defineConfig({
         "@": path.resolve("./src"),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          // Split heavy async-only bundles into separate chunks.
+          // These are only downloaded when first needed (lazy imports, auth, etc.)
+          // rather than being bundled into the initial page JS payload.
+          manualChunks: {
+            // Reown AppKit + Wagmi — only loaded when user clicks Connect Wallet
+            "wallet-kit": [
+              "@reown/appkit",
+              "@reown/appkit-adapter-wagmi",
+              "@wagmi/core",
+            ],
+            // Juno client — loaded during initSatellite (fire-and-forget after P2)
+            juno: ["@junobuild/core"],
+            // ICP/SIWA stack — needs its own chunk to avoid sharing with Juno
+            icp: ["@dfinity/agent", "@dfinity/auth-client", "ic-siwa"],
+            // viem — used by wallet-kit but large enough to split
+            viem: ["viem"],
+          },
+        },
+      },
+    },
   },
   devToolbar: {
     enabled: false,

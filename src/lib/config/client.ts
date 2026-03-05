@@ -102,10 +102,10 @@ export const config: ConfigTypes = {
           "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+        "tresr_token_contract": "0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
-        "faucet_contract": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+        "vault_contract": "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d",
+        "faucet_contract": "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
         "explorer_url": "http://localhost:8545/tx/"
       },
@@ -608,13 +608,13 @@ export const config: ConfigTypes = {
             "check_frame_interval": 10
           },
           "weights": {
-            "cautious": 0,
-            "direct": 0,
-            "erratic": 0,
-            "flanker": 0,
-            "passive": 0,
-            "retardio": 0,
-            "swarm": 100
+            "cautious": 10,
+            "direct": 20,
+            "erratic": 20,
+            "flanker": 20,
+            "passive": 10,
+            "retardio": 10,
+            "swarm": 10
           }
         },
         "health_bar": {
@@ -1496,5 +1496,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "0ad44db49da9ac216f999f19f74f97ee75efa3eb76ab58b3edc08d6d164f1878"
+  "configHash": "9f4831461b14891390b4e2818e99b360ca013186cb306c461a084dd25d216dd0"
 };

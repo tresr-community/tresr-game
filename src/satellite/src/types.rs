@@ -323,6 +323,8 @@ pub struct GlobalStats {
     pub total_burned: u64,
     #[serde(default, deserialize_with = "deserialize_flexible_u64")]
     pub total_rewarded: u64,
+    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
+    pub total_vault: u64,
 }
 
 // =============================================================================
