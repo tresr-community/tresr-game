@@ -22,8 +22,6 @@ const BUILD_ID = `${gitHash}-${Date.now()}`;
 log.info(COMPONENT_NAME, `version: ${PACKAGE_VERSION}, build_id: ${BUILD_ID}`);
 
 // Logs in the build output window.
-log.info(COMPONENT_NAME, "VITE_SATELLITE_ID:", process.env.VITE_SATELLITE_ID);
-log.info(COMPONENT_NAME, "VITE_ORBITER_ID:", process.env.VITE_ORBITER_ID);
 log.info(
   COMPONENT_NAME,
   "VITE_INTERNET_IDENTITY_ID:",
@@ -50,12 +48,6 @@ export default defineConfig({
     define: {
       "import.meta.env.PACKAGE_VERSION": JSON.stringify(PACKAGE_VERSION),
       "import.meta.env.BUILD_ID": JSON.stringify(BUILD_ID),
-      "import.meta.env.VITE_SATELLITE_ID": JSON.stringify(
-        process.env.VITE_SATELLITE_ID
-      ),
-      "import.meta.env.VITE_ORBITER_ID": JSON.stringify(
-        process.env.VITE_ORBITER_ID
-      ),
       "import.meta.env.VITE_INTERNET_IDENTITY_ID": JSON.stringify(
         process.env.VITE_INTERNET_IDENTITY_ID
       ),

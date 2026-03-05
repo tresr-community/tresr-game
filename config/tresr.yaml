@@ -6,8 +6,15 @@
 ##################################################
 server:
   juno:
-    satellite_id: "${VITE_SATELLITE_ID}"
-    orbiter_id: "${VITE_ORBITER_ID}"
+    development:
+      satellite_id: "${VITE_DEVELOPMENT_SATELLITE_ID}"
+      orbiter_id: "${VITE_DEVELOPMENT_ORBITER_ID}"
+    staging:
+      satellite_id: "${VITE_STAGING_SATELLITE_ID}"
+      orbiter_id: "${VITE_STAGING_ORBITER_ID}"
+    production:
+      satellite_id: "${VITE_PRODUCTION_SATELLITE_ID}"
+      orbiter_id: "${VITE_PRODUCTION_ORBITER_ID}"
     # Admin principals allowed to access the /admin interface and error logs.
     # Add your Internet Identity / SIWA principal text here.
     admins:
