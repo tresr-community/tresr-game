@@ -30,12 +30,6 @@ export interface UserProfile {
     total_games_lost: bigint;
   };
 
-  // Wallet
-  wallet: {
-    balance: bigint;
-    evm_wallet_linked: boolean;
-  };
-
   // Preferences
   preferences: {
     avatar_url?: string;
@@ -78,13 +72,6 @@ export interface LeaderboardEntry {
   scored_at?: number;
   expires_at?: number;
   session_id?: string;
-}
-
-export interface GlobalStats {
-  total_fees: number;
-  total_collected: number;
-  total_burned: number;
-  total_rewarded: number;
 }
 
 export type EvmRpcResult = {Ok: string} | {Err: string};

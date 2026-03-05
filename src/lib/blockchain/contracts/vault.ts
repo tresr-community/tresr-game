@@ -1,23 +1,120 @@
-/**
- * Vault contract interactions on Avalanche C-Chain.
- *
- * Handles all write operations against the Tresr Vault:
- * - payFeeForGame(): Approve + pay entry fee for a game session
- * - claimWin():     Claim rewards after winning (oracle-signed)
- * - getVaultBalance():        Read the vault's TRESR token balance
- * - getClaimCooldownStatus(): Check per-user claim cooldown
- */
-
+import {getReadClient, confirmReceipt} from "@/lib/blockchain/tx";
+import {
+  getEnvironmentKey,
+  isVaultDeployed,
+  getTargetChain,
+} from "@/lib/blockchain/networks/chain";
+import {VaultAbi, ERC20Abi} from "@/lib/blockchain/abi/vault";
+import {getWalletClient} from "@/lib/wallet/connection";
 import {encodeFunctionData, formatUnits} from "viem";
-import {loadConfigAsync} from "../../config";
-import {getEnvironmentKey} from "../../config/constants";
-import {log} from "../../utils/log";
-import {VaultAbi, ERC20Abi} from "../abi/vault";
-import {getWalletClient} from "../connection";
-import {confirmReceipt, getReadClient} from "../tx";
-import {getTargetChain} from "./chain";
+import {config} from "@/lib/config/client";
+import {log} from "@/lib/utils/log";
 
-const COMPONENT_NAME = "Avalanche";
+const COMPONENT_NAME = "VaultContract";
+
+function getVaultAddress(
+  env: ReturnType<typeof getEnvironmentKey>
+): `0x${string}` | null {
+  const vaultDeployed = isVaultDeployed(config);
+  const vaultAddr = config.blockchain.avalanche[env]
+    .vault_contract as `0x${string}`;
+
+  if (
+    vaultDeployed &&
+    vaultAddr &&
+    vaultAddr !== "0x0000000000000000000000000000000000000000"
+  ) {
+    return vaultAddr;
+  }
+  return null;
+}
+
+/**
+ * Validates the vault environment and returns the configured vault address.
+ * Throws an error if the vault is not deployed or the address is invalid.
+ */
+function getValidVaultAddress(): `0x${string}` {
+  const env = getEnvironmentKey();
+  const address = getVaultAddress(env);
+  if (!address) {
+    throw new Error("Vault contract is not deployed or invalid address.");
+  }
+  return address;
+}
+
+/**
+ * Returns the total amount of entry fees collected by the vault contract (wei).
+ */
+export async function getTotalFees(): Promise<bigint> {
+  try {
+    const address = getValidVaultAddress();
+    const client = getReadClient();
+    return (await client.readContract({
+      address,
+      abi: VaultAbi,
+      functionName: "totalFeesCollected",
+    })) as bigint;
+  } catch (err) {
+    log.error(
+      COMPONENT_NAME,
+      "Failed to fetch totalFeesCollected",
+      String(err)
+    );
+    return 0n;
+  }
+}
+
+/**
+ * Returns the cumulative rewards paid out to winners (wei).
+ */
+export async function getTotalRewards(): Promise<bigint> {
+  try {
+    const address = getValidVaultAddress();
+    const client = getReadClient();
+    return (await client.readContract({
+      address,
+      abi: VaultAbi,
+      functionName: "totalRewardsPaid",
+    })) as bigint;
+  } catch (err) {
+    log.error(COMPONENT_NAME, "Failed to fetch totalRewardsPaid", String(err));
+    return 0n;
+  }
+}
+
+/**
+ * Returns the cumulative amount sent to the burn address (wei).
+ */
+export async function getVaultTotalBurned(): Promise<bigint> {
+  try {
+    const address = getValidVaultAddress();
+    const client = getReadClient();
+    return (await client.readContract({
+      address,
+      abi: VaultAbi,
+      functionName: "totalBurned",
+    })) as bigint;
+  } catch (err) {
+    log.error(COMPONENT_NAME, "Failed to fetch totalBurned", String(err));
+    return 0n;
+  }
+}
+
+import {getVaultTresrBalance} from "../balance";
+
+/**
+ * Returns the current vault prize-pool balance (wei).
+ */
+export async function getVaultCurrentBalance(): Promise<bigint> {
+  try {
+    // Validate address but actually fetch token balance using the balance module
+    getValidVaultAddress();
+    return await getVaultTresrBalance(false);
+  } catch (err) {
+    log.error(COMPONENT_NAME, "Failed to fetch currentBalance", String(err));
+    return 0n;
+  }
+}
 
 /**
  * Pay fee to start a game session.
@@ -37,9 +134,8 @@ export async function payFeeForGame(
       "No wallet accounts found. Please connect your wallet and try again."
     );
   }
-  const cfg = await loadConfigAsync();
   const env = getEnvironmentKey();
-  const chainConfig = cfg.blockchain.avalanche[env];
+  const chainConfig = config.blockchain.avalanche[env];
   const chain = getTargetChain(chainConfig.rpc_urls[0]);
 
   const publicClient = getReadClient();
@@ -87,9 +183,6 @@ export async function payFeeForGame(
   }
 
   // --- Approve only if current allowance is insufficient ---
-  // On repeat plays the allowance is still zero (payFee fully consumes it),
-  // but we at least avoid the popup when the user has a pre-existing allowance
-  // (e.g. from a failed/cancelled previous attempt that mined the approve tx).
   if (allowance < amount) {
     log.info(
       COMPONENT_NAME,
@@ -118,8 +211,6 @@ export async function payFeeForGame(
       gas: approveGas,
     });
 
-    // Wait for approval to be mined before proceeding — otherwise the vault
-    // will see allowance=0 and revert with ERC20InsufficientAllowance.
     await confirmReceipt(approveHash, {component: COMPONENT_NAME});
   } else {
     log.info(
@@ -131,7 +222,6 @@ export async function payFeeForGame(
   // --- Pay fee to the Vault ---
   log.info(COMPONENT_NAME, "Paying fee to vault for session:", sessionId);
 
-  // simulateContract decodes Solidity revert reasons (unlike raw estimateGas)
   const {request: payFeeRequest} = await publicClient.simulateContract({
     account: accounts[0],
     address: vaultAddr,
@@ -163,7 +253,6 @@ export async function claimWin(
   keys: number,
   signature: `0x${string}`
 ): Promise<`0x${string}`> {
-  const config = await loadConfigAsync();
   const env = getEnvironmentKey();
   const chainConfig = config.blockchain.avalanche[env];
   const walletClient = await getWalletClient();
@@ -178,7 +267,6 @@ export async function claimWin(
   const publicClient = getReadClient();
   log.info(COMPONENT_NAME, "Claiming win from vault for session:", sessionId);
 
-  // simulateContract decodes Solidity revert reasons (unlike raw estimateGas)
   const {request: claimRequest} = await publicClient.simulateContract({
     account: accounts[0],
     address: chainConfig.vault_contract as `0x${string}`,
@@ -198,26 +286,6 @@ export async function claimWin(
 }
 
 /**
- * Get the vault's TRESR token balance.
- *
- * @returns Vault balance in wei
- */
-export async function getVaultBalance(): Promise<bigint> {
-  const config = await loadConfigAsync();
-  const env = getEnvironmentKey();
-  const chainConfig = config.blockchain.avalanche[env];
-  const publicClient = getReadClient();
-
-  // Query the token contract for vault's balance
-  return await publicClient.readContract({
-    address: chainConfig.tresr_token_contract as `0x${string}`,
-    abi: ERC20Abi,
-    functionName: "balanceOf",
-    args: [chainConfig.vault_contract as `0x${string}`],
-  });
-}
-
-/**
  * Get the claim cooldown status for a user.
  *
  * @param userAddress - The user's wallet address
@@ -226,9 +294,8 @@ export async function getVaultBalance(): Promise<bigint> {
 export async function getClaimCooldownStatus(
   userAddress: string
 ): Promise<{remainingSeconds: number; canClaim: boolean}> {
-  const cfg = await loadConfigAsync();
   const env = getEnvironmentKey();
-  const chainConfig = cfg.blockchain.avalanche[env];
+  const chainConfig = config.blockchain.avalanche[env];
   const publicClient = getReadClient();
 
   const lastClaimTime = await publicClient.readContract({
@@ -242,7 +309,6 @@ export async function getClaimCooldownStatus(
     return {remainingSeconds: 0, canClaim: true};
   }
 
-  // Read the actual cooldown from the contract (it's a configurable variable)
   const cooldownSeconds = Number(
     await publicClient.readContract({
       address: chainConfig.vault_contract as `0x${string}`,

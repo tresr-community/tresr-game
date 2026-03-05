@@ -8,14 +8,8 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 <BaseLayout title="TRESR Admin">
   <div class="container mx-auto max-w-7xl px-4 py-8">
     <!-- Page header -->
-    <div class="mb-6 flex items-center gap-3">
-      <h1 class="flex-1 text-2xl font-bold">🛡 Admin Dashboard</h1>
-      <a
-        href="/"
-        class="btn btn-outline btn-primary btn-sm font-mono tracking-widest"
-      >
-        RETURN TO BASE
-      </a>
+    <div class="mb-6 text-center">
+      <h1 class="text-2xl font-bold">🛡 Admin Dashboard</h1>
     </div>
 
     <!-- Loading state -->
@@ -24,11 +18,73 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
     </div>
 
     <!-- Access denied -->
-    <div
-      id="unauthorized"
-      class="alert alert-error mx-auto mt-20 hidden max-w-md"
-    >
-      <span>⛔ Unauthorized — admin access only</span>
+    <div id="unauthorized" class="hero hidden min-h-[80vh]">
+      <div class="hero-content flex-col text-center">
+        <!-- Pulsing skull -->
+        <div class="relative mb-4">
+          <div class="bg-error/20 absolute inset-0 animate-ping rounded-full">
+          </div>
+          <div
+            class="border-error/60 bg-error/10 relative flex h-28 w-28 items-center justify-center rounded-full border-2 text-6xl shadow-[0_0_40px_rgba(239,68,68,0.4)]"
+          >
+            💀
+          </div>
+        </div>
+
+        <!-- Heading -->
+        <h2
+          class="font-display text-error text-5xl font-black tracking-[0.2em] uppercase drop-shadow-[0_0_20px_rgba(239,68,68,0.8)] sm:text-7xl"
+        >
+          Access Denied
+        </h2>
+
+        <!-- Alert box -->
+        <div
+          role="alert"
+          class="alert alert-error alert-vertical sm:alert-horizontal mt-6 max-w-sm"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-6 w-6 shrink-0 stroke-current"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+            ></path>
+          </svg>
+          <div>
+            <h3 class="font-bold">Unauthorized territory</h3>
+            <div class="text-xs opacity-80">
+              This session has been flagged. Admin access only.
+            </div>
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <a
+          href="/"
+          class="btn btn-error btn-lg mt-8 gap-2 shadow-[0_0_20px_rgba(239,68,68,0.5)]"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+          </svg>
+          Return Home
+        </a>
+      </div>
     </div>
 
     <!-- Tab panel (shown after auth confirmed) -->
@@ -49,96 +105,118 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           class="tab-content bg-base-100 border-base-300 rounded-box p-4"
         >
           <!-- ─── Errors Tab ─────────────────────────────────────────────── -->
-          <div class="mb-4 flex flex-wrap items-center gap-3">
-            <h2 class="flex-1 text-xl font-bold">
+          <div class="mb-6 flex flex-col gap-4">
+            <h2 class="text-xl font-bold">
               Error Records (<span id="error-count">0</span>)
             </h2>
-            <label
-              class="input input-bordered input-sm flex items-center gap-2"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 16 16"
-                class="h-4 w-4 opacity-70"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"
-                  clip-rule="evenodd"></path>
-              </svg>
-              <input
-                id="search"
-                type="text"
-                placeholder="Search…"
-                class="grow"
-              />
-            </label>
-            <select id="filter-env" class="select select-bordered select-sm">
-              <option value="">All environments</option>
-              <option value="mainnet">mainnet</option>
-              <option value="testnet">testnet</option>
-              <option value="anvil">anvil</option>
-            </select>
-            <select
-              id="filter-resolved"
-              class="select select-bordered select-sm"
-            >
-              <option value="">All statuses</option>
-              <option value="false">Unresolved</option>
-              <option value="true">Resolved</option>
-            </select>
-            <button
-              id="delete-selected-btn"
-              class="btn btn-error btn-sm hidden"
-              disabled
-            >
-              🗑 Delete selected
-            </button>
-            <button id="refresh-btn" class="btn btn-ghost btn-sm"
-              >↺ Refresh</button
-            >
-          </div>
 
-          <!-- Selection bar -->
-          <div
-            id="selection-bar"
-            class="bg-base-200 mb-2 flex hidden items-center gap-3 rounded p-2"
-          >
-            <label class="label cursor-pointer gap-2">
-              <input
-                id="select-all"
-                type="checkbox"
-                class="checkbox checkbox-sm"
-              />
-              <span class="label-text text-sm">Select all visible</span>
-            </label>
-            <span id="selected-count" class="text-sm opacity-70"
-              >0 selected</span
+            <!-- Filter & Controls Bar -->
+            <div
+              class="bg-base-200 border-base-300 rounded-t-box flex flex-wrap items-center justify-between gap-4 border border-b-0 p-3"
             >
-          </div>
-
-          <div class="rounded-box border-base-300 overflow-x-auto border">
-            <table class="table-sm table">
-              <thead>
-                <tr>
-                  <th
-                    ><input
-                      id="select-all-head"
-                      type="checkbox"
-                      class="checkbox checkbox-xs"
-                    /></th
+              <!-- Filters (Left) -->
+              <div class="flex flex-1 flex-wrap items-center gap-3">
+                <label
+                  class="input input-bordered input-sm flex w-full max-w-xs items-center gap-2"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 16 16"
+                    class="h-4 w-4 opacity-70"
                   >
-                  <th>Error ID</th>
-                  <th>Component</th>
-                  <th>Message</th>
-                  <th>Principal</th>
-                  <th>Env</th>
-                  <th>Time</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="error-table-body"> </tbody>
-            </table>
+                    <path
+                      fill-rule="evenodd"
+                      d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"
+                      clip-rule="evenodd"></path>
+                  </svg>
+                  <input
+                    id="search"
+                    type="text"
+                    placeholder="Search ID, Component, Message..."
+                    class="grow"
+                  />
+                </label>
+                <select
+                  id="filter-env"
+                  class="select select-bordered select-sm"
+                >
+                  <option value="">All environments</option>
+                  <option value="mainnet">mainnet</option>
+                  <option value="testnet">testnet</option>
+                  <option value="anvil">anvil</option>
+                </select>
+                <select
+                  id="filter-resolved"
+                  class="select select-bordered select-sm"
+                >
+                  <option value="">All statuses</option>
+                  <option value="false">Unresolved</option>
+                  <option value="true">Resolved</option>
+                </select>
+              </div>
+
+              <!-- Actions & Selection (Right) -->
+              <div class="flex flex-wrap items-center gap-3">
+                <div
+                  id="selection-bar"
+                  class="border-base-300 hidden items-center gap-3 border-r pr-3"
+                >
+                  <label class="label cursor-pointer gap-2 p-0">
+                    <input
+                      id="select-all"
+                      type="checkbox"
+                      class="checkbox checkbox-sm"
+                    />
+                    <span class="label-text text-sm font-semibold"
+                      >Select all</span
+                    >
+                  </label>
+                  <span id="selected-count" class="badge badge-neutral badge-sm"
+                    >0</span
+                  >
+                </div>
+
+                <div class="flex gap-2">
+                  <button
+                    id="delete-selected-btn"
+                    class="btn btn-error btn-sm hidden"
+                    disabled
+                  >
+                    🗑 Delete
+                  </button>
+                  <button id="refresh-btn" class="btn btn-ghost btn-sm">
+                    ↺ Refresh
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="border-base-300 rounded-b-box overflow-x-auto border border-t-0"
+            >
+              <table class="table-sm table">
+                <thead>
+                  <tr>
+                    <th
+                      ><input
+                        id="select-all-head"
+                        type="checkbox"
+                        class="checkbox checkbox-xs"
+                      /></th
+                    >
+                    <th>Error ID</th>
+                    <th>Component</th>
+                    <th>Message</th>
+                    <th>Principal</th>
+                    <th>Env</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="error-table-body"> </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -155,7 +233,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           class="tab-content bg-base-100 border-base-300 rounded-box p-4"
         >
           <!-- ─── Economy Tab ─────────────────────────────────────────────── -->
-          <div class="mb-4 flex items-center gap-3">
+          <div class="mb-4 flex flex-wrap items-center gap-3">
             <h2 class="flex-1 text-xl font-bold">Economy</h2>
             <button id="refresh-economy-btn" class="btn btn-ghost btn-sm"
               >↺ Refresh</button
@@ -168,91 +246,49 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 
           <!-- Global comparison -->
           <div id="economy-comparison" class="hidden">
-            <!-- Juno vs Blockchain side-by-side stats -->
-            <div class="mb-2 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <!-- Juno Datastore -->
-              <div>
-                <div class="mb-2 flex items-center gap-2">
-                  <span class="font-mono text-xs font-bold uppercase opacity-60"
-                    >🗄 Juno Datastore</span
-                  >
-                </div>
-                <div class="stats stats-vertical bg-base-200 w-full shadow">
-                  <div class="stat">
-                    <div class="stat-title">Fees Collected</div>
-                    <div id="juno-fees" class="stat-value text-info text-lg">
-                      —
-                    </div>
-                    <div class="stat-desc">Total entry fees paid</div>
-                  </div>
-                  <div class="stat">
-                    <div class="stat-title">Rewarded</div>
-                    <div
-                      id="juno-rewarded"
-                      class="stat-value text-success text-lg"
-                    >
-                      —
-                    </div>
-                    <div class="stat-desc">Total paid out to winners</div>
-                  </div>
-                  <div class="stat">
-                    <div class="stat-title">Burned</div>
-                    <div id="juno-burned" class="stat-value text-error text-lg">
-                      —
-                    </div>
-                    <div class="stat-desc">Total sent to burn address</div>
-                  </div>
-                </div>
+            <!-- Blockchain -->
+            <div class="mb-4">
+              <div class="mb-2 flex items-center gap-2">
+                <span class="font-mono text-xs font-bold uppercase opacity-60"
+                  >⛓ Blockchain (Live)</span
+                >
+                <span id="chain-status" class="badge badge-xs badge-ghost"
+                  >loading…</span
+                >
               </div>
-
-              <!-- Blockchain -->
-              <div>
-                <div class="mb-2 flex items-center gap-2">
-                  <span class="font-mono text-xs font-bold uppercase opacity-60"
-                    >⛓ Blockchain (Live)</span
-                  >
-                  <span id="chain-status" class="badge badge-xs badge-ghost"
-                    >loading…</span
-                  >
+              <div
+                class="stats stats-vertical bg-base-200 md:stats-horizontal w-full shadow"
+              >
+                <div class="stat">
+                  <div class="stat-title">Fees</div>
+                  <div id="chain-fees" class="stat-value text-info text-lg">
+                    —
+                  </div>
+                  <div class="stat-desc">vault.totalFeesCollected()</div>
                 </div>
-                <div class="stats stats-vertical bg-base-200 w-full shadow">
-                  <div class="stat">
-                    <div class="stat-title">Fees Collected</div>
-                    <div id="chain-fees" class="stat-value text-info text-lg">
-                      —
-                    </div>
-                    <div class="stat-desc">vault.totalFeesCollected()</div>
+                <div class="stat">
+                  <div class="stat-title">Rewards</div>
+                  <div
+                    id="chain-rewarded"
+                    class="stat-value text-success text-lg"
+                  >
+                    —
                   </div>
-                  <div class="stat">
-                    <div class="stat-title">Rewarded</div>
-                    <div
-                      id="chain-rewarded"
-                      class="stat-value text-success text-lg"
-                    >
-                      —
-                    </div>
-                    <div class="stat-desc">vault.totalRewardsPaid()</div>
+                  <div class="stat-desc">vault.totalRewardsPaid()</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-title">Burned</div>
+                  <div id="chain-burned" class="stat-value text-error text-lg">
+                    —
                   </div>
-                  <div class="stat">
-                    <div class="stat-title">Burned</div>
-                    <div
-                      id="chain-burned"
-                      class="stat-value text-error text-lg"
-                    >
-                      —
-                    </div>
-                    <div class="stat-desc">vault.totalBurned()</div>
+                  <div class="stat-desc">vault.totalBurned()</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-title">Vault Balance</div>
+                  <div id="chain-vault" class="stat-value text-warning text-lg">
+                    —
                   </div>
-                  <div class="stat">
-                    <div class="stat-title">Vault Balance</div>
-                    <div
-                      id="chain-vault"
-                      class="stat-value text-warning text-lg"
-                    >
-                      —
-                    </div>
-                    <div class="stat-desc">Current prize pool</div>
-                  </div>
+                  <div class="stat-desc">vault.currentBalance()</div>
                 </div>
               </div>
             </div>
@@ -270,14 +306,12 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
                   <tr>
                     <th>Principal</th>
                     <th>Nickname</th>
-                    <th>Juno Balance</th>
-                    <th>On-Chain</th>
-                    <th>Difference</th>
+                    <th>On-Chain Balance</th>
                   </tr>
                 </thead>
                 <tbody id="economy-table-body">
                   <tr>
-                    <td colspan="5" class="py-8 text-center opacity-50"
+                    <td colspan="3" class="py-8 text-center opacity-50"
                       >Click Refresh to load economy data</td
                     >
                   </tr>
@@ -338,16 +372,22 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
     </div>
   </div>
 
-  <!-- Admin status footer -->
-  <footer
-    class="fixed inset-x-0 bottom-0 z-20 flex justify-center px-2 pt-2 pb-[env(safe-area-inset-bottom,0px)]"
-  >
-    <div
-      class="bg-base-300/80 border-primary/20 text-base-content/50 rounded-t-lg border-x border-t px-4 pt-1 font-mono text-xs backdrop-blur"
+  <!-- Return Home & Calculator -->
+  <div class="mt-10 mb-8 flex justify-center gap-4">
+    <a
+      href="/"
+      class="btn btn-outline btn-primary btn-sm font-mono tracking-widest"
     >
-      <span id="admin-status" class="opacity-75">Checking auth…</span>
-    </div>
-  </footer>
+      ← RETURN HOME
+    </a>
+    <a
+      href="/calc"
+      class="btn btn-outline btn-secondary btn-sm font-mono tracking-widest"
+      title="Secret Prize Calculator"
+    >
+      🧮 CALCULATOR
+    </a>
+  </div>
 
   <!-- Error detail modal -->
   <dialog id="error-detail-modal" class="modal modal-middle">
@@ -393,22 +433,24 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
   </dialog>
 
   <script>
-    import {initSatellite, listDocs, getDoc} from "@junobuild/core";
+    import {initSatellite, listDocs} from "@junobuild/core";
     import {
       getErrors,
       deleteErrors,
+      resolveError,
     } from "@/declarations/satellite/satellite.api";
     import type {ErrorRecord} from "@/declarations/satellite/satellite.did";
-    import type {UserProfile, GlobalStats} from "@/types/backend";
+    import type {UserProfile} from "@/types/backend";
+    import {getTresrBalance, formatBalance} from "@/lib/blockchain/balance";
+    import {getEnvironmentKey} from "@/lib/blockchain/networks/chain";
     import {
-      getTresrBalance,
-      getVaultTresrBalance,
-      formatBalance,
-    } from "@/lib/wallet/balance";
-    import {getReadClient} from "@/lib/wallet/tx";
-    import {getEnvironmentKey} from "@/lib/wallet/avalanche";
-    import {VaultAbi} from "@/lib/wallet/abi/vault";
+      getTotalFees,
+      getTotalRewards,
+      getVaultTotalBurned,
+      getVaultCurrentBalance,
+    } from "@/lib/blockchain/contracts/vault";
     import {config} from "@/lib/config/client";
+    import {log} from "@/lib/utils/log";
 
     // ─── State ────────────────────────────────────────────────────────────
 
@@ -438,7 +480,6 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
     const selectAllHead = document.getElementById(
       "select-all-head"
     ) as HTMLInputElement;
-    const adminStatus = document.getElementById("admin-status")!;
 
     // ─── Helpers ─────────────────────────────────────────────────────────
 
@@ -463,8 +504,6 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         if ("Err" in result) {
           loading.classList.add("hidden");
           unauthorized.classList.remove("hidden");
-          adminStatus.textContent = "⛔ Unauthorized";
-          adminStatus.className = "text-error font-bold";
           return;
         }
 
@@ -472,15 +511,11 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         loading.classList.add("hidden");
         adminPanel.classList.remove("hidden");
         selectionBar.classList.remove("hidden");
-        adminStatus.textContent = "Admin ✓";
-        adminStatus.className = "text-success font-bold";
         renderErrorTable();
       } catch (e) {
         loading.classList.add("hidden");
         unauthorized.classList.remove("hidden");
-        adminStatus.textContent = "Error loading";
-        adminStatus.className = "text-error";
-        console.error("Failed to load errors:", e);
+        log.error("Admin", "Failed to load error records", e);
       }
     }
 
@@ -519,6 +554,10 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         const ts = new Date(Number(r.timestamp_ms)).toLocaleString();
         const tr = document.createElement("tr");
         tr.className = `hover ${selected.has(r.error_id) ? "bg-base-300" : ""}`;
+        const resolveLabel = r.resolved ? "↩ Reopen" : "✓ Resolve";
+        const resolveClass = r.resolved
+          ? "btn btn-xs btn-ghost text-warning"
+          : "btn btn-xs btn-ghost text-success";
         tr.innerHTML = `
           <td><input type="checkbox" class="checkbox checkbox-xs row-check" data-id="${r.error_id}" ${selected.has(r.error_id) ? "checked" : ""} /></td>
           <td><code class="text-xs font-mono">${r.error_id}</code></td>
@@ -528,6 +567,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           <td><span class="badge badge-xs ${r.environment === "mainnet" ? "badge-warning" : r.environment === "testnet" ? "badge-info" : "badge-ghost"}">${r.environment}</span></td>
           <td class="text-xs whitespace-nowrap">${ts}</td>
           <td>${r.resolved ? '<span class="badge badge-success badge-xs">resolved</span>' : '<span class="badge badge-error badge-xs">open</span>'}</td>
+          <td><button class="${resolveClass} resolve-btn" data-id="${r.error_id}" data-resolved="${r.resolved}">${resolveLabel}</button></td>
         `;
 
         tr.addEventListener("click", (e) => {
@@ -552,6 +592,37 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           if (cb.checked) selected.add(cb.dataset.id!);
           else selected.delete(cb.dataset.id!);
           updateSelectionUI();
+        });
+      }
+
+      // Resolve / Reopen buttons
+      for (const btn of Array.from(
+        tableBody.querySelectorAll<HTMLButtonElement>(".resolve-btn")
+      )) {
+        btn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const errorId = btn.dataset.id!;
+          const wasResolved = btn.dataset.resolved === "true";
+          btn.disabled = true;
+          btn.textContent = "…";
+          try {
+            const res = await resolveError(errorId, !wasResolved);
+            if ("Err" in res) {
+              alert(`Failed to update status: ${res.Err}`);
+              btn.disabled = false;
+              btn.textContent = wasResolved ? "↩ Reopen" : "✓ Resolve";
+              return;
+            }
+            // Update local state and re-render
+            const idx = allErrors.findIndex((r) => r.error_id === errorId);
+            if (idx !== -1)
+              allErrors[idx] = {...allErrors[idx], resolved: !wasResolved};
+            renderErrorTable();
+          } catch (err) {
+            alert(`Failed: ${String(err)}`);
+            btn.disabled = false;
+            btn.textContent = wasResolved ? "↩ Reopen" : "✓ Resolve";
+          }
         });
       }
     }
@@ -626,29 +697,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
       alertsEl.innerHTML = "";
 
       try {
-        // ── 1. Juno Datastore ─────────────────────────────────────────────
-        const statsDoc = await getDoc<GlobalStats>({
-          collection: "economy",
-          key: "global",
-        });
-
-        const stats = statsDoc?.data;
-        // Juno stores u64 whole-token amounts (not wei). Multiply by 10^18
-        // so they are in the same unit as on-chain wei values.
-        const DECIMALS = 10n ** 18n;
-        const junoFees = BigInt(stats?.total_fees ?? 0) * DECIMALS;
-        const junoRewarded = BigInt(stats?.total_rewarded ?? 0) * DECIMALS;
-        const junoBurned =
-          BigInt(Math.round(Number(stats?.total_burned ?? 0))) * DECIMALS;
-
-        document.getElementById("juno-fees")!.textContent =
-          formatBalance(junoFees);
-        document.getElementById("juno-rewarded")!.textContent =
-          formatBalance(junoRewarded);
-        document.getElementById("juno-burned")!.textContent =
-          formatBalance(junoBurned);
-
-        // ── 2. Blockchain ─────────────────────────────────────────────────
+        // ── 1. Blockchain ─────────────────────────────────────────────────
         let chainFees = 0n;
         let chainRewarded = 0n;
         let chainBurned = 0n;
@@ -664,24 +713,11 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
             vaultAddr &&
             vaultAddr !== "0x0000000000000000000000000000000000000000"
           ) {
-            const client = getReadClient();
             const [fees, rewarded, burned, vault] = await Promise.all([
-              client.readContract({
-                address: vaultAddr,
-                abi: VaultAbi,
-                functionName: "totalFeesCollected",
-              }),
-              client.readContract({
-                address: vaultAddr,
-                abi: VaultAbi,
-                functionName: "totalRewardsPaid",
-              }),
-              client.readContract({
-                address: vaultAddr,
-                abi: VaultAbi,
-                functionName: "totalBurned",
-              }),
-              getVaultTresrBalance(false),
+              getTotalFees(),
+              getTotalRewards(),
+              getVaultTotalBurned(),
+              getVaultCurrentBalance(),
             ]);
             chainFees = fees as bigint;
             chainRewarded = rewarded as bigint;
@@ -714,45 +750,9 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           ? formatBalance(chainVault)
           : "—";
 
-        // ── 3. Discrepancy alerts ─────────────────────────────────────────
-        if (chainOnline) {
-          const checks: Array<{label: string; juno: bigint; chain: bigint}> = [
-            {label: "Fees", juno: junoFees, chain: chainFees},
-            {label: "Rewarded", juno: junoRewarded, chain: chainRewarded},
-            {label: "Burned", juno: junoBurned, chain: chainBurned},
-          ];
+        alertsEl.innerHTML = "";
 
-          const alerts: string[] = [];
-          for (const {label, juno, chain: ch} of checks) {
-            if (juno !== ch) {
-              const diff = ch > juno ? ch - juno : juno - ch;
-              const direction = ch > juno ? "chain > juno" : "juno > chain";
-              alerts.push(`
-                <div class="alert alert-error flex items-center gap-3">
-                  <span class="inline-grid *:[grid-area:1/1]">
-                    <span class="status status-error animate-ping"></span>
-                    <span class="status status-error"></span>
-                  </span>
-                  <span class="font-mono text-sm">
-                    <strong>${label}</strong> discrepancy: Juno ${formatBalance(juno)} vs Chain ${formatBalance(ch)}
-                    &mdash; delta <strong>${formatBalance(diff)}</strong> (${direction})
-                  </span>
-                </div>
-              `);
-            }
-          }
-
-          if (alerts.length === 0) {
-            alertsEl.innerHTML = `
-              <div class="alert alert-success">
-                <span>✅ Juno and blockchain are in sync</span>
-              </div>`;
-          } else {
-            alertsEl.innerHTML = alerts.join("");
-          }
-        }
-
-        // ── 4. Per-user audit ─────────────────────────────────────────────
+        // ── 2. Per-user audit ─────────────────────────────────────────────
         const usersResult = await listDocs<UserProfile>({
           collection: "users",
         });
@@ -763,11 +763,6 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           const profile = doc.data;
           const principal = doc.key;
           const nickname = escHtml(profile.nickname ?? "—");
-          // wallet.balance is u64 whole tokens in Juno (not wei).
-          // Multiply by 10^18 to match on-chain wei for comparison.
-          const DECIMALS = 10n ** 18n;
-          const junoBalance =
-            BigInt(Math.round(Number(profile.wallet?.balance ?? 0))) * DECIMALS;
           let onChainBalance = 0n;
 
           if (profile.evm_wallet) {
@@ -778,30 +773,11 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
             }
           }
 
-          const diff = onChainBalance - junoBalance;
-          const hasDiff = diff !== 0n;
-          const diffLabel = hasDiff
-            ? `<span class="text-error font-bold">${formatBalance(diff < 0n ? -diff : diff)}${diff < 0n ? " ↓" : " ↑"}</span>`
-            : `<span class="text-success">0</span>`;
-
-          const diffCell = hasDiff
-            ? `<td class="relative">
-                ${diffLabel}
-                <span class="inline-grid *:[grid-area:1/1] ml-1 align-middle">
-                  <span class="status status-error animate-ping"></span>
-                  <span class="status status-error"></span>
-                </span>
-              </td>`
-            : `<td>${diffLabel}</td>`;
-
-          const rowClass = hasDiff ? "bg-error/10" : "";
           rows.push(
-            `<tr class="${rowClass}">` +
+            `<tr>` +
               `<td class="text-xs font-mono truncate max-w-[120px]" title="${escHtml(principal)}">${escHtml(principal.slice(0, 14))}…</td>` +
               `<td>${nickname}</td>` +
-              `<td class="font-mono text-xs">${formatBalance(junoBalance)}</td>` +
               `<td class="font-mono text-xs">${formatBalance(onChainBalance)}</td>` +
-              diffCell +
               `</tr>`
           );
         }
@@ -811,11 +787,11 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         econBody.innerHTML =
           rows.length > 0
             ? rows.join("")
-            : '<tr><td colspan="5" class="py-8 text-center opacity-50">No users found</td></tr>';
+            : '<tr><td colspan="3" class="py-8 text-center opacity-50">No users found</td></tr>';
       } catch (e) {
         econLoading.classList.add("hidden");
         econComparison.classList.remove("hidden");
-        econBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-error">Failed to load economy data: ${escHtml(String(e))}</td></tr>`;
+        econBody.innerHTML = `<tr><td colspan="3" class="py-8 text-center text-error">Failed to load economy data: ${escHtml(String(e))}</td></tr>`;
       }
     }
 
@@ -840,7 +816,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         const now = Date.now();
         const banned = usersResult.items.filter(
           (doc) =>
-            doc.data.banned_until != null && (doc.data.banned_until ?? 0) > 0
+            doc.data.banned_until != null && (doc.data.banned_until ?? 0) > now
         );
 
         bannedCountEl.textContent = String(banned.length);
@@ -900,7 +876,10 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 
     (async () => {
       await initSatellite();
+      // Load all tabs in parallel after auth is confirmed via loadErrors
       await loadErrors();
+      // Economy and bans can load concurrently (they don't require auth gating)
+      void Promise.all([loadEconomy(), loadBans()]);
     })();
   </script>
 </BaseLayout>

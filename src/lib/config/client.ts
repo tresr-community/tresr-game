@@ -89,7 +89,7 @@ export const config: ConfigTypes = {
     "avalanche": {
       "anvil": {
         "url": "http://auamu-4x777-77775-aaaaa-cai.localhost:5987",
-        "fee": 10,
+        "fee": 100,
         "burn_rate": 1000,
         "chain_id": 31337,
         "rpc_urls": [
@@ -102,16 +102,16 @@ export const config: ConfigTypes = {
           "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+        "tresr_token_contract": "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
-        "faucet_contract": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+        "vault_contract": "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
+        "faucet_contract": "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
         "explorer_url": "http://localhost:8545/tx/"
       },
       "testnet": {
         "url": "https://game-testnet.tresr.community",
-        "fee": 10,
+        "fee": 100,
         "burn_rate": 1000,
         "chain_id": 43113,
         "rpc_urls": [
@@ -122,16 +122,16 @@ export const config: ConfigTypes = {
           "https://game-testnet.tresr.community"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0x04fd42a3ab3e287019489e3bdac934e344779e36",
+        "tresr_token_contract": "0x0000000000000000000000000000000000000000",
         "oracle_address": "0xf2ff695cae8cc886d3c03afd502a35fcee61b66f",
-        "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
-        "vault_contract": "0xf4a67b6beb1a54587468703ef877bf64c5f49dc7",
-        "faucet_contract": "0x29d16738c64566940a5543bc3e141e0e9057468e",
+        "admin_address": "0x628F3Df70dd2F19e28842c9AB64c64A9700a929e",
+        "vault_contract": "0x0000000000000000000000000000000000000000",
+        "faucet_contract": "0x0000000000000000000000000000000000000000",
         "explorer_url": "https://testnet.snowtrace.io/tx/"
       },
       "mainnet": {
         "url": "https://game.tresr.community",
-        "fee": 10,
+        "fee": 100,
         "burn_rate": 1000,
         "chain_id": 43114,
         "rpc_urls": [
@@ -154,6 +154,7 @@ export const config: ConfigTypes = {
     }
   },
   "wallet": {
+    "faucet_cooldown_hours": 24,
     "balance_refresh_cooldown_ms": 30000,
     "vault_poll_interval_ms": 60000,
     "connect_timeout_ms": 300000,
@@ -403,17 +404,26 @@ export const config: ConfigTypes = {
       "base_delay_ms": 100
     },
     "vault": {
+      "max_score": 20000,
       "minimum_cap": 1000,
       "tiers": {
-        "easy": 5000,
-        "normal": 25000,
-        "hard": 100000
+        "building": 10000,
+        "sweet_spot": 50000,
+        "fomo": 100000
       },
       "difficulty_multipliers": {
-        "easy": 0.5,
-        "normal": 1,
-        "hard": 1.5,
-        "extreme": 2
+        "building": 1,
+        "sweet_spot": 1.5,
+        "fomo": 2,
+        "legendary": 3
+      },
+      "payout_fixed": {
+        "building": 500
+      },
+      "payout_percentages": {
+        "sweet_spot": 10,
+        "fomo": 25,
+        "legendary": 50
       }
     },
     "physics": {
@@ -561,9 +571,9 @@ export const config: ConfigTypes = {
         "ai": {
           "cautious": {
             "speed_mult": 0.7,
-            "preferred_distance": 180,
+            "preferred_distance": 250,
             "group_radius": 200,
-            "pack_threshold": 2,
+            "pack_threshold": 4,
             "charge_speed_mult": 1.3,
             "strafe_speed_mult": 0.9,
             "strafe_switch_time": 2,
@@ -572,14 +582,14 @@ export const config: ConfigTypes = {
           "direct": {},
           "erratic": {
             "speed_mult": 1.2,
-            "zigzag_frequency": 3,
-            "zigzag_amplitude": 80,
+            "zigzag_frequency": 1.5,
+            "zigzag_amplitude": 1.5,
             "jitter_x": 80,
             "jitter_y": 40
           },
           "flanker": {
             "speed_mult": 1.1,
-            "offset": 120,
+            "offset": 200,
             "switch_time": 3,
             "orbit_time": 2,
             "lunge_speed_mult": 2.5,
@@ -596,7 +606,8 @@ export const config: ConfigTypes = {
             "jitter_time": 0.3,
             "retarget_time": 4,
             "attack_damage": 10,
-            "attack_cooldown_s": 0.5
+            "attack_cooldown_s": 0.5,
+            "rage_tint": 16711680
           },
           "swarm": {
             "speed_mult": 1,
@@ -608,13 +619,13 @@ export const config: ConfigTypes = {
             "check_frame_interval": 10
           },
           "weights": {
-            "cautious": 0,
-            "direct": 0,
-            "erratic": 0,
-            "flanker": 0,
-            "passive": 0,
-            "retardio": 0,
-            "swarm": 100
+            "cautious": 10,
+            "direct": 20,
+            "erratic": 20,
+            "flanker": 20,
+            "passive": 10,
+            "retardio": 10,
+            "swarm": 10
           }
         },
         "health_bar": {
@@ -1496,5 +1507,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "0ad44db49da9ac216f999f19f74f97ee75efa3eb76ab58b3edc08d6d164f1878"
+  "configHash": "845457ad413f10a94609e60fa2fbb5161d154985ef7543b521b353b12de15f41"
 };

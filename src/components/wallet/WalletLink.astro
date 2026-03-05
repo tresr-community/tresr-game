@@ -145,16 +145,19 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     saveUserProfile,
     createDefaultProfile,
   } from "@/lib/user";
-  import {connectWallet, getWalletClient} from "@/lib/wallet/connection";
-  import {buildWalletLinkMessage} from "@/lib/wallet/wallet-message";
-  import {shortenAddress} from "@/lib/wallet/avalanche";
+  // connectWallet, getWalletClient (from wallet/connection),
+  // buildWalletLinkMessage (from wallet/wallet-message), and shortenAddress
+  // (from wallet/avalanche) are lazy-imported ONLY inside handleConnect /
+  // handleLink click handlers — this keeps the heavy @reown/appkit + @wagmi/core
+  // + viem bundle out of the initial page JS for users who never click Connect.
   import {
     getTresrBalance,
     formatBalance,
     isRpcAvailable,
     resetRpcAvailability,
-  } from "@/lib/wallet/balance";
-  import {JUNO_ENVIRONMENT} from "@/lib/utils/log";
+  } from "@/lib/blockchain/balance";
+  import {shortenAddress} from "@/lib/blockchain/networks/display";
+  import {JUNO_ENVIRONMENT} from "@/lib/config/constants";
   import {log} from "@/lib/utils/log";
   import {config} from "@/lib/config/client";
 
@@ -277,47 +280,62 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     }, 1000);
   }
 
-  async function fetchAndDisplayBalance(address: string, bypassCache = false) {
-    showBalanceLoading();
-    try {
-      const balance = await getTresrBalance(address, !bypassCache);
-
-      // RPC offline — getTresrBalance returns 0n silently
-      if (!isRpcAvailable()) {
-        balanceLoading.classList.add("hidden");
-        balanceValue.classList.add("hidden");
-        balanceError.classList.remove("hidden");
-        balanceError.querySelector("span")!.textContent = "Network unavailable";
-        addressEl.textContent = shortenAddress(address);
-        return;
-      }
-
-      const formatted = formatBalance(balance);
-      showBalanceValue(formatted);
-      addressEl.textContent = shortenAddress(address);
-      log.info(COMPONENT_NAME, `Balance: ${formatted} ${tokenSymbol}`);
-    } catch (e) {
-      log.error(COMPONENT_NAME, "Balance fetch failed", e);
-      showBalanceError();
-    }
-  }
-
   async function handleRefresh() {
     if (!canRefresh() || !currentAddress) return;
     resetRpcAvailability(); // Re-probe RPC on manual refresh
     lastRefreshTime = Date.now();
     startCooldownTimer();
-    await fetchAndDisplayBalance(currentAddress, true);
+    showBalanceLoading();
+
+    // Fall back to cached read
+    try {
+      const balance = await getTresrBalance(currentAddress, false);
+      if (isRpcAvailable()) {
+        showBalanceValue(formatBalance(balance));
+        addressEl.textContent = shortenAddress(currentAddress);
+        // Refresh Vault Balance independently
+        const {getVaultCurrentBalance} = await import(
+          "@/lib/blockchain/contracts/vault"
+        );
+        const vaultBal = await getVaultCurrentBalance();
+        document.dispatchEvent(
+          new CustomEvent("tresr:blockchain-synced", {
+            detail: {vaultBalance: vaultBal},
+          })
+        );
+      } else {
+        showBalanceError();
+      }
+    } catch {
+      showBalanceError();
+    }
   }
 
   async function showLinkedState(address: string) {
-    // Dedup: if already showing this address, skip (prevents race between
-    // auth subscriber and profileStore subscriber both calling us concurrently)
     if (currentAddress === address) return;
     currentAddress = address;
     showState(stateLinked);
     addressEl.textContent = shortenAddress(address);
-    await fetchAndDisplayBalance(address);
+    // Use cached balance for initial display (fast), then fire a full sync
+    // in the background so Juno gets updated without blocking the UI.
+    showBalanceLoading();
+    try {
+      const balance = await getTresrBalance(address, false);
+      showBalanceValue(formatBalance(balance));
+      addressEl.textContent = shortenAddress(address);
+
+      const {getVaultCurrentBalance} = await import(
+        "@/lib/blockchain/contracts/vault"
+      );
+      const vaultBal = await getVaultCurrentBalance();
+      document.dispatchEvent(
+        new CustomEvent("tresr:blockchain-synced", {
+          detail: {vaultBalance: vaultBal},
+        })
+      );
+    } catch {
+      showBalanceError();
+    }
   }
 
   async function updateUI(authState: AuthState) {
@@ -338,7 +356,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     // Authenticated user — check in-memory store first to avoid a redundant
     // Juno read when auth fires before loadProfile has completed (e.g. SIWA).
     const cachedProfile = profileStore.get();
-    if (cachedProfile?.wallet?.evm_wallet_linked && cachedProfile.evm_wallet) {
+    if (cachedProfile?.evm_wallet) {
       await showLinkedState(cachedProfile.evm_wallet);
       return;
     }
@@ -348,7 +366,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
       try {
         const doc = await getUserProfile(authState.user.key);
         if (gen !== updateGeneration) return; // Stale — newer update superseded
-        if (doc?.data?.wallet?.evm_wallet_linked && doc.data.evm_wallet) {
+        if (doc?.data?.evm_wallet) {
           await showLinkedState(doc.data.evm_wallet);
           return;
         }
@@ -367,6 +385,31 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
   // Refresh button handler
   refreshBtn.addEventListener("click", handleRefresh);
 
+  // Animate the refresh icon while a blockchain sync is in progress
+  function handleBlockchainSyncing(e: Event) {
+    const {syncing} = (e as CustomEvent<{syncing: boolean}>).detail;
+    const icon = document.getElementById("wallet-refresh-icon")!;
+    if (syncing) {
+      icon.classList.add("animate-spin");
+    } else {
+      icon.classList.remove("animate-spin");
+    }
+  }
+  document.addEventListener(
+    "tresr:blockchain-syncing",
+    handleBlockchainSyncing
+  );
+
+  // Page-focus trigger: re-sync when user tabs back, if wallet is connected
+  function handleVisibilityChange() {
+    if (document.visibilityState === "visible" && currentAddress) {
+      void getTresrBalance(currentAddress, false).then((balance) => {
+        showBalanceValue(formatBalance(balance));
+      });
+    }
+  }
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
   // Named handlers for cleanup (ticket #241)
   function handleOpenProfile() {
     document.dispatchEvent(new CustomEvent("tresr:open-profile"));
@@ -376,17 +419,19 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
   }
   async function handleConnect() {
     try {
+      // Lazy-load the AppKit bundle only when user clicks Connect
+      const [{connectWallet}, {shortenAddress: shortAddr}] = await Promise.all([
+        import("@/lib/wallet/connection"),
+        import("@/lib/blockchain/networks/display"),
+      ]);
       const connection = await connectWallet();
       const address = connection.address;
-      connectStatus.textContent = `Connected: ${shortenAddress(address)}`;
+      connectStatus.textContent = `Connected: ${shortAddr(address)}`;
 
       const authState = getAuthState();
       if (authState.user) {
         const doc = await getUserProfile(authState.user.key);
-        if (
-          doc?.data?.wallet?.evm_wallet_linked &&
-          doc.data.evm_wallet?.toLowerCase() === address.toLowerCase()
-        ) {
+        if (doc?.data?.evm_wallet?.toLowerCase() === address.toLowerCase()) {
           await showLinkedState(address);
         } else {
           connectBtn.classList.add("hidden");
@@ -403,6 +448,11 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     if (!address) return;
 
     try {
+      // Lazy-load AppKit modules only when user clicks Link
+      const [{getWalletClient}, {buildWalletLinkMessage}] = await Promise.all([
+        import("@/lib/wallet/connection"),
+        import("@/lib/wallet/wallet-message"),
+      ]);
       const walletClient = await getWalletClient();
       const authState = getAuthState();
       if (!authState.user) throw new Error("Sign in with IID first.");
@@ -424,7 +474,6 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
         verification_signature: signature,
         verification_message: message,
       };
-      profile.wallet.evm_wallet_linked = true;
 
       await saveUserProfile(principal, profile, existingProfile?.version);
       profileStore.set(profile);
@@ -445,7 +494,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
   });
 
   const unsubProfile = profileStore.subscribe((profile) => {
-    if (profile?.wallet?.evm_wallet_linked && profile.evm_wallet) {
+    if (profile?.evm_wallet) {
       const authState = getAuthState();
       if (authState.isAuthenticated && !authState.isGuest) {
         // Skip if the auth subscription already handled this address
@@ -466,6 +515,11 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
       openProfileBtn.removeEventListener("click", handleOpenProfile);
       connectBtn.removeEventListener("click", handleConnect);
       linkBtn.removeEventListener("click", handleLink);
+      document.removeEventListener(
+        "tresr:blockchain-syncing",
+        handleBlockchainSyncing
+      );
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     },
     {once: true}
   );

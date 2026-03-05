@@ -19,7 +19,7 @@
 import {getDoc, setDoc, type Doc} from "@junobuild/core";
 import {getSatelliteConfig} from "../auth";
 import type {UserProfile} from "../../types/backend";
-import {createDefaultProfile} from "./index";
+import {createDefaultProfile} from "./default-profile";
 import {log} from "../utils/log";
 
 const COMPONENT_NAME = "ProfileWriteQueue";

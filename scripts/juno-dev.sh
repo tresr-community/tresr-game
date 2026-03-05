@@ -48,8 +48,9 @@ function cmd_astro_build() {
 	log_info "🚀 Clean Astro build..."
 	rm -rf dist node_modules/.vite .astro # Vite/Astro caches
 	bun install
-	bun run prebuild # client-config (non-CI)
-	bun run build    # astro build → NEW dist/_astro/sw-[HASH].js!
+	# NOTE: bun automatically runs the `prebuild` lifecycle hook before `build`,
+	# so client-config is regenerated exactly once without an explicit call here.
+	bun run build # astro build → NEW dist/_astro/sw-[HASH].js!
 	log_success "✅ Build done. NEW SW: $(find dist/_astro -name 'sw*' -print -quit 2>/dev/null || echo 'None')"
 }
 
@@ -84,16 +85,33 @@ function cmd_functions_deploy() {
 
 	# Upgrade (direct deploy, skips CDN — use 'publish' for CI/CD)
 	log_info "📤 Upgrading Juno serverless functions (mode=$mode)..."
-	juno functions upgrade --mode "$mode" || {
-		log_error "Functions upgrade failed!"
-		return 1
-	}
+	juno functions upgrade \
+		--no-snapshot \
+		--clear-chunks \
+		--mode "$mode" ||
+		{
+			log_error "Functions upgrade failed!"
+			return 1
+		}
 	log_success "✅ Functions upgraded (mode=$mode)."
 }
 
 # =============================================================================
 # Deploy: Build + Juno Hosting (Local/Prod)
 # =============================================================================
+
+# Apply the Juno satellite config (collection rules, storage headers) independently.
+# This is separated from file upload because the emulator can hit the 40B instruction
+# limit if set_storage_config runs in the same batch as the file commit.
+function cmd_juno_config() {
+	local mode="${1:-development}"
+	log_info "⚙️  Applying Juno config (mode=$mode)..."
+	if ! juno config apply --mode "$mode"; then
+		log_error "Juno config apply failed."
+		return 1
+	fi
+	log_success "✅ Juno config applied."
+}
 
 function cmd_juno_deploy() {
 	local mode="${1:-development}"
@@ -105,15 +123,13 @@ function cmd_juno_deploy() {
 
 	log_info "📤 Juno hosting deploy (mode=$mode)..."
 
-	# Build deploy flags
-	local -a deploy_flags=(--config --immediate --mode "$mode")
-
-	# NOTE: PWA/SW update testing break when this is on.
+	# NOTE: --config is intentionally NOT passed here.
+	# Config (collection rules + storage headers) is applied separately via
+	# cmd_juno_config to avoid the emulator hitting the 40B instruction limit
+	# in set_storage_config when files are large/numerous.
+	# NOTE: PWA/SW update testing break when --clear is on.
 	#       Use juno-dev clear-satellite instead.
-	# Clear stale assets on dev deploys to prevent old hashed files accumulating
-	#if [[ $mode == "development" ]]; then
-	#	deploy_flags+=(--clear)
-	#fi
+	local -a deploy_flags=(--immediate --mode "$mode")
 
 	if ! juno hosting deploy "${deploy_flags[@]}"; then
 		log_error "Deploy failed!"
@@ -236,12 +252,17 @@ function cmd_typecheck() {
 }
 
 function cmd_test() {
-	log_info "Running unit tests..."
+	log_info "Running Typescript unit tests..."
 	bun test || {
-		log_error "Unit tests failed."
+		log_error "Typescript unit tests failed."
 		return 1
 	}
-	log_success "All tests passed."
+	log_info "🦀 Running Rust unit tests..."
+	cargo test --manifest-path src/satellite/Cargo.toml || {
+		log_error "Rust unit tests failed."
+		return 1
+	}
+	log_success "All unit tests have passed."
 }
 
 function cmd_cleanup() {
@@ -865,6 +886,9 @@ oneshot | loop)
 		log_error "Could not clean artifacts."
 		exit 8
 	}
+	# Generate config once — needed by astro check (lint) and bun run build.
+	# We call it explicitly here so lint has types, then skip-scripts in build
+	# to avoid bun auto-running prebuild a second time.
 	log_info "Regenerating client config..."
 	bun run client-config || {
 		log_error "Could not regenerate client config."
@@ -882,15 +906,28 @@ oneshot | loop)
 		log_error "TypeScript type check failed."
 		exit 20
 	}
-	# Build once (rebuild does build), then deploy with skip_build
-	cmd_rebuild || {
-		log_error "Could not rebuild the static site."
+	# Build: inline steps and explicitly skip the prebuild script so client-config
+	# doesn't run a second time (it already ran above for lint).
+	log_info "Full rebuild..."
+	log_info "🚀 Clean Astro build..."
+	rm -rf dist node_modules/.vite .astro
+	bun install
+	bun x astro build || {
+		log_error "Build failed."
 		exit 9
 	}
-	cmd_juno_deploy development true || {
-		log_error "Could not deploy the site."
+	log_success "✅ Build done."
+	# --clear removes existing assets first (empty satellite = set_storage_config
+	# stays well under the 40B instruction limit).
+	# --config applies collection rules + storage headers after upload succeeds.
+	# Both happen in one atomic CLI call so there's no separate clear/config step.
+	log_info "📤 Juno hosting deploy --clear --config (mode=development)..."
+	if ! juno hosting deploy --clear --config --immediate --mode development; then
+		log_error "Deploy failed!"
 		exit 13
-	}
+	fi
+	url="http://${VITE_SATELLITE_ID}.localhost:5987/"
+	log_success "Satellite live: $url"
 	cmd_functions_deploy development || {
 		log_error "Could not deploy serverless functions."
 		exit 2
@@ -926,6 +963,14 @@ topup-wallet | fund-wallet)
 	cmd_topup_wallet "$2" || {
 		log_error "Could not top up wallet."
 		exit 17
+	}
+	;;
+
+# Apply Juno satellite config (collections + storage headers) without deploying files
+config)
+	cmd_juno_config "${2:-development}" || {
+		log_error "Could not apply Juno config."
+		exit 23
 	}
 	;;
 

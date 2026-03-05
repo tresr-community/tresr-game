@@ -14,12 +14,6 @@
           "memory": "stable"
         },
         {
-          "collection": "economy",
-          "read": "public",
-          "write": "managed",
-          "memory": "stable"
-        },
-        {
           "collection": "scores",
           "read": "public",
           "write": "managed",
@@ -27,6 +21,12 @@
         },
         {
           "collection": "users",
+          "read": "managed",
+          "write": "managed",
+          "memory": "stable"
+        },
+        {
+          "collection": "claims",
           "read": "managed",
           "write": "managed",
           "memory": "stable"
@@ -65,8 +65,7 @@
   },
   "highscore": {
     "score_ttl_hours": 24,
-    "consolation_prize_percent": 5,
-    "consolation_prize_max": 100,
+    "consolation_prize_percent": 1,
     "consolation_prize_min_games": 3
   }
 }

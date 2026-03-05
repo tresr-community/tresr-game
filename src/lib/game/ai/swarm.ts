@@ -10,9 +10,17 @@ import {getNearbyAlliesCenter} from "./shared";
 export class SwarmBehavior implements AIBehavior {
   readonly type = "swarm" as const;
 
-  private centerOfMass: {x: number; groundY: number; count: number} = {
+  private centerOfMass: {
+    x: number;
+    groundY: number;
+    sepX: number;
+    sepY: number;
+    count: number;
+  } = {
     x: 0,
     groundY: 0,
+    sepX: 0,
+    sepY: 0,
     count: 0,
   };
   private checkCounter: number = 0;
@@ -21,7 +29,7 @@ export class SwarmBehavior implements AIBehavior {
   onSpawn(ctx: EnemyContext): void {
     const swarmConfig = ctx.config.gameplay.entities.enemy.ai.swarm;
     ctx.speed = ctx.baseSpeed * swarmConfig.speed_mult;
-    this.centerOfMass = {x: 0, groundY: 0, count: 0};
+    this.centerOfMass = {x: 0, groundY: 0, sepX: 0, sepY: 0, count: 0};
     this.checkCounter = 0;
     this.rushing = false;
   }
@@ -92,16 +100,30 @@ export class SwarmBehavior implements AIBehavior {
     let moveY =
       chaseLen > 0 ? (ctx.target.groundY - ctx.groundY) / chaseLen : 0;
 
+    // If not rushing, loiter at a distance from the player
+    if (!this.rushing && chaseLen < 150 && chaseLen > 0) {
+      moveX = -moveX;
+      moveY = -moveY;
+    }
+
     // Cohesion: blend toward group center only when not rushing.
-    // Weight is mild (0.25) so it nudges clustering without fighting the chase.
-    if (this.centerOfMass.count > 0 && !this.rushing) {
-      const dxToGroup = this.centerOfMass.x - ctx.x;
-      const dyToGroup = this.centerOfMass.groundY - ctx.groundY;
-      const groupLen = Math.sqrt(dxToGroup * dxToGroup + dyToGroup * dyToGroup);
-      if (groupLen > 1) {
-        moveX += (dxToGroup / groupLen) * 0.25;
-        moveY += (dyToGroup / groupLen) * 0.25;
+    // Separation: continually push apart if too close to a neighbor.
+    if (this.centerOfMass.count > 0) {
+      if (!this.rushing) {
+        const dxToGroup = this.centerOfMass.x - ctx.x;
+        const dyToGroup = this.centerOfMass.groundY - ctx.groundY;
+        const groupLen = Math.sqrt(
+          dxToGroup * dxToGroup + dyToGroup * dyToGroup
+        );
+        if (groupLen > 1) {
+          moveX += (dxToGroup / groupLen) * 0.25;
+          moveY += (dyToGroup / groupLen) * 0.25;
+        }
       }
+
+      // Apply separation vector
+      moveX += this.centerOfMass.sepX * 0.8;
+      moveY += this.centerOfMass.sepY * 0.8;
     }
 
     const angle = Math.atan2(moveY, moveX);

@@ -848,12 +848,21 @@ fn parse_balance_hex(hex_result: &str) -> Result<u64, String> {
     }
 
     let wei = BigUint::parse_bytes(hex_clean.as_bytes(), 16)
-        .ok_or_else(|| format!("Failed to parse balance hex: {}", hex_clean))?;
+        .ok_or_else(|| format!("Failed to parse balance: {}", hex_result))?;
+
     let one_token = BigUint::from(10u64).pow(18);
     let tokens = &wei / &one_token;
-    tokens
+
+    let amount = tokens
         .to_u64()
-        .ok_or_else(|| "Balance too large for u64".to_string())
+        .ok_or_else(|| format!("Balance too large for u64: {} wei", wei))?;
+
+    Ok(amount)
+}
+
+/// Get the ERC-20 token balance of the Vault contract.
+pub async fn get_vault_balance() -> Result<u64, String> {
+    get_token_balance(crate::config::VAULT_CONTRACT_ADDRESS).await
 }
 
 // ---------------------------------------------------------------------------

@@ -80,7 +80,7 @@
         >Claim $TRESR</button
       >
       <button onclick="window.location.href='/'" class="btn btn-ghost btn-block"
-        >Return to Base</button
+        >Return Home</button
       >
     </div>
   </div>
@@ -163,7 +163,10 @@
 <script>
   import {gameState, type GameState} from "@/lib/game/state";
   import {clearFeePaid, getSessionId} from "@/lib/game/fee-gate";
-  import {claimWin, getClaimCooldownStatus} from "@/lib/wallet/avalanche";
+  import {
+    claimWin,
+    getClaimCooldownStatus,
+  } from "@/lib/blockchain/contracts/vault";
   import {getConnectedAddress} from "@/lib/wallet/connection";
   import {getAuthState} from "@/lib/auth";
   import {checkBanStatus} from "@/lib/auth/ban";

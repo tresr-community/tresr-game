@@ -6,7 +6,7 @@ interface Props {
   id?: string;
 }
 
-const {minTime = 1500, id = "loader"} = Astro.props;
+const {minTime = 250, id = "loader"} = Astro.props;
 
 // Pass the full array to the client — randomization happens at runtime, not build time
 const messages = config.app.loader_messages;

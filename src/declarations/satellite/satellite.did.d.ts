@@ -62,6 +62,11 @@ export interface _SERVICE {
    * Juno document key. Users give this to support; admins filter by it.
    */
   'report_error' : ActorMethod<[ErrorPayload], Result_3>,
+  /**
+   * Toggle the resolved status of a single error record. Admin-only.
+   * Fetches the current document version for optimistic concurrency before writing.
+   */
+  'resolve_error' : ActorMethod<[string, boolean], Result_1>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

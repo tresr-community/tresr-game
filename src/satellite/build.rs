@@ -39,7 +39,6 @@ struct AntiCheat {
 struct Highscore {
     score_ttl_hours: u64,
     consolation_prize_percent: u64,
-    consolation_prize_max: u64,
     consolation_prize_min_games: u64,
 }
 
@@ -52,6 +51,35 @@ struct Client {
 #[derive(Deserialize)]
 struct Gameplay {
     max_keys: u64,
+    time_limit_seconds: u64,
+    vault: VaultConfig,
+}
+
+#[derive(Deserialize)]
+struct VaultConfig {
+    max_score: u64,
+    tiers: VaultTiers,
+    payout_fixed: PayoutFixed,
+    payout_percentages: PayoutPercentages,
+}
+
+#[derive(Deserialize)]
+struct VaultTiers {
+    building: u64,
+    sweet_spot: u64,
+    fomo: u64,
+}
+
+#[derive(Deserialize)]
+struct PayoutFixed {
+    building: u64,
+}
+
+#[derive(Deserialize)]
+struct PayoutPercentages {
+    sweet_spot: u64,
+    fomo: u64,
+    legendary: u64,
 }
 
 #[derive(Deserialize)]
@@ -200,6 +228,9 @@ pub const PERMANENT_AFTER_OFFENCE: u64 = {permanent};
 /// Maximum keys a player can collect per session (from client.gameplay.max_keys)
 pub const MAX_KEYS_COLLECTED: u64 = {max_keys};
 
+/// Maximum score a player can realistically achieve (from client.gameplay.vault.max_score)
+pub const MAX_SCORE: u64 = {max_score};
+
 /// EVM RPC canister ID on the Internet Computer (from client.blockchain.icp.evm_rpc_canister_id)
 pub const EVM_RPC_CANISTER_ID: &str = "{evm_rpc_canister_id}";
 
@@ -239,22 +270,56 @@ pub const SCORE_TTL_HOURS: u64 = {score_ttl_hours};
 /// Consolation prize percentage of vault balance (from server.highscore.consolation_prize_percent)
 pub const CONSOLATION_PRIZE_PERCENT: u64 = {consolation_prize_percent};
 
-/// Maximum consolation prize in tokens (from server.highscore.consolation_prize_max)
-pub const CONSOLATION_PRIZE_MAX: u64 = {consolation_prize_max};
-
 /// Minimum games played to qualify for consolation prize (from server.highscore.consolation_prize_min_games)
 pub const CONSOLATION_PRIZE_MIN_GAMES: u64 = {consolation_prize_min_games};
+
+/// Vault Tier Building threshold in tokens
+pub const VAULT_TIER_BUILDING: u64 = {vault_tier_building};
+
+/// Vault Tier Sweet Spot threshold in tokens
+pub const VAULT_TIER_SWEET_SPOT: u64 = {vault_tier_sweet_spot};
+
+/// Vault Tier FOMO threshold in tokens
+pub const VAULT_TIER_FOMO: u64 = {vault_tier_fomo};
+
+/// Fixed Payout for Building Tier in tokens
+pub const PAYOUT_FIXED_BUILDING: u64 = {payout_fixed_building};
+
+/// Payout percentage for Sweet Spot Tier
+pub const PAYOUT_PERCENT_SWEET_SPOT: u64 = {payout_percent_sweet_spot};
+
+/// Payout percentage for FOMO Tier
+pub const PAYOUT_PERCENT_FOMO: u64 = {payout_percent_fomo};
+
+/// Payout percentage for Legendary Tier
+pub const PAYOUT_PERCENT_LEGENDARY: u64 = {payout_percent_legendary};
 
 /// SHA-256 config hash for anti-cheat validation (from server-constants.ts, ticket #41)
 pub const CONFIG_HASH: &str = "{config_hash}";
 
 /// Admin principals allowed to call admin-only satellite functions (from server.juno.admins)
 pub const ADMIN_PRINCIPALS: &[&str] = &[{admin_principals}];
+
+/// Game time limit in milliseconds — used to sanity-check replay duration (#171)
+pub const TIME_LIMIT_MS: u64 = {time_limit_ms};
+
+/// Maximum recorded actions per session — must match Recorder::MAX_ACTIONS in TS (#171)
+pub const REPLAY_MAX_ACTIONS: u64 = 50_000;
+
+/// Minimum gap between any two consecutive actions in ms — one browser frame (#171)
+pub const REPLAY_MIN_ACTION_GAP_MS: u64 = 16;
+
+/// Minimum gap between consecutive attack actions — conservative human limit (#171)
+pub const REPLAY_MIN_ATTACK_GAP_MS: u64 = 200;
+
+/// Grace period added to TIME_LIMIT_MS for replay timestamp validation (#171)
+pub const REPLAY_GRACE_MS: u64 = 5_000;
 "#,
         network = network,
         ban_durations = ban_durations,
         permanent = config.server.anti_cheat.permanent_after_offence,
         max_keys = config.client.gameplay.max_keys,
+        max_score = config.client.gameplay.vault.max_score,
         evm_rpc_canister_id = config.client.blockchain.icp.evm_rpc_canister_id,
         chain_id = chain.chain_id,
         vault_contract = chain.vault_contract,
@@ -267,10 +332,17 @@ pub const ADMIN_PRINCIPALS: &[&str] = &[{admin_principals}];
         ecdsa_key_name = ecdsa_key_name,
         score_ttl_hours = config.server.highscore.score_ttl_hours,
         consolation_prize_percent = config.server.highscore.consolation_prize_percent,
-        consolation_prize_max = config.server.highscore.consolation_prize_max,
         consolation_prize_min_games = config.server.highscore.consolation_prize_min_games,
+        vault_tier_building = config.client.gameplay.vault.tiers.building,
+        vault_tier_sweet_spot = config.client.gameplay.vault.tiers.sweet_spot,
+        vault_tier_fomo = config.client.gameplay.vault.tiers.fomo,
+        payout_fixed_building = config.client.gameplay.vault.payout_fixed.building,
+        payout_percent_sweet_spot = config.client.gameplay.vault.payout_percentages.sweet_spot,
+        payout_percent_fomo = config.client.gameplay.vault.payout_percentages.fomo,
+        payout_percent_legendary = config.client.gameplay.vault.payout_percentages.legendary,
         config_hash = config_hash,
         admin_principals = admin_principals,
+        time_limit_ms = config.client.gameplay.time_limit_seconds * 1000,
     );
 
     // Write to OUT_DIR

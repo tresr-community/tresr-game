@@ -79,6 +79,7 @@
 
   let countdownInterval: ReturnType<typeof setInterval> | null = null;
   let currentTab: "active" | "alltime" = "active";
+  let disposed = false;
 
   function openLeaderboardModal() {
     modal?.showModal();
@@ -229,6 +230,7 @@
         },
       });
 
+      if (disposed) return;
       const now = Date.now();
 
       // Client-side filter: only show entries with active (non-expired) scores
@@ -373,8 +375,21 @@
         return;
       }
 
+      // Filter out the backend cache document
+      const validItems = items.filter((item) => item.key !== "top_scorer");
+
+      if (validItems.length === 0) {
+        alltimeList.replaceChildren(
+          createMessageRow(
+            "No scores yet. Be the first!",
+            "text-info opacity-60"
+          )
+        );
+        return;
+      }
+
       // Show top 10
-      const top10 = items.slice(0, 10);
+      const top10 = validItems.slice(0, 10);
 
       top10.forEach((item, index) => {
         const entry = item.data as Record<string, unknown> | undefined;
@@ -457,6 +472,7 @@
   document.addEventListener(
     "astro:before-preparation",
     () => {
+      disposed = true;
       clearCountdownInterval();
       document.removeEventListener(
         "tresr:open-leaderboard",

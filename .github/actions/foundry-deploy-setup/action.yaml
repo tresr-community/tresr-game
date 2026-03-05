@@ -97,7 +97,18 @@ runs:
           echo "CHAIN_ID=$(yq ".client.blockchain.avalanche.${NETWORK}.chain_id" config/tresr.yaml)"
           echo "TOKEN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.tresr_token_contract" config/tresr.yaml)"
           echo "ORACLE_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.oracle_address" config/tresr.yaml)"
-          echo "ADMIN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.safe_address" config/tresr.yaml)"
+          SAFE=$(yq ".client.blockchain.avalanche.${NETWORK}.safe_address // \"\"" config/tresr.yaml)
+          ADMIN=$(yq ".client.blockchain.avalanche.${NETWORK}.admin_address // \"\"" config/tresr.yaml)
+          if [[ -n "$SAFE" && "$SAFE" != "null" ]]; then
+            echo "Using Safe{Wallet} for admin operations"
+            echo "ADMIN_ADDRESS=$SAFE"
+          elif [[ -n "$ADMIN" && "$ADMIN" != "null" ]]; then
+            echo "Using EOA for admin operations"
+            echo "ADMIN_ADDRESS=$ADMIN"
+          else
+            echo "::error::Neither safe_address nor admin_address is set for network: ${NETWORK}"
+            exit 1
+          fi
           echo "VAULT_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.vault_contract" config/tresr.yaml)"
           echo "FAUCET_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.faucet_contract" config/tresr.yaml)"
         } >> "$GITHUB_OUTPUT"

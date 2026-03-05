@@ -37,11 +37,12 @@ const {gameSessionId, amount, vaultAddress} = Astro.props;
   import {initSatellite, setDoc} from "@junobuild/core";
   import {getAuthState} from "@/lib/auth";
   import {connectWallet, getWalletClient} from "@/lib/wallet/connection";
-  import {getEnvironmentKey, getExplorerUrl} from "@/lib/wallet/avalanche";
-  import {VaultAbi} from "@/lib/wallet/abi/vault";
+  import {getEnvironmentKey} from "@/lib/blockchain/networks/chain";
+  import {getExplorerUrl} from "@/lib/blockchain/networks/display";
+  import {VaultAbi} from "@/lib/blockchain/abi/vault";
   import {loadConfigAsync} from "@/lib/config";
   import {trackClaim} from "@/lib/metrics/analytics";
-  import {confirmReceipt} from "@/lib/wallet/tx";
+  import {confirmReceipt} from "@/lib/blockchain/tx";
 
   const claimDiv = document.querySelector(".claim-reward") as HTMLElement;
   const gameSessionId = claimDiv.dataset.gameSessionId!;
@@ -70,7 +71,8 @@ const {gameSessionId, amount, vaultAddress} = Astro.props;
       ) {
         const config = await loadConfigAsync();
         const env = getEnvironmentKey();
-        vaultAddress = config.blockchain.avalanche[env].vault_contract;
+        vaultAddress = config.blockchain.avalanche[env]
+          .vault_contract as `0x${string}`;
       }
 
       const principalId = user.key;

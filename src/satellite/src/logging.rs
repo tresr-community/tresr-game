@@ -20,7 +20,7 @@
 //! (e.g. before the RNG is seeded after a fresh deploy/upgrade).
 //!
 //! ## Usage
-//! ```rust
+//! ```rust,ignore
 //! use crate::logging;
 //!
 //! logging::log_info("Hooks", &format!("Fee verified for user {}", user_key));

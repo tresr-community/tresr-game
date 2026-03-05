@@ -68,37 +68,51 @@ export function countNearbyAllies(ctx: EnemyContext, radius: number): number {
 }
 
 /**
- * Calculate the center of mass of nearby allies.
- * Used by swarm behavior for cohesion.
+ * Calculate the center of mass of nearby allies and a separation vector.
+ * Used by swarm behavior for cohesion and separation.
  */
 export function getNearbyAlliesCenter(
   ctx: EnemyContext,
-  radius: number
-): {x: number; groundY: number; count: number} {
+  radius: number,
+  separationRadius: number = 40
+): {x: number; groundY: number; sepX: number; sepY: number; count: number} {
   let cx = 0;
   let cy = 0;
+  let sx = 0;
+  let sy = 0;
   let count = 0;
-  if (!ctx.enemyGroup) return {x: 0, groundY: 0, count: 0};
+  if (!ctx.enemyGroup) return {x: 0, groundY: 0, sepX: 0, sepY: 0, count: 0};
   for (const child of ctx.enemyGroup.getChildren()) {
     const ally = child as unknown as GroupMemberView;
     if (ally._self === ctx._self || !ally.active || ally.hp <= 0) continue;
-    if (
-      Phaser.Math.Distance.Between(ctx.x, ctx.groundY, ally.x, ally.groundY) <=
-      radius
-    ) {
+
+    // Check 2.5D distance
+    const dx = ally.x - ctx.x;
+    const dy = ally.groundY - ctx.groundY;
+    const dyCorrected = dy / 0.4;
+    const dist = Math.sqrt(dx * dx + dyCorrected * dyCorrected);
+
+    if (dist <= radius) {
       cx += ally.x;
       cy += ally.groundY;
       count++;
+
+      // Add to separation vector if too close
+      if (dist < separationRadius && dist > 0.1) {
+        // Push away from ally
+        sx -= dx / dist;
+        sy -= dyCorrected / dist;
+      }
     }
   }
   if (count > 0) {
-    return {x: cx / count, groundY: cy / count, count};
+    return {x: cx / count, groundY: cy / count, sepX: sx, sepY: sy, count};
   }
-  return {x: 0, groundY: 0, count: 0};
+  return {x: 0, groundY: 0, sepX: 0, sepY: 0, count: 0};
 }
 
 /**
- * Find the nearest living enemy that is not a retardio.
+ * Find the nearest living enemy.
  * Used by retardio behavior.
  */
 export function findNearestEnemy(
@@ -110,7 +124,6 @@ export function findNearestEnemy(
   for (const child of ctx.enemyGroup.getChildren()) {
     const e = child as unknown as GroupMemberView;
     if (e._self === ctx._self || !e.active || e.hp <= 0) continue;
-    if (e.aiTypeName === "retardio") continue;
     const d = Phaser.Math.Distance.Between(ctx.x, ctx.groundY, e.x, e.groundY);
     if (d < nearestDist) {
       nearestDist = d;
