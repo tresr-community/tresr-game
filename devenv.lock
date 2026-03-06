@@ -194,6 +194,9 @@
         "git-hooks": "git-hooks",
         "ic-nix": "ic-nix",
         "nixpkgs": "nixpkgs",
+        "pre-commit-hooks": [
+          "git-hooks"
+        ],
         "rust-overlay": "rust-overlay"
       }
     },
