@@ -63,6 +63,11 @@ runs:
         ORACLE_ADDR="${{ inputs.oracle-address }}"
         ZERO="0x0000000000000000000000000000000000000000"
 
+        echo "🔎 Vault resolve inputs:"
+        echo "  token-address:  ${TOKEN_ADDR}"
+        echo "  oracle-address: ${ORACLE_ADDR}"
+        echo "  vault-address:  ${VAULT_ADDR}"
+
         # ──────────────────────────────────────────────
         # 1. Pre-requisite check: token + oracle needed
         # ──────────────────────────────────────────────
@@ -77,8 +82,18 @@ runs:
         if [[ ${#MISSING[@]} -gt 0 ]]; then
           echo "mode=skip" >> "$GITHUB_OUTPUT"
           echo "deployed=false" >> "$GITHUB_OUTPUT"
-          echo "::warning::⏭️ Vault deploy SKIPPED — missing: ${MISSING[*]}"
-          echo "Deploy Juno first to get the oracle address, then update tresr.yaml and re-run."
+          echo ""
+          echo "⏭️  Vault deploy SKIPPED — required addresses not yet available: ${MISSING[*]}"
+          echo ""
+          echo "  This is expected on a first-ever deploy when the oracle address hasn't"
+          echo "  been obtained yet (requires a Juno satellite deploy first)."
+          echo ""
+          echo "  Next steps:"
+          echo "    1. Deploy Juno (cd-juno-testnet) to provision the satellite canister"
+          echo "    2. Call get_oracle_address() on the satellite to retrieve the oracle address"
+          echo "    3. Update oracle_address in config/tresr.yaml under blockchain.avalanche.testnet"
+          echo "    4. Re-run this workflow — the vault will then be deployed automatically"
+          echo "::warning::Vault deploy skipped — missing prerequisite addresses: ${MISSING[*]}. See step log for next steps."
           exit 0
         fi
 
@@ -88,7 +103,8 @@ runs:
         if [[ "$VAULT_ADDR" == "$ZERO" || -z "$VAULT_ADDR" || "$VAULT_ADDR" == "null" ]]; then
           echo "mode=deploy" >> "$GITHUB_OUTPUT"
           echo "deployed=true" >> "$GITHUB_OUTPUT"
-          echo "🆕 Vault mode: FRESH DEPLOY (no existing proxy)"
+          echo "🆕 Vault mode: FRESH DEPLOY"
+          echo "   No existing proxy found in config — deploying implementation + proxy for the first time."
           exit 0
         fi
 
@@ -329,27 +345,42 @@ runs:
       shell: bash
       run: |
         FAILED=false
+        MODE="${{ steps.detect_vault_mode.outputs.mode }}"
 
-        # Vault deploy (skipped when oracle/token not yet configured)
-        OUTCOME="${{ steps.deploy_vault.outcome }}"
-        if [[ "$OUTCOME" == "failure" ]]; then
-          echo "::error::Deploy Vault failed"
+        echo "Vault mode: ${MODE:-unknown}"
+        echo ""
+
+        # Vault deploy (fresh deploy — runs when vault proxy doesn't exist yet)
+        DEPLOY_OUTCOME="${{ steps.deploy_vault.outcome }}"
+        if [[ "$DEPLOY_OUTCOME" == "failure" ]]; then
+          echo "::error::Deploy Vault (fresh proxy) failed — check the deploy_vault step logs"
           FAILED=true
-        else
-          echo "✓ Deploy Vault: ${OUTCOME:-n/a}"
+        elif [[ -n "$DEPLOY_OUTCOME" ]]; then
+          echo "✓ Deploy Vault (fresh proxy): ${DEPLOY_OUTCOME}"
         fi
 
-        # Vault upgrade (only runs when there's an existing proxy)
-        OUTCOME="${{ steps.upgrade_vault.outcome }}"
-        if [[ "$OUTCOME" == "failure" ]]; then
-          echo "::error::Upgrade Vault failed"
+        # Vault upgrade (runs when an existing proxy is present and bytecode changed)
+        UPGRADE_OUTCOME="${{ steps.upgrade_vault.outcome }}"
+        if [[ "$UPGRADE_OUTCOME" == "failure" ]]; then
+          echo "::error::Upgrade Vault (new implementation) failed — check the upgrade_vault step logs"
           FAILED=true
-        else
-          echo "✓ Upgrade Vault: ${OUTCOME:-n/a}"
+        elif [[ -n "$UPGRADE_OUTCOME" ]]; then
+          echo "✓ Upgrade Vault (new implementation): ${UPGRADE_OUTCOME}"
         fi
 
+        # Report overall result
         if [[ "$FAILED" == "true" ]]; then
-          echo "❌ Vault deployment failed — see errors above"
+          echo ""
+          echo "❌ Vault step failed — see errors above"
           exit 1
         fi
-        echo "✅ Vault deployment succeeded (skipped steps are OK)"
+
+        if [[ "$MODE" == "skip" ]]; then
+          echo "ℹ️  Vault was skipped this run (prerequisite addresses missing — see detect_vault_mode step)"
+        elif [[ "$MODE" == "deploy" ]]; then
+          echo "✅ Fresh vault proxy deployed successfully"
+        elif [[ "$MODE" == "upgrade" ]]; then
+          echo "✅ Vault implementation upgraded successfully"
+        else
+          echo "✅ Vault resolve completed (no changes needed)"
+        fi

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import {execSync} from "node:child_process";
 import yaml from "yaml";
 import {log} from "../src/lib/utils/log";
 import {canonicalStringify} from "../src/lib/utils/canonical-stringify";
@@ -179,6 +180,7 @@ ${nestedBlock}
 }
 
 const CHECK_MODE = process.argv.includes("--check");
+const STAGE_MODE = process.argv.includes("--stage");
 
 interface PendingWrite {
   path: string;
@@ -193,12 +195,14 @@ interface PendingWrite {
     }
 
     const pendingWrites: PendingWrite[] = [];
+    const writtenPaths: string[] = [];
 
     function writeOrCollect(filePath: string, content: string): void {
       if (CHECK_MODE) {
         pendingWrites.push({path: filePath, content});
       } else {
         fs.writeFileSync(filePath, content);
+        writtenPaths.push(filePath);
       }
     }
 
@@ -586,6 +590,28 @@ interface PendingWrite {
     if (gameplay) {
       log.info(COMPONENT_NAME, "Generated src/lib/config/server-constants.ts");
       log.info(COMPONENT_NAME, "Generated src/lib/config/validate.ts");
+    }
+
+    // --stage mode: git-add exactly the files this script wrote, plus tresr.yaml.
+    // Use this in CI to avoid hardcoding file lists in the workflow.
+    if (STAGE_MODE) {
+      // Always include the source YAML — it was edited before this script ran.
+      const toStage = [
+        path.join(projectRoot, "config", "tresr.yaml"),
+        ...writtenPaths,
+      ].map((p) => path.relative(projectRoot, p));
+
+      log.info(COMPONENT_NAME, `Staging ${toStage.length} file(s) for commit:`);
+      for (const f of toStage) {
+        log.info(COMPONENT_NAME, `  git add ${f}`);
+      }
+
+      execSync(`git add ${toStage.map((f) => JSON.stringify(f)).join(" ")}`, {
+        cwd: projectRoot,
+        stdio: "inherit",
+      });
+
+      log.info(COMPONENT_NAME, "Staged files ready for commit.");
     }
   } catch (error) {
     if (error instanceof Error) {

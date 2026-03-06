@@ -7,7 +7,7 @@ description: >
 
 inputs:
   github-token:
-    description: "GitHub token for devenv setup and PR creation"
+    description: "GitHub token for PR creation"
     required: true
   environment:
     description: "Target environment: testnet or mainnet"
@@ -55,7 +55,7 @@ runs:
         FAUCET="${{ inputs.faucet-address }}"
         ZERO="0x0000000000000000000000000000000000000000"
 
-        # sed+verify pattern from solidity-dev.sh
+        # sed+verify pattern: update a key within the correct network block
         yaml_set() {
           local key="$1" value="$2"
           if [[ "$ENV" == "testnet" ]]; then
@@ -77,29 +77,35 @@ runs:
         [[ -n "$VAULT"  && "$VAULT"  != "$ZERO" ]] && yaml_set vault_contract "$VAULT"
         [[ -n "$FAUCET" && "$FAUCET" != "$ZERO" ]] && yaml_set faucet_contract "$FAUCET"
 
+    # Run client-config with --stage so it:
+    #   1. Regenerates all derived config files from tresr.yaml
+    #   2. Restores LFS-smudged files by only staging the files it actually wrote
+    #   3. git-adds exactly those files
     - id: regenerate_config
       name: Regenerate Client Config
       shell: devenv shell --quiet bash -- -e {0}
       run: |
         bun install
-        bun run client-config
+        bun run client-config --stage
 
     - id: check_diff
       name: Check for Changes
       shell: bash
       run: |
-        if git diff --quiet; then
+        # Check only the staged index — client-config --stage already added the right files.
+        if git diff --cached --quiet; then
           echo "changed=false" >> "$GITHUB_OUTPUT"
-          echo "No config changes detected"
+          echo "No config changes detected — nothing to commit"
         else
           echo "changed=true" >> "$GITHUB_OUTPUT"
-          echo "Config changes detected:"
-          git diff --stat
+          echo "Staged changes:"
+          git diff --cached --stat
         fi
 
-    # HACK: Disable pre-commit hooks.
+    # Disable pre-commit hooks so the bot commit isn't blocked by linters.
     - id: remove_hooks
       name: Remove Pre-commit Hooks
+      if: steps.check_diff.outputs.changed == 'true'
       shell: bash
       run: rm -rf .git/hooks
 
