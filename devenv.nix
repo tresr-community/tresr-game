@@ -6,21 +6,14 @@
   ...
 }:
 let
-  ic-nix-release = "20260203";
-
-  ic-nix =
-    import
-      (fetchTarball {
-        url = "https://github.com/ninegua/ic-nix/archive/refs/tags/${ic-nix-release}.tar.gz";
-        sha256 = "0vydcs3m46rwm3z6d4mqvxsa8s26rl5qw3apy5lpvg8146h2y54g";
+  ic-nix = import inputs.ic-nix {
+    pkgs = pkgs.appendOverlays [
+      (_self: _prev: {
+        pkgsHostHost = _prev;
+        rust-stable = config.languages.rust.toolchainPackage;
       })
-      {
-        pkgs = pkgs.appendOverlays [
-          (_self: _super: {
-            rust-stable = config.languages.rust.toolchainPackage;
-          })
-        ];
-      };
+    ];
+  };
 
   ic-nix-packages = with ic-nix; [
     # SDK
@@ -41,29 +34,11 @@ let
     #canisters
   ];
 
-  pkgsUnstable = import inputs.nixpkgs-unstable {
-    config.allowUnfree = true;
-  };
-
   #packages = with pkgs; [ ];
-
-  packagesUnstable = with pkgsUnstable; [
-    claude-code
-    gemini-cli
-    tailwindcss_4
-    antigravity
-  ];
 
   devPackages =
     with pkgs;
     [
-      # AI Agents
-      #gemini-cli
-      #claude-code
-
-      # pickle-rick dependencies
-      python3
-
       # General
       bash
       bc
@@ -79,14 +54,10 @@ let
       ripgrep
       yq-go
 
-      # Devenv
-      direnv
-      secretspec
-
       # Astro
       astro-language-server
       nodePackages.postcss
-      #tailwindcss_4
+      tailwindcss_4
       npm-check-updates
 
       # Nix
@@ -95,9 +66,18 @@ let
       nixfmt
 
       # Rust
+      cargo-audit
       cargo-bump
+      cargo-edit
+      cargo-update
       cargo-watch
       toml-cli
+
+      # Astro
+      astro-language-server
+      nodePackages.postcss
+      tailwindcss_4
+      npm-check-updates
 
       # Security
       codeql
@@ -109,11 +89,12 @@ let
 
       # Audio
       ffmpeg
-      # Image processing for Sharp
+
+      # Image Editing
       vips
 
       # Video Editing
-      shotcut
+      #shotcut
     ]
     ++ ic-nix-packages;
 
@@ -162,9 +143,7 @@ in
     disableHint = true;
   };
 
-  packages =
-    packagesUnstable
-    ++ lib.optionals (!config.container.isBuilding || config.name == "devenv") devPackages;
+  packages = lib.optionals (!config.container.isBuilding || config.name == "devenv") devPackages;
 
   enterShell = ''
     if [[ "''${CI:-false}" == "true" ]];
