@@ -41,7 +41,7 @@ defaults:
 
 jobs:
   check:
-    name: Check Contracts
+    name: Foundry Check Contracts
 
     runs-on: ubuntu-latest
 
