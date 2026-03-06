@@ -141,6 +141,7 @@ nanostores
 narr
 nche
 nhoizey
+ninegua
 nity
 nixos
 nixpkgs

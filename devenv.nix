@@ -2,24 +2,18 @@
   pkgs,
   config,
   lib,
+  inputs,
   ...
 }:
 let
-  ic-nix-release = "20260217";
-
-  ic-nix =
-    import
-      (fetchTarball {
-        url = "https://github.com/ninegua/ic-nix/archive/refs/tags/${ic-nix-release}.tar.gz";
-        sha256 = "0pa9q4ll34ax2kn1pbk1affjvly67d9j6phhx1awp61wljmv73fi";
+  ic-nix = import inputs.ic-nix {
+    pkgs = pkgs.appendOverlays [
+      (_self: _prev: {
+        pkgsHostHost = _prev;
+        rust-stable = config.languages.rust.toolchainPackage;
       })
-      {
-        pkgs = pkgs.appendOverlays [
-          (_self: _super: {
-            rust-stable = config.languages.rust.toolchainPackage;
-          })
-        ];
-      };
+    ];
+  };
 
   ic-nix-packages = with ic-nix; [
     # SDK
@@ -59,11 +53,6 @@ let
       openssl
       ripgrep
       yq-go
-
-      # Devenv
-      direnv
-      devenv
-      secretspec
 
       # Astro
       astro-language-server
@@ -105,7 +94,7 @@ let
       vips
 
       # Video Editing
-      shotcut
+      #shotcut
     ]
     ++ ic-nix-packages;
 
