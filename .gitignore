@@ -76,3 +76,5 @@ contracts/.snap
 # Nix
 result/
 
+# Trivy
+trivy-results.sarif

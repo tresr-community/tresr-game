@@ -28,6 +28,7 @@ permissions:
   packages: read
   pull-requests: read
   statuses: write
+  actions: write
 
 env:
   NIXPKGS_ALLOW_UNFREE: 1
@@ -41,7 +42,7 @@ defaults:
 
 jobs:
   check:
-    name: Check Contracts
+    name: Foundry Check Contracts
 
     runs-on: ubuntu-latest
 
