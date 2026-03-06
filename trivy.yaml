@@ -24,6 +24,9 @@ scan:
     - .direnv
     - .dist
     - .git
+    - .github
+    - .vscode
+    - .codeql-db
     - .juno
     - docs/agents
     - node_modules
