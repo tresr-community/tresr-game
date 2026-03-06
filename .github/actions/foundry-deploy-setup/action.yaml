@@ -100,13 +100,13 @@ runs:
           SAFE=$(yq ".client.blockchain.avalanche.${NETWORK}.safe_address // \"\"" config/tresr.yaml)
           ADMIN=$(yq ".client.blockchain.avalanche.${NETWORK}.admin_address // \"\"" config/tresr.yaml)
           if [[ -n "$SAFE" && "$SAFE" != "null" ]]; then
-            echo "Using Safe{Wallet} for admin operations"
+            echo "Using Safe{Wallet} for admin operations" >&2
             echo "ADMIN_ADDRESS=$SAFE"
           elif [[ -n "$ADMIN" && "$ADMIN" != "null" ]]; then
-            echo "Using EOA for admin operations"
+            echo "Using EOA for admin operations" >&2
             echo "ADMIN_ADDRESS=$ADMIN"
           else
-            echo "::error::Neither safe_address nor admin_address is set for network: ${NETWORK}"
+            echo "::error::Neither safe_address nor admin_address is set for network: ${NETWORK}" >&2
             exit 1
           fi
           echo "VAULT_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.vault_contract" config/tresr.yaml)"
