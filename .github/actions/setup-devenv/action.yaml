@@ -8,12 +8,20 @@ inputs:
     required: true
   cachix-cache-name:
     description: "Name of the Cachix binary cache"
-    required: false
+    required: true
     default: ""
   cachix-auth-token:
     description: "Auth token for Cachix push"
-    required: false
+    required: true
     default: ""
+  skip-push:
+    description: "Set to true to skip pushing to Cachix (pull/substitute only). Use for jobs that don't produce cacheable build artifacts."
+    required: false
+    default: "true"
+  push-filter:
+    description: "Regex to exclude paths from Cachix push, e.g. source tarballs and nixpkgs archives"
+    required: false
+    default: '(-source$|nixpkgs\.tar\.gz$|\.tar\.gz$|\.zip$)'
 
 runs:
   using: composite
@@ -44,8 +52,9 @@ runs:
         purge-primary-key: never
         token: ${{ inputs.github-token }}
 
-    - id: cachix_devenv
+    - id: enable_cachix_devenv
       name: Enable devenv Cachix (read-only)
+      if: always()
       uses: cachix/cachix-action@v16
       with:
         name: devenv
@@ -59,7 +68,8 @@ runs:
         name: ${{ inputs.cachix-cache-name }}
         authToken: ${{ inputs.cachix-auth-token }}
         useDaemon: true
-        skipPush: false
+        skipPush: ${{ inputs.skip-push }}
+        pushFilter: ${{ inputs.push-filter }}
 
     - id: install_devenv
       name: Install Devenv
@@ -73,8 +83,18 @@ runs:
       run: |
         nix profile add --accept-flake-config nixpkgs#secretspec
 
+    - id: version_check
+      name: Version Check
+      shell: bash
+      run: |
+        echo "Devenv version: $(devenv --version)"
+        echo "Secretspec version: $(secretspec --version)"
+        echo "Cachix version: $(cachix --version)"
+
     - id: secretspec_check
       name: Secretspec Check
-      shell: devenv shell --quiet bash -- -e {0}
+      shell: bash
+      env:
+        SECRETSPEC_PROVIDER: env
       run: |
-        secretspec check
+        secretspec check --no-prompt

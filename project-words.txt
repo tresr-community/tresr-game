@@ -15,6 +15,7 @@ Pixelorama
 Powerups
 Rabby
 Remminator
+difftastic
 Reown
 Resol
 SECRETSPEC

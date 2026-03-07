@@ -28,6 +28,7 @@ scan:
     - .vscode
     - .codeql-db
     - .juno
+    - contracts/lib
     - docs/agents
     - node_modules
     - target
