@@ -34,6 +34,8 @@ let
     #canisters
   ];
 
+  devenvCli = inputs.devenv.packages.${pkgs.system}.devenv;
+
   #packages = with pkgs; [ ];
 
   devPackages =
@@ -97,7 +99,8 @@ let
       # Video Editing
       #shotcut
     ]
-    ++ ic-nix-packages;
+    ++ ic-nix-packages
+    ++ [ devenvCli ];
 
 in
 {
