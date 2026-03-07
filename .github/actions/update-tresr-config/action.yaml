@@ -3,7 +3,7 @@ name: Update TRESR Config
 description: >
   Update tresr.yaml with deployed contract addresses,
   regenerate client config, and create a PR if changed.
-  Requires checkout first.
+  Requires checkout and setup-devenv first.
 
 inputs:
   github-token:
@@ -37,12 +37,6 @@ outputs:
 runs:
   using: composite
   steps:
-    - id: setup_devenv
-      name: Setup Devenv
-      uses: ./.github/actions/setup-devenv
-      with:
-        github-token: ${{ inputs.github-token }}
-
     - id: update_yaml
       name: Update tresr.yaml
       shell: bash
