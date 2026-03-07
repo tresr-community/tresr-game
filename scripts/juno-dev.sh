@@ -596,14 +596,8 @@ function cmd_update() {
 
 	if [[ -f "Cargo.toml" ]]; then
 		if command -v cargo &>/dev/null; then
-			# --breaking updates beyond semver range (e.g. 0.4.0 → 0.5.0)
-			# Without it, cargo update only finds patch updates within the range.
-			# Requires Rust 1.84+; falls back to regular update if unsupported.
-			if cargo update --breaking 2>&1; then
-				log_success "Cargo dependencies updated (including breaking versions)."
-			elif cargo update 2>&1; then
-				log_warn "cargo update --breaking not supported (Rust <1.84). Used regular update."
-				log_warn "To get major version bumps, upgrade Rust or edit Cargo.toml manually."
+			if cargo update 2>&1; then
+				log_success "Cargo dependencies updated."
 			else
 				log_error "cargo update failed"
 				failed=$((failed + 1))
@@ -654,52 +648,78 @@ function cmd_update() {
 		echo "$outdated_output"
 		echo ""
 
-		log_info "Updating all packages to latest versions..."
+		log_info "Updating all packages within compatible boundaries..."
 
-		# Update all packages to their latest versions (ignoring semver ranges)
-		# --latest flag updates beyond the semver range in package.json
-		if ! bun update --latest; then
-			log_error "bun update failed"
+		# Create backup before we modify ranges
+		cp package.json package.json.bak
+
+		# Temporarily add ^ prefix to exact versions. This allows bun update
+		# to find the latest compatible minor/patch versions without breaking updates.
+		if ! jq '
+			.dependencies = (.dependencies // {} | with_entries(
+				if .value | type == "string" and test("^[0-9]")
+				then .value = ("^" + .value)
+				else .
+				end
+			)) |
+			.devDependencies = (.devDependencies // {} | with_entries(
+				if .value | type == "string" and test("^[0-9]")
+				then .value = ("^" + .value)
+				else .
+				end
+			))
+		' package.json >package.json.tmp; then
+			log_error "Failed to prefix versions"
+			rm -f package.json.tmp
 			failed=$((failed + 1))
 		else
-			log_info "Pinning package versions (removing ^ and ~ prefixes)..."
+			mv package.json.tmp package.json
 
-			# Create backup
-			cp package.json package.json.bak
-
-			# Remove ^ and ~ from version strings in dependencies and devDependencies
-			# This pins versions to exact versions
-			if jq '
-				.dependencies = (.dependencies // {} | with_entries(
-					if .value | type == "string" and (startswith("^") or startswith("~"))
-					then .value = (.value | ltrimstr("^") | ltrimstr("~"))
-					else .
-					end
-				)) |
-				.devDependencies = (.devDependencies // {} | with_entries(
-					if .value | type == "string" and (startswith("^") or startswith("~"))
-					then .value = (.value | ltrimstr("^") | ltrimstr("~"))
-					else .
-					end
-				))
-			' package.json >package.json.tmp; then
-				mv package.json.tmp package.json
-				rm -f package.json.bak
-				log_success "Package versions pinned successfully"
-			else
-				log_error "Failed to pin versions, restoring backup"
+			if ! bun update; then
+				log_error "bun update failed"
 				mv package.json.bak package.json
 				failed=$((failed + 1))
-			fi
+			else
+				log_info "Pinning package versions (removing ^ and ~ prefixes)..."
 
-			# Reinstall with pinned versions to update lockfile
-			log_info "Reinstalling with pinned versions..."
-			if ! bun install; then
-				log_error "bun install failed after pinning versions"
-				failed=$((failed + 1))
+				# Remove ^ and ~ from version strings
+				if jq '
+					.dependencies = (.dependencies // {} | with_entries(
+						if .value | type == "string" and (startswith("^") or startswith("~"))
+						then .value = (.value | ltrimstr("^") | ltrimstr("~"))
+						else .
+						end
+					)) |
+					.devDependencies = (.devDependencies // {} | with_entries(
+						if .value | type == "string" and (startswith("^") or startswith("~"))
+						then .value = (.value | ltrimstr("^") | ltrimstr("~"))
+						else .
+						end
+					))
+				' package.json >package.json.tmp; then
+					mv package.json.tmp package.json
+					rm -f package.json.bak
+					log_success "Package versions pinned successfully"
+				else
+					log_error "Failed to pin versions, restoring backup"
+					mv package.json.bak package.json
+					failed=$((failed + 1))
+				fi
+
+				log_info "Reinstalling with pinned versions..."
+				if ! bun install; then
+					log_error "bun install failed after pinning versions"
+					failed=$((failed + 1))
+				fi
 			fi
 		fi
 	fi
+
+	# ---- devenv ----
+	devenv update || {
+		log_error "devenv update failed"
+		failed=$((failed + 1))
+	}
 
 	# ---- Summary ----
 	echo ""
@@ -709,7 +729,7 @@ function cmd_update() {
 	fi
 
 	log_success "All dependencies updated!"
-	log_info "Review changes with: git diff package.json Cargo.lock"
+	log_info "Review changes with: git diff package.json Cargo.lock devenv.lock"
 }
 
 # =============================================================================
@@ -756,6 +776,65 @@ function cmd_clear_satellite() {
 # =============================================================================
 # Usage & Aliases (Run ./juno-dev.sh <cmd>)
 # =============================================================================
+
+function usage() {
+	# row <command> <alias> <description>
+	# Pads command (20 chars) and alias (10 chars) as plain text first,
+	# then wraps in color — ANSI codes never pollute printf's width math.
+	row() {
+		local c a d
+		c=$(printf "%-20s" "$1")
+		a=$(printf "%-10s" "$2")
+		d=$3
+		echo -e "  ${BLUE}${c}${NC}  ${CYAN}${a}${NC}  ${d}"
+	}
+
+	echo ""
+	echo -e "  ${CYAN}╔════════════════════════════════════════════════════════════╗${NC}"
+	echo -e "  ${CYAN}║            🚀  juno-dev — Command Reference                ║${NC}"
+	echo -e "  ${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
+	echo ""
+	echo -e "  ${YELLOW}Usage:${NC}  juno-dev <command> [options]"
+	echo ""
+	printf "  ${YELLOW}%-20s  %-10s  %s${NC}\n" "COMMAND" "ALIAS" "DESCRIPTION"
+	echo -e "  ${GREEN}──────────────────────────────────────────────────────────────${NC}"
+
+	echo -e "\n  ${GREEN}Build${NC}"
+	row "build" "" "Build frontend (Astro) + serverless functions"
+	row "build-functions" "bf" "Build Rust → WASM serverless functions only"
+	row "rebuild" "" "Clean rebuild of the static site"
+
+	echo -e "\n  ${GREEN}Deploy${NC}"
+	row "deploy" "d" "Deploy frontend to Juno (default: development)"
+	row "deploy:prod" "" "Deploy frontend to Juno production"
+	row "deploy-functions" "df" "Build + deploy serverless functions"
+	row "config" "[mode]" "Apply Juno satellite config only (no file upload)"
+	row "oneshot" "loop" "Full clean → lint → test → build → deploy cycle"
+
+	echo -e "\n  ${GREEN}Emulator${NC}"
+	row "start" "up" "Start the Juno emulator + deploy"
+	row "stop" "down" "Stop the Juno emulator"
+	row "setup" "" "Initial emulator setup (funding, satellite creation)"
+	row "clear-satellite" "" "Clear all hosted files from the satellite"
+	row "nuke-juno" "" "Full reset: stop emulator, remove volumes + caches"
+
+	echo -e "\n  ${GREEN}Quality${NC}"
+	row "lint" "" "Run ESLint / Astro linter"
+	row "test" "" "Run TypeScript + Rust unit tests"
+	row "typecheck" "tsc" "TypeScript type-check (tsc --noEmit)"
+	row "cleanup" "" "Remove dist, .astro, Vite and build caches"
+
+	echo -e "\n  ${GREEN}Funding${NC}"
+	row "topup" "fund" "Show instructions to top up satellite cycles"
+	row "topup-wallet" "<id>" "Fund a specific principal wallet with cycles"
+
+	echo -e "\n  ${GREEN}Utilities${NC}"
+	row "agent-docs" "docs" "Download LLM documentation for AI agents"
+	row "update" "upgrade" "Update all frontend + Rust dependencies"
+	row "logs" "l" "Tail all log files (uses multitail if available)"
+	row "help" "" "Show this help message"
+	echo ""
+}
 
 case "${1:-help}" in
 
@@ -990,8 +1069,14 @@ update | upgrade)
 	}
 	;;
 
+# Show help
+help | --help | -h)
+	usage
+	;;
+
 *)
-	echo "Usage: $0 {build|build-functions|deploy [dev/prod]|deploy-functions|start|stop|logs|lint|test|typecheck|cleanup|rebuild|setup|topup|topup-wallet|agent-docs|update|clear-satellite|nuke-juno|loop|oneshot}"
+	log_error "Unknown command: '${1}'"
+	usage
 	exit 1
 	;;
 esac
