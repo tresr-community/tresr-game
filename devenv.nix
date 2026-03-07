@@ -40,6 +40,7 @@ let
     with pkgs;
     [
       # General
+      act
       bash
       bc
       coreutils
@@ -150,7 +151,8 @@ in
     then
       echo "devenv running in CI"
     else
-      figlet -f starwars -w 180 $PROJECT
+      # showfigfonts 2>/dev/null | less
+      figlet -f slant -w 180 "$(echo "$PROJECT" | tr '[:lower:]-' '[:upper:] ')"
 
       hello --greeting="Hello ''${USER:-user}, welcome to the $PROJECT project!"
 
@@ -326,9 +328,9 @@ in
       deadnix.enable = true;
       editorconfig-checker.enable = true;
       eslint.enable = false;
-      eslint-hack = {
+      eslint-check = {
         enable = true;
-        name = "eslint-hack";
+        name = "eslint-check";
         entry = "eslint-check";
         files = "^src/.*$";
         pass_filenames = false;
@@ -476,7 +478,7 @@ in
       description = "A workaround to use a more modern version of ESLint.";
       exec = ''
         bun install
-        eslint src/
+        bunx eslint src/
       '';
     };
     juno = {
