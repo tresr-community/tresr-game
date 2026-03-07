@@ -103,29 +103,64 @@ runs:
       shell: bash
       run: rm -rf .git/hooks
 
+    # Push staged changes (from client-config --stage) directly using git + gh.
+    # This avoids third-party actions that do "git add -A", which picks up
+    # LFS-inconsistent font files and causes checkout to fail.
     - id: create_pr
       name: Create Config PR
       if: steps.check_diff.outputs.changed == 'true'
-      uses: peter-evans/create-pull-request@v8
-      with:
-        token: ${{ inputs.github-token }}
-        commit-message: "chore: update ${{ inputs.environment }} contract addresses"
-        title: "chore: update ${{ inputs.environment }} contract addresses"
-        body: |
-          Auto-generated after ${{ inputs.environment }} contract deployment.
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+      shell: bash
+      run: |
+        BRANCH="chore/update-${{ inputs.environment }}-contract-address"
+        TITLE="chore: update ${{ inputs.environment }} contract addresses"
 
-          | Address | Value |
-          |---------|-------|
-          | Oracle | `${{ inputs.oracle-address }}` |
-          | Token | `${{ inputs.token-address }}` |
-          | Vault | `${{ inputs.vault-address }}` |
-          | Faucet | `${{ inputs.faucet-address }}` |
-        branch: "chore/update-${{ inputs.environment }}-contract-address"
-        base: trunk
-        labels: "contracts,dependencies"
-        assignees: "MAHDTech"
-        reviewers: "MAHDTech"
-        draft: false
-        signoff: true
-        delete-branch: true
-        sign-commits: true
+        git config user.name  "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+        # Create (or reset) the PR branch from the current HEAD
+        git checkout -B "${BRANCH}"
+
+        # Commit only what client-config --stage staged — no git add -A
+        git commit \
+          --signoff \
+          -m "${TITLE}"
+
+        # Force-push so re-runs overwrite any stale branch
+        git push --force origin "${BRANCH}"
+
+        # Idempotent: create the PR or update it if it already exists
+        EXISTING=$(gh pr list \
+          --head "${BRANCH}" \
+          --base trunk \
+          --state open \
+          --json number \
+          --jq '.[0].number' 2>/dev/null || echo "")
+
+        BODY=$(cat <<EOF
+        Auto-generated after ${{ inputs.environment }} contract deployment.
+
+        | Address | Value |
+        |---------|-------|
+        | Oracle | \`${{ inputs.oracle-address }}\` |
+        | Token | \`${{ inputs.token-address }}\` |
+        | Vault | \`${{ inputs.vault-address }}\` |
+        | Faucet | \`${{ inputs.faucet-address }}\` |
+        EOF
+        )
+
+        if [[ -n "${EXISTING}" ]]; then
+          echo "PR #${EXISTING} already exists — updating body"
+          gh pr edit "${EXISTING}" --body "${BODY}"
+        else
+          gh pr create \
+            --head "${BRANCH}" \
+            --base trunk \
+            --title "${TITLE}" \
+            --body "${BODY}" \
+            --label "contracts" \
+            --label "dependencies" \
+            --assignee "MAHDTech" \
+            --reviewer "MAHDTech"
+        fi

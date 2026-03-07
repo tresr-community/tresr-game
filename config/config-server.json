@@ -13,7 +13,8 @@
       "orbiter_id": "${VITE_PRODUCTION_ORBITER_ID}"
     },
     "admins": [
-      "pegnp-gazih-6vb6n-cze6g-gei4h-y3dlc-i77bm-7ityv-rmome-rshwy-wqe"
+      "pegnp-gazih-6vb6n-cze6g-gei4h-y3dlc-i77bm-7ityv-rmome-rshwy-wqe",
+      "3n3c2-3pc3z-enxej-thoeh-glav5-ii4fc-itegf-wpru2-erb6e-ivawj-zqe"
     ],
     "collections": {
       "datastore": [

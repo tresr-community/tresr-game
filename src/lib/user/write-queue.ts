@@ -126,7 +126,8 @@ async function doWrite(
       if (isVersionConflict && attempt < MAX_ATTEMPTS - 1) {
         const base = BASE_DELAY_MS * Math.pow(2, attempt);
         const backoff = Math.round(base * (0.75 + Math.random() * 0.5)); // ±25% jitter
-        log.warn(
+        const logFn = attempt === 0 ? log.debug : log.warn;
+        logFn(
           COMPONENT_NAME,
           `Version conflict (attempt ${attempt + 1}/${MAX_ATTEMPTS}), ` +
             `retrying in ${backoff}ms...`,

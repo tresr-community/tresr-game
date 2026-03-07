@@ -18,7 +18,11 @@ server:
     # Admin principals allowed to access the /admin interface and error logs.
     # Add your Internet Identity / SIWA principal text here.
     admins:
+      # Development (Local)
       - "pegnp-gazih-6vb6n-cze6g-gei4h-y3dlc-i77bm-7ityv-rmome-rshwy-wqe"
+      # Staging (Testnet)
+      - "3n3c2-3pc3z-enxej-thoeh-glav5-ii4fc-itegf-wpru2-erb6e-ivawj-zqe"
+      # Production (Mainnet)
     collections:
       datastore:
         # Audit
