@@ -261,7 +261,7 @@ in
   };
 
   difftastic = {
-    enable = true;
+    enable = false;
   };
 
   git-hooks = {
