@@ -126,9 +126,7 @@ in
       "pre-commit-hooks"
       "tresr-community"
     ];
-    push = [
-      "tresr-community"
-    ];
+    #push = "tresr-community"; # TODO: Why does this hang?
   };
 
   devenv = {
