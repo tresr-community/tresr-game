@@ -1,4 +1,4 @@
-import {getReadClient} from "@/lib/blockchain/tx";
+import {getReadClient, confirmReceipt} from "@/lib/blockchain/tx";
 import {
   getEnvironmentKey,
   isVaultDeployed,
@@ -9,6 +9,29 @@ import {getWalletClient} from "@/lib/wallet/connection";
 import {publicActions, encodeFunctionData, formatUnits} from "viem";
 import {config} from "@/lib/config/client";
 import {log} from "@/lib/utils/log";
+
+/**
+ * On Anvil, wallet extensions sometimes return a hash before the transaction
+ * is visible in the node's mempool (ghost hash). This polls getTransaction
+ * directly to confirm the tx is real before waiting for a receipt, failing
+ * fast (<1 s) instead of hanging for the full timeout duration.
+ */
+async function verifyTxExists(
+  getTransaction: (args: {hash: `0x${string}`}) => Promise<unknown>,
+  hash: `0x${string}`,
+  maxAttempts = 10,
+  intervalMs = 100
+): Promise<void> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const tx = await getTransaction({hash}).catch(() => null);
+    if (tx) return;
+    await new Promise<void>((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error(
+    "Transaction was not broadcast to the network. " +
+      "Your wallet may have rejected it — check your wallet activity and try again."
+  );
+}
 
 const COMPONENT_NAME = "VaultContract";
 
@@ -219,15 +242,18 @@ export async function payFeeForGame(
       COMPONENT_NAME,
       `Waiting for approval receipt (${env}): ${approveHash}`
     );
-    const approvalReceipt = await extendedClient.waitForTransactionReceipt({
-      hash: approveHash,
-      confirmations: env === "mainnet" ? 2 : env === "testnet" ? 1 : 0,
-      pollingInterval: 500,
-      timeout: config.gameplay.fee_gate.transaction_timeout_ms,
-    });
-    if (approvalReceipt.status !== "success") {
-      throw new Error("Approval transaction reverted on-chain");
+    // On Anvil, verify the tx is in the node before polling — prevents a
+    // ghost-hash ghost from hanging for config.gameplay.fee_gate.transaction_timeout_ms (5 min).
+    if (env === "anvil") {
+      await verifyTxExists(
+        (args) => extendedClient.getTransaction(args),
+        approveHash
+      );
     }
+    await confirmReceipt(approveHash, {
+      timeout: config.gameplay.fee_gate.transaction_timeout_ms,
+      component: COMPONENT_NAME,
+    });
   } else {
     log.info(
       COMPONENT_NAME,
@@ -300,15 +326,13 @@ export async function claimWin(
   });
 
   log.info(COMPONENT_NAME, `Waiting for claim receipt (${env}): ${hash}`);
-  const claimReceipt = await extendedClient.waitForTransactionReceipt({
-    hash,
-    confirmations: env === "mainnet" ? 2 : env === "testnet" ? 1 : 0,
-    pollingInterval: 500,
-    timeout: config.wallet.tx_timeout_ms,
-  });
-  if (claimReceipt.status !== "success") {
-    throw new Error("Claim transaction reverted on-chain");
+  if (env === "anvil") {
+    await verifyTxExists((args) => extendedClient.getTransaction(args), hash);
   }
+  await confirmReceipt(hash, {
+    timeout: config.wallet.tx_timeout_ms,
+    component: COMPONENT_NAME,
+  });
 
   return hash;
 }

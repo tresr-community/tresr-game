@@ -228,10 +228,10 @@ client:
           - http://auamu-4x777-77775-aaaaa-cai.localhost:5987
           - http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987
         token_ticker: "tRON"
-        tresr_token_contract: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0"
+        tresr_token_contract: "0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB"
         deployer_address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-        vault_contract: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318"
-        faucet_contract: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707"
+        vault_contract: "0x998abeb3E57409262aE5b751f60747921B33613E"
+        faucet_contract: "0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8"
         player_wallet: "0xb81749c72db5b5209098f2bd45a7a0293925da13"
         explorer_url: "http://localhost:8545/tx/"
       testnet:

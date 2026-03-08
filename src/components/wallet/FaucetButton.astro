@@ -118,7 +118,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
       if (isProcessing || disposed || btn!.disabled) return;
 
       if (!walletConnected) {
-        log.warn(COMPONENT_NAME, "Connect wallet first");
+        window.showWarningToast?.("Connect your wallet first 🔗");
         return;
       }
 
@@ -293,6 +293,12 @@ const isProduction = JUNO_ENVIRONMENT === "production";
       if (isAuthenticatedNonGuest && !unsubWallet) {
         unsubWallet = subscribeToConnection((connected) => {
           walletConnected = connected;
+          // Disable the button while the wallet store is still reconnecting
+          // so the user gets feedback instead of a silent "Connect wallet first" warn.
+          if (btn && cooldownRemaining <= 0 && !isProcessing) {
+            btn.disabled = !connected;
+            btn.title = connected ? "Claim test tokens" : "Connecting wallet…";
+          }
           evaluateVisibility();
           if (connected) checkInitialCooldown();
         });

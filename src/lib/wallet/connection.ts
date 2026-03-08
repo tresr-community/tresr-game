@@ -98,8 +98,20 @@ export async function connectWallet(): Promise<WalletConnection> {
   // already-resolved promise instantly, eliminating per-click delay.
   await ensureReconnected(config);
 
-  // Check if already connected
+  // Check if already connected — prefer wagmi truth, fall back to AppKit.
+  // After Astro page navigation, AppKit's localStorage-backed state survives
+  // but wagmi's in-memory state is cleared. If AppKit already considers the
+  // wallet connected, wait briefly for wagmi to hydrate before opening the
+  // modal (which would loop on connection events without CONNECT_SUCCESS).
   let account = getConnection(config);
+  if (!account.isConnected && appKitIsConnected()) {
+    log.debug(
+      COMPONENT_NAME,
+      "AppKit connected but wagmi not yet hydrated — waiting for reconnect..."
+    );
+    await waitForReconnect(config, 3_000);
+    account = getConnection(config);
+  }
 
   if (!account.isConnected) {
     log.info(COMPONENT_NAME, "Opening AppKit connection modal...");
