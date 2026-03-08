@@ -14,10 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
-  packages: write
-  pull-requests: write
-  statuses: write
+  contents: read
   actions: write
 
 env:
@@ -67,17 +64,3 @@ jobs:
         name: Run Devenv Test
         run: |
           devenv test
-
-      - id: report_status
-        name: Report Status
-        if: always()
-        uses: ./.github/actions/report-status
-        with:
-          result: ${{ steps.devenv_test.outcome }}
-          success-message: "Devenv test passed!"
-          failure-message: "Devenv test failed!"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: ${{ github.workflow }}
-          repository: ${{ github.repository }}
-          sha: ${{ github.sha }}
-          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

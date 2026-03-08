@@ -30,10 +30,11 @@ concurrency:
 
 permissions:
   contents: read
+  packages: read
   pull-requests: write
+  security-events: write
   statuses: write
   actions: write
-  packages: read
 
 env:
   NIXPKGS_ALLOW_UNFREE: 1
@@ -111,7 +112,7 @@ jobs:
   ##################################################
   # Parallel Check - CodeQL Security Scan
   ##################################################
-  sec-codeql:
+  ci-codeql:
     name: Check CodeQL
     needs: setup-environment
     uses: ./.github/workflows/sec-codeql.yaml
@@ -125,7 +126,7 @@ jobs:
     needs:
       - ci-pr-title
       - ci-trivy
-      - sec-codeql
+      - ci-codeql
       - ci-devenv
       - ci-foundry
       - ci-juno
@@ -149,7 +150,7 @@ jobs:
               echo "| PR Title | ${{ needs.ci-pr-title.result }} |"
             fi
             echo "| Trivy | ${{ needs.ci-trivy.result }} |"
-            echo "| CodeQL | ${{ needs.sec-codeql.result }} |"
+            echo "| CodeQL | ${{ needs.ci-codeql.result }} |"
             echo "| Devenv | ${{ needs.ci-devenv.result }} |"
             echo "| Foundry | ${{ needs.ci-foundry.result }} |"
             echo "| Juno | ${{ needs.ci-juno.result }} |"
@@ -158,7 +159,7 @@ jobs:
       - id: check_failures
         name: Check for Failures
         run: |
-          ALL_JOBS="${{ needs.ci-pr-title.result }},${{ needs.ci-trivy.result }},${{ needs.sec-codeql.result }},${{ needs.ci-devenv.result }},${{ needs.ci-foundry.result }},${{ needs.ci-juno.result }}"
+          ALL_JOBS="${{ needs.ci-pr-title.result }},${{ needs.ci-trivy.result }},${{ needs.ci-codeql.result }},${{ needs.ci-devenv.result }},${{ needs.ci-foundry.result }},${{ needs.ci-juno.result }}"
 
           if echo "${ALL_JOBS}" | grep -qE "(failure|cancelled)"; then
             echo "::error::One or more CI jobs failed"

@@ -95,17 +95,3 @@ jobs:
         run: |
           cargo generate-lockfile
           juno-dev build-functions
-
-      - id: report_status
-        name: Report Status
-        if: always()
-        uses: ./.github/actions/report-status
-        with:
-          result: ${{ steps.build_hosting.outcome }}
-          success-message: "Juno CI passed: lint, test, type-check, build"
-          failure-message: "Juno CI failed"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: ${{ github.workflow }}
-          repository: ${{ github.repository }}
-          sha: ${{ github.sha }}
-          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

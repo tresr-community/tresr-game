@@ -85,17 +85,3 @@ jobs:
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           solidity-dev check
-
-      - id: report_status
-        name: Report Status
-        if: always()
-        uses: ./.github/actions/report-status
-        with:
-          result: ${{ steps.detect_changes.outputs.skip == 'true' && 'success' || steps.check_contracts.outcome }}
-          success-message: "Foundry CI passed: contract checks"
-          failure-message: "Foundry CI failed"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          workflow-name: ${{ github.workflow }}
-          repository: ${{ github.repository }}
-          sha: ${{ github.sha }}
-          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
