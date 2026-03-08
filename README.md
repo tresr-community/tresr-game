@@ -1,5 +1,9 @@
 # Tresr
 
+[![CI](https://github.com/tresr-community/tresr-game/actions/workflows/ci.yaml/badge.svg)](https://github.com/tresr-community/tresr-game/actions/workflows/ci.yaml)
+[![CodeQL](https://github.com/tresr-community/tresr-game/actions/workflows/sec-codeql.yaml/badge.svg)](https://github.com/tresr-community/tresr-game/actions/workflows/sec-codeql.yaml)
+[![Trivy](https://github.com/tresr-community/tresr-game/actions/workflows/ci-trivy.yaml/badge.svg)](https://github.com/tresr-community/tresr-game/actions/workflows/ci-trivy.yaml)
+
 A 2.5D de-centralised platformer game built on the Internet Computer, featuring blockchain integration with Avalanche C-Chain.
 
 This is an unofficial game made for the TRESR community and is not affiliated with the official TRESR project.
