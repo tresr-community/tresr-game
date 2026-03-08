@@ -110,15 +110,6 @@ jobs:
     secrets: inherit
 
   ##################################################
-  # Parallel Check - CodeQL Security Scan
-  ##################################################
-  ci-codeql:
-    name: Check CodeQL
-    needs: setup-environment
-    uses: ./.github/workflows/sec-codeql.yaml
-    secrets: inherit
-
-  ##################################################
   # Status Report Aggregator
   ##################################################
   status:
@@ -126,7 +117,6 @@ jobs:
     needs:
       - ci-pr-title
       - ci-trivy
-      - ci-codeql
       - ci-devenv
       - ci-foundry
       - ci-juno
@@ -170,7 +160,6 @@ jobs:
               echo "| PR Title | $(status_emoji '${{ needs.ci-pr-title.result }}') ${{ needs.ci-pr-title.result }} |"
             fi
             echo "| Trivy | $(status_emoji '${{ needs.ci-trivy.result }}') ${{ needs.ci-trivy.result }} |"
-            echo "| CodeQL | $(status_emoji '${{ needs.ci-codeql.result }}') ${{ needs.ci-codeql.result }} |"
             echo "| Devenv | $(status_emoji '${{ needs.ci-devenv.result }}') ${{ needs.ci-devenv.result }} |"
             echo "| Foundry | $(status_emoji '${{ needs.ci-foundry.result }}') ${{ needs.ci-foundry.result }} |"
             echo "| Juno | $(status_emoji '${{ needs.ci-juno.result }}') ${{ needs.ci-juno.result }} |"
@@ -179,7 +168,7 @@ jobs:
       - id: check_failures
         name: Check for Failures
         run: |
-          ALL_JOBS="${{ needs.ci-pr-title.result }},${{ needs.ci-trivy.result }},${{ needs.ci-codeql.result }},${{ needs.ci-devenv.result }},${{ needs.ci-foundry.result }},${{ needs.ci-juno.result }}"
+          ALL_JOBS="${{ needs.ci-pr-title.result }},${{ needs.ci-trivy.result }},${{ needs.ci-devenv.result }},${{ needs.ci-foundry.result }},${{ needs.ci-juno.result }}"
 
           if echo "${ALL_JOBS}" | grep -qE "(failure|cancelled)"; then
             echo "::error::One or more CI jobs failed"

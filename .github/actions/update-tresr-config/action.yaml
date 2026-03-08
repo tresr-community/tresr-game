@@ -164,3 +164,7 @@ runs:
             --assignee "MAHDTech" \
             --reviewer "MAHDTech"
         fi
+
+        # Enable auto-merge so the PR merges automatically once CI passes.
+        # Requires "Allow auto-merge" to be enabled in repo Settings → General.
+        gh pr merge "${BRANCH}" --auto --squash || true
