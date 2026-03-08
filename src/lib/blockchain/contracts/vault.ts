@@ -1,4 +1,4 @@
-import {getReadClient, confirmReceipt} from "@/lib/blockchain/tx";
+import {getReadClient} from "@/lib/blockchain/tx";
 import {
   getEnvironmentKey,
   isVaultDeployed,
@@ -6,7 +6,7 @@ import {
 } from "@/lib/blockchain/networks/chain";
 import {VaultAbi, ERC20Abi} from "@/lib/blockchain/abi/vault";
 import {getWalletClient} from "@/lib/wallet/connection";
-import {encodeFunctionData, formatUnits} from "viem";
+import {publicActions, encodeFunctionData, formatUnits} from "viem";
 import {config} from "@/lib/config/client";
 import {log} from "@/lib/utils/log";
 
@@ -138,6 +138,10 @@ export async function payFeeForGame(
   const chainConfig = config.blockchain.avalanche[env];
   const chain = getTargetChain(chainConfig.rpc_urls[0]);
 
+  // Extend wallet client with publicActions so that submit + receipt polling
+  // share the SAME transport.  Pre-flight reads use getReadClient (read-only;
+  // transport consistency doesn’t matter there).
+  const extendedClient = walletClient.extend(publicActions);
   const publicClient = getReadClient();
 
   const vaultAddr = chainConfig.vault_contract as `0x${string}`;
@@ -201,7 +205,7 @@ export async function payFeeForGame(
       data: approveData,
     });
 
-    const approveHash = await walletClient.writeContract({
+    const approveHash = await extendedClient.writeContract({
       account: accounts[0],
       address: tokenAddr,
       abi: ERC20Abi,
@@ -211,7 +215,19 @@ export async function payFeeForGame(
       gas: approveGas,
     });
 
-    await confirmReceipt(approveHash, {component: COMPONENT_NAME});
+    log.info(
+      COMPONENT_NAME,
+      `Waiting for approval receipt (${env}): ${approveHash}`
+    );
+    const approvalReceipt = await extendedClient.waitForTransactionReceipt({
+      hash: approveHash,
+      confirmations: env === "mainnet" ? 2 : env === "testnet" ? 1 : 0,
+      pollingInterval: 500,
+      timeout: config.gameplay.fee_gate.transaction_timeout_ms,
+    });
+    if (approvalReceipt.status !== "success") {
+      throw new Error("Approval transaction reverted on-chain");
+    }
   } else {
     log.info(
       COMPONENT_NAME,
@@ -222,7 +238,7 @@ export async function payFeeForGame(
   // --- Pay fee to the Vault ---
   log.info(COMPONENT_NAME, "Paying fee to vault for session:", sessionId);
 
-  const {request: payFeeRequest} = await publicClient.simulateContract({
+  const {request: payFeeRequest} = await extendedClient.simulateContract({
     account: accounts[0],
     address: vaultAddr,
     abi: VaultAbi,
@@ -230,7 +246,7 @@ export async function payFeeForGame(
     args: [amount, sid],
   });
 
-  const hash = await walletClient.writeContract({
+  const hash = await extendedClient.writeContract({
     ...payFeeRequest,
     chain,
   });
@@ -264,6 +280,9 @@ export async function claimWin(
     );
   }
 
+  // Extend wallet client with publicActions so that submit + receipt polling
+  // share the SAME transport.  simulateContract uses getReadClient (read-only).
+  const extendedClient = walletClient.extend(publicActions);
   const publicClient = getReadClient();
   log.info(COMPONENT_NAME, "Claiming win from vault for session:", sessionId);
 
@@ -275,12 +294,21 @@ export async function claimWin(
     args: [sessionId as `0x${string}`, amount, BigInt(keys), signature],
   });
 
-  const hash = await walletClient.writeContract({
+  const hash = await extendedClient.writeContract({
     ...claimRequest,
-    chain: getTargetChain(), // Chain is already configured in the wallet client
+    chain: getTargetChain(),
   });
 
-  await confirmReceipt(hash, {component: COMPONENT_NAME});
+  log.info(COMPONENT_NAME, `Waiting for claim receipt (${env}): ${hash}`);
+  const claimReceipt = await extendedClient.waitForTransactionReceipt({
+    hash,
+    confirmations: env === "mainnet" ? 2 : env === "testnet" ? 1 : 0,
+    pollingInterval: 500,
+    timeout: config.wallet.tx_timeout_ms,
+  });
+  if (claimReceipt.status !== "success") {
+    throw new Error("Claim transaction reverted on-chain");
+  }
 
   return hash;
 }

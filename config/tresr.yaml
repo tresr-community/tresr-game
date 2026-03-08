@@ -281,7 +281,7 @@ client:
     balance_refresh_cooldown_ms: 30000
     vault_poll_interval_ms: 60000 # Vault balance background polling interval
     connect_timeout_ms: 300000 # AppKit connect wallet timeout (5 mins)
-    tx_timeout_ms: 30000 # Direct RPC tx confirmation fallback timeout
+    tx_timeout_ms: 60000 # Tx receipt timeout (60 s; Fuji needs headroom over 30 s)
     tx_polling_interval_ms: 1000 # Direct RPC tx polling interval
   # Assets are auto-populated at build time by bin/client-config.ts.
   # Wallpapers: scanned from public/assets/images/wallpapers/wallpaper_*.webp

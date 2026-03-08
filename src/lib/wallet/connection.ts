@@ -30,6 +30,36 @@ import {log} from "../utils/log";
 
 const COMPONENT_NAME = "Connection";
 
+// ── Singleton reconnect ───────────────────────────────────────────────────
+// wagmi's reconnect() iterates stored connectors and performs async
+// handshakes with injected wallets and WalletConnect relay servers.
+// Calling it on every user click blocks the modal from opening for up to
+// 15 s on testnet.  Instead we fire it once per page-load and share the
+// resulting promise across all callers.
+let _reconnectPromise: Promise<unknown> | null = null;
+
+function ensureReconnected(config: Config): Promise<unknown> {
+  if (!_reconnectPromise) {
+    _reconnectPromise = reconnect(config).catch(() => {
+      // Allow retry on next call if the first attempt failed
+      _reconnectPromise = null;
+    });
+  }
+  return _reconnectPromise;
+}
+
+/**
+ * Eagerly warm the wagmi connection during auth init so that when the
+ * user clicks "Sign in" the reconnect handshake is already complete and
+ * the wallet modal opens instantly.
+ *
+ * Call this once from the auth module during page load.
+ */
+export function initWalletReconnect(): void {
+  const config = getWagmiConfig();
+  void ensureReconnected(config);
+}
+
 /**
  * Result of a wallet connection.
  */
@@ -63,9 +93,10 @@ export async function connectWallet(): Promise<WalletConnection> {
 
   // Restore connection from localStorage after full page reload.
   // Astro uses full page navigations (no ViewTransitions), so wagmi's
-  // in-memory state is lost between pages. reconnect() is idempotent —
-  // it's a no-op if the wallet is already connected.
-  await reconnect(config);
+  // in-memory state is lost between pages. ensureReconnected() is a singleton
+  // — the first call fires the handshake; every subsequent call returns the
+  // already-resolved promise instantly, eliminating per-click delay.
+  await ensureReconnected(config);
 
   // Check if already connected
   let account = getConnection(config);
@@ -217,7 +248,9 @@ export async function getWalletClient(): Promise<WalletClient> {
   // IMPORTANT: We capture the reconnect result to extract the live connector
   // object. Passing it explicitly to getWalletClient bypasses wagmi's fallback
   // to the serialized (un-hydrated) connector from its internal state store.
-  const reconnected = await reconnect(config);
+  const reconnected = (await ensureReconnected(config)) as Awaited<
+    ReturnType<typeof reconnect>
+  >;
 
   // Wait for the reconnection handshake to finish before touching the
   // connector. Injected wallets (Brave, MetaMask) initialise asynchronously;

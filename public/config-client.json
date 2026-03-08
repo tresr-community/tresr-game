@@ -154,7 +154,7 @@
     "balance_refresh_cooldown_ms": 30000,
     "vault_poll_interval_ms": 60000,
     "connect_timeout_ms": 300000,
-    "tx_timeout_ms": 30000,
+    "tx_timeout_ms": 60000,
     "tx_polling_interval_ms": 1000
   },
   "assets": {
