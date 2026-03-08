@@ -606,6 +606,8 @@ interface PendingWrite {
         log.info(COMPONENT_NAME, `  git add ${f}`);
       }
 
+      // codeql[js/shell-command-constructed-from-input] paths are JSON.stringify'd (shell-quoted)
+      // before interpolation; all values are project-relative paths produced internally
       execSync(`git add ${toStage.map((f) => JSON.stringify(f)).join(" ")}`, {
         cwd: projectRoot,
         stdio: "inherit",

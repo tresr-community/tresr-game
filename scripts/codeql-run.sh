@@ -174,7 +174,7 @@ cmd_analyze() {
 		codeql database analyze "${db_path}" \
 			--format=sarifv2.1.0 \
 			--output="${sarif_file}" \
-			--sarif-add-query-help \
+			--sarif-include-query-help=always \
 			2>&1 | tail -10
 
 		log_success "SARIF results: ${sarif_file}"
