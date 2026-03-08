@@ -155,6 +155,53 @@ export async function connectWallet(): Promise<WalletConnection> {
 }
 
 /**
+ * Wait for wagmi to leave the "reconnecting" state.
+ *
+ * After `reconnect()` is called, injected wallets (e.g. Brave Wallet) go
+ * through an async handshake. During this window wagmi's status is
+ * "reconnecting" and most connector methods are unavailable — any call to
+ * getWalletClient will throw "Connector unavailable while reconnecting".
+ *
+ * This helper subscribes to the wagmi state store and resolves once the
+ * status reaches "connected" or "disconnected". It times out after
+ * `timeoutMs` ms to avoid hanging indefinitely if reconnection stalls.
+ */
+async function waitForReconnect(
+  config: Config,
+  timeoutMs = 5_000
+): Promise<void> {
+  const currentStatus = (config.state as {status?: string}).status;
+  if (currentStatus !== "reconnecting") return;
+
+  return new Promise<void>((resolve) => {
+    let settled = false;
+
+    const timeoutId = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      unsub();
+      // Resolve rather than reject — let the caller try anyway; it may
+      // succeed if the connector restored just-in-time, or fail with a
+      // clearer downstream error.
+      resolve();
+    }, timeoutMs);
+
+    const unsub = config.subscribe(
+      (state: {status?: string}) => state.status,
+      (status) => {
+        if (settled) return;
+        if (status !== "reconnecting") {
+          settled = true;
+          clearTimeout(timeoutId);
+          unsub();
+          resolve();
+        }
+      }
+    );
+  });
+}
+
+/**
  * Get viem WalletClient for the connected wallet.
  *
  * Uses wagmi's getWalletClient which returns a viem-compatible client.
@@ -171,6 +218,12 @@ export async function getWalletClient(): Promise<WalletClient> {
   // object. Passing it explicitly to getWalletClient bypasses wagmi's fallback
   // to the serialized (un-hydrated) connector from its internal state store.
   const reconnected = await reconnect(config);
+
+  // Wait for the reconnection handshake to finish before touching the
+  // connector. Injected wallets (Brave, MetaMask) initialise asynchronously;
+  // during this window wagmi status is "reconnecting" and calling
+  // getWalletClient throws "Connector unavailable while reconnecting".
+  await waitForReconnect(config);
 
   const account = getConnection(config);
 
