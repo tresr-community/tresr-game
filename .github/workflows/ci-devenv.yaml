@@ -60,3 +60,18 @@ jobs:
         name: Run Devenv Test
         run: |
           devenv test
+
+      - id: write_summary
+        name: Write Results Summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Devenv Results"
+            echo ""
+            echo "### Test Status"
+            echo "| Step | Status |"
+            echo "|------|--------|"
+            echo "| Install Dependencies | ${{ steps.install_deps.outcome }} |"
+            echo "| Devenv Test | ${{ steps.devenv_test.outcome }} |"
+          } >> "$GITHUB_STEP_SUMMARY"

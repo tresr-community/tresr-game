@@ -81,3 +81,21 @@ jobs:
         shell: devenv shell --quiet bash -- -e {0}
         run: |
           solidity-dev check
+
+      - id: write_summary
+        name: Write Results Summary
+        if: always()
+        run: |
+          {
+            echo "## Foundry Results"
+            echo ""
+            echo "### Check Status"
+            echo "| Step | Status |"
+            echo "|------|--------|"
+            if [[ "${{ steps.detect_changes.outputs.skip }}" == "true" ]]; then
+              echo "| Contract Changes | _(none detected — skipped)_ |"
+            else
+              echo "| Detect Changes | ${{ steps.detect_changes.outcome }} |"
+              echo "| Check Contracts | ${{ steps.check_contracts.outcome }} |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

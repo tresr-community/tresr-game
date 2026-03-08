@@ -5,6 +5,7 @@
 #
 # Triggers:
 #   - Pull request to trunk
+#   - Push to trunk (required for Security tab results)
 #   - Weekly schedule (Sunday 00:00 UTC)
 #
 # Scans:
@@ -19,6 +20,10 @@ name: CodeQL
 
 on:
   workflow_call:
+
+  push:
+    branches:
+      - trunk
 
   schedule:
     - cron: "0 0 * * 0"

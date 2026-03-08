@@ -91,3 +91,36 @@ jobs:
         run: |
           cargo generate-lockfile
           juno-dev build-functions
+
+      - id: upload_artifact
+        name: Upload Satellite WASM
+        if: steps.build_functions.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: juno-satellite-ci
+          path: target/deploy/satellite.wasm.gz
+          retention-days: 1
+
+      - id: write_summary
+        name: Write Results Summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## Juno Results"
+            echo ""
+            echo "### Check Status"
+            echo "| Step | Status |"
+            echo "|------|--------|"
+            echo "| Lint | ${{ steps.lint.outcome }} |"
+            echo "| Test | ${{ steps.test.outcome }} |"
+            echo "| Build Hosting | ${{ steps.build_hosting.outcome }} |"
+            echo "| Test Functions (Rust) | ${{ steps.test_functions.outcome }} |"
+            echo "| Build Functions | ${{ steps.build_functions.outcome }} |"
+            echo "| Upload Satellite WASM | ${{ steps.upload_artifact.outcome }} |"
+            echo ""
+            echo "### Artifacts"
+            echo "| Name | Retention |"
+            echo "|------|-----------|"
+            echo "| \`juno-satellite-ci\` (WASM) | 1 day |"
+          } >> "$GITHUB_STEP_SUMMARY"
