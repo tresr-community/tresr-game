@@ -1,0 +1,182 @@
+---
+##################################################
+# Name: ci.yaml
+# Description: Gatekeeper entrypoint for CI checks
+#
+# Triggers:
+#   - Pull requests to trunk
+#   - Merge queues
+#
+# Flow:
+#   1. setup-environment primes the GitHub cache via devenv
+#   2. Parallel jobs (ci-*.yaml) execute simultaneously
+#      reusing the perfectly pre-warmed Nix cache.
+##################################################
+
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - trunk
+
+  merge_group:
+    branches:
+      - trunk
+
+concurrency:
+  group: ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+  actions: write
+  packages: read
+
+env:
+  NIXPKGS_ALLOW_UNFREE: 1
+  SECRETSPEC_PROVIDER: env
+
+jobs:
+  ##################################################
+  # Gatekeeper - Prime the Nix Cache for parallel jobs
+  ##################################################
+  setup-environment:
+    name: Setup Environment
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+  ##################################################
+  # Parallel Check - Devenv test
+  ##################################################
+  ci-devenv:
+    name: Check Devenv
+    needs: setup-environment
+    uses: ./.github/workflows/ci-devenv.yaml
+    secrets: inherit
+
+  ##################################################
+  # Parallel Check - Foundry format & tests
+  ##################################################
+  ci-foundry:
+    name: Check Foundry
+    needs: setup-environment
+    uses: ./.github/workflows/ci-foundry.yaml
+    secrets: inherit
+
+  ##################################################
+  # Parallel Check - Juno build & tests
+  ##################################################
+  ci-juno:
+    name: Check Juno
+    needs: setup-environment
+    uses: ./.github/workflows/ci-juno.yaml
+    secrets: inherit
+
+  ##################################################
+  # Parallel Check - PR Title
+  ##################################################
+  ci-pr-title:
+    name: Check PR Title
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/ci-pr-title.yaml
+    secrets: inherit
+
+  ##################################################
+  # Parallel Check - Trivy Security Scan
+  ##################################################
+  ci-trivy:
+    name: Check Trivy
+    needs: setup-environment
+    uses: ./.github/workflows/ci-trivy.yaml
+    secrets: inherit
+
+  ##################################################
+  # Parallel Check - CodeQL Security Scan
+  ##################################################
+  sec-codeql:
+    name: Check CodeQL
+    needs: setup-environment
+    uses: ./.github/workflows/sec-codeql.yaml
+    secrets: inherit
+
+  ##################################################
+  # Status Report Aggregator
+  ##################################################
+  status:
+    name: CI Status
+    needs:
+      - ci-pr-title
+      - ci-trivy
+      - sec-codeql
+      - ci-devenv
+      - ci-foundry
+      - ci-juno
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - id: write_summary
+        name: Write Results Summary
+        run: |
+          {
+            echo "## CI Results"
+            echo ""
+            echo "| Job | Status |"
+            echo "|-----|--------|"
+            if [ "${{ github.event_name }}" == "pull_request" ]; then
+              echo "| PR Title | ${{ needs.ci-pr-title.result }} |"
+            fi
+            echo "| Trivy | ${{ needs.ci-trivy.result }} |"
+            echo "| CodeQL | ${{ needs.sec-codeql.result }} |"
+            echo "| Devenv | ${{ needs.ci-devenv.result }} |"
+            echo "| Foundry | ${{ needs.ci-foundry.result }} |"
+            echo "| Juno | ${{ needs.ci-juno.result }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - id: check_failures
+        name: Check for Failures
+        run: |
+          ALL_JOBS="${{ needs.ci-pr-title.result }},${{ needs.ci-trivy.result }},${{ needs.sec-codeql.result }},${{ needs.ci-devenv.result }},${{ needs.ci-foundry.result }},${{ needs.ci-juno.result }}"
+
+          if echo "${ALL_JOBS}" | grep -qE "(failure|cancelled)"; then
+            echo "::error::One or more CI jobs failed"
+            exit 1
+          fi
+
+          echo "All CI checks passed!"
+
+      - id: report_status
+        name: Report Status
+        if: always()
+        uses: ./.github/actions/report-status
+        with:
+          result: ${{ steps.check_failures.outcome }}
+          success-message: "All CI checks passed!"
+          failure-message: "One or more CI checks failed!"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          workflow-name: ${{ github.workflow }}
+          repository: ${{ github.repository }}
+          sha: ${{ github.sha }}
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

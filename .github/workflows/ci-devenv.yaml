@@ -7,13 +7,7 @@
 name: Devenv CI
 
 on:
-  pull_request:
-    branches:
-      - trunk
-
-  merge_group:
-    branches:
-      - trunk
+  workflow_call:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

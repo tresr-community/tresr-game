@@ -1,0 +1,469 @@
+---
+##################################################
+# Name: cd-release.yaml
+# Description: Single entrypoint for all releases
+#
+# Triggers:
+#   - Push to trunk → Create pre-release (automatic)
+#   - Manual dispatch → Create pre-release (Testnet) or promote to release (Mainnet)
+#
+# Flow:
+#   1. Compute next version via convco (or use version_override if provided)
+#   2. Bump version in config files
+#   3. Testnet: Tag as v{version}, create pre-release
+#      → calls cd-juno-testnet.yaml, cd-foundry-testnet.yaml
+#   4. Mainnet: Promote existing pre-release tag to release
+#      → calls cd-juno-mainnet.yaml, cd-foundry-mainnet.yaml
+##################################################
+
+name: Release
+
+on:
+  push:
+    branches:
+      - trunk
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - Testnet
+          - Mainnet
+        default: Testnet
+      release_tag:
+        description: "Tag to promote (Mainnet only, e.g. v0.2.0)"
+        required: false
+        type: string
+        default: ""
+      version_override:
+        description: "Force a specific version (Testnet only, e.g. 0.3.0 or v0.3.0)"
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  actions: write
+  contents: write
+  id-token: write
+  packages: read
+  pull-requests: write
+  statuses: write
+
+env:
+  NIXPKGS_ALLOW_UNFREE: 1
+  SECRETSPEC_PROVIDER: env
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  ##################################################
+  # Setup Environment
+  ##################################################
+  setup-environment:
+    name: Setup Environment
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+  ##################################################
+  # Create a pre-release
+  # Triggers: push to trunk (auto) OR manual with Testnet
+  ##################################################
+  pre-release:
+    name: Pre-Release
+    needs: [setup-environment]
+
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'Testnet')
+
+    runs-on: ubuntu-latest
+    environment: Testnet
+
+    timeout-minutes: 120
+    continue-on-error: false
+
+    outputs:
+      version: ${{ steps.compute_version.outputs.version }}
+      tag: ${{ steps.compute_version.outputs.tag }}
+      skip: ${{ steps.compute_version.outputs.skip }}
+
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          lfs: true
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: compute_version
+        name: Compute Version
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          OVERRIDE="${{ github.event.inputs.version_override }}"
+
+          if [[ -n "${OVERRIDE}" ]]; then
+            # Strip leading 'v' if present and validate
+            NEXT_VERSION="${OVERRIDE#v}"
+
+            if ! [[ "${NEXT_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+              echo "::error::Invalid version format: '${OVERRIDE}'. Expected semver (e.g. 0.3.0 or v0.3.0)"
+              exit 1
+            fi
+
+            echo "Using manual version override: ${NEXT_VERSION}"
+          else
+            # Get next version from conventional commits
+            NEXT_VERSION=$(convco version --bump 2>/dev/null || echo "")
+
+            if [[ -z "${NEXT_VERSION}" ]]; then
+              echo "No conventional commits found to bump version"
+              NEXT_VERSION=$(convco version)
+            fi
+          fi
+
+          TAG="v${NEXT_VERSION}"
+
+          # Check if tag already exists
+          if git tag --list | grep -q "^${TAG}$"; then
+            echo "Tag ${TAG} already exists, skipping release"
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+          echo "version=${NEXT_VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "Version: ${NEXT_VERSION}, Tag: ${TAG}"
+
+      - id: bump_version
+        name: Bump Version Files
+        if: steps.compute_version.outputs.skip != 'true'
+        shell: devenv shell --quiet bash -- -e {0}
+        run: |
+          bun run version-set ${{ steps.compute_version.outputs.version }}
+
+      - id: create_release
+        name: Create Pre-Release
+        if: steps.compute_version.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.compute_version.outputs.tag }}" \
+            --title "Pre-Release ${{ steps.compute_version.outputs.tag }}" \
+            --notes "Release ${{ steps.compute_version.outputs.tag }}" \
+            --prerelease \
+            --target "${{ github.sha }}"
+
+      - id: generate_changelog
+        name: Generate Changelog
+        if: steps.compute_version.outputs.skip != 'true'
+        shell: devenv shell --quiet bash -- -e {0}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
+          ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
+        run: |
+          TAG="${{ steps.compute_version.outputs.tag }}"
+
+          # Fetch the tag created by gh release so convco can see it
+          git fetch --tags --force
+
+          # Generate changelog for the latest version (the one we just tagged)
+          CHANGELOG=$(convco changelog --max-versions 1 --no-links 2>/dev/null || echo "Release ${TAG}")
+
+          {
+            echo "${CHANGELOG}"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## :rocket: Testnet Deployment"
+            echo ""
+            echo "| Resource | ID |"
+            echo "|----------|-----|"
+            echo "| Satellite | ${SATELLITE_ID} |"
+            echo "| Orbiter | ${ORBITER_ID} |"
+            echo ""
+            echo ":link: [Juno Console](https://console.juno.build/)"
+          } > /tmp/changelog.md
+
+          # Update the release with the real changelog
+          gh release edit "${TAG}" --notes-file /tmp/changelog.md
+
+          echo "Updated release ${TAG} with changelog"
+
+  ##################################################
+  # Run trunk CodeQL security analysis
+  ##################################################
+  cd-codeql:
+    name: Trunk CodeQL Scan
+    needs: setup-environment
+    uses: ./.github/workflows/sec-codeql.yaml
+    secrets: inherit
+
+  ##################################################
+  # Deploy to Testnet (Juno)
+  ##################################################
+  deploy-juno-testnet:
+    name: Deploy Juno (Testnet)
+    needs: pre-release
+    if: needs.pre-release.outputs.skip != 'true'
+    uses: ./.github/workflows/cd-juno-testnet.yaml
+    with:
+      version: ${{ needs.pre-release.outputs.tag }}
+    secrets: inherit
+
+  ##################################################
+  # Deploy Solidity contracts (Testnet)
+  ##################################################
+  deploy-foundry-testnet:
+    name: Deploy Contracts (Testnet)
+    needs: [pre-release, deploy-juno-testnet]
+    if: needs.pre-release.outputs.skip != 'true'
+    uses: ./.github/workflows/cd-foundry-testnet.yaml
+    with:
+      oracle_address: ${{ needs.deploy-juno-testnet.outputs.oracle_address }}
+    secrets: inherit
+
+  ##################################################
+  # Update config/tresr.yaml with deployed addresses (Testnet)
+  ##################################################
+  update-config-testnet:
+    name: Update Config (Testnet)
+    needs: [pre-release, deploy-juno-testnet, deploy-foundry-testnet]
+    if: >-
+      always() &&
+      needs.pre-release.outputs.skip != 'true' &&
+      needs.deploy-foundry-testnet.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          ref: trunk
+          lfs: true
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: update_config
+        name: Update TRESR Config
+        uses: ./.github/actions/update-tresr-config
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          environment: testnet
+          oracle-address: ${{ needs.deploy-juno-testnet.outputs.oracle_address }}
+          token-address: ${{ needs.deploy-foundry-testnet.outputs.token_address }}
+          vault-address: ${{ needs.deploy-foundry-testnet.outputs.vault_address }}
+          faucet-address: ${{ needs.deploy-foundry-testnet.outputs.faucet_address }}
+
+  ##################################################
+  # Promote a pre-release to release (Mainnet)
+  ##################################################
+  promote:
+    name: Promote to Release (Mainnet)
+    needs: [setup-environment]
+
+    if: >-
+      github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'Mainnet'
+
+    runs-on: ubuntu-latest
+    environment: Mainnet
+
+    timeout-minutes: 120
+    continue-on-error: false
+
+    outputs:
+      tag: ${{ steps.validate_tag.outputs.tag }}
+
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: validate_tag
+        name: Validate Release Tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+        run: |
+          if [[ -n "${RELEASE_TAG}" ]]; then
+            # User specified a tag — use it directly
+            TAG="${RELEASE_TAG}"
+            echo "Using provided release tag: ${TAG}"
+          else
+            # Auto-discover the latest pre-release
+            TAG=$(gh release list --json tagName,isPrerelease \
+              --jq '[.[] | select(.isPrerelease==true)] | first | .tagName' 2>/dev/null || echo "")
+
+            if [[ -z "${TAG}" || "${TAG}" == "null" ]]; then
+              echo "::error::No pre-releases found. Create one first via a Testnet deployment."
+              exit 1
+            fi
+            echo "Auto-discovered latest pre-release: ${TAG}"
+          fi
+
+          # Verify the release exists and IS a pre-release
+          RELEASE_INFO=$(gh release view "${TAG}" --json isPrerelease,tagName 2>&1) || {
+            echo "::error::Release '${TAG}' not found"
+            exit 1
+          }
+
+          IS_PRERELEASE=$(echo "${RELEASE_INFO}" | jq -r '.isPrerelease')
+          if [[ "${IS_PRERELEASE}" != "true" ]]; then
+            echo "::error::Release '${TAG}' has already been promoted to a full release."
+            echo "::error::If you want to promote a specific pre-release, enter the tag (e.g. v0.2.3)."
+            exit 1
+          fi
+
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "Validated: ${TAG} is a pre-release, ready to promote"
+
+      - id: generate_changelog
+        name: Generate Release Changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
+          ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
+        run: |
+          TAG="${{ steps.validate_tag.outputs.tag }}"
+
+          # Get existing release body (has changelog + testnet table)
+          EXISTING=$(gh release view "${TAG}" --json body -q '.body')
+
+          {
+            echo "${EXISTING}"
+            echo ""
+            echo "## :globe_with_meridians: Mainnet Deployment"
+            echo ""
+            echo "| Resource | ID |"
+            echo "|----------|-----|"
+            echo "| Satellite | ${SATELLITE_ID} |"
+            echo "| Orbiter | ${ORBITER_ID} |"
+            echo ""
+            echo ":link: [Juno Console](https://console.juno.build/)"
+          } > /tmp/changelog.md
+
+          echo "Generated release changelog with mainnet deployment for ${TAG}"
+
+      - id: promote_release
+        name: Promote Pre-Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ steps.validate_tag.outputs.tag }}" \
+            --prerelease=false \
+            --title "Release ${{ steps.validate_tag.outputs.tag }}" \
+            --notes-file /tmp/changelog.md
+
+          echo "Promoted ${{ steps.validate_tag.outputs.tag }} to release"
+
+  ##################################################
+  # Deploy to Juno (Mainnet)
+  ##################################################
+  deploy-juno-mainnet:
+    name: Deploy Juno (Mainnet)
+    needs: promote
+    uses: ./.github/workflows/cd-juno-mainnet.yaml
+    with:
+      version: ${{ needs.promote.outputs.tag }}
+    secrets: inherit
+
+  ##################################################
+  # Deploy Solidity contracts (Mainnet)
+  ##################################################
+  deploy-foundry-mainnet:
+    name: Deploy Contracts (Mainnet)
+    needs: [promote, deploy-juno-mainnet]
+    uses: ./.github/workflows/cd-foundry-mainnet.yaml
+    with:
+      oracle_address: ${{ needs.deploy-juno-mainnet.outputs.oracle_address }}
+    secrets: inherit
+
+  ##################################################
+  # Update config/tresr.yaml with mainnet addresses
+  ##################################################
+  update-config-mainnet:
+    name: Update Config (Mainnet)
+    needs: [promote, deploy-juno-mainnet, deploy-foundry-mainnet]
+    if: >-
+      always() &&
+      needs.deploy-foundry-mainnet.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          ref: trunk
+          lfs: true
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: update_config
+        name: Update TRESR Config
+        uses: ./.github/actions/update-tresr-config
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          environment: mainnet
+          oracle-address: ${{ needs.deploy-juno-mainnet.outputs.oracle_address }}
+          vault-address: ${{ needs.deploy-foundry-mainnet.outputs.vault_address }}
