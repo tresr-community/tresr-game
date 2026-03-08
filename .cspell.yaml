@@ -11,6 +11,22 @@ dictionaries:
   - project-words
 ignorePaths:
   - "*.drawio"
+  - "*.eot"
+  - "*.gif"
+  - "*.ico"
+  - "*.jpg"
+  - "*.jpeg"
+  - "*.mp3"
+  - "*.mp4"
+  - "*.ogg"
+  - "*.png"
+  - "*.svg"
+  - "*.ttf"
+  - "*.wasm"
+  - "*.wav"
+  - "*.webp"
+  - "*.woff"
+  - "*.woff2"
   - .devenv
   - .direnv
   - .git
@@ -20,7 +36,6 @@ ignorePaths:
   - node_modules
   - public/config-client.json
   - public/workers
-  - "*.svg"
   - secrets
   - vendor
 ignoreRegExpList:
