@@ -12,6 +12,6 @@ runs:
         path: |
           contracts/cache
           contracts/out
-        key: foundry-${{ runner.os }}-${{ hashFiles('contracts/foundry.toml', 'contracts/src/**/*.sol') }}
+        key: ${{ runner.os }}-foundry-${{ hashFiles('contracts/foundry.toml', 'contracts/src/**/*.sol') }}
         restore-keys: |
-          foundry-${{ runner.os }}-
+          ${{ runner.os }}-foundry-
