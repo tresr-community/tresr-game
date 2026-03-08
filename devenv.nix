@@ -126,6 +126,9 @@ in
       "pre-commit-hooks"
       "tresr-community"
     ];
+    push = [
+      "tresr-community"
+    ];
   };
 
   devenv = {
