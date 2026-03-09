@@ -67,7 +67,8 @@ runs:
       name: Install Devenv
       shell: bash
       run: |
-        nix profile add --accept-flake-config nixpkgs#devenv
+        #nix profile add --accept-flake-config nixpkgs#devenv
+        nix profile add --accept-flake-config github:cachix/devenv/v1.11.2
 
     - id: install_secretspec
       name: Install Secretspec
