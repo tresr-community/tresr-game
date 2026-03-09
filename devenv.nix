@@ -122,7 +122,7 @@ in
   });
 
   cachix = {
-    enable = false; # TODO: Re-enable when working again.
+    enable = true;
     pull = [
       "tresr-community"
       "pre-commit-hooks"

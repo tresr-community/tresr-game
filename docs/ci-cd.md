@@ -1,11 +1,26 @@
 # CI/CD Architecture
 
-## Release Flow (Two-Pass)
+## Overview
 
-Contract addresses have a circular dependency between Juno (oracle) and
-Foundry (token, vault). The pipeline uses a **two-pass** approach:
+Mixing blockchains comes with _unique challenges_
 
-### Testnet (automatic on trunk push)
+- First we need the frontend deployed to obtain the ICP Oracle address
+- Then we need to deploy the Avalanche Smart Contracts which need the Oracle
+- Then we need to re-deploy the frontend using the Smart Contract addresses.
+
+This makes the release process _Two-Pass_.
+
+## Environments
+
+There are 3 environments, but only 2 are managed with CI/CD.
+
+- Local
+- Testnet
+- Mainnet
+
+### Testnet
+
+Testnet deployments happen automatically on any merge into the _trunk_ branch.
 
 ```mermaid
 graph TD
@@ -25,7 +40,9 @@ graph TD
     end
 ```
 
-### Mainnet (manual promotion)
+### Mainnet
+
+Mainnet deployments only occur after a _manual promotion_ process with gated approvals.
 
 ```mermaid
 graph TD
@@ -64,71 +81,13 @@ graph TD
     L --> M["Config applied </br> + deployed"]
 ```
 
-## Manually Runnable Workflows
+## The "Gatekeeper" Strategy
 
-Only these workflows can be triggered manually via `workflow_dispatch`:
-
-| Workflow                   | Purpose                                                                   |
-| -------------------------- | ------------------------------------------------------------------------- |
-| `cd.yaml`                  | Create pre-release and deploy to Testnet or promote and deploy to Mainnet |
-| `chore-devenv-update.yaml` | Update devenv.lock, create PR                                             |
-
-All other workflows are triggered automatically by events
-(PR, push, merge_group, schedule, workflow_call).
-
-## Mainnet Promotion
-
-When running `cd.yaml` for Mainnet:
-
-- **With `release_tag`**: Promotes that specific pre-release
-- **Without `release_tag`**: Auto-discovers the latest pre-release and promotes it
-- **If latest release is already promoted**: Errors with a helpful message
-
-The GitHub `Mainnet` environment requires manual approval before the promote job runs.
-
-## CI Pipeline
-
-```mermaid
-graph LR
-    PR["Pull Request"] --> SE["setup-environment<br/>(build dev shell cache)"]
-    SE --> CI["ci.yaml (Gatekeeper)"]
-
-    CI --> |workflow_call| CI_DEVENV["ci-devenv.yaml"]
-    CI --> |workflow_call| CI_FOUNDRY["ci-foundry.yaml"]
-    CI --> |workflow_call| CI_JUNO["ci-juno.yaml"]
-    CI --> |workflow_call| CI_PR_TITLE["ci-pr-title.yaml"]
-    CI --> |workflow_call| CI_TRIVY["ci-trivy.yaml"]
-    CI --> |workflow_call| CI_CODEQL["sec-codeql.yaml"]
-```
-
-### The "Gatekeeper" Strategy
-
-We use a strictly-parallel orchestration pipeline pattern.
+The CI design uses a strictly-parallel orchestration pipeline pattern. This allows us to _warm_ the cache first, speeding up any subsequent parallel jobs.
 
 1. `ci.yaml` and `cd.yaml` act as absolute entry points (Gatekeepers).
 2. The gatekeeper triggers `setup-devenv` synchronously, populating the GitHub L2 cache.
-3. Once populated, the Gatekeeper fires off all subsequent workflows
-   (`ci-devenv.yaml`, `ci-foundry.yaml`, `ci-juno.yaml`, `cd-juno.yaml` etc.)
-   in strictly segregated runners using `workflow_call`.
-
-**30-Day Caching (`devenv.lock` Hash)**
-The `setup-devenv` action uses `hashFiles('devenv.lock', 'devenv.nix')` for the primary cache key.
-This explicitly maps the cache to that exact deterministic hash, achieving a **0-second upload penalty**
-at the end of every workflow because it recognizes the artifact perfectly, and the cache is kept alive
-for 30 days.
-
-### ci.yaml (Gatekeeper)
-
-Validates the developer environment builds and tests correctly, checks Solidity contracts,
-and builds the Juno satellite. All jobs depend on the `setup-environment` job finishing first
-to leverage a single unified Devenv cache.
-
-1. `ci-devenv.yaml` -- `devenv test`
-2. `ci-foundry.yaml` -- `solidity-dev check`
-3. `ci-juno.yaml` -- `lint`, `test`, `build hosting`, `build functions`
-
-> [!NOTE]
-> The Solidity contract check job runs on every PR even without changes to report the required "Check Contracts" status. A `detect_changes` step skips the actual check when no contracts changed.
+3. Once populated, the Gatekeeper fires off all subsequent workflows.
 
 ## Foundry Deploy
 
@@ -227,143 +186,3 @@ The pipeline auto-detects whether to do a **fresh deploy** or an
 > After a successful deploy, the `update-config` job in the release workflow
 > automatically creates a PR to update `config/tresr.yaml` with the new
 > contract addresses. Review and merge that PR to complete the cycle.
-
-## Juno Deploy
-
-### cd-juno-testnet.yaml
-
-Called by `cd.yaml` (Testnet mode) after a successful pre-release.
-Deploys hosting, config, and (if changed) serverless functions
-to `staging` mode.
-
-Steps:
-
-1. Parse release tag and set version
-2. Detect function changes (diff against previous tag)
-3. Build functions (only if changed)
-4. `juno hosting deploy --mode staging`
-5. `juno config apply --force --mode staging`
-6. `juno functions publish --mode staging` (only if changed)
-
-### cd-juno-mainnet.yaml
-
-Called by `cd.yaml` (Mainnet mode) after a successful promotion.
-Same structure as testnet but deploys in `production` mode.
-
-## Security Scanning
-
-### sec-codeql.yaml
-
-CodeQL static analysis for security vulnerabilities.
-Scans JavaScript/TypeScript, Rust, and GitHub Actions workflows.
-Runs on `workflow_call` context from the Gatekeepers (acting dynamically on PRs or Trunk).
-Results uploaded to the GitHub Security tab.
-
-### ci-trivy.yaml
-
-Trivy filesystem scan for vulnerabilities, misconfigurations,
-exposed secrets, and license compliance.
-Runs on `workflow_call` context from the `ci.yaml` Gatekeeper.
-Results uploaded as SARIF to GitHub Security.
-
-## Housekeeping
-
-### chore-devenv-update.yaml
-
-Runs weekly (Sunday 00:00 UTC) or on manual dispatch.
-Updates devenv dependencies (`devenv update`), runs tests,
-and creates a PR with the updated `devenv.lock`.
-
-### ci-pr-title.yaml
-
-Enforces conventional commit format on PR titles
-(`type(scope): description`). Required for clean changelogs
-and correct semantic version bumps via `convco`.
-
-### comments.yaml
-
-Reacts to issue comments with Giphy responses and optionally
-forwards to Discord (gated by the `ENABLE_DISCORD` variable).
-
-## Environment Configuration
-
-Contract addresses are read from `config/tresr.yaml` at deploy time:
-
-```yaml
-client:
-  blockchain:
-    avalanche:
-      testnet:
-        vault_contract: "0x..." # Proxy address (set after first deploy)
-        faucet_contract: "0x..." # Set after first testnet deploy
-        tresr_token_contract: "0x..."
-        oracle_address: "0x..."
-        safe_address: "0x..." # Gnosis Safe multisig
-      mainnet:
-        vault_contract: "0x..."
-        tresr_token_contract: "0x..."
-        # ...
-```
-
-## Secrets
-
-| Secret                            | Purpose                                       |
-| --------------------------------- | --------------------------------------------- |
-| `DEPLOYER_PRIVATE_KEY`            | EOA wallet for broadcasting deploy txns       |
-| `SNOWTRACE_API_KEY`               | Contract verification on Snowtrace            |
-| `JUNO_TOKEN`                      | Juno CLI auth for hosting/functions/config    |
-| `PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect Cloud project ID                |
-| `GIPHY_TOKEN`                     | Giphy API key for comment reactions           |
-| `WEBHOOK_DISCORD`                 | Discord webhook URL for comment notifications |
-| `DAISYUI_LICENSE`                 | DaisyUI commercial license                    |
-| `DAISYUI_EMAIL`                   | DaisyUI account email                         |
-
-## Custom Actions
-
-| Action                   | Purpose                                          |
-| ------------------------ | ------------------------------------------------ |
-| `cache-bun`              | Cache Bun package manager dependencies           |
-| `cache-cargo`            | Cache Cargo/Rust build artifacts                 |
-| `cache-foundry`          | Cache Foundry build artifacts                    |
-| `detect-foundry-changes` | Check contract source changes since last git tag |
-| `foundry-deploy-setup`   | Secret checks, caching, config, balance, build   |
-| `foundry-deploy-summary` | Generate GitHub Actions job summary              |
-| `foundry-resolve-vault`  | Detect deploy/upgrade mode, run Forge scripts    |
-| `free-disk-space`        | Free disk space on GitHub-hosted runners         |
-| `report-status`          | Report workflow status to commit checks          |
-| `setup-devenv`           | Install and configure devenv with Cachix         |
-| `setup-juno`             | Install Juno CLI                                 |
-| `update-tresr-config`    | Update tresr.yaml, regenerate config, create PR  |
-| `version`                | Manage version bumping across project files      |
-
-## Workflow Inventory
-
-| Workflow                   | Prefix | Trigger                     | Purpose                                  |
-| -------------------------- | ------ | --------------------------- | ---------------------------------------- |
-| `cd.yaml`                  | cd     | push to trunk, dispatch     | Create pre-release or promote to release |
-| `cd-juno-testnet.yaml`     | cd     | workflow_call only          | Deploy Juno to Testnet                   |
-| `cd-juno-mainnet.yaml`     | cd     | workflow_call only          | Deploy Juno to Mainnet                   |
-| `cd-foundry-testnet.yaml`  | cd     | workflow_call only          | Deploy Solidity contracts to Testnet     |
-| `cd-foundry-mainnet.yaml`  | cd     | workflow_call only          | Deploy Solidity contracts to Mainnet     |
-| `ci.yaml`                  | ci     | pull_request, merge_group   | Unified Gatekeeper for CI                |
-| `ci-devenv.yaml`           | ci     | workflow_call only          | Test devenv shell                        |
-| `ci-foundry.yaml`          | ci     | workflow_call only          | Lint and check Solidity                  |
-| `ci-juno.yaml`             | ci     | workflow_call only          | Lint, type-check, and build Juno         |
-| `chore-devenv-update.yaml` | chore  | schedule (weekly), dispatch | Update devenv.lock, create PR            |
-| `ci-pr-title.yaml`         | ci     | workflow_call only          | Validate conventional commit PR titles   |
-| `sec-codeql.yaml`          | sec    | workflow_call only          | CodeQL security analysis                 |
-| `ci-trivy.yaml`            | ci     | workflow_call only          | Trivy vulnerability scanning             |
-| `comments.yaml`            | --     | issue_comment               | Handle slash commands in comments        |
-
-## Naming Conventions
-
-| Element           | Convention                                 | Example                    |
-| ----------------- | ------------------------------------------ | -------------------------- |
-| Workflow filename | `{ci\|cd\|chore}-{component}[-{env}].yaml` | `chore-devenv-update.yaml` |
-| Workflow `name:`  | Title Case                                 | `Juno Deploy (Testnet)`    |
-| Job ID            | `kebab-case`                               | `deploy-juno-testnet`      |
-| Job `name:`       | Title Case                                 | `Deploy Juno (Testnet)`    |
-| Step ID           | `snake_case`                               | `setup_devenv`             |
-| Step `name:`      | Title Case Verb-Noun                       | `Setup Devenv`             |
-| Action inputs     | `kebab-case`                               | `github-token`             |
-| File extension    | `.yaml`                                    | --                         |

@@ -2,7 +2,9 @@
 
 ## Prerequisites
 
-The project uses `devenv` for a hermetic development environment. All dependencies are managed through Nix.
+The project uses `devenv` for a hermetic development environment.
+
+All dependencies are managed through Nix.
 
 ```bash
 # Enter development environment
