@@ -123,10 +123,13 @@ in
 
   cachix = {
     pull = [
-      "pre-commit-hooks"
       "tresr-community"
+      "pre-commit-hooks"
+      "devenv.cachix.org"
+      "cache.nixos.org"
+      "nix-community.cachix.org"
     ];
-    #push = "tresr-community"; # TODO: Why does this hang?
+    push = "tresr-community";
   };
 
   devenv = {
