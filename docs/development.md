@@ -6,6 +6,14 @@ The project uses `devenv` for a hermetic development environment.
 
 All dependencies are managed through Nix.
 
+### Devcontainer
+
+If you are using VSCode or an editor that supports [Devcontainers](https://containers.dev/) you can use the included `.devcontainer.json` to automatically setup the developer environment.
+
+### Devenv
+
+If you are a `devenv` user,
+
 ```bash
 # Enter development environment
 devenv shell
@@ -39,7 +47,6 @@ cd tresr-game
 
 ```bash
 devenv shell
-# Or use direnv (recommended): direnv allow
 ```
 
 1. **First-time setup** (creates your local Juno satellite)
@@ -109,19 +116,3 @@ Access points:
 | `juno-dev update`        | Update bun and cargo dependencies                          |
 | `juno-dev cleanup`       | Remove build artifacts (target/, node_modules/)            |
 | `juno-dev cleanup_state` | Remove Juno CLI state files                                |
-
-## Manual Workflow (Alternative)
-
-If you prefer to run commands manually:
-
-```bash
-# Terminal 1: Start Juno Emulator
-juno emulator start --headless --lang rust
-
-# Terminal 2: Build & Deploy
-juno functions build --lang rust
-juno deploy --local --mode development
-
-# Terminal 3: Start Frontend
-bun run dev
-```

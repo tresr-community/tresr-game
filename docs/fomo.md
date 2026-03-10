@@ -4,7 +4,7 @@
 
 The FOMO game loop.
 
-The goal for the TresrVault is to create a self-sustaining economic flywheel where;
+The goal for the `TresrVault` is to create a self-sustaining economic flywheel where;
 
 - players pay a $TRESR fee to play
 - winners drain a portion of the vault
