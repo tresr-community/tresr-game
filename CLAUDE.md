@@ -1,45 +1,30 @@
 # Claude Code Instructions
 
-## Required Reading
+All AI agent instructions, technology stack guidance, and project conventions are documented in a single source of truth:
 
-Before starting any task, read the following files for project context:
+**→ See [`AGENTS.md`](./AGENTS.md)**
 
-- `AGENTS.md` - Detailed agent instructions, technology stack, coding guidelines, and workflows
-- `docs/spec.md` - Current game specifications, mechanics, and feature requirements
+This file contains:
+- Agent identity and role
+- AI agent documentation references
+- Technology stack and expertise (devenv, Astro, TypeScript, DaisyUI, Juno, etc.)
+- Naming conventions
+- Architecture overview
+- Coding guidelines and workflows
+- Asset processing tools
+- Security best practices
 
-## Quick Reference
-
-- **Package Manager**: Use `bun` exclusively (not npm/npx)
-- **Environment**: All commands run in `devenv shell`
-- **Helper Script**: Use `juno-dev` for common tasks (build, deploy, start, stop, etc.)
-- **AI Docs**: Run `juno-dev agent-docs` to download LLM documentation to `docs/agents/`
-
-## Key Commands
-
+**Quick Start:**
 ```bash
 juno-dev start      # Start emulator + dev server
 juno-dev stop       # Stop emulator
-juno-dev deploy     # Build and deploy to local satellite
-juno-dev agent-docs # Download AI agent documentation
-juno-dev lint       # Run linter
+juno-dev deploy     # Build and deploy
+juno-dev help       # Show all commands
 ```
 
-## Running Commands in Devenv
-
-**ALL commands MUST be run inside `devenv shell`.** Tools like `cargo`, `bun`, `gh`, `git` (with pre-commit hooks), `juno`, and `solidity-check` are only available inside the devenv environment.
-
-Due to 1Password/secretspec being unavailable in the AI agent sandbox, use this pattern:
-
+For devenv shell access in AI sandboxes:
 ```bash
-# Single command
 CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- <command>
-
-# Examples
-CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- cargo check
-CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- juno-dev build-functions
-CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- git commit -m "feat: add feature"
-CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- gh pr create --base trunk --title "fix: something"
-CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- devenv test
 ```
 
-> **WARNING:** Running commands outside devenv will cause failures (missing binaries, broken pre-commit hooks, etc.)
+See `AGENTS.md` for complete details.

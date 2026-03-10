@@ -76,13 +76,13 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           </div>
         </li>
 
-        <!-- Stage 2: MVP — PENDING -->
-        <li class="step opacity-40">
+        <!-- Stage 2: MVP — SUBMITTED -->
+        <li class="step step-primary">
           <div class="ml-4 w-full pb-10">
             <div class="mb-2 flex flex-wrap items-center gap-2">
-              <span class="badge badge-neutral font-mono">STAGE 2</span>
-              <span class="badge badge-ghost badge-outline font-mono"
-                >PENDING</span
+              <span class="badge badge-primary font-mono">STAGE 2</span>
+              <span class="badge badge-success badge-outline font-mono"
+                >SUBMITTED</span
               >
             </div>
             <h2
@@ -93,10 +93,108 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
             <p class="mb-1 font-mono text-xs opacity-50">
               Deadline: March 9, 2026
             </p>
-            <p class="text-sm opacity-70">
+            <p class="mb-4 text-sm opacity-70">
               Functional prototype, GitHub repository, technical documentation,
               and product walkthrough video.
             </p>
+
+            <!-- MVP Highlights -->
+            <div class="mb-4 text-left">
+              <p
+                class="mb-2 font-mono text-xs font-bold tracking-wider uppercase opacity-70"
+              >
+                MVP Highlights
+              </p>
+              <ul class="list-inside list-disc space-y-1 text-sm opacity-70">
+                <li>
+                  Hybrid architecture &mdash; Phaser 3 game engine + Astro
+                  frontend + Avalanche C-Chain settlement
+                </li>
+                <li>SIWA (Sign In With Avalanche) wallet authentication</li>
+                <li>
+                  Vault contract &mdash; pay-to-play fee deposits &amp;
+                  oracle-signed claims
+                </li>
+                <li>
+                  Anti-cheat pipeline &mdash; seeded RNG, input recording,
+                  config hash verification
+                </li>
+                <li>
+                  2.5D physics with Z-axis gravity, depth sorting &amp; shadow
+                  rendering
+                </li>
+                <li>
+                  5 enemy variants, 4 AI types, boss fight phase,
+                  parachute-physics key airdrops
+                </li>
+                <li>Guest mode for frictionless onboarding of normies</li>
+              </ul>
+            </div>
+
+            <!-- Teaser Video -->
+            <div
+              class="card bg-base-200/50 border-primary/20 mb-4 overflow-hidden border"
+            >
+              <div class="card-body items-center text-center">
+                <p class="font-mono text-xs opacity-50">Stage 2 Teaser</p>
+                <a
+                  href="https://youtu.be/SBPIdfj97wY"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn btn-outline btn-error btn-sm mt-2 font-mono tracking-wider"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    class="size-[1.2em]"
+                  >
+                    <path
+                      d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z"
+                    ></path>
+                  </svg>
+                  Watch on YouTube
+                </a>
+              </div>
+            </div>
+
+            <!-- Walkthrough Video -->
+            <div
+              class="card bg-base-200/50 border-primary/20 overflow-hidden border"
+            >
+              <figure class="px-4 pt-4">
+                <video
+                  src="/assets/videos/stage-2.webm"
+                  controls
+                  playsinline
+                  preload="metadata"
+                  class="w-full rounded-lg"
+                >
+                  Your browser does not support WebM video.
+                </video>
+              </figure>
+              <div class="card-body items-center text-center">
+                <p class="font-mono text-xs opacity-50">Stage 2 Walkthrough</p>
+                <a
+                  href="https://youtu.be/6vTbWBfK-eY"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn btn-outline btn-error btn-sm mt-2 font-mono tracking-wider"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    class="size-[1.2em]"
+                  >
+                    <path
+                      d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z"
+                    ></path>
+                  </svg>
+                  Watch on YouTube
+                </a>
+              </div>
+            </div>
           </div>
         </li>
 

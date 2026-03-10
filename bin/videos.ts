@@ -1,24 +1,26 @@
 #!/usr/bin/env bun
 
 /**
- * Video Processor — convert MP4 videos to animated WebP.
+ * Video Processor — convert MP4 videos to WebM format.
  *
  * Modes:
- *   --convert  Convert MP4 files to animated WebP via ffmpeg
- *   --help     Show this help message
+ *   --convert              Convert all MP4 files to WebM via ffmpeg
+ *   --convert-single NAME  Convert a single MP4 file (without extension)
+ *   --help                 Show this help message
  *
  * Usage:
  *   bun run bin/videos.ts --convert
+ *   bun run bin/videos.ts --convert-single filename
  *   bun run bin/videos.ts --help
  *
  * Drop MP4 files into:
  *   assets-source/videos/
  *
- * They will be converted to animated WebP and placed in:
- *   public/videos/
+ * They will be converted to WebM and placed in:
+ *   public/assets/videos/
  *
  * Source files are left untouched.
- * Audio is stripped during conversion.
+ * Audio is preserved during conversion.
  */
 
 import * as fs from "fs";
@@ -35,14 +37,13 @@ const SOURCE_DIR = "assets-source/videos/";
 const OUTPUT_DIR = "public/assets/videos/";
 
 const SOURCE_EXT = ".mp4";
-const OUTPUT_EXT = ".webp";
+const OUTPUT_EXT = ".webm";
 
-// ── WebP Config ─────────────────────────────────────────────────────
-// Quality 50 gives a good balance of size and fidelity for UI elements.
-// FPS 24 is smooth enough for a loading spinner without bloating frames.
-const WEBP_QUALITY = 50;
-const WEBP_FPS = 24;
-const WEBP_LOOP = 0; // 0 = infinite loop
+// ── WebM Config ──────────────────────────────────────────────────────
+// VP8/VP9 codec with Vorbis audio preserves both video and audio.
+// Bitrate: 1000k provides good quality while keeping file size reasonable.
+const WEBM_BITRATE = "1000k";
+const WEBM_AUDIO_BITRATE = "128k";
 
 // ── Colors ──────────────────────────────────────────────────────────
 const c = {
@@ -78,29 +79,26 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function convertToWebp(inputPath: string, outputPath: string): Promise<void> {
+function convertToWebm(inputPath: string, outputPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const args = [
       "-i",
       inputPath,
-      // Strip audio
-      "-an",
-      // Video filter: set framerate and enable looping
-      "-vf",
-      `fps=${WEBP_FPS}`,
-      // WebP output settings
-      "-vcodec",
-      "libwebp",
-      "-quality",
-      String(WEBP_QUALITY),
-      "-loop",
-      String(WEBP_LOOP),
-      // Lossless 0 = lossy (we want lossy for smaller size)
-      "-lossless",
-      "0",
-      // Compression level (0-6, higher = slower but smaller)
-      "-compression_level",
-      "6",
+      // Video codec: VP8 (or VP9 for better quality but slower)
+      "-c:v",
+      "libvpx",
+      // Video bitrate
+      "-b:v",
+      WEBM_BITRATE,
+      // Audio codec: Vorbis
+      "-c:a",
+      "libvorbis",
+      // Audio bitrate
+      "-b:a",
+      WEBM_AUDIO_BITRATE,
+      // Quality level (0-63, lower is better)
+      "-crf",
+      "10",
       // Overwrite without asking
       "-y",
       outputPath,
@@ -138,9 +136,7 @@ async function runConvert(): Promise<void> {
     `${c.bold}${c.magenta}Video Converter${c.reset} ${c.dim}(--convert)${c.reset}`
   );
   info(`${c.dim}${"─".repeat(50)}${c.reset}`);
-  info(
-    `Settings: quality=${WEBP_QUALITY}, fps=${WEBP_FPS}, loop=${WEBP_LOOP === 0 ? "infinite" : WEBP_LOOP}`
-  );
+  info(`Settings: bitrate=${WEBM_BITRATE}, audio=${WEBM_AUDIO_BITRATE}`);
 
   await ensureDirectory(SOURCE_DIR);
   await ensureDirectory(OUTPUT_DIR);
@@ -190,7 +186,7 @@ async function runConvert(): Promise<void> {
     info(`Converting: ${file} ${c.dim}(${formatSize(srcSize)})${c.reset}`);
 
     try {
-      await convertToWebp(inputPath, outputPath);
+      await convertToWebm(inputPath, outputPath);
       const dstSize = (await stat(outputPath)).size;
       const ratio = ((1 - dstSize / srcSize) * 100).toFixed(1);
       ok(
@@ -212,26 +208,79 @@ async function runConvert(): Promise<void> {
   if (failed > 0) process.exit(1);
 }
 
+// ── Convert Single Mode ─────────────────────────────────────────────
+async function runConvertSingle(videoName: string): Promise<void> {
+  console.log();
+  info(
+    `${c.bold}${c.magenta}Video Converter${c.reset} ${c.dim}(--convert-single)${c.reset}`
+  );
+  info(`${c.dim}${"─".repeat(50)}${c.reset}`);
+  info(`Settings: bitrate=${WEBM_BITRATE}, audio=${WEBM_AUDIO_BITRATE}`);
+
+  await ensureDirectory(SOURCE_DIR);
+  await ensureDirectory(OUTPUT_DIR);
+
+  const inputFile = videoName + SOURCE_EXT;
+  const inputPath = path.join(SOURCE_DIR, inputFile);
+
+  // Check if file exists
+  if (!fs.existsSync(inputPath)) {
+    fail(`Video file not found: ${c.bold}${inputFile}${c.reset}`);
+    info(`  Looking in: ${c.dim}${SOURCE_DIR}${c.reset}`);
+    info(`  ${c.dim}Tip: Enter the filename without the extension${c.reset}`);
+    process.exit(1);
+  }
+
+  const outputFile = videoName + OUTPUT_EXT;
+  const outputPath = path.join(OUTPUT_DIR, outputFile);
+
+  info(`${c.dim}${"─".repeat(50)}${c.reset}`);
+
+  const srcSize = (await stat(inputPath)).size;
+  info(`Converting: ${inputFile} ${c.dim}(${formatSize(srcSize)})${c.reset}`);
+
+  try {
+    await convertToWebm(inputPath, outputPath);
+    const dstSize = (await stat(outputPath)).size;
+    const ratio = ((1 - dstSize / srcSize) * 100).toFixed(1);
+    ok(
+      `${inputFile} ${c.dim}→${c.reset} ${outputFile} ${c.dim}(${formatSize(dstSize)}, ${ratio}% smaller)${c.reset}`
+    );
+
+    // Summary
+    info(`${c.dim}${"─".repeat(50)}${c.reset}`);
+    ok(`Done: ${c.bold}1${c.reset} video converted`);
+  } catch (error) {
+    fail(`${inputFile}: ${(error as Error).message}`);
+    process.exit(1);
+  }
+}
+
 // ── Help ────────────────────────────────────────────────────────────
 function showHelp(): void {
   console.log(`
 ${c.bold}${c.magenta}Video Processor${c.reset}
 
 ${c.bold}Usage:${c.reset}
-  bun run bin/videos.ts ${c.bold}--convert${c.reset}  Convert MP4 to animated WebP via ffmpeg
-  bun run bin/videos.ts ${c.bold}--help${c.reset}     Show this help message
+  bun run bin/videos.ts ${c.bold}--convert${c.reset}              Convert all MP4 files to WebM
+  bun run bin/videos.ts ${c.bold}--convert-single${c.reset} NAME  Convert a single MP4 file (name without extension)
+  bun run bin/videos.ts ${c.bold}--help${c.reset}                 Show this help message
+
+${c.bold}Examples:${c.reset}
+  bun run bin/videos.ts --convert
+  bun run bin/videos.ts --convert-single test-vid
 
 ${c.bold}Details:${c.reset}
   Drop MP4 files into:
     ${SOURCE_DIR}
 
-  They will be converted to animated WebP and placed in:
+  They will be converted to WebM and placed in:
     ${OUTPUT_DIR}
 
   ${c.bold}Source files are left untouched.${c.reset}
-  Audio is stripped during conversion.
+  Audio is preserved during conversion.
   Existing output files are skipped if up-to-date (mtime comparison).
-  Uses ffmpeg with libwebp codec, quality ${WEBP_QUALITY}, ${WEBP_FPS} fps, infinite loop.
+  Uses ffmpeg with VP8 video codec and Vorbis audio codec.
   Requires ffmpeg to be available in your devenv shell.
 `);
 }
@@ -241,6 +290,20 @@ const args = process.argv.slice(2);
 
 if (args.includes("--convert")) {
   await runConvert();
+} else if (args.includes("--convert-single")) {
+  const index = args.indexOf("--convert-single");
+  const videoName = args[index + 1];
+
+  if (!videoName) {
+    fail("Missing video name argument for --convert-single");
+    info(
+      `  Usage: bun run bin/videos.ts --convert-single ${c.dim}<name>${c.reset}`
+    );
+    info(`  Example: bun run bin/videos.ts --convert-single test-vid`);
+    process.exit(1);
+  }
+
+  await runConvertSingle(videoName);
 } else if (args.includes("--help") || args.includes("-h")) {
   showHelp();
 } else {

@@ -41,7 +41,7 @@ let
     [
       # General
       act
-      bash
+      bashInteractive
       bc
       coreutils
       dig
@@ -169,59 +169,6 @@ in
     fi
   '';
 
-  # AI - Claude Code Integration
-  # See: https://devenv.sh/integrations/claude-code/
-  claude.code = {
-    enable = true;
-    mcpServers = {
-      avalanche = {
-        type = "http";
-        url = "https://build.avax.network/api/mcp";
-      };
-      devenv = {
-        type = "http";
-        url = "https://mcp.devenv.sh";
-      };
-      devenv-cli = {
-        type = "stdio";
-        command = "devenv";
-        args = [ "mcp" ];
-        env = {
-          DEVENV_ROOT = config.devenv.root;
-        };
-      };
-      astroDocs = {
-        type = "http";
-        url = "https://mcp.docs.astro.build/mcp";
-      };
-      github = {
-        type = "http";
-        url = "https://api.githubcopilot.com/mcp/";
-        headers = {
-          Authorization = lib.optionalString (config.env ? GITHUB_TOKEN) "Bearer ${config.env.GITHUB_TOKEN}";
-        };
-      };
-      phaser-editor = {
-        type = "stdio";
-        command = "bunx";
-        args = [
-          "@phaserjs/editor-mcp-server"
-        ];
-      };
-      daisyui-blueprint = {
-        type = "stdio";
-        command = "bunx";
-        args = [
-          "-y"
-          "daisyui-blueprint@latest"
-        ];
-        env =
-          lib.optionalAttrs (config.env ? DAISYUI_LICENSE) { LICENSE = config.env.DAISYUI_LICENSE; }
-          // lib.optionalAttrs (config.env ? DAISYUI_EMAIL) { EMAIL = config.env.DAISYUI_EMAIL; };
-      };
-    };
-  };
-
   languages = {
     nix = {
       enable = true;
@@ -257,10 +204,6 @@ in
         enable = true;
       };
     };
-  };
-
-  difftastic = {
-    enable = false;
   };
 
   git-hooks = {
@@ -427,13 +370,6 @@ in
   devcontainer = {
     enable = true;
     settings = {
-      containerEnv = {
-        NIX_REMOTE = "daemon";
-      };
-      mounts = [
-        # Mount Nix store the host to the container.
-        "source=/nix,target=/nix,readonly,type=bind"
-      ];
       customizations = {
         vscode = {
           extensions = [

@@ -107,6 +107,7 @@ exte
 extname
 fanfic
 ffset
+figlet
 filecom
 filecomplete
 frontmatter
@@ -142,6 +143,8 @@ knockback
 launchericon
 libopus
 libsecp
+libvorbis
+libvpx
 libwebp
 lightunplated
 lockdb
@@ -262,4 +265,3 @@ xhash
 xtampered
 yoyo
 yzhang
-figlet

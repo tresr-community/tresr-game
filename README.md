@@ -4,7 +4,7 @@
 [![CodeQL](https://github.com/tresr-community/tresr-game/actions/workflows/sec-codeql.yaml/badge.svg)](https://github.com/tresr-community/tresr-game/actions/workflows/sec-codeql.yaml)
 [![Trivy](https://github.com/tresr-community/tresr-game/actions/workflows/ci-trivy.yaml/badge.svg)](https://github.com/tresr-community/tresr-game/actions/workflows/ci-trivy.yaml)
 
-A 2.5D de-centralised platformer game hosted on the Internet Computer with an economy powered by the Avalanche Blockchain.
+A 2.5D de-centralized platformer game hosted on the Internet Computer with an economy powered by the Avalanche Blockchain.
 
 This is an unofficial game made for the TRESR community and is not affiliated with the official [TRESR](https://tresr.com) project.
 

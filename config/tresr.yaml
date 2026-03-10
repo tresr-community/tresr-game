@@ -584,7 +584,8 @@ client:
           bob_duration: 600 # Duration of bob cycle (ms)
           despawn_ms: 8000 # Auto-despawn time (ms)
       boss:
-        health: 1000
+        #health: 1000
+        health: 500 # TODO: Revert after demo. Lower HP for testing.
         damage: 25
         speed: 150
         knockback:
