@@ -22,6 +22,7 @@ jobs:
     name: Vault Top-up
     runs-on: ubuntu-latest
     environment: testnet
+    timeout-minutes: 120
     steps:
       # ----------------------------------------------------------------
       # Setup

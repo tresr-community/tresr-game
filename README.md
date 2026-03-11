@@ -28,7 +28,9 @@ The project strives to be 100% de-centralised, and is almost there.
 
 - WebAssembly frontend on the Internet Computer
 - Backend Economy powered by Avalanche Blockchain
-- A custom integration known as `ic-siwa` was developed to allow signing in with Avalanche on the Internet Computer making Avalanche the single source of truth for Identity and Economy.
+- A custom integration known as [ic-siwa](https://github.com/irken-empire/ic-siwa) was developed to allow;
+  - signing in with Avalanche on the Internet Computer
+  - This makes Avalanche the single source of truth for Identity and Economy.
 - Rust Serverless Functions for backend logic, verification, etc.
 - Cloudflare for DNS
 
