@@ -35,6 +35,7 @@ import {
   connectWallet,
   getWalletClient,
   disconnectWallet,
+  initWalletReconnect,
 } from "@/lib/wallet/connection";
 import {config} from "@/lib/config/client";
 import {loadProfile, clearProfile, profileStore} from "@/lib/user/store";
@@ -243,6 +244,12 @@ async function doInitAuth(): Promise<void> {
   }
 
   await initSatellite();
+
+  // Warm the wagmi connection in the background so the wallet modal opens
+  // instantly when the user clicks "Sign in with Avalanche".  This fires the
+  // connector handshake (injected wallets + WalletConnect relay) while the
+  // user is still reading the login screen.
+  initWalletReconnect();
 
   // Listen for auth state changes from Juno
   onAuthStateChange((user: User | null) => {

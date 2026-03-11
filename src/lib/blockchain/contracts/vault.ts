@@ -6,9 +6,32 @@ import {
 } from "@/lib/blockchain/networks/chain";
 import {VaultAbi, ERC20Abi} from "@/lib/blockchain/abi/vault";
 import {getWalletClient} from "@/lib/wallet/connection";
-import {encodeFunctionData, formatUnits} from "viem";
+import {publicActions, encodeFunctionData, formatUnits} from "viem";
 import {config} from "@/lib/config/client";
 import {log} from "@/lib/utils/log";
+
+/**
+ * On Anvil, wallet extensions sometimes return a hash before the transaction
+ * is visible in the node's mempool (ghost hash). This polls getTransaction
+ * directly to confirm the tx is real before waiting for a receipt, failing
+ * fast (<1 s) instead of hanging for the full timeout duration.
+ */
+async function verifyTxExists(
+  getTransaction: (args: {hash: `0x${string}`}) => Promise<unknown>,
+  hash: `0x${string}`,
+  maxAttempts = 10,
+  intervalMs = 100
+): Promise<void> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const tx = await getTransaction({hash}).catch(() => null);
+    if (tx) return;
+    await new Promise<void>((r) => setTimeout(r, intervalMs));
+  }
+  throw new Error(
+    "Transaction was not broadcast to the network. " +
+      "Your wallet may have rejected it — check your wallet activity and try again."
+  );
+}
 
 const COMPONENT_NAME = "VaultContract";
 
@@ -138,6 +161,10 @@ export async function payFeeForGame(
   const chainConfig = config.blockchain.avalanche[env];
   const chain = getTargetChain(chainConfig.rpc_urls[0]);
 
+  // Extend wallet client with publicActions so that submit + receipt polling
+  // share the SAME transport.  Pre-flight reads use getReadClient (read-only;
+  // transport consistency doesn’t matter there).
+  const extendedClient = walletClient.extend(publicActions);
   const publicClient = getReadClient();
 
   const vaultAddr = chainConfig.vault_contract as `0x${string}`;
@@ -201,7 +228,7 @@ export async function payFeeForGame(
       data: approveData,
     });
 
-    const approveHash = await walletClient.writeContract({
+    const approveHash = await extendedClient.writeContract({
       account: accounts[0],
       address: tokenAddr,
       abi: ERC20Abi,
@@ -211,7 +238,22 @@ export async function payFeeForGame(
       gas: approveGas,
     });
 
-    await confirmReceipt(approveHash, {component: COMPONENT_NAME});
+    log.info(
+      COMPONENT_NAME,
+      `Waiting for approval receipt (${env}): ${approveHash}`
+    );
+    // On Anvil, verify the tx is in the node before polling — prevents a
+    // ghost-hash ghost from hanging for config.gameplay.fee_gate.transaction_timeout_ms (5 min).
+    if (env === "anvil") {
+      await verifyTxExists(
+        (args) => extendedClient.getTransaction(args),
+        approveHash
+      );
+    }
+    await confirmReceipt(approveHash, {
+      timeout: config.gameplay.fee_gate.transaction_timeout_ms,
+      component: COMPONENT_NAME,
+    });
   } else {
     log.info(
       COMPONENT_NAME,
@@ -222,7 +264,7 @@ export async function payFeeForGame(
   // --- Pay fee to the Vault ---
   log.info(COMPONENT_NAME, "Paying fee to vault for session:", sessionId);
 
-  const {request: payFeeRequest} = await publicClient.simulateContract({
+  const {request: payFeeRequest} = await extendedClient.simulateContract({
     account: accounts[0],
     address: vaultAddr,
     abi: VaultAbi,
@@ -230,7 +272,7 @@ export async function payFeeForGame(
     args: [amount, sid],
   });
 
-  const hash = await walletClient.writeContract({
+  const hash = await extendedClient.writeContract({
     ...payFeeRequest,
     chain,
   });
@@ -264,6 +306,9 @@ export async function claimWin(
     );
   }
 
+  // Extend wallet client with publicActions so that submit + receipt polling
+  // share the SAME transport.  simulateContract uses getReadClient (read-only).
+  const extendedClient = walletClient.extend(publicActions);
   const publicClient = getReadClient();
   log.info(COMPONENT_NAME, "Claiming win from vault for session:", sessionId);
 
@@ -275,12 +320,19 @@ export async function claimWin(
     args: [sessionId as `0x${string}`, amount, BigInt(keys), signature],
   });
 
-  const hash = await walletClient.writeContract({
+  const hash = await extendedClient.writeContract({
     ...claimRequest,
-    chain: getTargetChain(), // Chain is already configured in the wallet client
+    chain: getTargetChain(),
   });
 
-  await confirmReceipt(hash, {component: COMPONENT_NAME});
+  log.info(COMPONENT_NAME, `Waiting for claim receipt (${env}): ${hash}`);
+  if (env === "anvil") {
+    await verifyTxExists((args) => extendedClient.getTransaction(args), hash);
+  }
+  await confirmReceipt(hash, {
+    timeout: config.wallet.tx_timeout_ms,
+    component: COMPONENT_NAME,
+  });
 
   return hash;
 }

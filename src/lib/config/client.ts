@@ -102,10 +102,10 @@ export const config: ConfigTypes = {
           "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0x3Aa5ebB10DC797CAC828524e59A333d0A371443c",
+        "tresr_token_contract": "0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
-        "faucet_contract": "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
+        "vault_contract": "0x998abeb3E57409262aE5b751f60747921B33613E",
+        "faucet_contract": "0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
         "explorer_url": "http://localhost:8545/tx/"
       },
@@ -158,7 +158,7 @@ export const config: ConfigTypes = {
     "balance_refresh_cooldown_ms": 30000,
     "vault_poll_interval_ms": 60000,
     "connect_timeout_ms": 300000,
-    "tx_timeout_ms": 30000,
+    "tx_timeout_ms": 60000,
     "tx_polling_interval_ms": 1000
   },
   "assets": {
@@ -672,7 +672,7 @@ export const config: ConfigTypes = {
         }
       },
       "boss": {
-        "health": 1000,
+        "health": 500,
         "damage": 25,
         "speed": 150,
         "knockback": {
@@ -1507,5 +1507,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "845457ad413f10a94609e60fa2fbb5161d154985ef7543b521b353b12de15f41"
+  "configHash": "0edcda1fd0ea15f2fc9123c84013a9fb88c89a8c6d31e12948b90ed3482ef358"
 };

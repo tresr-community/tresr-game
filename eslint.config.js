@@ -12,8 +12,6 @@ export default tseslint.config(
       "src/env.d.ts",
       "**/lib/openzeppelin-contracts/**",
       "**/lib/openzeppelin-contracts-upgradeable/**",
-      "TODO/**",
-      "TEMP/**",
     ],
   },
   {

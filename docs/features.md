@@ -12,32 +12,28 @@
 
 ## Authentication
 
-### Internet Identity
+There are two methods of user identification;
 
-Users authenticate via Internet Identity:
+### Normie Mode
 
-- Decentralized authentication
-- No passwords or personal data
-- Works across all Internet Computer apps
-- Managed through Juno's auth integration
-
-### Guest Mode
-
-Players can try the game without authentication:
+Guest players can try the game without authentication:
 
 - No blockchain features
-- No progress saving
 - Local session only
+- Full gameplay experience
+
+### Degen Mode
+
+Degen players can _Sign In with Avalanche_ (SIWA).
+
+- Pay a fee to play
+- If you win, granted rewards
 - Full gameplay experience
 
 ## Backend Features
 
 ### User Management
 
-- Multiple authentication methods
-  - Internet Identity 2.0
-  - Passkeys via WebAuthn
-  - Avalanche Wallet (ic-siwa and viem)
 - User profile management and persistent preferences
 - Leaderboard tracking
 - Withdrawal address configuration

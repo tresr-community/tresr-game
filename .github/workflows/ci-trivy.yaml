@@ -4,7 +4,8 @@
 # Description: Security scanning with Trivy
 #
 # Triggers:
-#   - Pull request to trunk (on code changes)
+#   - Pull request to trunk
+#   - Push to trunk (required for Security tab results)
 #   - Weekly schedule (Sunday midnight UTC)
 #
 # Scans:
@@ -23,12 +24,12 @@ on:
     branches:
       - trunk
 
+  push:
+    branches:
+      - trunk
+
   schedule:
     - cron: "0 0 * * 0"
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 permissions:
   actions: write
@@ -56,7 +57,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    timeout-minutes: 60
+    timeout-minutes: 120
     continue-on-error: false
 
     steps:
@@ -66,7 +67,7 @@ jobs:
         with:
           fetch-depth: 1
           submodules: recursive
-          lfs: true
+          lfs: false
 
       - id: setup_devenv
         name: Setup Devenv

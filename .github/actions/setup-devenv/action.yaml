@@ -17,7 +17,7 @@ inputs:
   skip-push:
     description: "Set to true to skip pushing to Cachix (pull/substitute only). Use for jobs that don't produce cacheable build artifacts."
     required: false
-    default: "true"
+    default: "false"
   push-filter:
     description: "Regex to exclude paths from Cachix push, e.g. source tarballs and nixpkgs archives"
     required: false
@@ -40,26 +40,6 @@ runs:
           keep-outputs = true
           keep-derivations = true
 
-    - id: cache_nix
-      name: Cache Nix Store
-      uses: nix-community/cache-nix-action@v7
-      with:
-        primary-key: nix-${{ runner.os }}-${{ hashFiles('devenv.lock') }}
-        restore-prefixes-first-match: nix-${{ runner.os }}-
-        gc-max-store-size-linux: 5G
-        purge: true
-        purge-created: P14D
-        purge-primary-key: never
-        token: ${{ inputs.github-token }}
-
-    - id: enable_cachix_devenv
-      name: Enable devenv Cachix (read-only)
-      if: always()
-      uses: cachix/cachix-action@v16
-      with:
-        name: devenv
-        skipPush: true
-
     - id: enable_cachix
       name: Enable Cachix
       if: inputs.cachix-cache-name != ''
@@ -70,6 +50,18 @@ runs:
         useDaemon: true
         skipPush: ${{ inputs.skip-push }}
         pushFilter: ${{ inputs.push-filter }}
+
+    # TODO: Benchmarks are showing this actually makes it slower :/
+    #- id: nix_cache
+    #  name: Cache Nix Store
+    #  uses: nix-community/cache-nix-action@v7
+    #  with:
+    #    primary-key: ${{ runner.os }}-nix-${{ hashFiles('devenv.lock', 'devenv.nix') }}
+    #    restore-prefixes-first-match: ${{ runner.os }}-nix-
+    #    gc-max-store-size-linux: 5G
+    #    purge: true
+    #    purge-created: P7D
+    #    token: ${{ inputs.github-token }}
 
     - id: install_devenv
       name: Install Devenv
@@ -98,3 +90,11 @@ runs:
         SECRETSPEC_PROVIDER: env
       run: |
         secretspec check --no-prompt
+
+    - id: warmup_devenv
+      name: Warm up Devenv shell
+      shell: bash
+      env:
+        SECRETSPEC_PROVIDER: env
+      run: |
+        devenv shell --verbose hello --traditional

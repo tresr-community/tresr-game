@@ -1,4 +1,4 @@
-# Tresr Game Design and Technical Specification
+# Game Design and Technical Specification
 
 **Version:** 2.5
 
@@ -31,87 +31,82 @@
 - [Asset Storage Guidelines](#asset-storage-guidelines)
 - [Analytics](#analytics)
 
-## Changelog
-
-- **v2.5**: Renamed "Candle" entity to "Bomb" throughout codebase and config.
-  Config hash critical values now include `audio` field. Config hash verification
-  is now blocking (game stops on mismatch with visible error). Anti-cheat ban
-  system implemented with device-level persistence (applies to guest users too).
-  Fee gate security hardened with HMAC signature verification and transaction
-  receipt confirmation. VaultBalance component implemented with wallet connection
-  guard (only polls RPC when Avalanche wallet connected). Notification persistence
-  uses serialized write queue to prevent Juno version conflicts. Centralized
-  logging system enforced (`src/lib/utils/log.ts`). Guest rate limiting with
-  configurable plays-per-day and cooldown modal. Scrolling typewriter text on
-  loading screen. Combat distance calculations use `groundY` (not visual `y`)
-  for correct 2.5D depth-plane distances. Damage values rounded to prevent
-  fractional HP. Enemy X-axis clamping prevents off-screen movement.
-  Comprehensive event listener and store subscription cleanup for Astro View
-  Transitions. XSS vulnerabilities fixed via safe DOM APIs. Multiple memory leak
-  fixes (audio elements, timers, tweens, physics bodies).
-- **v2.4**: Loot drop system with 5 health pickup variants (soda can, milkshake, water bottle, hamburger, french fries) and 5 powerup
-  variants (energy can blue, coffee mug, red bull, red bull no sugar, takeaway coffee cup). Intro narration voiceover during loading screen
-  with user preference toggle (`narration?: boolean` on UserProfile). Sprite standardization to 512x512 base frames with special sizes for
-  jump/super/key/bomb/loader. Narration audio stored at `public/assets/audio/narration/`. Updated MusicPlayer with narration checkbox for
-  logged-in users. Prebuild step added to juno-dev lint command.
-- **v2.3**: Enemy AI enhancements — added 3 new AI types (ranged, swarm, burrower) with weighted random selection.
-  Boss phase system with Phase 2 enrage at 50% HP. Boss special attacks: ground pound AoE, charge rush, enemy summon.
-  All new values config-driven via `entities.enemy.ai` and `entities.boss.phases`/`entities.boss.attacks`.
-- **v2.2**: Entity-centric config schema restructure — all entity config now lives under `gameplay.entities.<name>` instead of scattered across
-  `stats`, `combat`, `physics.hitboxes`, `spawners`, `animations`, `spawn`, `super_attack`. Updated all config path references throughout spec.
-  Removed dead config keys (`scoring.candle_hit`, `stats.enemies.candle.health`).
-  Updated design principle #4 from "Nested YAML Convention" to "Entity-Centric Organization".
-- **v2.1**: Added nested YAML convention (design principle #4), restructured AI config references from flat prefixed keys to nested personality
-  objects. Added anti-cheat ban system: `banned_until` + `offence_count` on user profile, escalating bans (24h/72h/168h/permanent),
-  ban check at game start and claim time. Updated Security Model tables with ban enforcement and repeat cheating mitigation.
-- **v2.0**: Major rewrite aligning spec with implemented codebase. Added: Bomb entity, enemy AI system, 2.5D physics engine, color-coded
-  health bars, seeded RNG, input recorder, config hash anti-cheat, object pooling, camera shake effects, SFX variants, FeeGate, WalletLink,
-  loading screen, music shuffle persistence, hitbox configs, frontend component documentation, audio system section, configuration pipeline
-  section. Corrected: controls table, scoring system, super attack (now fully implemented), entity descriptions.
-  Marked unimplemented features as [Planned].
-- **v1.2**: Added super attack, updated config to tresr.yaml schema, enhanced UI descriptions, integrated PWA optimizations, expanded theming/navigation.
-
 ## Overview
 
 Tresr is a 2.5D beat-em-up where retro 80s action movie-style characters, inspired by Streets of Rage, battle in a cyberpunk Tron-inspired battle grid environment featuring electric grid lines.
 
 The game uses "Streets of Rage" style depth sorting (`setDepth(groundY)`) with Z-axis physics to simulate 3D space on a 2D plane.
+
 All entities have shadow rendering, and floating entities (keys, bombs, boss during descent) use Z-axis gravity for natural-looking vertical motion.
 
-The protagonist, Ron Jay, is a crypto degenerate hero wearing 70s-style clothing with a moustache, fighting against evil bankers
-(businessmen in suits) who are anti-cryptocurrency. Five visually distinct enemy variants share the same mechanics but have four different
-AI behavior types (direct, flanker, cautious, erratic).
+The protagonist, Ron Jay, is a crypto degenerate hero wearing 70s-style clothing, fighting against evil bankers who are anti-cryptocurrency.
 
-The core mechanics: Degens survive an endless hoard of enemies for 5 minutes while optionally collecting dropped yellow keys and dodging
-falling bombs (environmental hazards that damage both enemies and the player).
+Five visually distinct enemy variants share the same mechanics but have four different AI behavior types (direct, flanker, cautious, erratic).
 
-Upon timer expiration, all basic enemies are cleared and the final boss Gary Gensler descends from above. If the boss is defeated, a treasure chest appears and the Degen can claim $TRESR rewards.
+The core mechanics:
+
+- Degens survive an endless hoard of enemies for 3 minutes
+- Optionally, Degens collect dropped yellow keys
+- Dodge falling bombs (red candles that hurt everyone!)
+
+Upon timer expiration;
+
+- all basic enemies are cleared
+- the final boss descends from above.
+- If the boss is defeated, a treasure chest appears and the Degen can claim $TRESR rewards.
 
 When logged in, Degens pay a $TRESR fee to join the vault pot; otherwise, guest mode provides a demo without tokens.
 
 ## Win Mechanics
 
-- **Bear Market (survival phase)**: Degens survive an endless hoard of enemies for exactly 5 minutes (config: `time_limit_seconds: 300`).
-  Varying numbers of enemies spawn from screen edges every 2 seconds (config: `entities.enemy.spawner.delay_ms`),
-  with up to 50 concurrent (config: `entities.enemy.spawner.pool_size`). Bombs also drop periodically from above
-  (every 5 seconds, max 15 concurrent).
-- **Optional Key Collection**: Yellow keys airdrop from above with parachute physics (reduced gravity, horizontal drift with sine-wave
-  oscillation). They bounce on landing and fade after 3 seconds on the ground. Collecting keys boosts rewards.
-- **Bull Market (boss fight)**: Timer expires at 0:00, all basic enemies will leave the screen, and boss Gary Gensler descends slowly from above
-  (speed: `entities.boss.descent.speed`). Boss is invincible during descent. Once at ground level
-  (`entities.boss.descent.threshold`), boss enters fighting state and pursues the player.
-- **Win Condition**: Defeat the boss, then punch-open the central treasure chest to claim reward. The chest plays an open animation and emits `game_win` to trigger the claim flow.
-- **Reward Formula**: [Planned] Claim percentage of vault = `(keys_collected / 150) * 50%`, capped at 50% vault. Oracle-enforced.
-- **Loss Condition**: Player dies (HP reaches 0) during survival or boss phase. Lose fee (if logged in), vault pot grows; end session.
-- **On Loss**: Display themed DaisyUI Game Over modal with stats and auto-save high score. Stats are saved to Juno Collection storage.
+- **Bear Market (survival phase)**: Degens survive an endless hoard of enemies for exactly 5 minutes (config: `time_limit_seconds: 180`).
+  - Varying numbers of enemies spawn from screen edges every 2 seconds (config: `entities.enemy.spawner.delay_ms`)
+  - Up to 50 concurrent (config: `entities.enemy.spawner.pool_size`). Bombs also drop periodically from above (every 5 seconds, max 15 concurrent).
+
+- **Optional Key Collection**: Yellow keys airdrop from above with parachute physics
+  - reduced gravity, horizontal drift with sine-wave oscillation
+  - They bounce on landing and fade after 3 seconds on the ground.
+  - Collecting keys boosts rewards.
+
+- **Bull Market (boss fight)**: Timer expires at 0:00
+  - all basic enemies will leave the screen
+  - boss descends slowly from above
+  - (speed: `entities.boss.descent.speed`).
+  - Boss is invincible during descent.
+  - Once at ground level (`entities.boss.descent.threshold`)
+  - boss enters fighting state and pursues the player.
+
+- **Win Condition**:
+  - Defeat the boss
+  - punch-open the central treasure chest to claim reward.
+  - The chest plays an open animation and emits `game_win` to trigger the claim flow.
+
+- **Reward Formula**: [Planned] Claim percentage of vault
+  - `(keys_collected / 150) * 50%`
+  - capped at 50% vault.
+  - Oracle-enforced for anti-cheat.
+
+- **Loss Condition**:
+  - Player dies (HP reaches 0) during survival or boss phase.
+  - Lose fee (if logged in), vault pot grows; end session.
+
+- **On Loss**:
+  - Display themed DaisyUI Game Over modal
+  - stats and auto-save high score.
+  - Stats are saved to Juno Collection storage.
+
 - **Scoring**: Config-driven scoring system:
   - Key collection: 100 points (config: `scoring.key_collection`)
   - Enemy kill: 10 points (config: `scoring.enemy_kill`)
   - Boss hit: 50 points (config: `scoring.boss_hit`)
   - Super hit: 20 points (config: `scoring.super_hit`)
   - Bomb hit: 0 points (no config — bomb explosions never score)
-- **Difficulty Scaling**: [Planned] Boss HP and attack power scale based on vault balance: `difficulty = floor(log10(vault_balance / 1e18)) + 1`.
-- **Cooldown**: [Planned] 24 hours per player between claims.
+
+- **Difficulty Scaling**:
+  - [Planned] Boss HP and attack power scale based on vault balance: `difficulty = floor(log10(vault_balance / 1e18)) + 1`.
+
+- **Cooldown**:
+  - [Planned] 24 hours per player between claims.
 
 ## Art
 
@@ -133,12 +128,18 @@ Frame dimensions are config-driven per sprite (defaults: 512x512). Special sizes
 
 ## Tokens
 
+On Anvil and Testnet;
+
+- A custom $tRON is used.
+
+On Mainnet;
+
+- The existing $TRESR token is used.
 - **$TRESR (Mainnet):** 0x9913BA363073Ca3e9eA0cD296E36B75aF9E40bef (18 decimals)
-- **$tTRESR (Testnet):** 0x6EB523A381e725F115b7454BaA3cb199E4770970 (18 decimals)
 
 ## Architecture: Hybrid Client-Server with On-Chain Settlement
 
-Tresr uses a hybrid architecture to ensure responsive gameplay while maintaining tamper-proof verification and immutable fund settlement.
+TRESR game uses a hybrid architecture to ensure responsive gameplay while maintaining tamper-proof verification and immutable fund settlement.
 
 ### Components and Technology Stack
 
@@ -152,46 +153,20 @@ Tresr uses a hybrid architecture to ensure responsive gameplay while maintaining
     visual effects with no DaisyUI/Tailwind equivalent.
   - **Nanostores**: Reactive state management (`gameStore`) bridging Phaser and Astro.
   - **2.5D Rendering**: Z-axis physics with gravity, depth sorting via `setDepth(groundY)`, shadow rendering for all entities.
+
 - **Backend (Juno - Rust Canisters)**: Manages authentication via Internet Identity 2.0, database operations using Juno Collections,
   verification of game sessions, oracle functions for claims, and version information.
+
 - **Settlement (Avalanche C-Chain)**: Holds the $TRESR vault via Vault.sol smart contract. Uses Wagmi for wallet connections (e.g., WalletConnect, MetaMask).
+
 - **Notifications**: Persistent system via Juno Datastore + Nanostores for reactive UI.
+
 - **Logging**:
   - All source code uses centralized logging system via `src/lib/utils/log.ts`.
   - API: `log.info(component, message, ...args)`, `log.warn()`, `log.error()`, `log.debug()`.
   - Format: `[COMPONENT] [LEVEL] Message`.
   - Colour: Logs are coloured based on log level from GREEN to RED.
   - Direct `console` calls are prohibited in source code in favor of `log`.
-
-### Folder Layout and Component Organization
-
-```text
-src/
-  components/
-    game/         # HUD, GameModals, FeeGate, PauseMenu, LeaderboardModal, MusicPlayer, PhaserGame
-    wallet/       # WalletLink
-    ui/           # Shared UI components
-  lib/
-    auth/         # Authentication (IID, SIWA, WebAuthn, guest)
-    config/       # Configuration loading and caching
-    game/
-      prefabs/    # BaseEntity, Player, Enemy, Boss, Key, Bomb, Chest, SuperProjectile
-      scenes/     # BootScene, Preloader, MainScene
-      MusicManager.ts
-      SpriteManager.ts
-      Recorder.ts
-      store.ts
-      constants.ts
-      game.ts     # Phaser config and initialization
-    notifications/
-    utils/        # log.ts, helpers
-    wallet/       # Avalanche integration, contract interaction
-    metrics/      # Analytics
-  pages/
-    game.astro    # Game page with FeeGate and Phaser canvas
-  types/
-    config.ts     # Auto-generated from tresr.yaml
-```
 
 ### Economy Flow
 
@@ -227,61 +202,21 @@ Only if logged in and player defeats the boss does claim unlock.
 4. **Avalanche Tx**: Frontend calls `Vault.claim(sessionId, amount, keys, signature)` via the victory modal.
 5. **Settlement**: [Planned] Vault verifies sig and transfers $TRESR. Cooldown enforced.
 
-### Data Layer
+## Juno Data Collections
 
-Four Juno Datastore collections are used:
-
-| Collection | Access         | Purpose                                                                                                           |
-| ---------- | -------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `audit`    | Managed        | Private admin audit trail: fee records, claim records, game sessions. Keys prefixed `fee_`, `claim_`, `session_`. |
-| `economy`  | Public/Managed | Public economy metrics. Single document keyed `global`: `total_collected`, `total_rewarded`, `total_burned`.      |
-| `scores`   | Public/Managed | Public leaderboard entries (keyed by Principal ID) and top-scorer cache (`top_scorer` key).                       |
-| `users`    | Managed        | Private per-user preferences: nickname, avatar, wallet link, game stats, ban status, notifications.               |
-
-- **`audit` collection**:
-  - `key`: Prefixed ID (`fee_<id>`, `claim_<id>`, `session_<id>`)
-  - `data`: FeeRequest | ClaimRequest | GameSession struct
-
-- **`economy` collection** (key: `global`):
-  - `total_collected`: u64 — Total $TRESR collected in fees
-  - `total_rewarded`: u64 — Total $TRESR rewards paid out
-  - `total_burned`: u64 — Total $TRESR burned
-
-- **`scores` collection**:
-  - Per-user entry keyed by Principal ID:
-    - `nickname`: `String`
-    - `avatar_url`: `Option<String>`
-    - `high_score`: `u64`
-    - `games_won`: `u64`
-    - `active_score`: `u64`
-    - `scored_at`: `Option<u64>` (epoch ms)
-    - `expires_at`: `Option<u64>` (epoch ms, TTL for active score)
-    - `session_id`: `Option<String>`
-  - `top_scorer` key: canister-managed cache for O(1) top-scorer lookup
-
-- **`users` collection**:
-  - `key`: User Principal ID
-  - `user_id`: Principal ID
-  - `nickname`: String
-  - `stats`: { high_score, total_games_played, total_games_won, total_games_lost }
-  - `wallet`: { balance, evm_wallet_linked }
-  - `preferences`: { theme, narration?, has_read_instructions, music: { favorite_track, playback_mode, volume, sfx_volume, is_paused } }
-  - `banned_until`: `Option<u64>` (epoch ms) — `null` = not banned
-  - `offence_count`: u64 — Escalating ban counter
-  - `notifications`: NotificationItem[] — Nested in doc
-
-- **Juno Storage**:
-  - `images` bucket — User avatar uploads (write-restricted to owner)
+See [Juno Data Collections](./data-storage.md)
 
 ## Phaser Engine Architecture
 
-Tresr uses Phaser 3 with Arcade Physics for the game engine, implementing 2.5D beat-em-up style gameplay with Z-axis physics.
+TRESR game uses Phaser 3 with Arcade Physics for the game engine, implementing 2.5D beat-em-up style gameplay with Z-axis physics.
 
 ### Scene Structure
 
 - **BootScene**: Loads `config-client.json` via synchronous XHR, stores in Phaser registry as `full_config`. Loads the loader sprite with config dimensions. Transitions to Preloader.
+
 - **Preloader**: Loads all game assets (sprites, audio, wallpapers) via `SpriteManager`. Displays animated loading screen with progress bar,
   spinner, and random wallpaper background. Transitions to MainScene.
+
 - **MainScene**: Core game loop managing all phases:
   - `survival` -> `boss` -> `victory` or `lost`
   - Creates all entity pools, timers, event listeners
@@ -343,7 +278,7 @@ Businessmen entities (`enemy_1` through `enemy_5` textures). Features:
 
 #### Boss
 
-Gary Gensler boss entity (`boss` texture, 120x120 frames). Features:
+Boss entity (`boss` texture, 120x120 frames). Features:
 
 - **Stats**: HP, damage, speed from `gameplay.entities.boss` config (default: 1000 HP, 25 damage, 150 speed).
 - **State Machine**: `descending` -> `fighting` -> `defeated`.
@@ -422,7 +357,9 @@ Collectible health restore items dropped by defeated enemies. Features:
 
 #### Powerup Pickup
 
-Collectible powerup items dropped by defeated enemies. Features:
+Collectible powerup items dropped by defeated enemies will summon the _TRESR Bot_ to fight by your side.
+
+Features:
 
 - **5 Variants**: energy can blue, coffee mug, red bull, red bull no sugar, takeaway coffee cup (`powerup_1` through `powerup_5`).
 - **Drop Source**: Dropped by enemies on death via seeded RNG (config: `loot.powerup`).
@@ -547,7 +484,7 @@ Physics determinism is enforced via `this.physics.world.setFPS(60)` and fixed ti
 
 #### Input Recording
 
-The `Recorder` class records all player actions as timestamped events:
+A _Work in progress_, the `Recorder` class records all player actions as timestamped events:
 
 ```typescript
 interface GameAction {
@@ -838,28 +775,6 @@ A cheater who modifies `config-client.json` in DevTools (e.g., setting player HP
 3. Even if the cheater patches the client-side check, the server computes its own hash from its authoritative config copy and rejects the mismatched claim.
 4. Even if the cheater forges the hash, the server replays the recorded inputs with the correct config and the simulated outcome won't match the claimed score.
 
-#### Resolved Issues (tickets #128, #129, #202)
-
-All previously known config hash issues have been resolved:
-
-- Verification is now blocking — game displays error and stops on mismatch.
-- Uses `canonicalStringify()` with deep key sorting for consistent serialization.
-- Claim payload uses binary `Uint8Array`.
-
-### Anti-Cheat Defence Layers
-
-The game uses four layers of defence. No single layer is sufficient alone — they work together:
-
-| Layer                              | What It Does                                         | Prevents                                                              |
-| ---------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------- |
-| **1. Config Hash**                 | SHA-256 of critical values, verified client + server | Casual config tampering via DevTools                                  |
-| **2. Seeded RNG + Fixed Timestep** | Deterministic gameplay from seed + inputs            | Non-reproducible game states                                          |
-| **3. Input Recording**             | All player actions recorded with timestamps          | Score fabrication without valid inputs                                |
-| **4. Server Replay** [Planned]     | Server replays inputs with authoritative config      | All client-side manipulation (HP hacks, speed hacks, score inflation) |
-
-**Layer 4 is the ultimate defence.** The server doesn't trust any client-reported values. It replays the exact same inputs with its own
-config and seed, simulates the full game, and only authorises the claim if the server's simulation matches the client's reported outcome.
-
 ### What a Cheater Cannot Do
 
 Even with full DevTools access:
@@ -922,79 +837,6 @@ sequenceDiagram
     Client->>Vault: claim(sessionId, amount, keys, signature)
     Vault->>Client: $TRESR (if valid)
 ```
-
-## Frontend Components
-
-### HUD (`src/components/game/HUD.astro`)
-
-Full-width game overlay displaying:
-
-- **Top-Left Stats**: HP (red), Score (primary), Keys collected (secondary) — all font-mono.
-- **Top-Center**: Countdown timer (5:00 format, error color, large text).
-- **Bottom-Center**:
-  - **Boss HP Bar**: Hidden until boss phase. DaisyUI progress bar with text readout (`HP/MaxHP`). Color-coded: green > 75%, yellow > 50%, orange > 25%, red <= 25%.
-  - **Phase Alert Badge**: "BOSS INCOMING", "VICTORY", etc.
-  - **Super Power Bar**: DaisyUI progress bar (warning color). Shows percentage. Turns green with pulse animation when fully charged (>= 100%).
-  - **Pause Button**: Circular button, primary color.
-- **Bottom-Left**: Music player component.
-
-### FeeGate (`src/components/game/FeeGate.astro`)
-
-Entry fee payment modal for authenticated non-guest users:
-
-1. Displays fee amount (from chain config).
-2. User clicks "Pay & Start Mission".
-3. Checks wallet balance (shows error if insufficient).
-4. Calls `payFeeForGame(sessionId, feeWei)`.
-5. Stores txHash + sessionId, marks fee paid in `sessionStorage`.
-6. Session ID secured with HMAC signature to prevent `sessionStorage` spoofing.
-7. `isFeePaid()` is async — performs cryptographic signature verification.
-8. Exposes `window.showFeeGate()` and `window.isFeePaid()` for game page.
-
-### GameModals (`src/components/game/GameModals.astro`)
-
-Victory and defeat modal dialogs:
-
-- **Victory Modal**: Shows reward amount, claim button. Claim calls `claimWin(sessionId, amount, keys, signature)` on Avalanche.
-- **Defeat Modal**: Shows "Game Over" with replay button (reloads page) and home button.
-- **Triggered by**: `gameStore.phase` changing to `victory` or `lost`.
-
-### PauseMenu (`src/components/game/PauseMenu.astro`)
-
-Modal triggered by `gameStore.isPaused`:
-
-- Flavor text quote.
-- Resume button (unpauses game).
-- Abort button (navigates to home `/`).
-
-### LeaderboardModal (`src/components/game/LeaderboardModal.astro`)
-
-DaisyUI modal showing top 10 players:
-
-- **Active tab**: Fetches from `scores` collection, sorted by `active_score` descending, filtered client-side to entries with non-expired `expires_at`. Shows rank, avatar, nickname, score, countdown timer.
-- **All-Time tab**: Fetches from `scores` collection, sorted by `high_score` descending. Shows top 10 with rank, avatar, nickname, score, date.
-- Loading/error states with timeout handling.
-
-### WalletLink (`src/components/wallet/WalletLink.astro`)
-
-Wallet dropdown component with multiple states:
-
-- **Unauthenticated**: "Please sign in"
-- **Guest**: "Guests cannot connect wallet"
-- **Unlinked**: "No Wallet Linked" + link to profile
-- **Linked**: Live balance display with token symbol (tTRESR/TRESR), shortened address, refresh button (30s cooldown)
-
-### MusicPlayer (`src/components/game/MusicPlayer.astro`)
-
-Compact music player in bottom-left of HUD:
-
-- Play/Pause, Next/Prev buttons.
-- **Playback mode cycle button**: Cycles through Normal → Shuffle → Repeat One. Icon and highlight update reactively.
-- Track name display.
-- Progress bar with seek.
-- Track selector dropdown. Selecting a track sets it as the user's **favorite** (highlighted in the list). The favorite is independent of the playback mode.
-- Narration toggle checkbox (visible to logged-in users only, persists to Juno).
-- Volume sliders (music + SFX separate).
 
 ## UI/UX & Theming
 
