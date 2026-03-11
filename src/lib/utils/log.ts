@@ -29,6 +29,20 @@ const isBrowser =
   typeof window !== "undefined" && typeof window.document !== "undefined";
 
 /**
+ * Returns the current time as HH:MM:SS.mmm for inline log timestamps.
+ * Makes performance gaps immediately visible without hovering DevTools entries.
+ */
+function logTimestamp(): string {
+  if (!isBrowser) return "";
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+  const ms = String(d.getMilliseconds()).padStart(3, "0");
+  return `${hh}:${mm}:${ss}.${ms} `;
+}
+
+/**
  * Unified function for toasts and logging.
  * Logs based on level, shows toast for warnings and errors.
  * Uses %c CSS formatting in browser consoles for colored output.
@@ -39,7 +53,7 @@ export function showToast(
   message: string,
   details?: string
 ) {
-  const tag = `[${component}] [${level.toUpperCase()}]`;
+  const tag = `${logTimestamp()}[${component}] [${level.toUpperCase()}]`;
   const style = LOG_STYLES[level];
 
   switch (level) {
@@ -123,7 +137,7 @@ export const log = {
     const details = `${errorStr} ${args.join(" ")}`.trim();
 
     // Log to console immediately
-    const tag = `[${component}] [ERROR]`;
+    const tag = `${logTimestamp()}[${component}] [ERROR]`;
     const style = LOG_STYLES["error"];
     if (isBrowser) {
       console.error(`%c${tag}`, style, message, details || "");

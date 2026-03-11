@@ -69,6 +69,12 @@ interface CachedBalance {
 // Balance cache
 const balanceCache = new Map<string, CachedBalance>();
 
+// In-flight fetch coalescing: if multiple callers request the same token
+// balance at the same instant (all miss the cache before any write completes),
+// they share the single in-flight RPC call instead of firing N duplicates.
+// This eliminates the 3× redundant vault-balance calls observed at login.
+const pendingFetches = new Map<string, Promise<bigint>>();
+
 /**
  * Get a cache key for balance lookups.
  */
@@ -136,66 +142,82 @@ export async function getTokenBalance(
     log.debug(COMPONENT_NAME, "Re-probing RPC availability...");
   }
 
-  // Fetch fresh balance
-  try {
-    const publicClient = getReadClient();
-    const balance = await publicClient.readContract({
-      address: tokenAddress as `0x${string}`,
-      abi: ERC20Abi,
-      functionName: "balanceOf",
-      args: [walletAddress as `0x${string}`],
-    });
+  // Coalesce concurrent first-calls: if a fetch is already in-flight for
+  // this cacheKey, share it rather than firing a duplicate RPC call.
+  const inflight = pendingFetches.get(cacheKey);
+  if (inflight) {
+    log.debug(COMPONENT_NAME, `Coalescing in-flight fetch for ${cacheKey}`);
+    return inflight;
+  }
 
-    // RPC is reachable — mark available and update cache
-    if (rpcAvailable === false) {
-      log.info(COMPONENT_NAME, "Blockchain RPC recovered");
-    }
-    rpcAvailable = true;
-    rpcUnavailableSince = 0;
-    rpcUnavailableLoggedOnce = false;
-    balanceCache.set(cacheKey, {
-      value: balance,
-      timestamp: Date.now(),
-    });
+  // Fetch fresh balance (wrapped in a promise so concurrent callers can share it)
+  const fetchPromise: Promise<bigint> = (async () => {
+    try {
+      const publicClient = getReadClient();
+      const balance = await publicClient.readContract({
+        address: tokenAddress as `0x${string}`,
+        abi: ERC20Abi,
+        functionName: "balanceOf",
+        args: [walletAddress as `0x${string}`],
+      });
 
-    log.debug(
-      COMPONENT_NAME,
-      `Fetched balance for ${walletAddress}: ${balance}`
-    );
-    return balance;
-  } catch (error) {
-    if (isRpcUnavailableError(error)) {
-      rpcAvailable = false;
-      rpcUnavailableSince = Date.now();
-      if (!rpcUnavailableLoggedOnce) {
-        rpcUnavailableLoggedOnce = true;
-        log.info(
-          COMPONENT_NAME,
-          "Blockchain RPC unreachable — will re-probe automatically"
-        );
-      }
-      return 0n;
-    }
-    // Contract not deployed — RPC is fine, just no code at the address.
-    // Return 0n without marking RPC as down, so other queries still work.
-    if (isContractNotDeployedError(error)) {
-      // Mark RPC as available since the endpoint responded
+      // RPC is reachable — mark available and update cache
       if (rpcAvailable === false) {
         log.info(COMPONENT_NAME, "Blockchain RPC recovered");
       }
       rpcAvailable = true;
       rpcUnavailableSince = 0;
-      log.debug(COMPONENT_NAME, "Contract not deployed — returning 0n");
-      return 0n;
+      rpcUnavailableLoggedOnce = false;
+      balanceCache.set(cacheKey, {
+        value: balance,
+        timestamp: Date.now(),
+      });
+
+      log.debug(
+        COMPONENT_NAME,
+        `Fetched balance for ${walletAddress}: ${balance}`
+      );
+      return balance;
+    } catch (error) {
+      if (isRpcUnavailableError(error)) {
+        rpcAvailable = false;
+        rpcUnavailableSince = Date.now();
+        if (!rpcUnavailableLoggedOnce) {
+          rpcUnavailableLoggedOnce = true;
+          log.info(
+            COMPONENT_NAME,
+            "Blockchain RPC unreachable — will re-probe automatically"
+          );
+        }
+        return 0n;
+      }
+      // Contract not deployed — RPC is fine, just no code at the address.
+      // Return 0n without marking RPC as down, so other queries still work.
+      if (isContractNotDeployedError(error)) {
+        // Mark RPC as available since the endpoint responded
+        if (rpcAvailable === false) {
+          log.info(COMPONENT_NAME, "Blockchain RPC recovered");
+        }
+        rpcAvailable = true;
+        rpcUnavailableSince = 0;
+        log.debug(COMPONENT_NAME, "Contract not deployed — returning 0n");
+        return 0n;
+      }
+      // Non-connectivity error — propagate normally
+      log.error(
+        COMPONENT_NAME,
+        `Failed to fetch balance for ${walletAddress}:`,
+        error
+      );
+      throw error;
     }
-    // Non-connectivity error — propagate normally
-    log.error(
-      COMPONENT_NAME,
-      `Failed to fetch balance for ${walletAddress}:`,
-      error
-    );
-    throw error;
-  }
+  })().finally(() => {
+    // Remove from in-flight map once settled (success or failure)
+    pendingFetches.delete(cacheKey);
+  });
+
+  pendingFetches.set(cacheKey, fetchPromise);
+  return fetchPromise;
 }
 
 /**

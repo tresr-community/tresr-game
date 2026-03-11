@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-clear
 set -euo pipefail
 
 # =============================================================================
@@ -46,6 +45,13 @@ TOKEN_TICKER=""
 
 # Zero address (vault not deployed)
 ZERO_ADDRESS="0x0000000000000000000000000000000000000000"
+
+# Set to 'true' by `loop --force` to bypass the existence check and redeploy
+FORCE_DEPLOY="false"
+
+# Set to 'true' when running via `loop` — enables the existence-check guard.
+# deploy-token and deploy-vault as direct subcommands always deploy.
+LOOP_MODE="false"
 
 # =============================================================================
 # Config Loader — single source of truth from tresr.yaml
@@ -138,20 +144,22 @@ function show_help() {
 	echo "Usage: solidity-dev <command> [options]"
 	echo ""
 	echo "Commands:"
-	echo "  check                     Run all Solidity checks (fmt, slither, build, test)"
-	echo "  update                    Update Foundry dependencies (forge-std, OpenZeppelin)"
-	echo "  start   [--wallet ADDR]   Start standalone Anvil (chain 31337), fund wallet, tail logs"
-	echo "  stop                      Stop any running Anvil instance"
-	echo "  loop    [--wallet ADDR]   One-shot: deploy-token → deploy-vault → fund → health"
-	echo "  fund    [--wallet ADDR]   Mint tokens to vault + wallet (Anvil must be running)"
-	echo "  health                    Smoke-test Anvil: RPC, chain ID, send tx, confirm receipt"
-	echo "  balance [--wallet ADDR]   Show token + AVAX balance for an address"
-	echo "  deploy-token              Deploy RonToken + TresrFaucet to Anvil (run FIRST)"
-	echo "  deploy-vault              Deploy Vault contract to Anvil (run AFTER deploy-token)"
-	echo "  help                      Show this help message"
+	echo "  check                          Run all Solidity checks (fmt, slither, build, test)"
+	echo "  update                         Update Foundry dependencies (forge-std, OpenZeppelin)"
+	echo "  start   [--wallet ADDR]        Start standalone Anvil (chain 31337), fund wallet, tail logs"
+	echo "  stop                           Stop any running Anvil instance"
+	echo "  loop    [--wallet ADDR]        One-shot CI: deploy → fund → health (skips if already deployed)"
+	echo "  loop --force [--wallet ADDR]   Same as loop but forces redeployment of all contracts"
+	echo "  fund    [--wallet ADDR]        Mint tokens to vault + wallet (Anvil must be running)"
+	echo "  health                         Smoke-test Anvil: RPC, chain ID, send tx, confirm receipt"
+	echo "  balance [--wallet ADDR]        Show token + AVAX balance for an address"
+	echo "  deploy-token                   Deploy RonToken + TresrFaucet to Anvil (run FIRST)"
+	echo "  deploy-vault                   Deploy Vault contract to Anvil (run AFTER deploy-token)"
+	echo "  help                           Show this help message"
 	echo ""
 	echo "Options:"
 	echo "  --wallet  0x...   Player wallet for funding (default: from tresr.yaml)"
+	echo "  --force           Force redeployment even if contracts are already deployed (loop only)"
 }
 
 # =============================================================================
@@ -378,7 +386,17 @@ function run_start() {
 
 	# Start standalone Anvil (no fork)
 	log_info "Starting Anvil on port ${ANVIL_PORT} (chain ${ANVIL_CHAIN_ID})..."
-	anvil --port "$ANVIL_PORT" --chain-id "$ANVIL_CHAIN_ID" &
+
+	# Build state-file flags — load existing state when present so contract
+	# addresses survive restarts without requiring a full redeploy.
+	local state_flags=()
+	if [[ -f .anvil-state.json ]]; then
+		log_info "Restoring Anvil state from ${CYAN}.anvil-state.json${NC}..."
+		state_flags+=(--load-state .anvil-state.json)
+	fi
+	state_flags+=(--dump-state .anvil-state.json --state-interval 1)
+
+	anvil --port "$ANVIL_PORT" --chain-id "$ANVIL_CHAIN_ID" "${state_flags[@]}" &
 	ANVIL_PID=$!
 
 	# Wait for RPC to be ready
@@ -478,7 +496,7 @@ function regen_client_config() {
 # Burn address for testing
 ANVIL_BURN_ADDRESS="0x000000000000000000000000000000000000dEaD"
 
-function run_deploy() {
+function run_deploy_vault() {
 	# Oracle address for local dev (same as admin — Anvil account #0)
 	# Must be set here (not at top-level) because ANVIL_ADMIN_ADDRESS
 	# is populated by load_config() which runs after script parse.
@@ -491,11 +509,30 @@ function run_deploy() {
 	cd contracts
 	export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
 
-	# Build first to catch compile errors
+	# Build first to catch compile errors (also produces artifacts for bytecode check)
 	forge build --force || {
 		log_error "Forge build failed!"
 		exit 1
 	}
+
+	# ── Deploy guard ──────────────────────────────────────────────────────────
+	# Skip if already deployed (existence check). Pass --force to override.
+	# To always redeploy: solidity-dev loop --force
+	local vault_addr
+	vault_addr=$(yq -r '.client.blockchain.avalanche.anvil.vault_contract // ""' "../config/tresr.yaml" 2>/dev/null || echo "")
+	local zero="0x0000000000000000000000000000000000000000"
+
+	if [[ $LOOP_MODE == "true" && $FORCE_DEPLOY != "true" && -n $vault_addr && $vault_addr != "$zero" && $vault_addr != "null" ]]; then
+		local on_chain_code
+		on_chain_code=$(cast code "$vault_addr" --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "")
+		if [[ -n $on_chain_code && $on_chain_code != "0x" ]]; then
+			log_info "${GREEN}✓${NC} Vault already deployed at ${CYAN}${vault_addr}${NC} — ${YELLOW}skipping redeploy${NC}"
+			cd ..
+			return 0
+		fi
+	fi
+	[[ $FORCE_DEPLOY == "true" ]] && log_info "${YELLOW}[--force]${NC} Redeploying Vault..."
+	# ── End deploy guard ───────────────────────────────────────────────────────
 
 	# Deploy via script (implementation + proxy)
 	# Temporarily disable set -e so we can capture output AND exit code
@@ -577,11 +614,38 @@ function run_deploy_token() {
 	cd contracts
 	export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
 
-	# Build first to catch compile errors
+	# Build first to catch compile errors (also produces artifacts for bytecode check)
 	forge build --force || {
 		log_error "Forge build failed!"
 		exit 1
 	}
+
+	# ── Deploy guard ──────────────────────────────────────────────────────────
+	# Skip if already deployed (existence check). Pass --force to override.
+	# To always redeploy: solidity-dev loop --force
+	local token_addr
+	token_addr=$(yq -r '.client.blockchain.avalanche.anvil.tresr_token_contract // ""' "../config/tresr.yaml" 2>/dev/null || echo "")
+	local faucet_addr
+	faucet_addr=$(yq -r '.client.blockchain.avalanche.anvil.faucet_contract // ""' "../config/tresr.yaml" 2>/dev/null || echo "")
+	local zero="0x0000000000000000000000000000000000000000"
+
+	if [[ $LOOP_MODE == "true" && $FORCE_DEPLOY != "true" && -n $token_addr && $token_addr != "$zero" && $token_addr != "null" ]]; then
+		local on_chain_token
+		on_chain_token=$(cast code "$token_addr" --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "")
+		local on_chain_faucet=""
+		if [[ -n $faucet_addr && $faucet_addr != "$zero" && $faucet_addr != "null" ]]; then
+			on_chain_faucet=$(cast code "$faucet_addr" --rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "")
+		fi
+		if [[ -n $on_chain_token && $on_chain_token != "0x" && -n $on_chain_faucet && $on_chain_faucet != "0x" ]]; then
+			log_info "${GREEN}✓${NC} Token + Faucet already deployed — ${YELLOW}skipping redeploy${NC}"
+			log_info "  Token:  ${CYAN}${token_addr}${NC}"
+			log_info "  Faucet: ${CYAN}${faucet_addr}${NC}"
+			cd ..
+			return 0
+		fi
+	fi
+	[[ $FORCE_DEPLOY == "true" ]] && log_info "${YELLOW}[--force]${NC} Redeploying Token + Faucet..."
+	# ── End deploy guard ───────────────────────────────────────────────────────
 
 	# Deploy via script
 	local deploy_output
@@ -933,21 +997,39 @@ balance)
 	run_balance "$@"
 	;;
 deploy-vault)
-	run_deploy
+	run_deploy_vault
 	;;
 deploy-token)
 	run_deploy_token
 	;;
 loop)
+	# Parse flags before dispatching
+	shift # consume 'loop'
+	while [[ $# -gt 0 ]]; do
+		case "${1:-}" in
+		--force)
+			FORCE_DEPLOY="true"
+			shift
+			;;
+		--wallet)
+			shift
+			PLAYER_WALLET="${1:-}"
+			shift
+			;;
+		*) shift ;;
+		esac
+	done
+	[[ $FORCE_DEPLOY == "true" ]] && log_info "${YELLOW}⚠  Force mode enabled — all contracts will be redeployed${NC}"
+	LOOP_MODE="true"
 	# One-shot: deploy-token → deploy-vault → fund → health
 	assert_anvil_running
 	run_deploy_token
 	# Reload config after deploy-token updated tresr.yaml
 	load_config && verify_config
-	run_deploy
+	run_deploy_vault
 	# Reload config after deploy updated tresr.yaml
 	load_config && verify_config
-	run_fund "$@"
+	run_fund
 	run_health
 	;;
 help | -h | "")

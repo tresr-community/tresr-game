@@ -12,16 +12,16 @@ remappings = [
 ]
 
 [profile.ci]
-# Inherits [profile.default]. Used by ci-foundry.yaml for PR checks.
+
 verbosity = 3
 
 [profile.testnet]
-# Inherits [profile.default]. Used by cd-foundry-testnet.yaml.
+
 verbosity = 3
 evm_version = 'cancun'
 
 [profile.mainnet]
-# Inherits [profile.default]. Used by cd-foundry-mainnet.yaml.
+
 verbosity = 2
 
 [rpc_endpoints]

@@ -13,6 +13,25 @@ Primary Focus: Hermetic development environments, Juno satellite architecture, A
 - Always consult `docs/spec.md` for current game specifications, mechanics, and feature requirements before implementation.
 - All documentation (other than this file and `README.md`) should reside in the `docs/` folder.
 
+## 🚀 Quick Start Commands
+
+All commands must run inside `devenv shell`. Use the helper script `juno-dev` for common tasks:
+
+```bash
+juno-dev start      # Start emulator + dev server
+juno-dev stop       # Stop emulator
+juno-dev deploy     # Build and deploy to local satellite
+juno-dev lint       # Run linter
+juno-dev logs       # Tail canister logs in real-time
+juno-dev agent-docs # Download AI agent documentation
+juno-dev help       # Show all available commands
+```
+
+**Note:** All commands require devenv shell. Due to 1Password/secretspec unavailability in AI sandboxes, use:
+```bash
+CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- <command>
+```
+
 ## 📚 AI Agent Documentation
 
 When MCP Servers are not available or missing, LLM-optimized documentation is available locally in `docs/agents/` for offline reference.
@@ -60,6 +79,7 @@ Directives:
   to run devenv shell commands, use this method:
   - `CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- <command>`
   - As a fallback, ask the user to execute and paste the result.
+  - **See Quick Start section above for command examples.**
 
 Devenv has it's own MCP server available at: <https://mcp.devenv.sh/> which can be started locally with `devenv mcp`. This can be used for additional knowledge about `devenv.nix` syntax.
 

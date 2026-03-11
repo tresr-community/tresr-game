@@ -5,6 +5,7 @@ Fiverr
 Gensler
 Graphviz
 HMAC
+Iseconds
 Lambos
 Lizardcube
 MAHD
@@ -15,7 +16,6 @@ Pixelorama
 Powerups
 Rabby
 Remminator
-difftastic
 Reown
 Resol
 SECRETSPEC
@@ -92,6 +92,7 @@ desync
 devenv
 dfinity
 didc
+difftastic
 direnv
 direnvrc
 dotenv
@@ -106,6 +107,7 @@ exte
 extname
 fanfic
 ffset
+figlet
 filecom
 filecomplete
 frontmatter
@@ -141,6 +143,8 @@ knockback
 launchericon
 libopus
 libsecp
+libvorbis
+libvpx
 libwebp
 lightunplated
 lockdb
@@ -168,6 +172,7 @@ nity
 nixos
 nixpkgs
 nment
+nonblock
 normie
 normies
 notific

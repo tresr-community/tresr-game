@@ -1,5 +1,21 @@
 # Blockchain Integration
 
+Trying to get 2 entire different blockchains to work together has been a challenging experience.
+
+## Architecture
+
+The architecture is;
+
+- Internet Computer provides the hosting (compute)
+- Avalanche is the _Identity_
+- Avalanche is the _Economy_
+
+This means we need to;
+
+- Convert an Internet Identity Principal into Avalanche EVM address.
+- Submit EVM transactions client-side using regular browser wallets.
+- Verify EVM transactions across blockchains via the _EVM RPC Canister_ which acts sort of like a bridge between blockchains.
+
 ## EVM RPC Canister
 
 The game uses DFINITY's EVM RPC canister to interact with Avalanche C-Chain:

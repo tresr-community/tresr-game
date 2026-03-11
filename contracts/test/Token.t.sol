@@ -58,8 +58,9 @@ contract RonTokenTest is Test {
 
         // user → user2 should fail (LP not set, neither is owner)
         vm.prank(user);
-        vm.expectRevert("Patience - Trading Not Started Yet!");
-        token.transfer(user2, 500e18);
+        vm.expectRevert("Patience - Trading Not Started Yet!"); // forgefmt: disable-next-line
+        bool _ok = token.transfer(user2, 500e18);
+        (_ok); // silence unused-var; forge-lint satisfied by assignment above
     }
 
     function testOwnerCanTransferBeforeLP() public {
@@ -98,8 +99,9 @@ contract RonTokenTest is Test {
 
         // user2 → user should fail (user already at max)
         vm.prank(user2);
-        vm.expectRevert("Just getting warmed up, limit of 1% of available TRESR until booting up is complete!");
-        token.transfer(user, 1);
+        vm.expectRevert("Just getting warmed up, limit of 1% of available TRESR until booting up is complete!"); // forgefmt: disable-next-line
+        bool _ok2 = token.transfer(user, 1);
+        (_ok2); // silence unused-var; forge-lint satisfied by assignment above
     }
 
     function testBootupOwnerExempt() public {

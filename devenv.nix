@@ -41,12 +41,12 @@ let
     [
       # General
       act
-      bash
+      bashInteractive
       bc
       coreutils
+      dig
       figlet
       gcc
-      git
       git
       hello
       jq
@@ -60,6 +60,7 @@ let
       nodePackages.postcss
       tailwindcss_4
       npm-check-updates
+      nodejs
 
       # Nix
       nixd
@@ -73,12 +74,6 @@ let
       cargo-update
       cargo-watch
       toml-cli
-
-      # Astro
-      astro-language-server
-      nodePackages.postcss
-      tailwindcss_4
-      npm-check-updates
 
       # Security
       codeql
@@ -128,10 +123,15 @@ in
   });
 
   cachix = {
+    enable = true;
     pull = [
-      "pre-commit-hooks"
       "tresr-community"
+      "pre-commit-hooks"
+      "devenv.cachix.org"
+      "cache.nixos.org"
+      "nix-community.cachix.org"
     ];
+    push = "tresr-community";
   };
 
   devenv = {
@@ -170,59 +170,6 @@ in
     fi
   '';
 
-  # AI - Claude Code Integration
-  # See: https://devenv.sh/integrations/claude-code/
-  claude.code = {
-    enable = true;
-    mcpServers = {
-      avalanche = {
-        type = "http";
-        url = "https://build.avax.network/api/mcp";
-      };
-      devenv = {
-        type = "http";
-        url = "https://mcp.devenv.sh";
-      };
-      devenv-cli = {
-        type = "stdio";
-        command = "devenv";
-        args = [ "mcp" ];
-        env = {
-          DEVENV_ROOT = config.devenv.root;
-        };
-      };
-      astroDocs = {
-        type = "http";
-        url = "https://mcp.docs.astro.build/mcp";
-      };
-      github = {
-        type = "http";
-        url = "https://api.githubcopilot.com/mcp/";
-        headers = {
-          Authorization = lib.optionalString (config.env ? GITHUB_TOKEN) "Bearer ${config.env.GITHUB_TOKEN}";
-        };
-      };
-      phaser-editor = {
-        type = "stdio";
-        command = "bunx";
-        args = [
-          "@phaserjs/editor-mcp-server"
-        ];
-      };
-      daisyui-blueprint = {
-        type = "stdio";
-        command = "bunx";
-        args = [
-          "-y"
-          "daisyui-blueprint@latest"
-        ];
-        env =
-          lib.optionalAttrs (config.env ? DAISYUI_LICENSE) { LICENSE = config.env.DAISYUI_LICENSE; }
-          // lib.optionalAttrs (config.env ? DAISYUI_EMAIL) { EMAIL = config.env.DAISYUI_EMAIL; };
-      };
-    };
-  };
-
   languages = {
     nix = {
       enable = true;
@@ -260,10 +207,6 @@ in
     };
   };
 
-  difftastic = {
-    enable = false;
-  };
-
   git-hooks = {
     excludes = [
       ".direnv/"
@@ -284,12 +227,12 @@ in
       };
       cargo-check.enable = true;
       clippy = {
-        enable = false; # TODO: Re-enable when ic-nix is v1.9.2
+        enable = true;
         settings = {
           denyWarnings = true;
           offline = true;
           allFeatures = true;
-          #extraArgs = "--target wasm32-unknown-unknown";
+          extraArgs = "--target wasm32-unknown-unknown";
         };
       };
       check-json.enable = true;
@@ -302,6 +245,16 @@ in
       };
       check-symlinks.enable = true;
       check-yaml.enable = true;
+      commitizen.enable = true;
+      deadnix.enable = true;
+      eslint.enable = false;
+      eslint-check = {
+        enable = true;
+        name = "eslint-check";
+        entry = "eslint-check";
+        files = "^src/.*$";
+        pass_filenames = false;
+      };
       astro-check = {
         enable = true;
         name = "astro-check";
@@ -316,27 +269,10 @@ in
         files = "^config/.*\.yaml$";
         pass_filenames = false;
       };
-      version-reset = {
-        enable = true;
-        name = "version-reset";
-        entry = "bun run version-reset";
-        files = "(^package\\.json$|^public/manifest\\.json$|^src/satellite/Cargo\\.toml$)";
-        pass_filenames = false;
-      };
-      commitizen.enable = true;
-      deadnix.enable = true;
       editorconfig-checker.enable = true;
-      eslint.enable = false;
-      eslint-check = {
-        enable = true;
-        name = "eslint-check";
-        entry = "eslint-check";
-        files = "^src/.*$";
-        pass_filenames = false;
-      };
       markdownlint = {
         excludes = [
-          "^docs/todo/.*\\.md$" # Ignore todo notes.
+          "^docs/issues/todo/.*\\.md$" # Ignore todo notes.
         ];
         enable = true;
         settings = {
@@ -376,6 +312,7 @@ in
       ripsecrets = {
         enable = true;
       };
+      rustfmt.enable = true;
       shellcheck = {
         enable = true;
       };
@@ -391,22 +328,9 @@ in
       trufflehog.enable = true;
       cspell = {
         enable = true;
-        excludes = [
-          "\\.webp$"
-          "\\.png$"
-          "\\.jpg$"
-          "\\.jpeg$"
-          "\\.gif$"
-          "\\.ico$"
-          "\\.svg$"
-          "\\.woff2?$"
-          "\\.ttf$"
-          "\\.eot$"
-          "\\.mp3$"
-          "\\.mp4$"
-          "\\.ogg$"
-          "\\.wav$"
-          "\\.wasm$"
+        args = [
+          "lint"
+          "--no-must-find-files"
         ];
       };
       yamllint = {
@@ -426,6 +350,14 @@ in
         entry = "solidity-dev check";
         pass_filenames = false;
       };
+      version-reset = {
+        enable = true;
+        name = "version-reset";
+        description = "Reset all version files to 0.0.0 (CI/convco is the source of truth)";
+        entry = "bun run version-reset";
+        files = "(^package\\.json$|^public/manifest\\.json$|^src/satellite/Cargo\\.toml$)";
+        pass_filenames = false;
+      };
     };
   };
 
@@ -439,13 +371,6 @@ in
   devcontainer = {
     enable = true;
     settings = {
-      containerEnv = {
-        NIX_REMOTE = "daemon";
-      };
-      mounts = [
-        # Mount Nix store the host to the container.
-        "source=/nix,target=/nix,readonly,type=bind"
-      ];
       customizations = {
         vscode = {
           extensions = [

@@ -1,11 +1,26 @@
 # CI/CD Architecture
 
-## Release Flow (Two-Pass)
+## Overview
 
-Contract addresses have a circular dependency between Juno (oracle) and
-Foundry (token, vault). The pipeline uses a **two-pass** approach:
+Mixing blockchains comes with _unique challenges_
 
-### Testnet (automatic on trunk push)
+- First we need the frontend deployed to obtain the ICP Oracle address
+- Then we need to deploy the Avalanche Smart Contracts which need the Oracle
+- Then we need to re-deploy the frontend using the Smart Contract addresses.
+
+This makes the release process _Two-Pass_.
+
+## Environments
+
+There are 3 environments, but only 2 are managed with CI/CD.
+
+- Local
+- Testnet
+- Mainnet
+
+### Testnet
+
+Testnet deployments happen automatically on any merge into the _trunk_ branch.
 
 ```mermaid
 graph TD
@@ -25,7 +40,9 @@ graph TD
     end
 ```
 
-### Mainnet (manual promotion)
+### Mainnet
+
+Mainnet deployments only occur after a _manual promotion_ process with gated approvals.
 
 ```mermaid
 graph TD
@@ -58,88 +75,30 @@ graph TD
     F --> G["Pre-release created </br> (automatic)"]
     G --> H["Testnet deployed"]
     H --> I["UAT / QA"]
-    I --> J["Run cd-release-mainnet </br> (1st run)"]
+    I --> J["Run cd.yaml </br> (Mainnet 1st run)"]
     J --> K["Contracts deployed </br> + config PR created"]
-    K -->|merge PR| L["Run cd-release-mainnet </br> (2nd run)"]
+    K -->|merge PR| L["Run cd.yaml </br> (Mainnet 2nd run)"]
     L --> M["Config applied </br> + deployed"]
 ```
 
-## Manually Runnable Workflows
+## The "Gatekeeper" Strategy
 
-Only these workflows can be triggered manually via `workflow_dispatch`:
+The CI design uses a strictly-parallel orchestration pipeline pattern. This allows us to _warm_ the cache first, speeding up any subsequent parallel jobs.
 
-| Workflow                   | Purpose                                   |
-| -------------------------- | ----------------------------------------- |
-| `cd-release-testnet.yaml`  | Create pre-release and deploy to Testnet  |
-| `cd-release-mainnet.yaml`  | Promote pre-release and deploy to Mainnet |
-| `chore-devenv-update.yaml` | Update devenv.lock, create PR             |
-
-All other workflows are triggered automatically by events
-(PR, push, merge_group, schedule, workflow_call).
-
-## Mainnet Promotion
-
-When running `cd-release-mainnet.yaml`:
-
-- **With `release_tag`**: Promotes that specific pre-release
-- **Without `release_tag`**: Auto-discovers the latest pre-release and promotes it
-- **If latest release is already promoted**: Errors with a helpful message
-
-The GitHub `Mainnet` environment requires manual approval before the promote job runs.
-
-## CI Pipeline
-
-```mermaid
-graph LR
-    PR["Pull Request"] --> CI["ci-devenv.yaml"]
-    PR --> FCI["ci-foundry.yaml"]
-    PR --> JCI["ci-juno.yaml"]
-    PR --> SEC1["sec-codeql.yaml"]
-    PR --> SEC2["sec-trivy.yaml"]
-    PR --> CHK["chore-pr-title.yaml"]
-
-    CI --> T1["devenv test"]
-    FCI --> T2["solidity-dev check<br/>(format, build, test)"]
-    JCI --> T3["lint + build hosting<br/>+ build functions"]
-    SEC1 --> T4["CodeQL<br/>(JS/TS, Rust, Actions)"]
-    SEC2 --> T5["Trivy<br/>(vuln, misconfig, secrets)"]
-    CHK --> T6["Conventional commit<br/>title validation"]
-```
-
-### ci-devenv.yaml
-
-Validates the developer environment builds and tests correctly.
-Runs `devenv test` to ensure all Nix dependencies resolve.
-
-### ci-foundry.yaml
-
-Lint and check Solidity contracts via `solidity-dev check`
-(format, build, test, Slither).
-
-> [!NOTE]
-> No paths filter -- this workflow always runs so that the required
-> "Check Contracts" status check is reported on every PR.
-> A `detect_changes` step skips the actual check when no contracts changed.
-
-### ci-juno.yaml
-
-Lint, type-check, and build the Juno satellite:
-
-1. `bun run lint` -- ESLint
-2. `juno-dev build` -- Astro hosting build
-3. `juno-dev build-functions` -- Rust satellite functions
+1. `ci.yaml` and `cd.yaml` act as absolute entry points (Gatekeepers).
+2. The gatekeeper triggers `setup-devenv` synchronously, populating the GitHub L2 cache.
+3. Once populated, the Gatekeeper fires off all subsequent workflows.
 
 ## Foundry Deploy
 
-Foundry deploys are split into two `workflow_call`-only workflows:
+Foundry deploys are split into two `workflow_call`-only workflows called by the unified `cd.yaml`:
 
 | Workflow                  | Environment | Contracts deployed            |
 | ------------------------- | ----------- | ----------------------------- |
 | `cd-foundry-testnet.yaml` | Testnet     | Test Token, Faucet, Vault     |
 | `cd-foundry-mainnet.yaml` | Mainnet     | Vault only (real TRESR token) |
 
-Both are `workflow_call` only — they receive `oracle_address` from the
-corresponding Juno deploy when called by the release workflow.
+Both are `workflow_call` only — they receive `oracle_address` from the corresponding Juno deploy when called by the unified release workflow.
 
 Shared logic is extracted into four composite actions under
 `.github/actions/`:
@@ -227,143 +186,3 @@ The pipeline auto-detects whether to do a **fresh deploy** or an
 > After a successful deploy, the `update-config` job in the release workflow
 > automatically creates a PR to update `config/tresr.yaml` with the new
 > contract addresses. Review and merge that PR to complete the cycle.
-
-## Juno Deploy
-
-### cd-juno-testnet.yaml
-
-Called by `cd-release-testnet.yaml` after a successful pre-release.
-Deploys hosting, config, and (if changed) serverless functions
-to `staging` mode.
-
-Steps:
-
-1. Parse release tag and set version
-2. Detect function changes (diff against previous tag)
-3. Build functions (only if changed)
-4. `juno hosting deploy --mode staging`
-5. `juno config apply --force --mode staging`
-6. `juno functions publish --mode staging` (only if changed)
-
-### cd-juno-mainnet.yaml
-
-Called by `cd-release-mainnet.yaml` after a successful promotion.
-Same structure as testnet but deploys in `production` mode.
-
-## Security Scanning
-
-### sec-codeql.yaml
-
-CodeQL static analysis for security vulnerabilities.
-Scans JavaScript/TypeScript, Rust, and GitHub Actions workflows.
-Runs on PR, push, merge_group, and weekly schedule.
-Results uploaded to the GitHub Security tab.
-
-### sec-trivy.yaml
-
-Trivy filesystem scan for vulnerabilities, misconfigurations,
-exposed secrets, and license compliance.
-Runs on PR (except docs-only changes), merge_group, and weekly.
-Results uploaded as SARIF to GitHub Security.
-
-## Housekeeping
-
-### chore-devenv-update.yaml
-
-Runs weekly (Sunday 00:00 UTC) or on manual dispatch.
-Updates devenv dependencies (`devenv update`), runs tests,
-and creates a PR with the updated `devenv.lock`.
-
-### chore-pr-title.yaml
-
-Enforces conventional commit format on PR titles
-(`type(scope): description`). Required for clean changelogs
-and correct semantic version bumps via `convco`.
-
-### comments.yaml
-
-Reacts to issue comments with Giphy responses and optionally
-forwards to Discord (gated by the `ENABLE_DISCORD` variable).
-
-## Environment Configuration
-
-Contract addresses are read from `config/tresr.yaml` at deploy time:
-
-```yaml
-client:
-  blockchain:
-    avalanche:
-      testnet:
-        vault_contract: "0x..." # Proxy address (set after first deploy)
-        faucet_contract: "0x..." # Set after first testnet deploy
-        tresr_token_contract: "0x..."
-        oracle_address: "0x..."
-        safe_address: "0x..." # Gnosis Safe multisig
-      mainnet:
-        vault_contract: "0x..."
-        tresr_token_contract: "0x..."
-        # ...
-```
-
-## Secrets
-
-| Secret                            | Purpose                                       |
-| --------------------------------- | --------------------------------------------- |
-| `DEPLOYER_PRIVATE_KEY`            | EOA wallet for broadcasting deploy txns       |
-| `SNOWTRACE_API_KEY`               | Contract verification on Snowtrace            |
-| `JUNO_TOKEN`                      | Juno CLI auth for hosting/functions/config    |
-| `PUBLIC_WALLETCONNECT_PROJECT_ID` | WalletConnect Cloud project ID                |
-| `GIPHY_TOKEN`                     | Giphy API key for comment reactions           |
-| `WEBHOOK_DISCORD`                 | Discord webhook URL for comment notifications |
-| `DAISYUI_LICENSE`                 | DaisyUI commercial license                    |
-| `DAISYUI_EMAIL`                   | DaisyUI account email                         |
-
-## Custom Actions
-
-| Action                   | Purpose                                          |
-| ------------------------ | ------------------------------------------------ |
-| `cache-bun`              | Cache Bun package manager dependencies           |
-| `cache-cargo`            | Cache Cargo/Rust build artifacts                 |
-| `cache-foundry`          | Cache Foundry build artifacts                    |
-| `detect-foundry-changes` | Check contract source changes since last git tag |
-| `foundry-deploy-setup`   | Secret checks, caching, config, balance, build   |
-| `foundry-deploy-summary` | Generate GitHub Actions job summary              |
-| `foundry-resolve-vault`  | Detect deploy/upgrade mode, run Forge scripts    |
-| `free-disk-space`        | Free disk space on GitHub-hosted runners         |
-| `report-status`          | Report workflow status to commit checks          |
-| `setup-devenv`           | Install and configure devenv with Cachix         |
-| `setup-juno`             | Install Juno CLI                                 |
-| `update-tresr-config`    | Update tresr.yaml, regenerate config, create PR  |
-| `version`                | Manage version bumping across project files      |
-
-## Workflow Inventory
-
-| Workflow                   | Prefix | Trigger                         | Purpose                                  |
-| -------------------------- | ------ | ------------------------------- | ---------------------------------------- |
-| `cd-release-testnet.yaml`  | cd     | push to trunk, dispatch         | Create pre-release and deploy to Testnet |
-| `cd-release-mainnet.yaml`  | cd     | dispatch only                   | Promote and deploy to Mainnet            |
-| `cd-juno-testnet.yaml`     | cd     | workflow_call only              | Deploy Juno to Testnet                   |
-| `cd-juno-mainnet.yaml`     | cd     | workflow_call only              | Deploy Juno to Mainnet                   |
-| `cd-foundry-testnet.yaml`  | cd     | workflow_call only              | Deploy Solidity contracts to Testnet     |
-| `cd-foundry-mainnet.yaml`  | cd     | workflow_call only              | Deploy Solidity contracts to Mainnet     |
-| `ci-devenv.yaml`           | ci     | pull_request, merge_group       | Test devenv shell                        |
-| `ci-foundry.yaml`          | ci     | pull_request, merge_group       | Lint and check Solidity                  |
-| `ci-juno.yaml`             | ci     | pull_request, merge_group       | Build and check Juno                     |
-| `chore-devenv-update.yaml` | chore  | schedule (weekly), dispatch     | Update devenv.lock, create PR            |
-| `chore-pr-title.yaml`      | chore  | pull_request                    | Validate conventional commit PR titles   |
-| `sec-codeql.yaml`          | sec    | PR, push, merge_group, schedule | CodeQL security analysis                 |
-| `sec-trivy.yaml`           | sec    | PR, merge_group, schedule       | Trivy vulnerability scanning             |
-| `comments.yaml`            | --     | issue_comment                   | Handle slash commands in comments        |
-
-## Naming Conventions
-
-| Element           | Convention                                 | Example                    |
-| ----------------- | ------------------------------------------ | -------------------------- |
-| Workflow filename | `{ci\|cd\|chore}-{component}[-{env}].yaml` | `chore-devenv-update.yaml` |
-| Workflow `name:`  | Title Case                                 | `Juno Deploy (Testnet)`    |
-| Job ID            | `kebab-case`                               | `deploy-juno-testnet`      |
-| Job `name:`       | Title Case                                 | `Deploy Juno (Testnet)`    |
-| Step ID           | `snake_case`                               | `setup_devenv`             |
-| Step `name:`      | Title Case Verb-Noun                       | `Setup Devenv`             |
-| Action inputs     | `kebab-case`                               | `github-token`             |
-| File extension    | `.yaml`                                    | --                         |

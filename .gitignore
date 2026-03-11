@@ -68,6 +68,7 @@ contracts/cache/
 contracts/out/
 contracts/broadcast/
 contracts/.snap
+.anvil-state.json
 
 # CodeQL local analysis
 .codeql-db/

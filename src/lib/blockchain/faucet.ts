@@ -136,19 +136,20 @@ export async function claimFaucet(): Promise<`0x${string}`> {
 
   log.info(COMPONENT_NAME, "Faucet claim tx:", hash);
 
-  // Option B: fast existence check — fails in ~1 s with a clear message if the
-  // tx was never actually broadcast (ghost hash from the wallet extension).
-  // We explicitly use the public read client so that we ask the Anvil node directly
-  // rather than asking MetaMask (which sometimes caches failed broadcasts).
-  const publicClient = getReadClient();
-  await verifyTxExists((args) => publicClient.getTransaction(args), hash);
+  // verifyTxExists: only on Anvil where ghost-hashes (silently dropped txs
+  // from wallet extensions) are a known issue. On testnet/mainnet MetaMask
+  // throws immediately if it can’t broadcast, so the check is unnecessary
+  // overhead and risks hitting a different RPC endpoint.
+  if (env === "anvil") {
+    await verifyTxExists((args) => extendedClient.getTransaction(args), hash);
+  }
 
   log.info(COMPONENT_NAME, `Waiting for receipt (1 confirmation): ${hash}`);
 
   const receipt = await extendedClient.waitForTransactionReceipt({
     hash,
     confirmations: 1,
-    pollingInterval: 100,
+    pollingInterval: 500,
     timeout: config.wallet.tx_timeout_ms,
   });
 

@@ -140,8 +140,8 @@ This document outlines the feature and bug fix roadmap for the Tresr game, organ
 - [x] FeeGate entry fee payment
 - [x] Fee transaction signing
 - [x] Session ID tracking
-- [ ] Implement 10% burn on fee
-- [ ] Verify fee on Juno backend
+- [x] Implement 10% burn on fee
+- [x] Verify fee on Juno backend
 
 ### 4.2 Claim Flow
 
@@ -455,20 +455,12 @@ This document outlines the feature and bug fix roadmap for the Tresr game, organ
 
 ---
 
-## Future (Post-MVP, when scrolling levels are added)
+## Future (Post-MVP)
 
+- [ ] Implement AI Agent for the Boss
+  - Boss will _wager_ against the player.
+  - Risk/Reward based on Wallet history
 - [ ] Re-visit Phase Box2D Engine as possible option
 - [ ] Environmental obstacles (dumpsters, pillars, barriers) with Arcade static bodies
 - [ ] Multi-layer parallax background system (sky, buildings, midground, ground layers)
 - [ ] Horizontal level scrolling with camera follow
-
----
-
-## Next Steps (Recommended Priority)
-
-1. **Boss AI patterns** — Ground pound, charge, summon minions, HP phase transitions (#173)
-2. **Mobile touch controls** — Virtual joystick + attack button (#174)
-3. **Vault display** — Show balance on home page (#178)
-4. **Death/respawn with lives** — Multiple lives before game over (#191)
-5. **Settings menu** — Volume, controls, preferences (#188)
-6. **Bug fixes** — Work through ticket backlog (#144, #145, #161)

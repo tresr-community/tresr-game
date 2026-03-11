@@ -56,7 +56,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    timeout-minutes: 60
+    timeout-minutes: 120
     continue-on-error: false
 
     environment: Mainnet

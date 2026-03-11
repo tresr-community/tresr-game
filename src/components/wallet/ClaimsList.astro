@@ -60,7 +60,7 @@
 <script>
   import {listDocs, setDoc} from "@junobuild/core";
   import type {Doc} from "@junobuild/core";
-  import {subscribeToAuth} from "@/lib/auth";
+  import {initAuth, subscribeToAuth} from "@/lib/auth";
   import {getConnectedAddress, getWalletClient} from "@/lib/wallet/connection";
   import {VaultAbi} from "@/lib/blockchain/abi/vault";
   import {config} from "@/lib/config/client";
@@ -112,16 +112,23 @@
     }
   }
 
-  // Subscribe to auth
-  subscribeToAuth(async (user) => {
-    currentUser = user;
-    if (user && !user.isGuest) {
-      await fetchClaims();
-    } else {
-      claimsLoading.classList.add("hidden");
-      pendingEmpty.classList.remove("hidden");
-      historyEmpty.classList.remove("hidden");
-    }
+  // Await initAuth before subscribing — subscribeToAuth fires immediately with
+  // the current state, but listDocs requires initSatellite() to have run first.
+  // Without this guard, a returning SIWA user gets "No satellite ID defined"
+  // on the claims page because the subscription fires before Juno is ready.
+  initAuth().then(() => {
+    subscribeToAuth(async (user) => {
+      currentUser = user;
+      if (user && !user.isGuest) {
+        await fetchClaims();
+      } else {
+        claimsLoading.classList.add("hidden");
+        viewPending.classList.remove("hidden");
+        viewHistory.classList.remove("hidden");
+        pendingEmpty.classList.remove("hidden");
+        historyEmpty.classList.remove("hidden");
+      }
+    });
   });
 
   async function fetchClaims() {
@@ -146,7 +153,9 @@
 
       renderClaims();
     } catch (err: unknown) {
-      log.error(COMPONENT_NAME, "Failed to fetch claims", err);
+      log.warn(COMPONENT_NAME, "Failed to fetch claims", err);
+      allClaims = [];
+      renderClaims();
     } finally {
       claimsLoading.classList.add("hidden");
       switchTab(currentTab);
