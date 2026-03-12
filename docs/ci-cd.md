@@ -2,13 +2,11 @@
 
 ## Overview
 
-Mixing blockchains comes with _unique challenges_
+Mixing blockchains comes with _unique challenges_;
 
-- First we need the frontend deployed to obtain the ICP Oracle address
-- Then we need to deploy the Avalanche Smart Contracts which need the Oracle
-- Then we need to re-deploy the frontend using the Smart Contract addresses.
-
-This makes the release process _Two-Pass_.
+- The ICP Oracle address is stable only after the initial bootstrap — it's stored in `config/tresr.yaml`.
+- Juno and Foundry deploys run **in parallel** — neither waits for the other.
+- Contract addresses are written back to `config/tresr.yaml` when changed via an auto-merged PR.
 
 ## Environments
 
@@ -24,20 +22,13 @@ Testnet deployments happen automatically on any merge into the _trunk_ branch.
 
 ```mermaid
 graph TD
-    subgraph "1st pass — contract deploy"
-        A["Push to trunk"] --> B["pre-release"]
-        B --> C["deploy-juno </br> testnet"]
-        C -->|oracle_address| D["deploy-foundry </br> testnet"]
-        D -->|contract addresses| E["update-config </br> job"]
-        E --> F["Create PR with </br> new addresses"]
-    end
-
-    subgraph "2nd pass — config update"
-        F -->|merge PR| G["Push to trunk"]
-        G --> H["pre-release </br> (skipped - tag exists)"]
-        H --> I["deploy-juno-testnet </br> (redeploys with new config)"]
-        I --> J["deploy-foundry-testnet </br> (skipped - no changes)"]
-    end
+    A["Push to trunk"] --> B["pre-release"]
+    B --> C["deploy-juno-testnet"]
+    B --> D["deploy-foundry-testnet"]
+    C --> E["update-config"]
+    D --> E
+    E --> F["Create PR with</br>new addresses"]
+    F -->|"auto-merge"| G["trunk updated"]
 ```
 
 ### Mainnet
@@ -46,21 +37,13 @@ Mainnet deployments only occur after a _manual promotion_ process with gated app
 
 ```mermaid
 graph TD
-    promote["promote </br> (manual dispatch)"] --> L["promote job"]
-
-    subgraph "1st pass — contract deploy"
-        L --> M["cd-juno </br> mainnet"]
-        M -->|oracle_address| N["cd-foundry </br> mainnet"]
-        N -->|contract addresses| O["update-config </br> mainnet job"]
-        O --> P["Create PR with </br> mainnet addresses"]
-    end
-
-    subgraph "2nd pass — config update"
-        P -->|merge PR| Q["Manual dispatch </br> (2nd run)"]
-        Q --> R["promote job </br> (re-run)"]
-        R --> S["cd-juno-mainnet </br> (redeploys with new config)"]
-        S --> T["cd-foundry-mainnet </br> (skipped - no changes)"]
-    end
+    promote["promote</br>(manual dispatch)"] --> B["promote job"]
+    B --> C["deploy-juno-mainnet"]
+    B --> D["deploy-foundry-mainnet"]
+    C --> E["update-config-mainnet"]
+    D --> E
+    E --> F["Create PR with</br>new addresses"]
+    F -->|"auto-merge"| G["trunk updated"]
 ```
 
 ## Developer Workflow
@@ -83,11 +66,18 @@ graph TD
 
 ## The "Gatekeeper" Strategy
 
-The CI design uses a strictly-parallel orchestration pipeline pattern. This allows us to _warm_ the cache first, speeding up any subsequent parallel jobs.
+The CI design uses a cache-aware orchestration pipeline that avoids redundant warm-up work.
 
-1. `ci.yaml` and `cd.yaml` act as absolute entry points (Gatekeepers).
-2. The gatekeeper triggers `setup-devenv` synchronously, populating the GitHub L2 cache.
-3. Once populated, the Gatekeeper fires off all subsequent workflows.
+1. `check-cache` runs a **lookup-only** probe (`actions/cache` with `lookup-only: true`) against
+   the Nix store key `${{ runner.os }}-nix-${{ hashFiles('devenv.lock', 'devenv.nix') }}`.
+   This takes ~5 seconds and does not download anything.
+2. If the cache **exists** (the common case Mon–Fri): `setup-environment` is skipped and all CI
+   jobs start immediately in parallel.
+3. If the cache **is missing** (new `devenv.lock` hash, or first run after the weekly chore):
+   `setup-environment` runs synchronously (~60 min) to warm the cache, then CI jobs fan out.
+
+The weekly `chore-devenv-update.yaml` runs every Sunday at midnight and warms the cache for
+the coming week, so developers' PRs hit the fast path the rest of the time.
 
 ## Foundry Deploy
 
@@ -98,7 +88,12 @@ Foundry deploys are split into two `workflow_call`-only workflows called by the 
 | `cd-foundry-testnet.yaml` | Testnet     | Test Token, Faucet, Vault     |
 | `cd-foundry-mainnet.yaml` | Mainnet     | Vault only (real TRESR token) |
 
-Both are `workflow_call` only — they receive `oracle_address` from the corresponding Juno deploy when called by the unified release workflow.
+Both are `workflow_call` only — they read `oracle_address` from `config/tresr.yaml` via `foundry-deploy-setup`, and run in parallel with their corresponding Juno deploy job.
+
+> [!NOTE]
+> On first bootstrap, the oracle address must be in `config/tresr.yaml` **before** the Foundry
+> deploy runs. Populate it by running a Juno-only deploy first via `bootstrap` dispatch, or by
+> manually updating `config/tresr.yaml` after the initial Juno deploy and merging the PR.
 
 Shared logic is extracted into four composite actions under
 `.github/actions/`:

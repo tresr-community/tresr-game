@@ -12,12 +12,6 @@ name: Foundry Deploy (Testnet)
 
 on:
   workflow_call:
-    inputs:
-      oracle_address:
-        description: "Oracle address from Juno deploy"
-        type: string
-        required: false
-        default: ""
     outputs:
       token_address:
         value: ${{ jobs.deploy.outputs.token_address }}
@@ -94,7 +88,6 @@ jobs:
         uses: ./.github/actions/foundry-deploy-setup
         with:
           environment: Testnet
-          oracle-address: ${{ inputs.oracle_address }}
           deployer-private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
           snowtrace-api-key: ${{ secrets.SNOWTRACE_API_KEY }}
 
@@ -120,7 +113,7 @@ jobs:
           rpc-url: ${{ steps.foundry_deploy_setup.outputs.RPC_URL }}
           chain-id: ${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}
           token-address: ${{ steps.resolve_token.outputs.token_address }}
-          oracle-address: ${{ inputs.oracle_address || steps.foundry_deploy_setup.outputs.ORACLE_ADDRESS }}
+          oracle-address: ${{ steps.foundry_deploy_setup.outputs.ORACLE_ADDRESS }}
           admin-address: ${{ steps.foundry_deploy_setup.outputs.ADMIN_ADDRESS }}
           vault-address: ${{ steps.foundry_deploy_setup.outputs.VAULT_ADDRESS }}
           deployer-private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
@@ -134,7 +127,7 @@ jobs:
         with:
           network: testnet
           chain-id: ${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}
-          oracle-address: ${{ inputs.oracle_address || steps.foundry_deploy_setup.outputs.ORACLE_ADDRESS }}
+          oracle-address: ${{ steps.foundry_deploy_setup.outputs.ORACLE_ADDRESS }}
           admin-address: ${{ steps.foundry_deploy_setup.outputs.ADMIN_ADDRESS }}
           token-address: ${{ steps.resolve_token.outputs.token_address }}
           vault-address: ${{ steps.resolve_vault.outputs.vault_address }}

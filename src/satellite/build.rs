@@ -179,7 +179,7 @@ fn main() {
         .anti_cheat
         .ban_durations_hours
         .iter()
-        .map(|d| d.to_string())
+        .map(|d: &u64| d.to_string())
         .collect::<Vec<_>>()
         .join(", ");
 
