@@ -245,7 +245,7 @@ client:
         allowed_origins:
           - https://game-testnet.tresr.community
         token_ticker: tRON
-        tresr_token_contract: "0x7790dab14d4fb72593467f0b89c292c21219d0a2"
+        tresr_token_contract: "0x9f115325da6140bb41c7d70d328dc18d3e884a47"
         # IC satellite canister's derived ETH address (threshold ECDSA) — signs reward claims for Vault.
         # Obtain by deploying the satellite canister and calling its `get_oracle_address()` endpoint.
         oracle_address: "0xf2ff695cae8cc886d3c03afd502a35fcee61b66f"
@@ -253,7 +253,7 @@ client:
         # For mainnet, use safe_address (Gnosis Safe multisig) instead.
         admin_address: "0x628F3Df70dd2F19e28842c9AB64c64A9700a929e"
         vault_contract: "0xef200a42a324e2af6f6cb2f41613cb06d90fc85b"
-        faucet_contract: "0xb38cb831085b7b389961fbe17ce693e94372a80c"
+        faucet_contract: "0xb517f42ca0ece34662fa5d50f26b3b5b08646e9c"
         explorer_url: "https://testnet.snowtrace.io/tx/"
       mainnet:
         url: https://game.tresr.community
