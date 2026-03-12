@@ -38,6 +38,14 @@ export const getOracleAddress = async (): Promise<Result_3> => {
 	return await get_oracle_address();
 }
 
+export const getConfigHash = async (): Promise<string> => {
+	const {get_config_hash} = await getSatelliteExtendedActor<SatelliteActor>({
+		idlFactory
+	});
+
+	return await get_config_hash();
+}
+
 export const reportError = async (value0: ErrorPayload): Promise<Result_3> => {
 	const {report_error} = await getSatelliteExtendedActor<SatelliteActor>({
 		idlFactory

@@ -32,6 +32,10 @@ service : {
   // Returns the satellite's Public Ethereum address derived from its threshold ECDSA key.
   // This is the oracle address used for on-chain signature verification.
   get_oracle_address : () -> (Result_3);
+  // Returns the build-time config hash for client/satellite sync verification.
+  // Called by the game pre-flight check before the fee gate. Returns a 64-char SHA-256 hex string.
+  // A mismatch means the frontend and satellite are out of sync (e.g. mid-deploy).
+  get_config_hash : () -> (text) query;
   // Report a client-side error. Anyone (including unauthenticated callers) can
   // report errors. The satellite generates the `error_id` server-side so the
   // client cannot forge it.

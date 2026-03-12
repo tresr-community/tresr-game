@@ -113,6 +113,7 @@ filecomplete
 frontmatter
 fuser
 gatekeep
+getrandom
 gify
 giga
 giphy

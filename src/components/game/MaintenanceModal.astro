@@ -1,0 +1,99 @@
+---
+
+---
+
+<dialog id="modal-maintenance" class="modal modal-middle">
+  <div class="modal-box border-warning/30 bg-base-300 border text-center">
+    <h3
+      class="text-warning font-display text-3xl font-black tracking-widest uppercase"
+    >
+      Under Maintenance
+    </h3>
+    <p class="py-4 opacity-70">
+      We're deploying an update. The game will be back shortly — no funds are at
+      risk during this window.
+    </p>
+
+    <div class="stats stats-vertical bg-base-200/50 my-4 w-full shadow">
+      <div class="stat">
+        <div class="stat-title text-xs uppercase">Status</div>
+        <div class="stat-value text-warning text-lg">Deploying</div>
+      </div>
+      <div class="stat">
+        <div class="stat-title text-xs uppercase">Action Required</div>
+        <div class="stat-value font-mono text-base">Refresh in a minute</div>
+      </div>
+    </div>
+
+    <div class="modal-action flex-col gap-2">
+      <button id="btn-maintenance-refresh" class="btn btn-warning btn-block">
+        Refresh Page
+      </button>
+      <button id="btn-maintenance-back" class="btn btn-ghost btn-block">
+        Return Home
+      </button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+  const modal = document.getElementById(
+    "modal-maintenance"
+  ) as HTMLDialogElement;
+  const btnRefresh = document.getElementById(
+    "btn-maintenance-refresh"
+  ) as HTMLButtonElement;
+  const btnBack = document.getElementById(
+    "btn-maintenance-back"
+  ) as HTMLButtonElement;
+
+  function handleBtnRefresh() {
+    window.location.reload();
+  }
+
+  function handleBtnBack() {
+    modal.close();
+    window.location.href = "/";
+  }
+
+  btnRefresh.addEventListener("click", handleBtnRefresh);
+  btnBack.addEventListener("click", handleBtnBack);
+
+  // Prevent Escape key dismissal — player must acknowledge
+  function handleCancel(e: Event) {
+    e.preventDefault();
+  }
+  modal.addEventListener("cancel", handleCancel);
+
+  // Prevent backdrop click dismissal
+  function handleBackdropClick(e: MouseEvent) {
+    if (e.target === modal) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+  modal.addEventListener("click", handleBackdropClick);
+
+  function handleMaintenanceModalOpen() {
+    modal.showModal();
+  }
+  document.addEventListener(
+    "tresr:maintenance-modal-open",
+    handleMaintenanceModalOpen
+  );
+
+  document.addEventListener(
+    "astro:before-preparation",
+    () => {
+      btnRefresh.removeEventListener("click", handleBtnRefresh);
+      btnBack.removeEventListener("click", handleBtnBack);
+      modal.removeEventListener("cancel", handleCancel);
+      modal.removeEventListener("click", handleBackdropClick as EventListener);
+      document.removeEventListener(
+        "tresr:maintenance-modal-open",
+        handleMaintenanceModalOpen
+      );
+    },
+    {once: true}
+  );
+</script>

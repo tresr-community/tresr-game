@@ -869,7 +869,7 @@ client:
           path: /assets/images/sprites/super/spin.webp
           frameWidth: 256
           frameHeight: 256
-    # Boss character (Gary Gensler)
+    # Boss character
     boss:
       scaleFactor: 2.0
       anims:

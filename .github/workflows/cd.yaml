@@ -236,14 +236,14 @@ jobs:
 
   ##################################################
   # Deploy Solidity contracts (Testnet)
+  # Runs in parallel with deploy-juno-testnet.
+  # Oracle address is read directly from config/tresr.yaml (stable after bootstrap).
   ##################################################
   deploy-foundry-testnet:
     name: Deploy Contracts (Testnet)
-    needs: [pre-release, deploy-juno-testnet]
+    needs: [pre-release]
     if: needs.pre-release.outputs.skip != 'true'
     uses: ./.github/workflows/cd-foundry-testnet.yaml
-    with:
-      oracle_address: ${{ needs.deploy-juno-testnet.outputs.oracle_address }}
     secrets: inherit
 
   ##################################################
@@ -282,7 +282,6 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           environment: testnet
-          oracle-address: ${{ needs.deploy-juno-testnet.outputs.oracle_address }}
           token-address: ${{ needs.deploy-foundry-testnet.outputs.token_address }}
           vault-address: ${{ needs.deploy-foundry-testnet.outputs.vault_address }}
           faucet-address: ${{ needs.deploy-foundry-testnet.outputs.faucet_address }}
@@ -412,13 +411,13 @@ jobs:
 
   ##################################################
   # Deploy Solidity contracts (Mainnet)
+  # Runs in parallel with deploy-juno-mainnet.
+  # Oracle address is read directly from config/tresr.yaml (stable after bootstrap).
   ##################################################
   deploy-foundry-mainnet:
     name: Deploy Contracts (Mainnet)
-    needs: [promote, deploy-juno-mainnet]
+    needs: [promote]
     uses: ./.github/workflows/cd-foundry-mainnet.yaml
-    with:
-      oracle_address: ${{ needs.deploy-juno-mainnet.outputs.oracle_address }}
     secrets: inherit
 
   ##################################################
@@ -456,5 +455,4 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           environment: mainnet
-          oracle-address: ${{ needs.deploy-juno-mainnet.outputs.oracle_address }}
           vault-address: ${{ needs.deploy-foundry-mainnet.outputs.vault_address }}

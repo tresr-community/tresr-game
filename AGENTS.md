@@ -28,6 +28,7 @@ juno-dev help       # Show all available commands
 ```
 
 **Note:** All commands require devenv shell. Due to 1Password/secretspec unavailability in AI sandboxes, use:
+
 ```bash
 CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- <command>
 ```
