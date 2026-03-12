@@ -8,9 +8,11 @@
 #   - Merge queues
 #
 # Flow:
-#   1. setup-environment primes the GitHub cache via devenv
-#   2. Parallel jobs (ci-*.yaml) execute simultaneously
-#      reusing the perfectly pre-warmed Nix cache.
+#   1. check-cache does a lookup-only probe of the Nix store cache key.
+#   2. If cache exists (hit), setup-environment is skipped entirely.
+#   3. If cache is missing, setup-environment runs first to warm it.
+#   4. All parallel CI jobs start as soon as check-cache finishes,
+#      waiting for setup-environment only when it actually ran.
 ##################################################
 
 name: CI
@@ -36,18 +38,58 @@ permissions:
   statuses: write
   actions: write
 
+defaults:
+  run:
+    shell: bash
+
 env:
   NIXPKGS_ALLOW_UNFREE: 1
   SECRETSPEC_PROVIDER: env
 
 jobs:
   ##################################################
-  # Gatekeeper - Prime the Nix Cache for parallel jobs
+  # Gatekeeper - Check whether the Nix cache already exists
+  # Uses lookup-only so no download occurs, just a cache API probe.
+  ##################################################
+  check-cache:
+    name: Check Cache
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 5
+    continue-on-error: false
+
+    outputs:
+      cache-hit: ${{ steps.nix_cache_lookup.outputs.cache-hit }}
+
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - id: nix_cache_lookup
+        name: Lookup Nix Cache
+        uses: actions/cache@v5
+        with:
+          path: /nix
+          key: ${{ runner.os }}-nix-${{ hashFiles('devenv.lock', 'devenv.nix') }}
+          lookup-only: true
+
+  ##################################################
+  # Warm Cache - Only runs on a cache miss
   ##################################################
   setup-environment:
     name: Setup Environment
+
+    needs: check-cache
+    if: needs.check-cache.outputs.cache-hit != 'true'
+
     runs-on: ubuntu-latest
+
     timeout-minutes: 120
+    continue-on-error: false
 
     steps:
       - id: checkout_repository
@@ -69,7 +111,8 @@ jobs:
   ##################################################
   ci-devenv:
     name: Check Devenv
-    needs: setup-environment
+    needs: [check-cache, setup-environment]
+    if: always() && needs.check-cache.result == 'success'
     uses: ./.github/workflows/ci-devenv.yaml
     secrets: inherit
 
@@ -78,7 +121,8 @@ jobs:
   ##################################################
   ci-foundry:
     name: Check Foundry
-    needs: setup-environment
+    needs: [check-cache, setup-environment]
+    if: always() && needs.check-cache.result == 'success'
     uses: ./.github/workflows/ci-foundry.yaml
     secrets: inherit
 
@@ -87,7 +131,8 @@ jobs:
   ##################################################
   ci-juno:
     name: Check Juno
-    needs: setup-environment
+    needs: [check-cache, setup-environment]
+    if: always() && needs.check-cache.result == 'success'
     uses: ./.github/workflows/ci-juno.yaml
     secrets: inherit
 
@@ -106,12 +151,14 @@ jobs:
   status:
     name: CI Status
     needs:
+      - check-cache
       - ci-pr-title
       - ci-devenv
       - ci-foundry
       - ci-juno
     if: always()
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - id: checkout_repository
@@ -152,6 +199,12 @@ jobs:
             echo "| Devenv | $(status_emoji '${{ needs.ci-devenv.result }}') ${{ needs.ci-devenv.result }} |"
             echo "| Foundry | $(status_emoji '${{ needs.ci-foundry.result }}') ${{ needs.ci-foundry.result }} |"
             echo "| Juno | $(status_emoji '${{ needs.ci-juno.result }}') ${{ needs.ci-juno.result }} |"
+            echo ""
+            if [ "${{ needs.check-cache.outputs.cache-hit }}" == "true" ]; then
+              echo "💚 **Nix Cache: HIT** — setup-environment was skipped"
+            else
+              echo "🔴 **Nix Cache: MISS** — setup-environment ran (~60 min warm-up)"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - id: check_failures

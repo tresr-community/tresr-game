@@ -66,11 +66,18 @@ graph TD
 
 ## The "Gatekeeper" Strategy
 
-The CI design uses a strictly-parallel orchestration pipeline pattern. This allows us to _warm_ the cache first, speeding up any subsequent parallel jobs.
+The CI design uses a cache-aware orchestration pipeline that avoids redundant warm-up work.
 
-1. `ci.yaml` and `cd.yaml` act as absolute entry points (Gatekeepers).
-2. The gatekeeper triggers `setup-devenv` synchronously, populating the GitHub L2 cache.
-3. Once populated, the Gatekeeper fires off all subsequent workflows.
+1. `check-cache` runs a **lookup-only** probe (`actions/cache` with `lookup-only: true`) against
+   the Nix store key `${{ runner.os }}-nix-${{ hashFiles('devenv.lock', 'devenv.nix') }}`.
+   This takes ~5 seconds and does not download anything.
+2. If the cache **exists** (the common case Mon–Fri): `setup-environment` is skipped and all CI
+   jobs start immediately in parallel.
+3. If the cache **is missing** (new `devenv.lock` hash, or first run after the weekly chore):
+   `setup-environment` runs synchronously (~60 min) to warm the cache, then CI jobs fan out.
+
+The weekly `chore-devenv-update.yaml` runs every Sunday at midnight and warms the cache for
+the coming week, so developers' PRs hit the fast path the rest of the time.
 
 ## Foundry Deploy
 
