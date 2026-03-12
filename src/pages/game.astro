@@ -130,7 +130,7 @@ import Loader from "@/components/game/Loader.astro";
       // game. Block entry and show the maintenance modal instead.
       const {isSatelliteInSync} = await import("@/lib/satellite/config-hash");
       if (!(await isSatelliteInSync())) {
-        log.warn(
+        log.info(
           COMPONENT_NAME,
           "Satellite config hash mismatch — showing maintenance modal"
         );

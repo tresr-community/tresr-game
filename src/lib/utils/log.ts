@@ -1,3 +1,5 @@
+import {maintenanceState} from "./maintenance-state";
+
 declare global {
   interface Window {
     showInfoToast: (message: string, details?: string) => void;
@@ -79,7 +81,13 @@ export function showToast(
       } else {
         console.warn(`${tag} ${message}`, details || "");
       }
-      if (typeof window !== "undefined" && window.showWarningToast) {
+      // Suppress user-visible toasts during maintenance — the modal is the
+      // sole signal. Background systems may still warn; keep them in console.
+      if (
+        !maintenanceState.isActive() &&
+        typeof window !== "undefined" &&
+        window.showWarningToast
+      ) {
         try {
           // Never pass raw technical details to the notification bell.
           // Warning labels are enough for users; details stay in the console.
@@ -152,6 +160,8 @@ export const log = {
         .then(({reportError}) => reportError(component, message, details || ""))
         .catch(() => null)
         .then((errorId) => {
+          // Suppress error toasts during maintenance — modal already informs user.
+          if (maintenanceState.isActive()) return;
           if (typeof window !== "undefined" && window.showErrorToast) {
             try {
               window.showErrorToast(
