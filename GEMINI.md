@@ -5,6 +5,7 @@ All AI agent instructions, technology stack guidance, and project conventions ar
 **→ See [`AGENTS.md`](./AGENTS.md)**
 
 This file contains:
+
 - Agent identity and role
 - AI agent documentation references
 - Technology stack and expertise (devenv, Astro, TypeScript, DaisyUI, Juno, etc.)
@@ -15,6 +16,7 @@ This file contains:
 - Security best practices
 
 **Quick Start:**
+
 ```bash
 juno-dev start      # Start emulator + dev server
 juno-dev stop       # Stop emulator
@@ -23,6 +25,7 @@ juno-dev help       # Show all commands
 ```
 
 For devenv shell access in AI sandboxes:
+
 ```bash
 CI=true SECRETSPEC_PROVIDER=env devenv shell --quiet -- <command>
 ```

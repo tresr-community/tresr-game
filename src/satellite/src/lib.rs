@@ -125,25 +125,21 @@ thread_local! {
 #[assert_set_doc(collections = ["users", "audit", "balance_refresh"])]
 fn assert_set_doc(context: AssertSetDocContext) -> Result<(), String> {
     match context.data.collection.as_str() {
-        "users" => assert_user_profile(&context).map_err(|e| {
-            crate::logging::log_error("Users", &e);
-            e
+        "users" => assert_user_profile(&context).inspect_err(|e| {
+            crate::logging::log_error("Users", e);
         }),
         "audit" => {
             if context.data.key.starts_with("fee_") {
-                assert_fee_request(&context).map_err(|e| {
-                    crate::logging::log_error("Fees", &e);
-                    e
+                assert_fee_request(&context).inspect_err(|e| {
+                    crate::logging::log_error("Fees", e);
                 })
             } else if context.data.key.starts_with("claim_") {
-                assert_claim_request(&context).map_err(|e| {
-                    crate::logging::log_error("Claims", &e);
-                    e
+                assert_claim_request(&context).inspect_err(|e| {
+                    crate::logging::log_error("Claims", e);
                 })
             } else if context.data.key.starts_with("session_") {
-                assert_game_session(&context).map_err(|e| {
-                    crate::logging::log_error("GameSessions", &e);
-                    e
+                assert_game_session(&context).inspect_err(|e| {
+                    crate::logging::log_error("GameSessions", e);
                 })
             } else {
                 Err("Invalid audit key prefix".to_string())
@@ -159,52 +155,52 @@ fn assert_user_profile(context: &AssertSetDocContext) -> Result<(), String> {
     let data: UserProfile = decode_doc_data(&context.data.data.proposed.data)?;
 
     // Validate EVM wallet format if provided
-    if let Some(ref wallet) = data.evm_wallet {
-        if !wallet.is_empty() {
-            if !wallet.starts_with("0x") || wallet.len() != 42 {
-                return Err(
-                    "Invalid EVM wallet address format. Must be 0x followed by 40 hex characters."
-                        .to_string(),
-                );
-            }
+    if let Some(ref wallet) = data.evm_wallet
+        && !wallet.is_empty()
+    {
+        if !wallet.starts_with("0x") || wallet.len() != 42 {
+            return Err(
+                "Invalid EVM wallet address format. Must be 0x followed by 40 hex characters."
+                    .to_string(),
+            );
+        }
 
-            // Read the current document to check if the wallet is actually changing
-            let current_wallet = get_doc_store(
-                context.caller,
-                "users".to_string(),
-                context.data.key.clone(),
-            )
-            .ok()
-            .flatten()
-            .and_then(|doc| decode_doc_data::<UserProfile>(&doc.data).ok())
-            .and_then(|p| p.evm_wallet);
+        // Read the current document to check if the wallet is actually changing
+        let current_wallet = get_doc_store(
+            context.caller,
+            "users".to_string(),
+            context.data.key.clone(),
+        )
+        .ok()
+        .flatten()
+        .and_then(|doc| decode_doc_data::<UserProfile>(&doc.data).ok())
+        .and_then(|p| p.evm_wallet);
 
-            let wallet_is_changing = current_wallet.as_deref() != Some(wallet.as_str());
+        let wallet_is_changing = current_wallet.as_deref() != Some(wallet.as_str());
 
-            if wallet_is_changing {
-                // SIWA (Sign In With Avalanche) users already proved wallet ownership
-                // at the IC network level via the ic-siwa canister — the SIWA signature
-                // cryptographically binds the wallet address to the caller's principal.
-                // Requiring a second wallet-link signature is redundant and hurts UX.
-                //
-                // For IID (Internet Identity) users who manually link a wallet, we still
-                // require the wallet-link signature since IID auth doesn't involve a wallet.
-                let is_siwa = data.login_method.as_deref() == Some("siwa");
+        if wallet_is_changing {
+            // SIWA (Sign In With Avalanche) users already proved wallet ownership
+            // at the IC network level via the ic-siwa canister — the SIWA signature
+            // cryptographically binds the wallet address to the caller's principal.
+            // Requiring a second wallet-link signature is redundant and hurts UX.
+            //
+            // For IID (Internet Identity) users who manually link a wallet, we still
+            // require the wallet-link signature since IID auth doesn't involve a wallet.
+            let is_siwa = data.login_method.as_deref() == Some("siwa");
 
-                if !is_siwa {
-                    // Require verification only for non-SIWA wallet linking (ticket #189)
-                    let sig = data.verification_signature.as_deref().ok_or(
-                        "verification_signature is required when linking an EVM wallet".to_string(),
-                    )?;
-                    let msg = data.verification_message.as_deref().ok_or(
-                        "verification_message is required when linking an EVM wallet".to_string(),
-                    )?;
+            if !is_siwa {
+                // Require verification only for non-SIWA wallet linking (ticket #189)
+                let sig = data.verification_signature.as_deref().ok_or(
+                    "verification_signature is required when linking an EVM wallet".to_string(),
+                )?;
+                let msg = data.verification_message.as_deref().ok_or(
+                    "verification_message is required when linking an EVM wallet".to_string(),
+                )?;
 
-                    // The document key in the "users" collection is the caller's principal
-                    let caller_principal = &context.data.key;
+                // The document key in the "users" collection is the caller's principal
+                let caller_principal = &context.data.key;
 
-                    verify_wallet_signature(wallet, msg, sig, caller_principal)?;
-                }
+                verify_wallet_signature(wallet, msg, sig, caller_principal)?;
             }
         }
     }
@@ -548,21 +544,20 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
     // --- Re-trigger guard ---
     // If scores already has exactly the same user-derived fields,
     // skip the write to avoid a set_doc → on_set_doc → set_doc loop.
-    if let Some(ref ex) = existing {
-        if ex.nickname == profile.nickname
-            && ex.avatar_url == profile.preferences.avatar_url
-            && ex.high_score == profile.stats.high_score
-            && ex.games_won == profile.stats.total_games_won
-        {
-            logging::log_debug(
-                "Scores",
-                &format!(
-                    "Skipping scores sync — no user-field changes for {}",
-                    context.data.key
-                ),
-            );
-            return Ok(());
-        }
+    if let Some(ref ex) = existing
+        && ex.nickname == profile.nickname
+        && ex.avatar_url == profile.preferences.avatar_url
+        && ex.high_score == profile.stats.high_score
+        && ex.games_won == profile.stats.total_games_won
+    {
+        logging::log_debug(
+            "Scores",
+            &format!(
+                "Skipping scores sync — no user-field changes for {}",
+                context.data.key
+            ),
+        );
+        return Ok(());
     }
 
     let entry = LeaderboardEntry {
@@ -1002,26 +997,24 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
                         context.caller,
                         "game_sessions".to_string(),
                         claim.game_session_id.clone(),
-                    ) {
-                        if let Ok(mut rb_session) =
-                            decode_doc_data::<GameSession>(&rollback_doc.data)
-                        {
-                            rb_session.reward_claimed = false;
-                            let rb_version = rollback_doc
-                                .version
-                                .unwrap_or(session_version.saturating_add(1));
-                            let rb_desc = rollback_doc
-                                .description
-                                .unwrap_or(session_description.clone());
-                            let _ = update_session_doc(
-                                &context,
-                                &rb_session,
-                                claim.game_session_id.clone(),
-                                rb_desc,
-                                rb_version,
-                            )
-                            .await;
-                        }
+                    ) && let Ok(mut rb_session) =
+                        decode_doc_data::<GameSession>(&rollback_doc.data)
+                    {
+                        rb_session.reward_claimed = false;
+                        let rb_version = rollback_doc
+                            .version
+                            .unwrap_or(session_version.saturating_add(1));
+                        let rb_desc = rollback_doc
+                            .description
+                            .unwrap_or(session_description.clone());
+                        let _ = update_session_doc(
+                            &context,
+                            &rb_session,
+                            claim.game_session_id.clone(),
+                            rb_desc,
+                            rb_version,
+                        )
+                        .await;
                     }
                     return update_claim_error(
                         context,
@@ -1219,8 +1212,7 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
     };
 
     // Read existing scores entry (keep raw Doc for version)
-    let existing_lb_doc =
-        get_doc_store(context.caller, "scores".to_string(), caller_key.clone())?.map(|doc| doc);
+    let existing_lb_doc = get_doc_store(context.caller, "scores".to_string(), caller_key.clone())?;
 
     let existing_lb_version = existing_lb_doc.as_ref().and_then(|d| d.version);
     let existing =
@@ -2132,6 +2124,24 @@ fn juno_on_init_random_seed() {
 #[update]
 async fn get_oracle_address() -> Result<String, String> {
     evm_rpc::get_eth_address().await
+}
+
+// =============================================================================
+// Config Hash Endpoint
+// =============================================================================
+
+/// Returns the build-time config hash so the client can verify that the deployed
+/// satellite was built from the same config as the running frontend.
+///
+/// Called by the game pre-flight check in game.astro before the fee gate opens.
+/// A mismatch means the satellite and frontend are out of sync (e.g. during a
+/// rolling deploy) and the player should see an "Under Maintenance" notice.
+///
+/// The hash is baked into the Wasm at build time from `server-constants.ts`
+/// via `build.rs` — it never changes at runtime.
+#[ic_cdk::query]
+fn get_config_hash() -> String {
+    config::CONFIG_HASH.to_string()
 }
 
 // =============================================================================

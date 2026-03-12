@@ -225,9 +225,13 @@ in
           configPath = ".versionrc";
         };
       };
-      cargo-check.enable = true;
+      cargo-check = {
+        enable = true;
+        package = config.languages.rust.toolchainPackage;
+      };
       clippy = {
         enable = true;
+        package = config.languages.rust.toolchainPackage;
         settings = {
           denyWarnings = true;
           offline = true;
@@ -312,7 +316,10 @@ in
       ripsecrets = {
         enable = true;
       };
-      rustfmt.enable = true;
+      rustfmt = {
+        enable = true;
+        package = config.languages.rust.toolchainPackage;
+      };
       shellcheck = {
         enable = true;
       };

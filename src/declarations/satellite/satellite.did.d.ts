@@ -54,6 +54,12 @@ export interface _SERVICE {
    */
   'get_oracle_address' : ActorMethod<[], Result_3>,
   /**
+   * Returns the build-time config hash for client/satellite sync verification.
+   * Called by the game pre-flight check before the fee gate.
+   * A mismatch means the frontend and satellite are out of sync (e.g. mid-deploy).
+   */
+  'get_config_hash' : ActorMethod<[], string>,
+  /**
    * Report a client-side error. Anyone (including unauthenticated callers) can
    * report errors. The satellite generates the `error_id` server-side so the
    * client cannot forge it.

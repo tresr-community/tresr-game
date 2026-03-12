@@ -133,6 +133,7 @@ pub enum HttpOutcallError {
     },
 }
 
+#[allow(clippy::enum_variant_names)] // vendored upstream type — names cannot be changed
 #[derive(CandidType, Deserialize, Debug, Clone)]
 pub enum RpcError {
     JsonRpcError(JsonRpcError),

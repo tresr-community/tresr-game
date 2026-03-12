@@ -3,6 +3,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import PhaserGame from "@/components/game/PhaserGame.astro";
 import FeeGate from "@/components/game/FeeGate.astro";
 import BanModal from "@/components/game/BanModal.astro";
+import MaintenanceModal from "@/components/game/MaintenanceModal.astro";
 import Loader from "@/components/game/Loader.astro";
 ---
 
@@ -20,6 +21,7 @@ import Loader from "@/components/game/Loader.astro";
 
   <FeeGate />
   <BanModal />
+  <MaintenanceModal />
 
   <div
     id="game-container"
@@ -120,6 +122,19 @@ import Loader from "@/components/game/Loader.astro";
       if (!isVaultDeployed(config)) {
         log.info(COMPONENT_NAME, "Vault not deployed, skipping fee gate");
         startGame();
+        return;
+      }
+
+      // Pre-flight: verify the deployed satellite config hash matches this build.
+      // If they differ (mid-deploy) the player would pay a fee for an unwinnable
+      // game. Block entry and show the maintenance modal instead.
+      const {isSatelliteInSync} = await import("@/lib/satellite/config-hash");
+      if (!(await isSatelliteInSync())) {
+        log.warn(
+          COMPONENT_NAME,
+          "Satellite config hash mismatch — showing maintenance modal"
+        );
+        document.dispatchEvent(new CustomEvent("tresr:maintenance-modal-open"));
         return;
       }
 

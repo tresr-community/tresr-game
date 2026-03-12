@@ -40,7 +40,7 @@
     "@tanstack/query-core": "5.90.20",
     "@types/seedrandom": "3.0.8",
     "@wagmi/core": "3.4.0",
-    "astro": "5.18.0",
+    "astro": "5.18.1",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "ic-siwa": "0.2.5",
@@ -58,7 +58,7 @@
     "simple-cbor": "0.4.1",
     "tailwind-merge": "3.5.0",
     "unified": "11.0.5",
-    "viem": "2.47.1",
+    "viem": "2.47.2",
     "yaml": "2.8.2"
   },
   "devDependencies": {
