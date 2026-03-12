@@ -13,6 +13,7 @@ import {idlFactory} from "@/declarations/satellite/satellite.factory.did.js";
 import {getSatelliteExtendedActor} from "@junobuild/core";
 import type {_SERVICE as SatelliteActor} from "@/declarations/satellite/satellite.did";
 import {log} from "@/lib/utils/log";
+import {maintenanceState} from "@/lib/utils/maintenance-state";
 
 const COMPONENT_NAME = "PreflightCheck";
 
@@ -23,6 +24,8 @@ export async function isSatelliteInSync(): Promise<boolean> {
     });
     const serverHash: string = await get_config_hash();
     if (serverHash !== SERVER_CONFIG_HASH) {
+      // Activate before logging so the warn itself doesn't trigger a toast.
+      maintenanceState.activate();
       log.warn(
         COMPONENT_NAME,
         `Config hash mismatch: server=${serverHash.slice(0, 8)}… client=${SERVER_CONFIG_HASH.slice(0, 8)}…`
@@ -32,7 +35,9 @@ export async function isSatelliteInSync(): Promise<boolean> {
     log.debug(COMPONENT_NAME, `Config hash OK: ${serverHash.slice(0, 8)}…`);
     return true;
   } catch (err) {
-    // Satellite unreachable (not deployed, not activated, or network error) → maintenance
+    // Satellite unreachable (not deployed, not activated, or network error) → maintenance.
+    // Activate before logging so the warn itself doesn't trigger a toast.
+    maintenanceState.activate();
     log.warn(
       COMPONENT_NAME,
       "Satellite unreachable — treating as maintenance",
