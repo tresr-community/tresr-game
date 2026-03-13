@@ -310,8 +310,18 @@ version = "0.20.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc7f46116c46ff9ab3eb1597a45688b6715c6e628b5c133e288e709a29bcb4ee"
 dependencies = [
- "darling_core",
- "darling_macro",
+ "darling_core 0.20.11",
+ "darling_macro 0.20.11",
+]
+
+[[package]]
+name = "darling"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25ae13da2f202d56bd7f91c25fba009e7717a1e4a1cc98a76d844b65ae912e9d"
+dependencies = [
+ "darling_core 0.23.0",
+ "darling_macro 0.23.0",
 ]
 
 [[package]]
@@ -329,12 +339,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "darling_core"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9865a50f7c335f53564bb694ef660825eb8610e0a53d3e11bf1b0d3df31e03b0"
+dependencies = [
+ "ident_case",
+ "proc-macro2",
+ "quote",
+ "strsim",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "darling_macro"
 version = "0.20.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc34b93ccb385b40dc71c6fceac4b2ad23662c7eeb248cf10d529b7e055b6ead"
 dependencies = [
- "darling_core",
+ "darling_core 0.20.11",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "darling_macro"
+version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ac3984ec7bd6cfa798e62b4a642426a5be0e68f9401cfc2a01e3fa9ea2fcdb8d"
+dependencies = [
+ "darling_core 0.23.0",
  "quote",
  "syn 2.0.117",
 ]
@@ -757,7 +791,7 @@ checksum = "818d6d5416a8f0212e1b132703b0da51e36c55f2b96677e96f2bbe7702e1bd85"
 dependencies = [
  "candid",
  "ic-cdk-executor",
- "ic-cdk-macros",
+ "ic-cdk-macros 0.19.0",
  "ic-error-types",
  "ic-management-canister-types",
  "ic0",
@@ -765,6 +799,22 @@ dependencies = [
  "serde",
  "serde_bytes",
  "slotmap",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "ic-cdk"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "057912339f889013f42b36cc0623585949ed278457efb32aef041bdc48acb111"
+dependencies = [
+ "candid",
+ "ic-cdk-executor",
+ "ic-cdk-macros 0.20.0",
+ "ic-error-types",
+ "ic0",
+ "pin-project-lite",
+ "serde",
  "thiserror 2.0.18",
 ]
 
@@ -786,7 +836,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "66dad91a214945cb3605bc9ef6901b87e2ac41e3624284c2cabba49d43aa4f43"
 dependencies = [
  "candid",
- "darling",
+ "darling 0.20.11",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "ic-cdk-macros"
+version = "0.20.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b140627c01710ac185fbc984ab1fda1781ffef4abbd952e07383350899b0952b"
+dependencies = [
+ "candid",
+ "darling 0.23.0",
  "proc-macro2",
  "quote",
  "syn 2.0.117",
@@ -835,7 +898,7 @@ dependencies = [
  "candid",
  "crc32fast",
  "hex",
- "ic-cdk",
+ "ic-cdk 0.19.0",
  "serde",
  "serde_bytes",
  "sha2 0.10.9",
@@ -1088,7 +1151,7 @@ dependencies = [
  "ed25519-dalek",
  "getrandom 0.2.17",
  "hmac 0.12.1",
- "ic-cdk",
+ "ic-cdk 0.19.0",
  "p256",
  "p384",
  "rand 0.8.5",
@@ -1109,7 +1172,7 @@ dependencies = [
  "candid",
  "getrandom 0.2.17",
  "ic-canister-sig-creation",
- "ic-cdk",
+ "ic-cdk 0.19.0",
  "ic-certification",
  "jsonwebtoken-ic",
  "junobuild-shared",
@@ -1128,7 +1191,7 @@ checksum = "4769740767d774cae682a438160005ba4227e2165699487b9da40bdd8ca2a116"
 dependencies = [
  "candid",
  "hex",
- "ic-cdk",
+ "ic-cdk 0.19.0",
  "ic-stable-structures 0.7.2",
  "junobuild-collections",
  "junobuild-shared",
@@ -1144,7 +1207,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40cd54e2864c45683de05e91f46a176e2c334cbe48dff15d559a4774c9ea1f90"
 dependencies = [
  "candid",
- "ic-cdk",
+ "ic-cdk 0.19.0",
  "junobuild-shared",
  "serde",
 ]
@@ -1171,8 +1234,8 @@ dependencies = [
  "candid",
  "ciborium",
  "getrandom 0.3.4",
- "ic-cdk",
- "ic-cdk-macros",
+ "ic-cdk 0.19.0",
+ "ic-cdk-macros 0.19.0",
  "ic-cdk-timers",
  "ic-certification",
  "ic-stable-structures 0.7.2",
@@ -1199,7 +1262,7 @@ dependencies = [
  "ciborium",
  "futures",
  "getrandom 0.3.4",
- "ic-cdk",
+ "ic-cdk 0.19.0",
  "ic-ledger-types",
  "ic-stable-structures 0.7.2",
  "icrc-ledger-types",
@@ -1219,7 +1282,7 @@ dependencies = [
  "candid",
  "globset",
  "hex",
- "ic-cdk",
+ "ic-cdk 0.19.0",
  "ic-certification",
  "ic-representation-independent-hash",
  "ic-stable-structures 0.7.2",
@@ -1766,7 +1829,7 @@ dependencies = [
  "futures",
  "getrandom 0.3.4",
  "hex",
- "ic-cdk",
+ "ic-cdk 0.20.0",
  "junobuild-macros",
  "junobuild-satellite",
  "junobuild-shared",
