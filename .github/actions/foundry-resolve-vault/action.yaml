@@ -1,8 +1,8 @@
 ---
 name: Foundry Resolve Vault
 description: >-
-  Detect vault mode (skip/deploy/upgrade) using bytecode comparison
-  and forge dry-run, execute deployment, and resolve final vault address.
+  Detect vault mode (skip/deploy/upgrade) using per-contract bytecode check
+  via foundry-check-contract, execute deployment, and resolve final vault address.
 
 inputs:
   network:
@@ -47,6 +47,23 @@ outputs:
 runs:
   using: composite
   steps:
+    # ──────────────────────────────────────────────
+    # Step summary header
+    # ──────────────────────────────────────────────
+    - id: summary_header
+      name: Summary Header
+      shell: bash
+      run: |
+        {
+          echo "## 🏦 Vault Contract Bytecode Check"
+          echo ""
+          echo "| Contract | Address | Bytecode |"
+          echo "|---|---|---|"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    # ──────────────────────────────────────────────
+    # Detect vault mode: prerequisite checks + bytecode comparison
+    # ──────────────────────────────────────────────
     - id: detect_vault_mode
       name: Detect Vault Deploy Mode
       shell: devenv shell --quiet bash -- -e {0}
@@ -55,7 +72,6 @@ runs:
         VAULT_PROXY_ADDRESS: ${{ inputs.vault-address }}
         DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
       run: |
-        # Run from contracts/ so FOUNDRY_PROFILE can resolve foundry.toml
         cd contracts
 
         VAULT_ADDR="${{ inputs.vault-address }}"
@@ -72,15 +88,17 @@ runs:
         # 1. Pre-requisite check: token + oracle needed
         # ──────────────────────────────────────────────
         MISSING=()
-        if [[ "$TOKEN_ADDR" == "$ZERO" || -z "$TOKEN_ADDR" || "$TOKEN_ADDR" == "null" ]]; then
+        if [[ "$TOKEN_ADDR" == "$ZERO" || -z "$TOKEN_ADDR" || \
+              "$TOKEN_ADDR" == "null" ]]; then
           MISSING+=("TOKEN_ADDRESS")
         fi
-        if [[ "$ORACLE_ADDR" == "$ZERO" || -z "$ORACLE_ADDR" || "$ORACLE_ADDR" == "null" ]]; then
+        if [[ "$ORACLE_ADDR" == "$ZERO" || -z "$ORACLE_ADDR" || \
+              "$ORACLE_ADDR" == "null" ]]; then
           MISSING+=("ORACLE_ADDRESS")
         fi
 
         if [[ ${#MISSING[@]} -gt 0 ]]; then
-          echo "mode=skip" >> "$GITHUB_OUTPUT"
+          echo "mode=skip"      >> "$GITHUB_OUTPUT"
           echo "deployed=false" >> "$GITHUB_OUTPUT"
           echo ""
           echo "⏭️  Vault deploy SKIPPED — required addresses not yet available: ${MISSING[*]}"
@@ -94,79 +112,98 @@ runs:
           echo "    3. Update oracle_address in config/tresr.yaml under blockchain.avalanche.testnet"
           echo "    4. Re-run this workflow — the vault will then be deployed automatically"
           echo "::warning::Vault deploy skipped — missing prerequisite addresses: ${MISSING[*]}. See step log for next steps."
+          printf "| TresrVault | — | ⏭️ Prereqs missing: %s |\n" \
+            "${MISSING[*]}" >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
 
         # ──────────────────────────────────────────────
         # 2. First-deploy: vault address is zero/empty
         # ──────────────────────────────────────────────
-        if [[ "$VAULT_ADDR" == "$ZERO" || -z "$VAULT_ADDR" || "$VAULT_ADDR" == "null" ]]; then
-          echo "mode=deploy" >> "$GITHUB_OUTPUT"
+        if [[ "$VAULT_ADDR" == "$ZERO" || -z "$VAULT_ADDR" || \
+              "$VAULT_ADDR" == "null" ]]; then
+          echo "mode=deploy"   >> "$GITHUB_OUTPUT"
           echo "deployed=true" >> "$GITHUB_OUTPUT"
           echo "🆕 Vault mode: FRESH DEPLOY"
           echo "   No existing proxy found in config — deploying implementation + proxy for the first time."
+          printf "| TresrVault | — | 🆕 First deploy |\n" \
+            >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
 
         # ──────────────────────────────────────────────
-        # 3. Bytecode comparison: local vs on-chain
+        # 3. Resolve implementation address from proxy storage (EIP-1967)
+        # The bytecode check compares the IMPLEMENTATION (logic contract),
+        # not the proxy itself (which never changes after first deploy).
         # ──────────────────────────────────────────────
-        echo "🔍 Comparing compiled bytecode against on-chain implementation..."
+        echo "🔍 Reading implementation address from ERC1967 proxy storage..."
 
-        # ERC1967 implementation slot (EIP-1967)
         IMPL_SLOT="0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+        RAW_IMPL=""
+        RAW_IMPL=$(cast storage "$VAULT_ADDR" "$IMPL_SLOT" \
+          --rpc-url "$RPC_URL" --block finalized 2>&1) || RAW_IMPL=""
 
-        # Fetch the implementation address from the proxy's storage
-        RAW_IMPL=$(cast storage "$VAULT_ADDR" "$IMPL_SLOT" --rpc-url "$RPC_URL" --block finalized 2>&1) || {
-          echo "::warning::cast storage failed for vault: $RAW_IMPL"
-          RAW_IMPL=""
-        }
-        if [[ -z "$RAW_IMPL" || "$RAW_IMPL" == "0x0000000000000000000000000000000000000000000000000000000000000000" ]]; then
+        if [[ -z "$RAW_IMPL" || \
+              "$RAW_IMPL" == "0x0000000000000000000000000000000000000000000000000000000000000000" ]]; then
           echo "::warning::Could not read implementation slot — treating as first deploy"
-          echo "mode=deploy" >> "$GITHUB_OUTPUT"
+          echo "mode=deploy"   >> "$GITHUB_OUTPUT"
           echo "deployed=true" >> "$GITHUB_OUTPUT"
+          printf "| TresrVault (impl) | — | 🆕 Slot unreadable — first deploy |\n" \
+            >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
 
-        # Extract the 20-byte address from the 32-byte slot value
+        # Extract 20-byte address from 32-byte slot value and export for check step
         ON_CHAIN_IMPL="0x$(echo "$RAW_IMPL" | sed 's/0x//' | tail -c 41)"
         echo "  On-chain implementation: $ON_CHAIN_IMPL"
+        echo "VAULT_IMPL_ADDR=$ON_CHAIN_IMPL" >> "$GITHUB_ENV"
 
-        # Fetch deployed (runtime) bytecode from the chain
-        ON_CHAIN_CODE=$(cast code "$ON_CHAIN_IMPL" --rpc-url "$RPC_URL" --block finalized 2>&1) || {
-          echo "::warning::cast code failed for vault impl: $ON_CHAIN_CODE"
-          ON_CHAIN_CODE=""
-        }
-        if [[ -z "$ON_CHAIN_CODE" || "$ON_CHAIN_CODE" == "0x" ]]; then
-          echo "::warning::On-chain implementation has no code — treating as upgrade needed"
-          echo "mode=upgrade" >> "$GITHUB_OUTPUT"
-          echo "deployed=true" >> "$GITHUB_OUTPUT"
-          exit 0
-        fi
+        echo "mode=check" >> "$GITHUB_OUTPUT"   # intermediate — updated by check_vault step
+        echo "deployed=false" >> "$GITHUB_OUTPUT"
 
-        # Get locally compiled deployed (runtime) bytecode
-        ARTIFACT="out/Vault.sol/TresrVault.json"
-        if [[ ! -f "$ARTIFACT" ]]; then
-          echo "::error::Build artifact not found at $ARTIFACT — run forge build first"
-          exit 1
-        fi
-        LOCAL_CODE="0x$(jq -r '.deployedBytecode.object' "$ARTIFACT" | sed 's/^0x//')"
+    # ──────────────────────────────────────────────
+    # Per-contract bytecode check for Vault implementation
+    # ──────────────────────────────────────────────
+    - id: check_vault_impl
+      name: Check TresrVault Implementation
+      if: steps.detect_vault_mode.outputs.mode == 'check'
+      uses: ./.github/actions/foundry-check-contract
+      with:
+        contract-name: TresrVault (impl)
+        artifact-path: out/Vault.sol/TresrVault.json
+        on-chain-address: ${{ env.VAULT_IMPL_ADDR }}
+        rpc-url: ${{ inputs.rpc-url }}
 
-        # Normalize both to lowercase for comparison
-        ON_CHAIN_NORM=$(echo "$ON_CHAIN_CODE" | tr '[:upper:]' '[:lower:]')
-        LOCAL_NORM=$(echo "$LOCAL_CODE" | tr '[:upper:]' '[:lower:]')
+    # ──────────────────────────────────────────────
+    # Resolve final vault mode from check output
+    # ──────────────────────────────────────────────
+    - id: resolve_vault_mode
+      name: Resolve Vault Mode
+      if: steps.detect_vault_mode.outputs.mode == 'check'
+      shell: devenv shell --quiet bash -- -e {0}
+      env:
+        RPC_URL: ${{ inputs.rpc-url }}
+        DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
+        IMPL_CHANGED: ${{ steps.check_vault_impl.outputs.changed }}
+      run: |
+        cd contracts
 
-        if [[ "$ON_CHAIN_NORM" == "$LOCAL_NORM" ]]; then
-          echo "✅ Bytecode MATCHES on-chain — no upgrade needed"
-          echo "mode=skip" >> "$GITHUB_OUTPUT"
+        if [[ "$IMPL_CHANGED" != "true" ]]; then
+          echo "✅ Vault implementation matches on-chain — no upgrade needed"
+          echo "mode=skip"      >> "$GITHUB_OUTPUT"
           echo "deployed=false" >> "$GITHUB_OUTPUT"
+          {
+            echo ""
+            echo "→ **mode: skip** — no upgrade needed"
+          } >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
 
-        echo "⚡ Bytecode DIFFERS from on-chain — checking dry-run..."
+        echo "⚡ Vault implementation differs — running dry-run gate..."
 
         # ──────────────────────────────────────────────
-        # 4. Forge dry-run gate: verify transactions
+        # Forge dry-run gate: verify transactions would be produced.
+        # Prevents spurious upgrades from metadata-only differences.
         # ──────────────────────────────────────────────
         DRY_RUN_LOG=$(mktemp)
 
@@ -178,19 +215,29 @@ runs:
         DRY_EXIT=$?
         set -e
 
-        # Check if dry-run produced any transactions
         if [[ $DRY_EXIT -eq 0 ]] && grep -qiE "(CREATE|CALL|Transactions)" "$DRY_RUN_LOG"; then
           echo "⬆️ Vault mode: UPGRADE (bytecode changed, dry-run confirmed transactions)"
-          echo "mode=upgrade" >> "$GITHUB_OUTPUT"
+          echo "mode=upgrade"  >> "$GITHUB_OUTPUT"
           echo "deployed=true" >> "$GITHUB_OUTPUT"
+          {
+            echo ""
+            echo "→ **mode: upgrade** — dry-run confirmed new transactions"
+          } >> "$GITHUB_STEP_SUMMARY"
         else
           echo "::warning::Bytecode differs but dry-run produced no transactions — skipping"
-          echo "mode=skip" >> "$GITHUB_OUTPUT"
+          echo "mode=skip"      >> "$GITHUB_OUTPUT"
           echo "deployed=false" >> "$GITHUB_OUTPUT"
+          {
+            echo ""
+            echo "→ **mode: skip** — dry-run produced no transactions (metadata-only change)"
+          } >> "$GITHUB_STEP_SUMMARY"
         fi
 
         rm -f "$DRY_RUN_LOG"
 
+    # ──────────────────────────────────────────────
+    # Execute deployment (only if mode=deploy)
+    # ──────────────────────────────────────────────
     - id: deploy_vault
       name: Deploy Vault (Fresh Proxy)
       if: steps.detect_vault_mode.outputs.mode == 'deploy'
@@ -214,7 +261,7 @@ runs:
 
     - id: upgrade_vault
       name: Upgrade Vault (New Implementation)
-      if: steps.detect_vault_mode.outputs.mode == 'upgrade'
+      if: steps.resolve_vault_mode.outputs.mode == 'upgrade'
       continue-on-error: true
       shell: devenv shell --quiet bash -- -e {0}
       env:
@@ -231,6 +278,9 @@ runs:
           --etherscan-api-key "$SNOWTRACE_API_KEY" \
           -vvvv
 
+    # ──────────────────────────────────────────────
+    # Resolve final vault address
+    # ──────────────────────────────────────────────
     - id: resolve_vault_address
       name: Resolve Vault Address
       if: always()
@@ -241,10 +291,11 @@ runs:
         ZERO="0x0000000000000000000000000000000000000000"
         DEPLOYED_VAULT=""
 
-        # Try to extract freshly-deployed vault proxy from broadcast
         LATEST="contracts/broadcast/Vault.s.sol/${CHAIN_ID}/run-latest.json"
         if [[ -f "$LATEST" ]]; then
-          DEPLOYED_VAULT=$(jq -r '.transactions[] | select(.transactionType == "CREATE" and .contractName == "ERC1967Proxy") | .contractAddress' "$LATEST" 2>/dev/null | head -1)
+          DEPLOYED_VAULT=$(jq -r \
+            '.transactions[] | select(.transactionType == "CREATE" and .contractName == "ERC1967Proxy") | .contractAddress' \
+            "$LATEST" 2>/dev/null | head -1)
         fi
 
         if [[ -n "$DEPLOYED_VAULT" ]]; then
@@ -258,9 +309,12 @@ runs:
           echo "No vault deployed this run"
         fi
 
+    # ──────────────────────────────────────────────
+    # Upgrade step summary (mainnet multisig instructions / testnet note)
+    # ──────────────────────────────────────────────
     - id: upgrade_summary
       name: Upgrade Summary
-      if: steps.detect_vault_mode.outputs.mode == 'upgrade'
+      if: steps.resolve_vault_mode.outputs.mode == 'upgrade'
       shell: bash
       run: |
         CHAIN_ID="${{ inputs.chain-id }}"
@@ -269,10 +323,11 @@ runs:
         ADMIN="${{ inputs.admin-address }}"
         LATEST="contracts/broadcast/UpgradeVault.s.sol/${CHAIN_ID}/run-latest.json"
 
-        # Extract new implementation address from broadcast
         NEW_IMPL=""
         if [[ -f "$LATEST" ]]; then
-          NEW_IMPL=$(jq -r '.transactions[] | select(.transactionType == "CREATE") | .contractAddress' "$LATEST" 2>/dev/null | head -1)
+          NEW_IMPL=$(jq -r \
+            '.transactions[] | select(.transactionType == "CREATE") | .contractAddress' \
+            "$LATEST" 2>/dev/null | head -1)
         fi
 
         if [[ -z "$NEW_IMPL" ]]; then
@@ -280,12 +335,10 @@ runs:
           NEW_IMPL="(check step logs)"
         fi
 
-        # Compute upgradeToAndCall calldata
         IMPL_PADDED=$(echo "$NEW_IMPL" | sed 's/0x//' | tr '[:upper:]' '[:lower:]')
         IMPL_PADDED=$(printf '%064s' "$IMPL_PADDED" | tr ' ' '0')
         CALLDATA="0x4f1ef286${IMPL_PADDED}00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000"
 
-        # Set explorer URL
         if [[ "$NETWORK" == "mainnet" ]]; then
           EXPLORER="https://snowtrace.io"
         else
@@ -339,18 +392,25 @@ runs:
           fi
         } >> "$GITHUB_STEP_SUMMARY"
 
+    # ──────────────────────────────────────────────
+    # Final health check
+    # ──────────────────────────────────────────────
     - id: check_vault_deploy
       name: Check Vault Deploy
       if: always()
       shell: bash
       run: |
         FAILED=false
+
+        # Determine the effective mode from whichever step set it
         MODE="${{ steps.detect_vault_mode.outputs.mode }}"
+        if [[ "$MODE" == "check" ]]; then
+          MODE="${{ steps.resolve_vault_mode.outputs.mode }}"
+        fi
 
         echo "Vault mode: ${MODE:-unknown}"
         echo ""
 
-        # Vault deploy (fresh deploy — runs when vault proxy doesn't exist yet)
         DEPLOY_OUTCOME="${{ steps.deploy_vault.outcome }}"
         if [[ "$DEPLOY_OUTCOME" == "failure" ]]; then
           echo "::error::Deploy Vault (fresh proxy) failed — check the deploy_vault step logs"
@@ -359,7 +419,6 @@ runs:
           echo "✓ Deploy Vault (fresh proxy): ${DEPLOY_OUTCOME}"
         fi
 
-        # Vault upgrade (runs when an existing proxy is present and bytecode changed)
         UPGRADE_OUTCOME="${{ steps.upgrade_vault.outcome }}"
         if [[ "$UPGRADE_OUTCOME" == "failure" ]]; then
           echo "::error::Upgrade Vault (new implementation) failed — check the upgrade_vault step logs"
@@ -368,7 +427,6 @@ runs:
           echo "✓ Upgrade Vault (new implementation): ${UPGRADE_OUTCOME}"
         fi
 
-        # Report overall result
         if [[ "$FAILED" == "true" ]]; then
           echo ""
           echo "❌ Vault step failed — see errors above"
@@ -376,11 +434,11 @@ runs:
         fi
 
         if [[ "$MODE" == "skip" ]]; then
-          echo "ℹ️  Vault was skipped this run (prerequisite addresses missing — see detect_vault_mode step)"
+          echo "✅ Vault unchanged — no deployment needed"
         elif [[ "$MODE" == "deploy" ]]; then
           echo "✅ Fresh vault proxy deployed successfully"
         elif [[ "$MODE" == "upgrade" ]]; then
           echo "✅ Vault implementation upgraded successfully"
         else
-          echo "✅ Vault resolve completed (no changes needed)"
+          echo "✅ Vault resolve completed"
         fi

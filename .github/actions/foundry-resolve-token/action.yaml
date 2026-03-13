@@ -1,8 +1,8 @@
 ---
 name: Foundry Resolve Token
 description: >-
-  Detect token deploy mode (skip/deploy) using bytecode comparison
-  and forge dry-run, execute deployment, and resolve final addresses.
+  Detect token deploy mode (skip/deploy) using per-contract bytecode checks
+  via foundry-check-contract, execute deployment, and resolve final addresses.
   Handles both RonToken and TresrFaucet (testnet only).
 
 inputs:
@@ -34,124 +34,83 @@ outputs:
     value: ${{ steps.resolve_faucet_address.outputs.faucet_address }}
   mode:
     description: "Token deploy mode (skip/deploy)"
-    value: ${{ steps.detect_token_mode.outputs.mode }}
+    value: ${{ steps.decide_mode.outputs.mode }}
   deployed:
     description: "Whether a deployment was executed (true/false)"
-    value: ${{ steps.detect_token_mode.outputs.deployed }}
+    value: ${{ steps.decide_mode.outputs.deployed }}
 
 runs:
   using: composite
   steps:
-    - id: detect_token_mode
-      name: Detect Token Deploy Mode
+    # ──────────────────────────────────────────────
+    # Step summary header
+    # ──────────────────────────────────────────────
+    - id: summary_header
+      name: Summary Header
+      shell: bash
+      run: |
+        {
+          echo "## 📦 Token Contract Bytecode Check"
+          echo ""
+          echo "| Contract | Address | Bytecode |"
+          echo "|---|---|---|"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+    # ──────────────────────────────────────────────
+    # Per-contract bytecode checks
+    # ──────────────────────────────────────────────
+    - id: check_token
+      name: Check RonToken
+      uses: ./.github/actions/foundry-check-contract
+      with:
+        contract-name: RonToken
+        artifact-path: out/Token.sol/RonToken.json
+        on-chain-address: ${{ inputs.token-address }}
+        rpc-url: ${{ inputs.rpc-url }}
+
+    - id: check_faucet
+      name: Check TresrFaucet
+      uses: ./.github/actions/foundry-check-contract
+      with:
+        contract-name: TresrFaucet
+        artifact-path: out/Faucet.sol/TresrFaucet.json
+        on-chain-address: ${{ inputs.faucet-address }}
+        rpc-url: ${{ inputs.rpc-url }}
+
+    # ──────────────────────────────────────────────
+    # Decide mode: skip if all match, else dry-run gate
+    # ──────────────────────────────────────────────
+    - id: decide_mode
+      name: Decide Token Deploy Mode
       shell: devenv shell --quiet bash -- -e {0}
       env:
         RPC_URL: ${{ inputs.rpc-url }}
         DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
+        TOKEN_CHANGED: ${{ steps.check_token.outputs.changed }}
+        FAUCET_CHANGED: ${{ steps.check_faucet.outputs.changed }}
       run: |
-        # Run from contracts/ so FOUNDRY_PROFILE can resolve foundry.toml
         cd contracts
 
-        TOKEN_ADDR="${{ inputs.token-address }}"
-        FAUCET_ADDR="${{ inputs.faucet-address }}"
-        ZERO="0x0000000000000000000000000000000000000000"
-
         # ──────────────────────────────────────────────
-        # 1. First-deploy: token address is zero/empty
+        # All contracts match on-chain → skip
         # ──────────────────────────────────────────────
-        if [[ "$TOKEN_ADDR" == "$ZERO" || -z "$TOKEN_ADDR" || "$TOKEN_ADDR" == "null" ]]; then
-          echo "mode=deploy" >> "$GITHUB_OUTPUT"
-          echo "deployed=true" >> "$GITHUB_OUTPUT"
-          echo "🆕 Token mode: FRESH DEPLOY (no existing token)"
-          exit 0
-        fi
-
-        # ──────────────────────────────────────────────
-        # 2. Bytecode comparison: RonToken
-        # ──────────────────────────────────────────────
-        echo "🔍 Comparing RonToken bytecode (local vs on-chain)..."
-
-        ON_CHAIN_TOKEN_CODE=$(cast code "$TOKEN_ADDR" --rpc-url "$RPC_URL" --block finalized 2>&1) || {
-          echo "::warning::cast code failed for token: $ON_CHAIN_TOKEN_CODE"
-          ON_CHAIN_TOKEN_CODE=""
-        }
-        if [[ -z "$ON_CHAIN_TOKEN_CODE" || "$ON_CHAIN_TOKEN_CODE" == "0x" ]]; then
-          echo "::warning::Token address has no on-chain code — treating as first deploy"
-          echo "mode=deploy" >> "$GITHUB_OUTPUT"
-          echo "deployed=true" >> "$GITHUB_OUTPUT"
-          exit 0
-        fi
-
-        TOKEN_ARTIFACT="out/Token.sol/RonToken.json"
-        if [[ ! -f "$TOKEN_ARTIFACT" ]]; then
-          echo "::error::Build artifact not found at $TOKEN_ARTIFACT — run forge build first"
-          exit 1
-        fi
-        LOCAL_TOKEN_CODE="0x$(jq -r '.deployedBytecode.object' "$TOKEN_ARTIFACT" | sed 's/^0x//')"
-
-        TOKEN_ON_CHAIN_NORM=$(echo "$ON_CHAIN_TOKEN_CODE" | tr '[:upper:]' '[:lower:]')
-        TOKEN_LOCAL_NORM=$(echo "$LOCAL_TOKEN_CODE" | tr '[:upper:]' '[:lower:]')
-
-        TOKEN_MATCH=true
-        if [[ "$TOKEN_ON_CHAIN_NORM" != "$TOKEN_LOCAL_NORM" ]]; then
-          echo "⚡ RonToken bytecode DIFFERS from on-chain"
-          TOKEN_MATCH=false
-        else
-          echo "✅ RonToken bytecode matches on-chain"
-        fi
-
-        # ──────────────────────────────────────────────
-        # 3. Bytecode comparison: TresrFaucet
-        # ──────────────────────────────────────────────
-        FAUCET_MATCH=true
-
-        if [[ "$FAUCET_ADDR" == "$ZERO" || -z "$FAUCET_ADDR" || "$FAUCET_ADDR" == "null" ]]; then
-          echo "::warning::Faucet address is zero — faucet not yet deployed"
-          FAUCET_MATCH=false
-        else
-          echo "🔍 Comparing TresrFaucet bytecode (local vs on-chain)..."
-
-          ON_CHAIN_FAUCET_CODE=$(cast code "$FAUCET_ADDR" --rpc-url "$RPC_URL" --block finalized 2>&1) || {
-            echo "::warning::cast code failed for faucet: $ON_CHAIN_FAUCET_CODE"
-            ON_CHAIN_FAUCET_CODE=""
-          }
-          if [[ -z "$ON_CHAIN_FAUCET_CODE" || "$ON_CHAIN_FAUCET_CODE" == "0x" ]]; then
-            echo "::warning::Faucet address has no on-chain code — treating as deploy needed"
-            FAUCET_MATCH=false
-          else
-            FAUCET_ARTIFACT="out/Faucet.sol/TresrFaucet.json"
-            if [[ ! -f "$FAUCET_ARTIFACT" ]]; then
-              echo "::error::Build artifact not found at $FAUCET_ARTIFACT — run forge build first"
-              exit 1
-            fi
-            LOCAL_FAUCET_CODE="0x$(jq -r '.deployedBytecode.object' "$FAUCET_ARTIFACT" | sed 's/^0x//')"
-
-            FAUCET_ON_CHAIN_NORM=$(echo "$ON_CHAIN_FAUCET_CODE" | tr '[:upper:]' '[:lower:]')
-            FAUCET_LOCAL_NORM=$(echo "$LOCAL_FAUCET_CODE" | tr '[:upper:]' '[:lower:]')
-
-            if [[ "$FAUCET_ON_CHAIN_NORM" != "$FAUCET_LOCAL_NORM" ]]; then
-              echo "⚡ TresrFaucet bytecode DIFFERS from on-chain"
-              FAUCET_MATCH=false
-            else
-              echo "✅ TresrFaucet bytecode matches on-chain"
-            fi
-          fi
-        fi
-
-        # ──────────────────────────────────────────────
-        # 4. Decision: both match → skip, else dry-run
-        # ──────────────────────────────────────────────
-        if [[ "$TOKEN_MATCH" == "true" && "$FAUCET_MATCH" == "true" ]]; then
-          echo "✅ All token bytecodes match on-chain — no deploy needed"
-          echo "mode=skip" >> "$GITHUB_OUTPUT"
+        if [[ "$TOKEN_CHANGED" != "true" && "$FAUCET_CHANGED" != "true" ]]; then
+          echo "✅ All token contracts match on-chain — no deploy needed"
+          echo "mode=skip"    >> "$GITHUB_OUTPUT"
           echo "deployed=false" >> "$GITHUB_OUTPUT"
+          {
+            echo ""
+            echo "→ **mode: skip** — no deployment needed"
+          } >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
 
-        echo "⚡ Bytecode changed — checking dry-run..."
+        echo "⚡ One or more contracts changed — running dry-run gate..."
 
         # ──────────────────────────────────────────────
-        # 5. Forge dry-run gate: verify transactions
+        # Forge dry-run gate: verify actual transactions would be broadcast
+        # Prevents false-positive deploys from metadata-only differences
+        # that survive stripping (e.g. compiler flag changes).
         # ──────────────────────────────────────────────
         DRY_RUN_LOG=$(mktemp)
 
@@ -165,19 +124,30 @@ runs:
 
         if [[ $DRY_EXIT -eq 0 ]] && grep -qiE "(CREATE|CALL|Transactions)" "$DRY_RUN_LOG"; then
           echo "🆕 Token mode: DEPLOY (bytecode changed, dry-run confirmed transactions)"
-          echo "mode=deploy" >> "$GITHUB_OUTPUT"
+          echo "mode=deploy"   >> "$GITHUB_OUTPUT"
           echo "deployed=true" >> "$GITHUB_OUTPUT"
+          {
+            echo ""
+            echo "→ **mode: deploy** — dry-run confirmed new transactions"
+          } >> "$GITHUB_STEP_SUMMARY"
         else
           echo "::warning::Bytecode differs but dry-run produced no transactions — skipping"
-          echo "mode=skip" >> "$GITHUB_OUTPUT"
+          echo "mode=skip"     >> "$GITHUB_OUTPUT"
           echo "deployed=false" >> "$GITHUB_OUTPUT"
+          {
+            echo ""
+            echo "→ **mode: skip** — dry-run produced no transactions (metadata-only change)"
+          } >> "$GITHUB_STEP_SUMMARY"
         fi
 
         rm -f "$DRY_RUN_LOG"
 
+    # ──────────────────────────────────────────────
+    # Execute deployment (only if mode=deploy)
+    # ──────────────────────────────────────────────
     - id: deploy_token
       name: Deploy Test Token + Faucet
-      if: steps.detect_token_mode.outputs.mode == 'deploy'
+      if: steps.decide_mode.outputs.mode == 'deploy'
       continue-on-error: true
       shell: devenv shell --quiet bash -- -e {0}
       env:
@@ -193,6 +163,9 @@ runs:
           --etherscan-api-key "$SNOWTRACE_API_KEY" \
           -vvvv
 
+    # ──────────────────────────────────────────────
+    # Resolve final addresses
+    # ──────────────────────────────────────────────
     - id: resolve_token_address
       name: Resolve Token Address
       if: always()
@@ -203,10 +176,11 @@ runs:
         ZERO="0x0000000000000000000000000000000000000000"
         DEPLOYED_TOKEN=""
 
-        # Try to extract freshly-deployed token from broadcast
         LATEST="contracts/broadcast/DeployToken.s.sol/${CHAIN_ID}/run-latest.json"
         if [[ -f "$LATEST" ]]; then
-          DEPLOYED_TOKEN=$(jq -r '.transactions[] | select(.transactionType == "CREATE" and .contractName == "RonToken") | .contractAddress' "$LATEST" 2>/dev/null | head -1)
+          DEPLOYED_TOKEN=$(jq -r \
+            '.transactions[] | select(.transactionType == "CREATE" and .contractName == "RonToken") | .contractAddress' \
+            "$LATEST" 2>/dev/null | head -1)
         fi
 
         if [[ -n "$DEPLOYED_TOKEN" ]]; then
@@ -232,7 +206,9 @@ runs:
 
         LATEST="contracts/broadcast/DeployToken.s.sol/${CHAIN_ID}/run-latest.json"
         if [[ -f "$LATEST" ]]; then
-          DEPLOYED_FAUCET=$(jq -r '.transactions[] | select(.transactionType == "CREATE" and .contractName == "TresrFaucet") | .contractAddress' "$LATEST" 2>/dev/null | head -1)
+          DEPLOYED_FAUCET=$(jq -r \
+            '.transactions[] | select(.transactionType == "CREATE" and .contractName == "TresrFaucet") | .contractAddress' \
+            "$LATEST" 2>/dev/null | head -1)
         fi
 
         if [[ -n "$DEPLOYED_FAUCET" ]]; then
