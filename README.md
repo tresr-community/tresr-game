@@ -1,4 +1,4 @@
-# Tresr
+# TRESR Game
 
 [![CI](https://github.com/tresr-community/tresr-game/actions/workflows/ci.yaml/badge.svg)](https://github.com/tresr-community/tresr-game/actions/workflows/ci.yaml)
 [![CodeQL](https://github.com/tresr-community/tresr-game/actions/workflows/sec-codeql.yaml/badge.svg)](https://github.com/tresr-community/tresr-game/actions/workflows/sec-codeql.yaml)
