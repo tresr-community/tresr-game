@@ -153,6 +153,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          fetch-tags: true
           submodules: recursive
           lfs: true
 
@@ -180,25 +181,21 @@ jobs:
             fi
 
             echo "Using manual version override: ${NEXT_VERSION}"
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
           else
             # Get next version from conventional commits
             NEXT_VERSION=$(convco version --bump 2>/dev/null || echo "")
 
             if [[ -z "${NEXT_VERSION}" ]]; then
-              echo "No conventional commits found to bump version"
+              echo "No bump-worthy commits found (e.g. chore). Skipping release."
               NEXT_VERSION=$(convco version)
+              echo "skip=true" >> "${GITHUB_OUTPUT}"
+            else
+              echo "skip=false" >> "${GITHUB_OUTPUT}"
             fi
           fi
 
           TAG="v${NEXT_VERSION}"
-
-          # Check if tag already exists
-          if git tag --list | grep -q "^${TAG}$"; then
-            echo "Tag ${TAG} already exists, skipping release"
-            echo "skip=true" >> "${GITHUB_OUTPUT}"
-          else
-            echo "skip=false" >> "${GITHUB_OUTPUT}"
-          fi
 
           echo "version=${NEXT_VERSION}" >> "${GITHUB_OUTPUT}"
           echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
@@ -217,11 +214,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ steps.compute_version.outputs.tag }}" \
-            --title "Pre-Release ${{ steps.compute_version.outputs.tag }}" \
-            --notes "Release ${{ steps.compute_version.outputs.tag }}" \
-            --prerelease \
-            --target "${{ github.sha }}"
+          TAG="${{ steps.compute_version.outputs.tag }}"
+
+          # Idempotent: reuse existing pre-release if already created
+          if gh release view "${TAG}" > /dev/null 2>&1; then
+            echo "Pre-release ${TAG} already exists, reusing for deployment"
+          else
+            gh release create "${TAG}" \
+              --title "Pre-Release ${TAG}" \
+              --notes "Release ${TAG}" \
+              --prerelease \
+              --target "${{ github.sha }}"
+          fi
 
       - id: generate_changelog
         name: Generate Changelog
@@ -266,7 +270,7 @@ jobs:
   deploy-juno-testnet:
     name: Deploy Juno (Testnet)
     needs: pre-release
-    if: needs.pre-release.outputs.skip != 'true'
+    if: always() && needs.pre-release.result == 'success' && needs.pre-release.outputs.skip != 'true'
     uses: ./.github/workflows/cd-juno-testnet.yaml
     with:
       version: ${{ needs.pre-release.outputs.tag }}
@@ -280,7 +284,7 @@ jobs:
   deploy-foundry-testnet:
     name: Deploy Contracts (Testnet)
     needs: [pre-release]
-    if: needs.pre-release.outputs.skip != 'true'
+    if: always() && needs.pre-release.result == 'success' && needs.pre-release.outputs.skip != 'true'
     uses: ./.github/workflows/cd-foundry-testnet.yaml
     secrets: inherit
 
@@ -292,6 +296,7 @@ jobs:
     needs: [pre-release, deploy-juno-testnet, deploy-foundry-testnet]
     if: >-
       always() &&
+      needs.pre-release.result == 'success' &&
       needs.pre-release.outputs.skip != 'true' &&
       needs.deploy-foundry-testnet.result == 'success'
     runs-on: ubuntu-latest
@@ -446,6 +451,7 @@ jobs:
   deploy-juno-mainnet:
     name: Deploy Juno (Mainnet)
     needs: promote
+    if: always() && needs.promote.result == 'success'
     uses: ./.github/workflows/cd-juno-mainnet.yaml
     with:
       version: ${{ needs.promote.outputs.tag }}
@@ -459,6 +465,7 @@ jobs:
   deploy-foundry-mainnet:
     name: Deploy Contracts (Mainnet)
     needs: [promote]
+    if: always() && needs.promote.result == 'success'
     uses: ./.github/workflows/cd-foundry-mainnet.yaml
     secrets: inherit
 
@@ -470,6 +477,7 @@ jobs:
     needs: [promote, deploy-juno-mainnet, deploy-foundry-mainnet]
     if: >-
       always() &&
+      needs.promote.result == 'success' &&
       needs.deploy-foundry-mainnet.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 15
