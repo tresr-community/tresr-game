@@ -91,20 +91,17 @@ General-purpose image storage (avatars, game assets).
 
 ## Collection Map
 
-```text
-┌──────────────────────────────────────────────────────┐
-│                     DATASTORE                        │
-├──────────────────┬──────────┬────────────────────────┤
-│ Collection       │ Access   │ Written By             │
-├──────────────────┼──────────┼────────────────────────┤
-│ audit            │ managed  │ satellite              │
-│ claims           │ managed  │ client → hook signing  │
-│ errors           │ managed  │ satellite              │
-│ scores           │ public   │ hook (from users/game) │
-│ users            │ managed  │ client + hooks         │
-├──────────────────┴──────────┴────────────────────────┤
-│                     STORAGE                          │
-├──────────────────┬──────────┬────────────────────────┤
-│ images           │ public   │ managed                │
-└──────────────────┴──────────┴────────────────────────┘
+```mermaid
+block-beta
+  columns 3
+  block:ds["DATASTORE"]:
+    A["audit\n──────\naccess: managed\nwriter: satellite"]
+    B["claims\n──────\naccess: managed\nwriter: client → hook"]
+    C["errors\n──────\naccess: managed\nwriter: satellite"]
+    D["scores\n──────\naccess: public\nwriter: hook (game)"]
+    E["users\n──────\naccess: managed\nwriter: client + hooks"]
+  end
+  block:st["STORAGE"]:
+    F["images\n──────\naccess: public\nwriter: managed"]
+  end
 ```
