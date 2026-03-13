@@ -2160,11 +2160,13 @@ fn report_error(payload: ErrorPayload) -> Result<String, String> {
     let now_ms = now_ns / 1_000_000;
 
     // error_id IS the Juno document key: "err_{nanosecond_timestamp}".
-    // Nanosecond IC time guarantees uniqueness across concurrent callers.
-    // Users see this code and give it to support; devs filter by it in admin.
-    let error_id = format!("err_{}", now_ns);
+    // IC time() returns the same value for all calls in the same consensus round,
+    // so two concurrent report_error calls can collide on the same key.
+    // We append a 4-char caller-derived suffix to reduce (but not eliminate) that risk.
+    let principal_text = ic_cdk::caller().to_text();
+    let caller_suffix: String = principal_text.chars().rev().take(4).collect();
+    let error_id = format!("err_{}_{}", now_ns, caller_suffix);
 
-    let principal = ic_cdk::caller().to_text();
     let environment = config::NETWORK_NAME.to_string();
 
     let record = ErrorRecord {
@@ -2172,20 +2174,38 @@ fn report_error(payload: ErrorPayload) -> Result<String, String> {
         component: payload.component.chars().take(100).collect(),
         message: payload.message.chars().take(500).collect(),
         raw_error: payload.raw_error.chars().take(2000).collect(),
-        principal,
+        principal: principal_text.clone(),
         environment,
         timestamp_ms: now_ms,
         resolved: false,
     };
 
     let admin = admin_caller();
+
+    // Guard against key collision: if this exact error_id already exists (two calls
+    // from the same principal hit the same consensus round), return the pre-existing
+    // id rather than crashing with juno.error.no_version_provided.
+    let existing = get_doc_store(admin, "errors".to_string(), error_id.clone())
+        .ok()
+        .flatten();
+    if existing.is_some() {
+        logging::log_info(
+            "Errors",
+            &format!(
+                "Error key collision detected for {} — returning existing record",
+                error_id
+            ),
+        );
+        return Ok(error_id);
+    }
+
     let doc = SetDoc {
         data: encode_doc_data(&record)?,
         description: Some(format!(
             "Error from {} at {}",
             record.component, record.timestamp_ms
         )),
-        version: None,
+        version: None, // Always None for new documents
     };
 
     // Store with error_id as key — it is both the doc key and the user-facing code
@@ -2195,7 +2215,7 @@ fn report_error(payload: ErrorPayload) -> Result<String, String> {
         "Errors",
         &format!(
             "Error recorded: {} from component='{}' principal='{}'",
-            error_id, record.component, record.principal
+            error_id, record.component, principal_text
         ),
     );
 

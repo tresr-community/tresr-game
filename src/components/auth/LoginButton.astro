@@ -210,6 +210,30 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
   </div>
 </dialog>
 
+<!-- Maintenance Info Dialog — shown when user clicks START during maintenance -->
+<dialog id="modal-maintenance-info" class="modal modal-middle">
+  <div
+    class="modal-box border-warning/30 bg-base-300 max-w-sm border text-center"
+  >
+    <h3
+      class="text-warning font-display text-2xl font-black tracking-widest uppercase"
+    >
+      Upgrading
+    </h3>
+    <p class="py-4 opacity-70">
+      The game is currently being upgraded, check back soon!
+    </p>
+    <div class="modal-action justify-center">
+      <button id="btn-maintenance-info-ok" class="btn btn-warning"
+        >Got it</button
+      >
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop">
+    <button aria-label="Close dialog">close</button>
+  </form>
+</dialog>
+
 <!-- Auth Loading Overlay — shown during SIWA handshake after wallet selection -->
 <div
   id="auth-loading-overlay"
@@ -489,10 +513,25 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
     guestLimitModal.close();
   });
 
+  const maintenanceInfoModal = document.getElementById(
+    "modal-maintenance-info"
+  ) as HTMLDialogElement;
+  const btnMaintenanceInfoOk = document.getElementById(
+    "btn-maintenance-info-ok"
+  );
+  btnMaintenanceInfoOk?.addEventListener("click", () => {
+    maintenanceInfoModal?.close();
+  });
+
   // Modal Open Trigger / Action Trigger
   loginButton?.addEventListener("click", async () => {
     const state = getAuthState();
     if (state.isAuthenticated) {
+      // Block entry during maintenance — show info dialog instead of navigating
+      if (loginButton.dataset.maintenance === "true") {
+        maintenanceInfoModal?.showModal();
+        return;
+      }
       // Block guests who have exhausted daily sessions
       if (state.isGuest) {
         const isGuestRateLimited = await getGuestRateLimit();
@@ -523,23 +562,69 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
     const state = getAuthState();
     if (loginButton) {
       if (state.isAuthenticated) {
-        const name = state.isGuest ? "NORMIE" : getDisplayName();
-        loginButton.innerText = `START (${name})`;
-        loginButton.classList.add("btn-success", "animate-pulse");
-        loginButton.classList.remove("btn-primary");
+        // Don't clobber maintenance state — label set by checkMaintenanceStatus.
+        // Only reapply normal state when not in maintenance.
+        if (loginButton.dataset.maintenance !== "true") {
+          const name = state.isGuest ? "NORMIE" : getDisplayName();
+          loginButton.innerText = `START (${name})`;
+          loginButton.classList.add("btn-success", "animate-pulse");
+          loginButton.classList.remove(
+            "btn-primary",
+            "btn-warning",
+            "opacity-60"
+          );
+        }
         btnLogout?.classList.remove("hidden");
       } else {
         loginButton.innerText = "LOGIN";
-        loginButton.classList.remove("btn-success", "animate-pulse");
+        loginButton.classList.remove(
+          "btn-success",
+          "animate-pulse",
+          "btn-warning",
+          "opacity-60"
+        );
         loginButton.classList.add("btn-primary");
+        delete loginButton.dataset.maintenance;
         btnLogout?.classList.add("hidden");
       }
+    }
+  }
+
+  /**
+   * Check satellite maintenance status after the user is authenticated.
+   * Runs once per page load — IC query is ~100 ms and free.
+   * If the satellite is mid-deploy, converts the START button into a greyed-out
+   * UPGRADING button and blocks navigation until the check passes.
+   */
+  async function checkMaintenanceStatus() {
+    if (!loginButton) return;
+    try {
+      const {isSatelliteInSync} = await import("@/lib/satellite/config-hash");
+      const inSync = await isSatelliteInSync();
+      if (!inSync && loginButton.dataset.maintenance !== "true") {
+        loginButton.dataset.maintenance = "true";
+        loginButton.innerText = "UPGRADING";
+        loginButton.classList.remove(
+          "btn-success",
+          "animate-pulse",
+          "btn-primary"
+        );
+        loginButton.classList.add("btn-warning", "opacity-60");
+        log.info(COMPONENT_NAME, "Maintenance detected — START button locked");
+      }
+    } catch {
+      // Best-effort — if the check itself fails, we don't block the user.
     }
   }
 
   // Reactive State Subscription (ticket #199: store cleanup on navigation)
   const unsubAuth = subscribeToAuth(() => {
     updateButtonState();
+    // Re-check maintenance whenever auth state changes (e.g. after login).
+    const state = getAuthState();
+    if (state.isAuthenticated) {
+      checkMaintenanceStatus();
+    }
   });
 
   const unsubProfile = profileStore.subscribe(() => {
