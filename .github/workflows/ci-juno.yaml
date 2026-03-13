@@ -95,7 +95,7 @@ jobs:
       - id: upload_artifact
         name: Upload Satellite WASM
         if: steps.build_functions.outcome == 'success'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: juno-satellite-ci
           path: target/deploy/satellite.wasm.gz

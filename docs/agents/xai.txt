@@ -294,7 +294,7 @@ async def main():
         timeout=3600, # Override default timeout with longer timeout for reasoning models
     )
 
-    model = "grok-4-1-fast-reasoning"
+    model = "grok-4.20-beta-latest-non-reasoning"
     requests = [
         "Tell me a joke",
         "Write a funny haiku",
@@ -345,7 +345,7 @@ async def send_request(sem: Semaphore, request: str) -> dict:
     # The 'async with sem' ensures only a limited number of requests run at once
     async with sem:
         return await client.chat.completions.create(
-            model="grok-4-1-fast-reasoning",
+            model="grok-4.20-beta-latest-non-reasoning",
             messages=[{"role": "user", "content": request}]
         )
 
@@ -487,7 +487,7 @@ batch_requests = []
 for item in feedback_items:
     # Create a Chat exactly like you would for a regular request
     chat = client.chat.create(
-        model="grok-4-1-fast-reasoning",
+        model="grok-4.20-beta-latest-non-reasoning",
         batch_request_id=item["id"],  # Add an ID to track this request
     )
     # Append messages the same way as always
@@ -515,7 +515,7 @@ curl -X POST https://api.x.ai/v1/batches/{batch_id}/requests \\
               {"role": "system", "content": "Classify the sentiment as positive, negative, or neutral."},
               {"role": "user", "content": "The product exceeded my expectations!"}
             ],
-            "model": "grok-4-1-fast-reasoning"
+            "model": "grok-4.20-beta-latest-non-reasoning"
           }
         }
       },
@@ -527,7 +527,7 @@ curl -X POST https://api.x.ai/v1/batches/{batch_id}/requests \\
               {"role": "system", "content": "Classify the sentiment as positive, negative, or neutral."},
               {"role": "user", "content": "Shipping took way too long."}
             ],
-            "model": "grok-4-1-fast-reasoning"
+            "model": "grok-4.20-beta-latest-non-reasoning"
           }
         }
       }
@@ -784,7 +784,7 @@ print("\\nAdding requests...")
 batch_requests = []
 for item in feedback_data:
     chat = client.chat.create(
-        model="grok-4-1-fast-reasoning",
+        model="grok-4.20-beta-latest-non-reasoning",
         batch_request_id=item["id"],
     )
     chat.append(system(
@@ -894,7 +894,7 @@ from xai_sdk.chat import user, system
 client = Client(api_key=os.getenv('XAI_API_KEY'))
 
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     messages=[system("You are Zaphod Beeblebrox.")]
 )
 chat.append(user("126/3=?"))
@@ -927,7 +927,7 @@ payload = {
         {"role": "system", "content": "You are Zaphod Beeblebrox."},
         {"role": "user", "content": "126/3=?"}
     ],
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "deferred": True
 }
 
@@ -967,7 +967,7 @@ const payload = {
         { role: 'system', content: 'You are Zaphod Beeblebrox.' },
         { role: 'user', content: '126/3=?' }
     ],
-    model: 'grok-4-1-fast-reasoning',
+    model: 'grok-4.20-beta-latest-non-reasoning',
     deferred: true
 };
 
@@ -1005,7 +1005,7 @@ RESPONSE=$(curl -s https://api.x.ai/v1/chat/completions \\
         {"role": "system", "content": "You are Zaphod Beeblebrox."},
         {"role": "user", "content": "126/3=?"}
     ],
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "deferred": true
 }')
 
@@ -1025,7 +1025,7 @@ The response body will be the same as what you would expect with non-deferred ch
   "id": "3f4ddfca-b997-3bd4-80d4-8112278a1508",
   "object": "chat.completion",
   "created": 1752077400,
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "choices": [
     {
       "index": 0,
@@ -1086,7 +1086,7 @@ curl https://api.x.ai/v1/chat/completions \
             "content": "What is the meaning of life, the universe, and everything?"
           }
         ],
-        "model": "grok-4-1-fast-reasoning",
+        "model": "grok-4.20-beta-latest-non-reasoning",
         "stream": false,
         "temperature": 0
       }'
@@ -1249,7 +1249,7 @@ import os
 
 os.environ['XAI_API_KEY'] = ""
 response = completion(
-model="xai/grok-4-1-fast-reasoning",
+model="xai/grok-4.20-beta-latest-non-reasoning",
 messages=[
 {
 "role": "user",
@@ -1282,7 +1282,7 @@ import { xai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
 
 const { text } = await generateText({
-model: xai.responses('grok-4-1-fast-reasoning'),
+model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
 prompt: 'Write a vegetarian lasagna recipe for 4 people.',
 });
 ```
@@ -1320,9 +1320,9 @@ To start using xAI models with Continue, you can add the following in Continue's
 ```json
  "models": [
    {
-     "title": "grok-4-1-fast-reasoning",
+     "title": "grok-4.20-beta-latest-non-reasoning",
      "provider": "xAI",
-     "model": "grok-4-1-fast-reasoning",
+     "model": "grok-4.20-beta-latest-non-reasoning",
      "apiKey": "[XAI_API_KEY]"
    }
  ]
@@ -1345,7 +1345,7 @@ via RSS at [https://status.x.ai/feed.xml](https://status.x.ai/feed.xml).
 
 The service status is also indicated in the navigation bar of this site.
 
-Most of the errors will be accompanied by an error message that is self-explanatory. For typical status codes of each endpoint, visit [API Reference](/developers/rest-api-reference) or view our [OpenAPI Document](/openapi.json).
+Most of the errors will be accompanied by an error message that is self-explanatory. For typical status codes of each endpoint, visit [API Reference](/developers/rest-api-reference).
 
 ## Status Codes
 
@@ -3049,7 +3049,7 @@ Or if you need to specify the particular endpoint available to the API:
 
 And to specify models the API key has access to:
 
-* `api-key:model:<model name such as grok-4-1-fast-reasoning>`
+* `api-key:model:<model name such as grok-4.20-beta-latest-non-reasoning>`
 
 ### Create an API key
 
@@ -3233,6 +3233,864 @@ latest endpoints have more stable supports for the model functionalities. Endpoi
 might not receive any updates that support newer functionalities.
 
 In general, the following endpoints are recommended: - Text and image input and text output: [Chat Completions](/developers/rest-api-reference/inference/chat#chat-completions) - `/v1/chat/completions` - Text input and image output: [Image Generation](/developers/rest-api-reference/inference/images#image-generation) - `/v1/image/generations` - Tokenization: [Tokenize Text](/developers/rest-api-reference/inference/other#tokenize-text) - `/v1/tokenize-text`
+
+
+===/developers/model-capabilities/audio/text-to-speech===
+#### Model Capabilities
+
+# Text to Speech (Beta)
+
+Convert text into spoken audio with a single API call. The xAI Text to Speech API produces natural, expressive speech with support for multiple voices, inline speech tags for fine-grained control over delivery, and a range of output formats - from high-fidelity MP3 to telephony-optimized μ-law.
+
+**Endpoint:** `POST https://api.x.ai/v1/tts`
+
+**Beta:** The Text to Speech API is currently in beta. Pricing and rate limits are subject to change when the API becomes generally available. See [current pricing](/developers/models#text-to-speech-api).
+
+**No API key needed to get started.** [Try the playground](https://console.x.ai/team/default/voice/text-to-speech?campaign=voice-docs-tts) to hear every voice, experiment with speech tags, and generate audio right in your browser.
+
+## Quick Start
+
+Generate speech from text in three lines:
+
+```bash
+curl -X POST https://api.x.ai/v1/tts \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Hello! Welcome to the xAI Text to Speech API.",
+    "voice_id": "eve"
+  }' \
+  --output hello.mp3
+```
+
+```python customLanguage="pythonWithoutSDK"
+import os
+import requests
+
+response = requests.post(
+    "https://api.x.ai/v1/tts",
+    headers={
+        "Authorization": f"Bearer {os.environ['XAI_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "text": "Hello! Welcome to the xAI Text to Speech API.",
+        "voice_id": "eve",
+    },
+)
+response.raise_for_status()
+
+with open("hello.mp3", "wb") as f:
+    f.write(response.content)
+
+print(f"Saved {len(response.content):,} bytes to hello.mp3")
+```
+
+```javascript customLanguage="javascriptWithoutSDK"
+import fs from "fs";
+
+const response = await fetch("https://api.x.ai/v1/tts", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.XAI_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    text: "Hello! Welcome to the xAI Text to Speech API.",
+    voice_id: "eve",
+  }),
+});
+
+if (!response.ok) throw new Error(`TTS error ${response.status}`);
+
+const buffer = Buffer.from(await response.arrayBuffer());
+fs.writeFileSync("hello.mp3", buffer);
+console.log(`Saved ${buffer.length.toLocaleString()} bytes to hello.mp3`);
+```
+
+```swift
+import Foundation
+
+let apiKey = ProcessInfo.processInfo.environment["XAI_API_KEY"]!
+let url = URL(string: "https://api.x.ai/v1/tts")!
+var request = URLRequest(url: url)
+request.httpMethod = "POST"
+request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+request.httpBody = try JSONSerialization.data(withJSONObject: [
+    "text": "Hello! Welcome to the xAI Text to Speech API.",
+    "voice_id": "eve",
+])
+
+let (data, _) = try await URLSession.shared.data(for: request)
+let fileURL = URL(fileURLWithPath: "hello.mp3")
+try data.write(to: fileURL)
+
+print("Saved \(data.count) bytes to hello.mp3")
+```
+
+The response body contains raw audio bytes. Save directly to a file or pipe to an audio player.
+
+Don't have an API key yet? [Create one in the console](https://console.x.ai/team/default/api-keys?campaign=voice-docs-tts) - it only takes a few seconds.
+
+## Request Body
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `text` | string | ✓ | The text to convert to speech. Maximum **15,000 characters**. Supports [speech tags](#speech-tags). |
+| `voice_id` | string | | Voice to use for synthesis. Defaults to `eve`. See [Voices](#voices). |
+| `output_format` | object | | Output format configuration. Defaults to MP3 at 24 kHz / 128 kbps. See [Output Formats](#output-formats). |
+
+### Example with all options
+
+```json
+{
+  "text": "Hello! This is a high-fidelity text to speech example.",
+  "voice_id": "ara",
+  "output_format": {
+    "codec": "mp3",
+    "sample_rate": 44100,
+    "bit_rate": 192000
+  }
+}
+```
+
+## Voices
+
+Five voices are available, each with a distinct personality. Listen to samples and choose the best fit for your use case:
+
+| Voice | Tone | Description | Sample |
+|-------|------|-------------|:------:|
+| **`eve`** | Energetic, upbeat | Default voice - engaging and enthusiastic |  |
+| **`ara`** | Warm, friendly | Balanced and conversational |  |
+| **`rex`** | Confident, clear | Professional and articulate - ideal for business |  |
+| **`sal`** | Smooth, balanced | Versatile voice for a wide range of contexts |  |
+| **`leo`** | Authoritative, strong | Commanding and decisive - great for instructional content |  |
+
+Voice IDs are **case-insensitive** - `eve`, `Eve`, and `EVE` all work. [Preview all voices in the playground →](https://console.x.ai/team/default/voice/text-to-speech?campaign=voice-docs-tts)
+
+### Choosing the right voice
+
+* **`eve`** - Great default for demos, announcements, and upbeat content
+* **`ara`** - Ideal for conversational interfaces, customer support, and warm narration
+* **`rex`** - Best for business presentations, corporate communications, and tutorials
+* **`sal`** - Versatile choice for balanced delivery across different content types
+* **`leo`** - Perfect for authoritative narration, instructions, and educational content
+
+You can also list voices programmatically with the [List voices](/developers/rest-api-reference/inference/voice#list-voices) endpoint:
+
+```bash
+curl -s https://api.x.ai/v1/tts/voices \
+  -H "Authorization: Bearer $XAI_API_KEY"
+```
+
+```python customLanguage="pythonWithoutSDK"
+import os
+import requests
+
+response = requests.get(
+    "https://api.x.ai/v1/tts/voices",
+    headers={"Authorization": f"Bearer {os.environ['XAI_API_KEY']}"},
+)
+for voice in response.json()["voices"]:
+    print(f"{voice['voice_id']:5s}  {voice['name']}")
+```
+
+```javascript customLanguage="javascriptWithoutSDK"
+const response = await fetch("https://api.x.ai/v1/tts/voices", {
+  headers: { Authorization: `Bearer ${process.env.XAI_API_KEY}` },
+});
+const { voices } = await response.json();
+voices.forEach((v) => console.log(`${v.voice_id}  ${v.name}`));
+```
+
+```swift
+import Foundation
+
+let apiKey = ProcessInfo.processInfo.environment["XAI_API_KEY"]!
+let url = URL(string: "https://api.x.ai/v1/tts/voices")!
+var request = URLRequest(url: url)
+request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+
+let (data, _) = try await URLSession.shared.data(for: request)
+let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+let voices = json["voices"] as! [[String: Any]]
+for voice in voices {
+    print("\(voice["voice_id"]!)  \(voice["name"]!)")
+}
+```
+
+## Supported Languages
+
+The TTS API supports the following languages. The model automatically detects the language of the input text, so no explicit language parameter is needed.
+
+| Language | Language Code |
+|----------|---------------|
+| English | `en` |
+| Arabic (Egypt) | `ar-EG` |
+| Arabic (Saudi Arabia) | `ar-SA` |
+| Arabic (United Arab Emirates) | `ar-AE` |
+| Bengali | `bn` |
+| Chinese (Simplified) | `zh` |
+| French | `fr` |
+| German | `de` |
+| Hindi | `hi` |
+| Indonesian | `id` |
+| Italian | `it` |
+| Japanese | `ja` |
+| Korean | `ko` |
+| Portuguese (Brazil) | `pt-BR` |
+| Portuguese (Portugal) | `pt-PT` |
+| Russian | `ru` |
+| Spanish (Mexico) | `es-MX` |
+| Spanish (Spain) | `es-ES` |
+| Turkish | `tr` |
+| Vietnamese | `vi` |
+
+The model is also capable of generating speech in additional languages beyond those listed above, with varying degrees of accuracy.
+
+## Speech Tags
+
+Add inline speech tags to your text for expressive delivery. There are two types of tags:
+
+* **Inline tags** `[tag]` — placed at a specific point in the text to produce a vocal expression (e.g. a laugh or pause)
+* **Wrapping tags** `<tag>text</tag>` — wrap a section of text to change how it is delivered (e.g. whispering, singing)
+
+### Inline Tags
+
+Insert these where the expression should occur:
+
+| Category | Tags |
+|----------|------|
+| **Pauses** | `[pause]` `[long-pause]` `[hum-tune]` |
+| **Laughter & crying** | `[laugh]` `[chuckle]` `[giggle]` `[cry]` |
+| **Mouth sounds** | `[tsk]` `[tongue-click]` `[lip-smack]` |
+| **Breathing** | `[breath]` `[inhale]` `[exhale]` `[sigh]` |
+
+### Wrapping Tags
+
+Wrap text to change delivery style. Use an opening tag and a matching closing tag:
+
+| Category | Tags |
+|----------|------|
+| **Volume & intensity** | `<soft>` `<whisper>` `<loud>` `<build-intensity>` `<decrease-intensity>` |
+| **Pitch & speed** | `<higher-pitch>` `<lower-pitch>` `<slow>` `<fast>` |
+| **Vocal style** | `<sing-song>` `<singing>` `<laugh-speak>` `<emphasis>` |
+
+### Examples
+
+```bash
+# Inline tags
+curl -X POST https://api.x.ai/v1/tts \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "So I walked in and [pause] there it was. [laugh] I honestly could not believe it!",
+    "voice_id": "eve"
+  }' \
+  --output expressive.mp3
+
+# Wrapping tags
+curl -X POST https://api.x.ai/v1/tts \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "I need to tell you something. <whisper>It is a secret.</whisper> Pretty cool, right?",
+    "voice_id": "eve"
+  }' \
+  --output whisper.mp3
+```
+
+```python customLanguage="pythonWithoutSDK"
+import os
+import requests
+
+# Inline tags
+response = requests.post(
+    "https://api.x.ai/v1/tts",
+    headers={
+        "Authorization": f"Bearer {os.environ['XAI_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "text": "So I walked in and [pause] there it was. [laugh] I honestly could not believe it!",
+        "voice_id": "eve",
+    },
+)
+response.raise_for_status()
+
+with open("expressive.mp3", "wb") as f:
+    f.write(response.content)
+
+# Wrapping tags
+response = requests.post(
+    "https://api.x.ai/v1/tts",
+    headers={
+        "Authorization": f"Bearer {os.environ['XAI_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "text": "I need to tell you something. <whisper>It is a secret.</whisper> Pretty cool, right?",
+        "voice_id": "eve",
+    },
+)
+response.raise_for_status()
+
+with open("whisper.mp3", "wb") as f:
+    f.write(response.content)
+```
+
+```javascript customLanguage="javascriptWithoutSDK"
+// Inline tags
+const response = await fetch("https://api.x.ai/v1/tts", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.XAI_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    text: "So I walked in and [pause] there it was. [laugh] I honestly could not believe it!",
+    voice_id: "eve",
+  }),
+});
+
+// Wrapping tags
+const whisperResponse = await fetch("https://api.x.ai/v1/tts", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.XAI_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    text: "I need to tell you something. <whisper>It is a secret.</whisper> Pretty cool, right?",
+    voice_id: "eve",
+  }),
+});
+```
+
+```swift
+import Foundation
+
+let apiKey = ProcessInfo.processInfo.environment["XAI_API_KEY"]!
+let url = URL(string: "https://api.x.ai/v1/tts")!
+
+// Inline tags
+var request = URLRequest(url: url)
+request.httpMethod = "POST"
+request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+request.httpBody = try JSONSerialization.data(withJSONObject: [
+    "text": "So I walked in and [pause] there it was. [laugh] I honestly could not believe it!",
+    "voice_id": "eve",
+])
+
+let (data, _) = try await URLSession.shared.data(for: request)
+try data.write(to: URL(fileURLWithPath: "expressive.mp3"))
+
+// Wrapping tags
+request.httpBody = try JSONSerialization.data(withJSONObject: [
+    "text": "I need to tell you something. <whisper>It is a secret.</whisper> Pretty cool, right?",
+    "voice_id": "eve",
+])
+
+let (whisperData, _) = try await URLSession.shared.data(for: request)
+try whisperData.write(to: URL(fileURLWithPath: "whisper.mp3"))
+```
+
+**Tips for speech tags:**
+
+* Place inline tags where the expression would naturally occur in conversation
+* Combine tags with punctuation — `"Really? [laugh] That's incredible!"` produces more natural results than stacking tags
+* Use `[pause]` or `[long-pause]` to add dramatic timing or let a thought land
+* Wrapping tags work best around complete phrases — `<whisper>It is a secret.</whisper>` reads more naturally than wrapping individual words
+* Combine styles for effect — `<slow><soft>Goodnight, sleep well.</soft></slow>`
+
+## Output Formats
+
+Control the audio codec, sample rate, and bit rate with the `output_format` object. When omitted, the default is **MP3 at 24 kHz / 128 kbps**.
+
+### Codecs
+
+| Codec | Content-Type | Best for |
+|-------|-------------|----------|
+| `mp3` | `audio/mpeg` | General use - wide compatibility, good compression |
+| `wav` | `audio/wav` | Lossless audio - editing, post-production |
+| `pcm` | `audio/pcm` | Raw audio - real-time processing pipelines |
+| `mulaw` | `audio/basic` | Telephony (G.711 μ-law) |
+| `alaw` | `audio/alaw` | Telephony (G.711 A-law) |
+
+### Sample Rates
+
+| Rate | Description |
+|------|-------------|
+| `8000` | Narrowband - telephony |
+| `16000` | Wideband - speech recognition |
+| `22050` | Standard - balanced quality |
+| `24000` | High quality - **default**, recommended for most use cases |
+| `44100` | CD quality - media production |
+| `48000` | Professional - studio-grade audio |
+
+### Bit Rates (MP3 only)
+
+| Rate | Quality |
+|------|---------|
+| `32000` | Low - smallest file size |
+| `64000` | Medium - good for speech |
+| `96000` | Standard - balanced |
+| `128000` | High - **default**, recommended |
+| `192000` | Maximum - highest fidelity |
+
+### Example: High-fidelity MP3
+
+```json
+{
+  "text": "Crystal clear audio at maximum quality.",
+  "voice_id": "rex",
+  "output_format": {
+    "codec": "mp3",
+    "sample_rate": 44100,
+    "bit_rate": 192000
+  }
+}
+```
+
+### Example: Telephony (μ-law)
+
+```json
+{
+  "text": "Hello, thank you for calling. How can I help you today?",
+  "voice_id": "ara",
+  "output_format": {
+    "codec": "mulaw",
+    "sample_rate": 8000
+  }
+}
+```
+
+## Best Practices
+
+Tips for getting the highest quality output from the TTS API.
+
+### Writing effective text
+
+* **Use natural punctuation.** Commas, periods, and question marks guide pacing and intonation. `"Wait, really?"` sounds more natural than `"Wait really"`.
+* **Add emotional context.** Exclamation marks and question marks influence delivery - `"That's amazing!"` sounds enthusiastic while `"That's amazing."` is matter-of-fact.
+* **Break long content into paragraphs.** Paragraph breaks create natural pauses and help the model maintain consistent quality across longer text.
+* **Keep unary requests under 15,000 characters.** For longer content, use the [bidirectional WebSocket endpoint](#streaming-tts-websocket) which has no text length limit, or split into logical segments (by paragraph or sentence) and concatenate the audio output.
+
+### Integrating with AI coding assistants
+
+The [Cloud Console playground](https://console.x.ai/team/default/voice/text-to-speech?campaign=voice-docs-tts) includes ready-made **agent instructions** you can copy and paste into tools like Cursor, GitHub Copilot, or Windsurf. The instructions are pre-configured with your current voice and format settings - open the playground, tweak your settings, and copy the prompt to get a tailored integration guide for your coding agent.
+
+### Optimizing for production
+
+* **Proxy requests server-side.** Never expose your API key in client-side code. Route TTS requests through your backend.
+* **Cache generated audio.** If the same text is requested repeatedly, cache the audio bytes to save API calls and reduce latency.
+* **Match the format to the use case.** Use `mulaw` or `alaw` at 8 kHz for telephony; `mp3` at 24 kHz for web; `wav` at 44.1+ kHz for post-production.
+* **Respect concurrent session limits.** The streaming WebSocket endpoint allows up to **50 concurrent sessions per team**. For high-throughput services, pool connections or queue requests to stay within this limit.
+
+## Browser Playback
+
+To play TTS audio in the browser, proxy the request through your backend and use the Web Audio API or an `<audio>` element:
+
+```javascript customLanguage="javascriptWithoutSDK"
+// Client-side: fetch from your backend proxy, then play
+async function speakText(text, voiceId = "eve") {
+  const response = await fetch("/api/tts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text, voice_id: voiceId }),
+  });
+
+  if (!response.ok) throw new Error("TTS request failed");
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+
+  const audio = new Audio(url);
+  audio.addEventListener("ended", () => URL.revokeObjectURL(url));
+  await audio.play();
+}
+
+// Usage
+await speakText("Hello from the browser!");
+```
+
+**Never call the TTS API directly from the browser** - this would expose your API key. Always proxy through your backend.
+
+### Browser gotchas
+
+**Safari returns `Infinity` for `audio.duration` on blob URLs.** The `loadedmetadata` event fires but `audio.duration` is `Infinity`, breaking seek bars and time displays. Use `AudioContext.decodeAudioData()` instead:
+
+```javascript customLanguage="javascriptWithoutSDK"
+async function getAudioDuration(arrayBuffer) {
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  const ctx = new AudioCtx();
+  // Clone the buffer - decodeAudioData detaches the original
+  const decoded = await ctx.decodeAudioData(arrayBuffer.slice(0));
+  const durationMs = Math.round(decoded.duration * 1000);
+  await ctx.close();
+  return durationMs;
+}
+```
+
+**`AudioContext` must be created during a user gesture on Safari.** Safari permanently suspends an `AudioContext` created outside a click/tap handler, with no way to resume it. Chrome is more lenient. Always create or resume the context in your button's click handler, before any `await`:
+
+```javascript customLanguage="javascriptWithoutSDK"
+// Create the AudioContext once, in a click handler
+let audioCtx;
+button.addEventListener("click", async () => {
+  // This MUST happen synchronously in the click handler for Safari
+  if (!audioCtx) audioCtx = new AudioContext();
+  if (audioCtx.state === "suspended") await audioCtx.resume();
+
+  // Now it's safe to fetch and play audio asynchronously
+  const response = await fetch("/api/tts", { /* ... */ });
+  const arrayBuffer = await response.arrayBuffer();
+  const decoded = await audioCtx.decodeAudioData(arrayBuffer);
+  const source = audioCtx.createBufferSource();
+  source.buffer = decoded;
+  source.connect(audioCtx.destination);
+  source.start();
+});
+```
+
+**Raw codecs (pcm, mulaw, alaw) are not playable in the browser.** `AudioContext.decodeAudioData()` and `<audio>` elements only support container formats like MP3 and WAV. Use `mp3` or `wav` for browser playback. If you're working with raw formats server-side (e.g., piping to telephony), estimate duration from byte count:
+
+```javascript customLanguage="javascriptWithoutSDK"
+// PCM = 16-bit LE (2 bytes/sample), mulaw/alaw = 8-bit (1 byte/sample)
+const bytesPerSample = codec === "pcm" ? 2 : 1;
+const durationMs = Math.round((byteLength / bytesPerSample / sampleRate) * 1000);
+```
+
+**Revoke blob URLs to avoid memory leaks.** Each `URL.createObjectURL()` call allocates memory that persists until explicitly freed. Revoke URLs when playback ends. For downloads, delay revocation so the browser finishes saving the file:
+
+```javascript customLanguage="javascriptWithoutSDK"
+// Playback: revoke when done
+const url = URL.createObjectURL(blob);
+const audio = new Audio(url);
+audio.addEventListener("ended", () => URL.revokeObjectURL(url));
+
+// Downloads: delay revocation
+const downloadUrl = URL.createObjectURL(blob);
+const a = document.createElement("a");
+a.href = downloadUrl;
+a.download = "speech.mp3";
+a.click();
+setTimeout(() => URL.revokeObjectURL(downloadUrl), 10_000);
+```
+
+## Error Handling
+
+| Status | Meaning | Action |
+|--------|---------|--------|
+| `200` | Success | Audio bytes in the response body |
+| `400` | Bad request | Check: text is non-empty, under 15,000 chars; codec and sample rate are valid |
+| `401` | Unauthorized | API key is missing or invalid |
+| `429` | Rate limited | Back off and retry with exponential delay |
+| `503` | Service unavailable | TTS service is temporarily unavailable - retry |
+| `500` | Server error | Retry with exponential backoff |
+
+### Retry with backoff
+
+```python customLanguage="pythonWithoutSDK"
+import os
+import time
+import requests
+
+def generate_speech(text, voice_id="eve", max_retries=3):
+    for attempt in range(max_retries):
+        response = requests.post(
+            "https://api.x.ai/v1/tts",
+            headers={
+                "Authorization": f"Bearer {os.environ['XAI_API_KEY']}",
+                "Content-Type": "application/json",
+            },
+            json={"text": text, "voice_id": voice_id},
+        )
+        if response.ok:
+            return response.content
+        if response.status_code in (429, 500, 503):
+            wait = 2 ** attempt
+            time.sleep(wait)
+            continue
+        response.raise_for_status()  # Non-retryable error
+    raise RuntimeError("Max retries exceeded")
+```
+
+```javascript customLanguage="javascriptWithoutSDK"
+async function generateSpeech(text, voiceId = "eve", maxRetries = 3) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const response = await fetch("https://api.x.ai/v1/tts", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.XAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ text, voice_id: voiceId }),
+    });
+
+    if (response.ok) return Buffer.from(await response.arrayBuffer());
+
+    if ([429, 500, 503].includes(response.status)) {
+      await new Promise((r) => setTimeout(r, 2 ** attempt * 1000));
+      continue;
+    }
+    throw new Error(`TTS error ${response.status}: ${await response.text()}`);
+  }
+  throw new Error("Max retries exceeded");
+}
+```
+
+```swift
+import Foundation
+
+func generateSpeech(text: String, voiceId: String = "eve", maxRetries: Int = 3) async throws -> Data {
+    let apiKey = ProcessInfo.processInfo.environment["XAI_API_KEY"]!
+    let url = URL(string: "https://api.x.ai/v1/tts")!
+
+    for attempt in 0..<maxRetries {
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "text": text, "voice_id": voiceId,
+        ])
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let status = (response as! HTTPURLResponse).statusCode
+        if status == 200 { return data }
+        if [429, 500, 503].contains(status) {
+            try await Task.sleep(nanoseconds: UInt64(pow(2.0, Double(attempt))) * 1_000_000_000)
+            continue
+        }
+        throw URLError(.badServerResponse)
+    }
+    throw URLError(.timedOut)
+}
+```
+
+## Limits
+
+The unary/server-streamed endpoints and the bidirectional WebSocket endpoint have different limits:
+
+| | Unary & server-streamed (`POST /v1/tts`) | Bidirectional WebSocket (`wss://api.x.ai/v1/tts`) |
+|---|---|---|
+| **Max text length** | 15,000 characters per request | No limit — individual `text.delta` messages capped at 15,000 characters each |
+| **Request timeout** | 15 minutes | No timeout (connection stays open) |
+| **Concurrent sessions** | — | 50 per team |
+
+For content exceeding 15,000 characters, use the [bidirectional WebSocket endpoint](#streaming-tts-websocket) which has no text length limit.
+
+## Streaming TTS (WebSocket)
+
+For real-time audio generation, open a WebSocket connection to the streaming TTS endpoint. Text is streamed in as deltas and audio is streamed back as base64-encoded chunks — ideal for interactive applications where you want audio to start playing before the full text is available.
+
+**Endpoint:** `wss://api.x.ai/v1/tts`
+
+**Never expose your API key in client-side code.** Always proxy WebSocket connections through your backend.
+
+### Connection
+
+Open a WebSocket connection with optional query parameters to configure voice and audio format:
+
+```
+GET /v1/tts?voice=eve&codec=mp3&sample_rate=24000&bit_rate=128000
+Upgrade: websocket
+Authorization: Bearer $XAI_API_KEY
+```
+
+All query parameters are optional:
+
+| Parameter | Default | Accepted values |
+|-----------|---------|-----------------|
+| `voice` | `eve` | `ara`, `eve`, `leo`, `rex`, `sal` |
+| `codec` | `mp3` | `mp3`, `wav`, `pcm`, `mulaw` (or `ulaw`), `alaw` |
+| `sample_rate` | `24000` | `8000`, `16000`, `22050`, `24000`, `44100`, `48000` |
+| `bit_rate` | `128000` | `32000`, `64000`, `96000`, `128000`, `192000` (MP3 only) |
+
+An invalid `voice`, `codec`, or `sample_rate` is rejected **before** the WebSocket upgrade with an HTTP 400 or 404.
+
+### Client → Server Messages
+
+Send text to the server as JSON text frames. Split your text across multiple `text.delta` messages, then signal the end of the utterance with `text.done`:
+
+```json
+{"type": "text.delta", "delta": "Here is some text. "}
+{"type": "text.delta", "delta": "More text follows."}
+{"type": "text.done"}
+```
+
+| Event | Description |
+|-------|-------------|
+| `text.delta` | A chunk of text to synthesize. Individual deltas are capped at **15,000 characters**. |
+| `text.done` | Signals the end of the current utterance. The server will finish generating audio and send `audio.done`. |
+
+### Server → Client Messages
+
+The server responds with base64-encoded audio chunks and a completion event:
+
+```json
+{"type": "audio.delta", "delta": "<base64-encoded audio bytes>"}
+{"type": "audio.done", "trace_id": "uuid"}
+{"type": "error", "message": "description"}
+```
+
+| Event | Description |
+|-------|-------------|
+| `audio.delta` | A chunk of base64-encoded audio in the codec specified at connection time. Decode and enqueue for playback. |
+| `audio.done` | All audio for the current utterance has been sent. Includes a `trace_id` for debugging. |
+| `error` | An error occurred. The `message` field contains a human-readable description. |
+
+### Multi-Utterance Sessions
+
+The connection stays open after `audio.done`. You can immediately send another round of `text.delta` → `text.done` messages to synthesize additional text without reconnecting. This is useful for conversational UIs where you generate audio for each assistant response in sequence.
+
+### Quick Start
+
+```python customLanguage="pythonWithoutSDK"
+import asyncio
+import base64
+import os
+
+import websockets
+
+XAI_API_KEY = os.environ["XAI_API_KEY"]
+
+async def stream_tts(text: str, voice: str = "eve", codec: str = "mp3"):
+    uri = f"wss://api.x.ai/v1/tts?voice={voice}&codec={codec}"
+    audio_chunks: list[bytes] = []
+
+    async with websockets.connect(
+        uri,
+        additional_headers={"Authorization": f"Bearer {XAI_API_KEY}"},
+    ) as ws:
+        # Send text in one delta (or split across multiple)
+        await ws.send('{"type": "text.delta", "delta": ' + f'"{text}"' + "}")
+        await ws.send('{"type": "text.done"}')
+
+        # Receive audio chunks until done
+        async for message in ws:
+            import json
+            event = json.loads(message)
+
+            if event["type"] == "audio.delta":
+                audio_chunks.append(base64.b64decode(event["delta"]))
+            elif event["type"] == "audio.done":
+                print(f"Done — trace_id: {event['trace_id']}")
+                break
+            elif event["type"] == "error":
+                raise RuntimeError(event["message"])
+
+    audio = b"".join(audio_chunks)
+    with open(f"output.{codec}", "wb") as f:
+        f.write(audio)
+    print(f"Saved {len(audio):,} bytes to output.{codec}")
+
+asyncio.run(stream_tts("Hello from the streaming TTS API!"))
+```
+
+```javascript customLanguage="javascriptWithoutSDK"
+import WebSocket from "ws";
+import fs from "fs";
+
+const apiKey = process.env.XAI_API_KEY;
+const voice = "eve";
+const codec = "mp3";
+const uri = `wss://api.x.ai/v1/tts?voice=${voice}&codec=${codec}`;
+
+const ws = new WebSocket(uri, {
+  headers: { Authorization: `Bearer ${apiKey}` },
+});
+
+const audioChunks = [];
+
+ws.on("open", () => {
+  ws.send(JSON.stringify({ type: "text.delta", delta: "Hello from the streaming TTS API!" }));
+  ws.send(JSON.stringify({ type: "text.done" }));
+});
+
+ws.on("message", (data) => {
+  const event = JSON.parse(data);
+
+  if (event.type === "audio.delta") {
+    audioChunks.push(Buffer.from(event.delta, "base64"));
+  } else if (event.type === "audio.done") {
+    const audio = Buffer.concat(audioChunks);
+    fs.writeFileSync(`output.${codec}`, audio);
+    console.log(`Saved ${audio.length.toLocaleString()} bytes — trace_id: ${event.trace_id}`);
+    ws.close();
+  } else if (event.type === "error") {
+    console.error("Error:", event.message);
+    ws.close();
+  }
+});
+```
+
+```swift
+import Foundation
+
+let apiKey = ProcessInfo.processInfo.environment["XAI_API_KEY"]!
+let voice = "eve"
+let codec = "mp3"
+let url = URL(string: "wss://api.x.ai/v1/tts?voice=\(voice)&codec=\(codec)")!
+
+var request = URLRequest(url: url)
+request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+
+let task = URLSession.shared.webSocketTask(with: request)
+task.resume()
+
+// Send text
+let deltaMsg = "{\"type\":\"text.delta\",\"delta\":\"Hello from the streaming TTS API!\"}"
+try await task.send(.string(deltaMsg))
+try await task.send(.string("{\"type\":\"text.done\"}"))
+
+// Receive audio chunks
+var audioData = Data()
+while true {
+    let message = try await task.receive()
+    guard case .string(let text) = message,
+          let json = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any],
+          let type = json["type"] as? String else { continue }
+
+    if type == "audio.delta", let delta = json["delta"] as? String,
+       let chunk = Data(base64Encoded: delta) {
+        audioData.append(chunk)
+    } else if type == "audio.done" {
+        let traceId = json["trace_id"] as? String ?? "unknown"
+        try audioData.write(to: URL(fileURLWithPath: "output.\(codec)"))
+        print("Saved \(audioData.count) bytes — trace_id: \(traceId)")
+        break
+    } else if type == "error" {
+        print("Error: \(json["message"] ?? "unknown")")
+        break
+    }
+}
+
+task.cancel(with: .normalClosure, reason: nil)
+```
+
+### Limits and Behavior
+
+| Property | Value |
+|----------|-------|
+| **Total text length** | No limit — send as many `text.delta` messages as needed |
+| **Delta size** | Individual `text.delta` messages capped at 15,000 characters |
+| **Concurrent sessions** | 50 per team |
+| **Session permit TTL** | 600 seconds |
+| **Moderation** | Runs asynchronously on accumulated text after audio is sent (fail-open) |
+| **Billing** | Recorded per session based on total input characters |
+
+## Related
+
+* [TTS Playground](https://console.x.ai/team/default/voice/text-to-speech?campaign=voice-docs-tts) - Try voices and speech tags in your browser
+* [Create an API Key](https://console.x.ai/team/default/api-keys?campaign=voice-docs-tts) - Get started with the API
+* [Voice Overview](/developers/model-capabilities/audio/voice) - Overview of all xAI voice capabilities
+* [Voice Agent API](/developers/model-capabilities/audio/voice-agent) - Real-time voice conversations via WebSocket
+* [API Reference](/developers/rest-api-reference/inference/voice#text-to-speech) - Full TTS endpoint specification
+* [List Voices](/developers/rest-api-reference/inference/voice#list-voices) - Programmatically discover available voices
 
 
 ===/developers/model-capabilities/audio/voice-agent===
@@ -3488,7 +4346,7 @@ When using `audio/pcm` format, you can configure the sample rate to one of the f
 |-------------|---------|-------------|
 | **8000 Hz** | Telephone | Narrowband, suitable for voice calls |
 | **16000 Hz** | Wideband | Good for speech recognition |
-| **21050 Hz** | Standard | Balanced quality and bandwidth |
+| **22050 Hz** | Standard | Balanced quality and bandwidth |
 | **24000 Hz** | High (Default) | Recommended for most use cases |
 | **32000 Hz** | Very High | Enhanced audio clarity |
 | **44100 Hz** | CD Quality | Standard for music / media |
@@ -3733,6 +4591,8 @@ There are a few message types used in interacting with the models. [Client event
           "voice": "Eve",
           "turn_detection": {
               "type": "server_vad" or null,
+              "threshold": 0.6,
+              "silence_duration_ms": 800
           },
           "audio": {
               "input": {
@@ -3759,10 +4619,12 @@ There are a few message types used in interacting with the models. [Client event
   | `instructions` | string | System prompt |
   | `voice` | string | Voice selection: `Eve`, `Ara`, `Rex`, `Sal`, `Leo` (see [Voice Options](#voice-options)) |
   | `turn_detection.type` | string | null | `"server_vad"` for automatic detection, `null` for manual text turns |
+  | `turn_detection.threshold` | number | optional | VAD activation threshold (0.0–1.0). Higher values require louder audio to trigger. Default: `0.85`. |
+  | `turn_detection.silence_duration_ms` | number | optional | Duration of silence (in ms) to detect speech stop (100–5000). Shorter values respond faster but may interrupt pauses. |
   | `audio.input.format.type` | string | Input format: `"audio/pcm"`, `"audio/pcmu"`, or `"audio/pcma"` |
-  | `audio.input.format.rate` | number | Input sample rate (PCM only): 8000, 16000, 21050, 24000, 32000, 44100, 48000 |
+  | `audio.input.format.rate` | number | Input sample rate (PCM only): 8000, 16000, 22050, 24000, 32000, 44100, 48000 |
   | `audio.output.format.type` | string | Output format: `"audio/pcm"`, `"audio/pcmu"`, or `"audio/pcma"` |
-  | `audio.output.format.rate` | number | Output sample rate (PCM only): 8000, 16000, 21050, 24000, 32000, 44100, 48000 |
+  | `audio.output.format.rate` | number | Output sample rate (PCM only): 8000, 16000, 22050, 24000, 32000, 44100, 48000 |
 
 ### Receiving and Playing Audio
 
@@ -4686,6 +5548,52 @@ micBuffer = [];   // clear after successful flush
 * Flush in reasonably sized messages (~400–800 samples each) for smooth transmission.
 * On reconnection, resume buffering immediately.
 
+### Avoid Audio Overlap During Tool Calls
+
+When the model invokes a tool during a voice response, the server delivers all audio deltas first, then the function call events alongside `response.done`. If your client immediately sends `conversation.item.create` (with the function result) followed by `response.create`, the server starts generating the next response right away — even if the client is still playing audio from the previous turn. This causes overlapping audio.
+
+**Recommended sequence:**
+
+1. Receive `response.function_call_arguments.done` → execute your tool
+2. Send `conversation.item.create` with the `function_call_output`
+3. **Wait until audio playback of the current turn is complete** (or nearly complete)
+4. Then send `response.create`
+
+While waiting for playback to finish, show a visual "thinking" indicator (e.g., animated dots) so the user knows the agent is processing. This creates a natural pause between the model's spoken response and the follow-up after the tool result.
+
+```javascript customLanguage="javascriptWithoutSDK"
+ws.on("message", async (message) => {
+  const event = JSON.parse(message);
+
+  if (event.type === "response.function_call_arguments.done") {
+    // 1. Execute the tool
+    const result = await executeFunction(event.name, JSON.parse(event.arguments));
+
+    // 2. Send the function result immediately
+    ws.send(JSON.stringify({
+      type: "conversation.item.create",
+      item: {
+        type: "function_call_output",
+        call_id: event.call_id,
+        output: JSON.stringify(result),
+      },
+    }));
+
+    // 3. Show a "thinking" indicator in the UI
+    showThinkingIndicator();
+
+    // 4. Wait for current audio playback to finish
+    await waitForPlaybackComplete();
+
+    // 5. Now request the next response
+    ws.send(JSON.stringify({ type: "response.create" }));
+    hideThinkingIndicator();
+  }
+});
+```
+
+If the tool call is slow (e.g., external API), the audio will likely finish before the result is ready — in that case you can send `response.create` as soon as the result arrives. The key rule is: **don't send `response.create` while audio is still playing**.
+
 ### Additional High-Impact Recommendations
 
 * **Prefer ephemeral tokens** for client-side security. See [Authentication](#authentication) for details.
@@ -4701,19 +5609,43 @@ micBuffer = [];   // clear after successful flush
 
 # Voice Overview
 
-We're introducing a new API for voice interactions with Grok. We're initially launching with the Grok Voice Agent API and will soon be launching dedicated speech-to-text and text-to-speech APIs.
+xAI offers two voice APIs: the **Text to Speech API** for converting text into spoken audio, and the **Voice Agent API** for real-time, interactive voice conversations with Grok.
 
-## Grok Voice Agent API
+## Text to Speech API
 
-Build powerful real-time voice applications with the Grok Voice Agent API. Create interactive voice conversations with Grok models via WebSocket for voice assistants, phone agents, and interactive voice applications.
+Convert text into spoken audio with a single API call. Choose from multiple voices, add inline speech tags for expressive delivery, and output in formats ranging from high-fidelity MP3 to telephony-optimized μ-law.
+
+**Endpoint:** `POST https://api.x.ai/v1/tts`
+
+**Use Cases:**
+
+* Narration for audiobooks, articles, and documentation
+* Dynamic audio content for apps and games
+* Voiceovers for videos and presentations
+* Accessibility - read content aloud for users with visual impairments
+
+[Documentation →](/developers/model-capabilities/audio/text-to-speech)
+
+## Voice Agent API
+
+Build real-time voice applications with the Grok Voice Agent API. Create interactive voice conversations with Grok models via WebSocket for voice assistants, phone agents, and interactive voice applications.
 
 **WebSocket Endpoint:** `wss://api.x.ai/v1/realtime`
 
-## The Voice Agent API is only available in `us-east-1` region.
+The Voice Agent API is only available in `us-east-1` region.
+
+**Use Cases:**
+
+* Voice assistants for web and mobile
+* AI-powered phone systems with Twilio
+* Real-time customer support
+* Interactive Voice Response (IVR) systems
+
+[Documentation →](/developers/model-capabilities/audio/voice-agent)
 
 ### Enterprise Ready
 
-Optimized for enterprise use cases across Customer Support, Medical, Legal, Finance, Insurance, and more. The Grok Voice Agent API delivers the reliability and precision that regulated industries demand.
+Optimized for enterprise use cases across Customer Support, Medical, Legal, Finance, Insurance, and more.
 
 * **Telephony** - Connect to platforms like Twilio, Vonage, and other SIP providers
 * **Tool Calling** - CRMs, calendars, ticketing systems, databases, and custom APIs
@@ -4724,33 +5656,6 @@ Optimized for enterprise use cases across Customer Support, Medical, Legal, Fina
   * Email addresses, dates, and alphanumeric codes
   * Names, addresses, and phone numbers
 
-### Getting Started
-
-The Grok Voice Agent API enables interactive voice conversations with Grok models via WebSocket. Perfect for building voice assistants, phone agents, and interactive voice applications.
-
-**Use Cases:**
-
-* Voice Assistants for web and mobile
-* AI-powered phone systems with Twilio
-* Real-time customer support
-* Interactive Voice Response (IVR) systems
-
-[Documentation →](/developers/model-capabilities/audio/voice-agent)
-
-### Low Latency
-
-Built for real-time conversations. The Grok Voice Agent API is optimized for minimal response times, enabling natural back-and-forth dialogue without awkward pauses. Stream audio bidirectionally over WebSocket for instant voice-to-voice interactions that feel like talking to a human.
-
-### Multilingual with Natural Accents
-
-The Grok Voice Agent API speaks over 100 languages with native-quality accents. The model automatically detects the input language and responds naturally in the same language-no configuration required.
-
-### Supported Languages
-
-English, Spanish, French, German, Italian, Portuguese, Dutch, Russian, Chinese (Mandarin), Japanese, Korean, Arabic, Hindi, Turkish, Polish, Swedish, Danish, Norwegian, Finnish, Czech, and many more.
-
-Each language features natural pronunciation, appropriate intonation patterns, and culturally-aware speech rhythms. You can also specify a preferred language or accent in your system instructions for consistent multilingual experiences.
-
 ### Tool Calling
 
 Extend your voice agent's capabilities with powerful built-in tools that execute during conversations:
@@ -4760,9 +5665,13 @@ Extend your voice agent's capabilities with powerful built-in tools that execute
 * **Collections** - RAG-powered search over your uploaded documents and knowledge bases
 * **Custom Functions** - Define your own tools with JSON schemas for booking, lookups, calculations, and more
 
-Tools are called automatically based on conversation context. Your voice agent can search the web, query your documents, and execute custom business logic-all while maintaining a natural conversation flow.
+Tools are called automatically based on conversation context. Your voice agent can search the web, query your documents, and execute custom business logic - all while maintaining a natural conversation flow.
 
-### Voice Personalities
+## Shared Capabilities
+
+The following capabilities apply to both the Text to Speech API and the Voice Agent API.
+
+### Voices
 
 Choose from 5 distinct voices, each with unique characteristics suited to different applications:
 
@@ -4770,15 +5679,46 @@ Choose from 5 distinct voices, each with unique characteristics suited to differ
 |-------|------|------|-------------|:------:|
 | **`Eve`** | Female | Energetic, upbeat | Default voice, engaging and enthusiastic |  |
 | **`Ara`** | Female | Warm, friendly | Balanced and conversational |  |
-| **`Rex`** | Male | Confident, clear | Professional and articulate, ideal for business applications |  |
+| **`Rex`** | Male | Confident, clear | Professional and articulate, ideal for business |  |
 | **`Sal`** | Neutral | Smooth, balanced | Versatile voice suitable for various contexts |  |
 | **`Leo`** | Male | Authoritative, strong | Decisive and commanding, suitable for instructional content |  |
 
-### Flexible Audio Formats
+### Multilingual
+
+Both APIs support 20+ languages with natural pronunciation and culturally-aware speech rhythms. The model automatically detects the input language - or you can specify a language code explicitly for consistent results.
+
+| Language | Language Code |
+|----------|---------------|
+| English | `en` |
+| Arabic (Egypt) | `ar-EG` |
+| Arabic (Saudi Arabia) | `ar-SA` |
+| Arabic (United Arab Emirates) | `ar-AE` |
+| Bengali | `bn` |
+| Chinese (Simplified) | `zh` |
+| French | `fr` |
+| German | `de` |
+| Hindi | `hi` |
+| Indonesian | `id` |
+| Italian | `it` |
+| Japanese | `ja` |
+| Korean | `ko` |
+| Portuguese (Brazil) | `pt-BR` |
+| Portuguese (Portugal) | `pt-PT` |
+| Russian | `ru` |
+| Spanish (Mexico) | `es-MX` |
+| Spanish (Spain) | `es-ES` |
+| Turkish | `tr` |
+| Vietnamese | `vi` |
+
+The model is also capable of generating speech in additional languages beyond those listed above, with varying degrees of accuracy.
+
+### Audio Formats
 
 Support for multiple audio formats and sample rates to match your application's requirements:
 
-* **PCM (Linear16)** - High-quality audio with configurable sample rates (8kHz–48kHz)
+* **MP3** - Compressed audio, wide compatibility (TTS API)
+* **WAV** - Lossless audio for editing and post-production (TTS API)
+* **PCM (Linear16)** - High-quality audio with configurable sample rates (8kHz-48kHz)
 * **G.711 μ-law** - Optimized for telephony applications
 * **G.711 A-law** - Standard for international telephony
 
@@ -5970,7 +6910,7 @@ client = Client(
 image_url = "https://science.nasa.gov/wp-content/uploads/2023/09/web-first-images-release.png"
 
 
-chat = client.chat.create(model="grok-4-1-fast-reasoning")
+chat = client.chat.create(model="grok-4.20-beta-latest-non-reasoning")
 chat.append(
     user(
         "What's in this image?",
@@ -6001,7 +6941,7 @@ image_url = (
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {
             "role": "user",
@@ -6040,7 +6980,7 @@ const image_url =
     "https://science.nasa.gov/wp-content/uploads/2023/09/web-first-images-release.png";
 
 const response = await client.responses.create({
-    model: "grok-4-1-fast-reasoning",
+    model: "grok-4.20-beta-latest-non-reasoning",
     input: [
         {
             role: "user",
@@ -6070,7 +7010,7 @@ import { xai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
 
 const { text, response } = await generateText({
-    model: xai.responses('grok-4-1-fast-reasoning'),
+    model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
     messages: [
         {
             role: 'user',
@@ -6100,7 +7040,7 @@ curl https://api.x.ai/v1/responses \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -m 3600 \
   -d '{
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "input": [
       {
         "role": "user",
@@ -6171,7 +7111,7 @@ client = Client(
     timeout=3600, # Override default timeout with longer timeout for reasoning models
 )
 
-chat = client.chat.create(model="grok-4-1-fast-reasoning")
+chat = client.chat.create(model="grok-4.20-beta-latest-non-reasoning")
 chat.append(system("You are a PhD-level mathematician."))
 chat.append(user("What is 2 + 2?"))
 
@@ -6191,7 +7131,7 @@ client = OpenAI(
 )
 
 completion = client.chat.completions.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     messages=[
         {"role": "system", "content": "You are a PhD-level mathematician."},
         {"role": "user", "content": "What is 2 + 2?"},
@@ -6211,7 +7151,7 @@ const client = new OpenAI({
 });
 
 const completion = await client.chat.completions.create({
-    model: "grok-4-1-fast-reasoning",
+    model: "grok-4.20-beta-latest-non-reasoning",
     messages: [
         {
             role: "system",
@@ -6231,7 +7171,7 @@ import { xai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
 
 const result = await generateText({
-  model: xai('grok-4-1-fast-reasoning'),
+  model: xai('grok-4.20-beta-latest-non-reasoning'),
   system:
     "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy.",
   prompt: 'What is the meaning of life, the universe, and everything?',
@@ -6256,7 +7196,7 @@ curl https://api.x.ai/v1/chat/completions \
             "content": "What is the meaning of life, the universe, and everything?"
         }
     ],
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "stream": false
 }'
 ```
@@ -6306,7 +7246,7 @@ ChatCompletionMessage(
   "id": "0daf962f-a275-4a3c-839a-047854645532",
   "object": "chat.completion",
   "created": 1739301120,
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "choices": [
     {
       "index": 0,
@@ -6740,7 +7680,7 @@ client = Client(
     timeout=3600,
 )
 
-chat = client.chat.create(model="grok-4-1-fast-reasoning")
+chat = client.chat.create(model="grok-4.20-beta-latest-non-reasoning")
 chat.append(system("You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."))
 chat.append(user("What is the meaning of life, the universe, and everything?"))
 response = chat.sample()
@@ -6764,7 +7704,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {"role": "system", "content": "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."},
         {"role": "user", "content": "What is the meaning of life, the universe, and everything?"},
@@ -6788,7 +7728,7 @@ const client = new OpenAI({
 });
 
 const response = await client.responses.create({
-    model: "grok-4-1-fast-reasoning",
+    model: "grok-4.20-beta-latest-non-reasoning",
     input: [
         {
             role: "system",
@@ -6812,7 +7752,7 @@ import { xai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
 
 const { text, response } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   system: "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy.",
   prompt: "What is the meaning of life, the universe, and everything?",
 });
@@ -6829,7 +7769,7 @@ curl https://api.x.ai/v1/responses \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -m 3600 \
   -d '{
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "input": [
         {
             "role": "system",
@@ -6860,7 +7800,7 @@ client = Client(
     timeout=3600,
 )
 
-chat = client.chat.create(model="grok-4-1-fast-reasoning", store_messages=False)
+chat = client.chat.create(model="grok-4.20-beta-latest-non-reasoning", store_messages=False)
 chat.append(system("You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."))
 chat.append(user("What is the meaning of life, the universe, and everything?"))
 response = chat.sample()
@@ -6880,7 +7820,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {"role": "system", "content": "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."},
         {"role": "user", "content": "What is the meaning of life, the universe, and everything?"},
@@ -6901,7 +7841,7 @@ const client = new OpenAI({
 });
 
 const response = await client.responses.create({
-    model: "grok-4-1-fast-reasoning",
+    model: "grok-4.20-beta-latest-non-reasoning",
     input: [
         {
             role: "system",
@@ -6924,7 +7864,7 @@ curl https://api.x.ai/v1/responses \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -m 3600 \
   -d '{
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "input": [
         {
             "role": "system",
@@ -6946,13 +7886,13 @@ If you want to return the encrypted thinking traces, you need to specify `use_en
 Modify the steps to create a chat client (xAI SDK) or change the request body as following:
 
 ```python customLanguage="pythonXAI"
-chat = client.chat.create(model="grok-4-1-fast-reasoning",
+chat = client.chat.create(model="grok-4.20-beta-latest-non-reasoning",
         use_encrypted_content=True)
 ```
 
 ```python customLanguage="pythonOpenAISDK"
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {"role": "system", "content": "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."},
         {"role": "user", "content": "What is the meaning of life, the universe, and everything?"},
@@ -6963,7 +7903,7 @@ response = client.responses.create(
 
 ```javascript customLanguage="javascriptWithoutSDK"
 const response = await client.responses.create({
-    model: "grok-4-1-fast-reasoning",
+    model: "grok-4.20-beta-latest-non-reasoning",
     input: [
         {"role": "system", "content": "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."},
         {"role": "user", "content": "What is the meaning of life, the universe, and everything?"},
@@ -6977,7 +7917,7 @@ import { xai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
 
 const { text, reasoning } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   system: "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy.",
   prompt: "What is the meaning of life, the universe, and everything?",
   providerOptions: {
@@ -6997,7 +7937,7 @@ curl https://api.x.ai/v1/responses \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -m 3600 \
   -d '{
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "input": [
         {
             "role": "system",
@@ -7031,7 +7971,7 @@ client = Client(
     timeout=3600,
 )
 
-chat = client.chat.create(model="grok-4-1-fast-reasoning", store_messages=True)
+chat = client.chat.create(model="grok-4.20-beta-latest-non-reasoning", store_messages=True)
 chat.append(system("You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."))
 chat.append(user("What is the meaning of life, the universe, and everything?"))
 response = chat.sample()
@@ -7045,7 +7985,7 @@ print(response.id)
 # New steps
 
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     previous_response_id=response.id,
     store_messages=True,
 )
@@ -7072,7 +8012,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {"role": "system", "content": "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."},
         {"role": "user", "content": "What is the meaning of life, the universe, and everything?"},
@@ -7088,7 +8028,7 @@ print(response.id)
 # New steps
 
 second_response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     previous_response_id=response.id,
     input=[
         {"role": "user", "content": "What is the meaning of 42?"},
@@ -7113,7 +8053,7 @@ const client = new OpenAI({
 });
 
 const response = await client.responses.create({
-    model: "grok-4-1-fast-reasoning",
+    model: "grok-4.20-beta-latest-non-reasoning",
     input: [
         {
             role: "system",
@@ -7132,7 +8072,7 @@ console.log(response);
 console.log(response.id);
 
 const secondResponse = await client.responses.create({
-    model: "grok-4-1-fast-reasoning",
+    model: "grok-4.20-beta-latest-non-reasoning",
     previous_response_id: response.id,
     input: [
         {"role": "user", "content": "What is the meaning of 42?"},
@@ -7151,7 +8091,7 @@ import { generateText } from 'ai';
 
 // First request
 const result = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   system: "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy.",
   prompt: "What is the meaning of life, the universe, and everything?",
 });
@@ -7163,7 +8103,7 @@ const responseId = result.response.id;
 
 // Continue the conversation using previousResponseId
 const { text: secondResponse } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: "What is the meaning of 42?",
   providerOptions: {
     xai: {
@@ -7181,7 +8121,7 @@ curl https://api.x.ai/v1/responses \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -m 3600 \
   -d '{
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "previous_response_id": "The previous response ID",
     "input": [
         {
@@ -7207,7 +8147,7 @@ client = Client(
     timeout=3600,
 )
 
-chat = client.chat.create(model="grok-4-1-fast-reasoning", store_messages=True, use_encrypted_content=True)
+chat = client.chat.create(model="grok-4.20-beta-latest-non-reasoning", store_messages=True, use_encrypted_content=True)
 chat.append(system("You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."))
 chat.append(user("What is the meaning of life, the universe, and everything?"))
 response = chat.sample()
@@ -7245,7 +8185,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {"role": "system", "content": "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."},
         {"role": "user", "content": "What is the meaning of life, the universe, and everything?"},
@@ -7262,7 +8202,7 @@ print(response.id)
 # New steps
 
 second_response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         *response.output,  # Use response.output instead of the stored response
         {"role": "user", "content": "What is the meaning of 42?"},
@@ -7287,7 +8227,7 @@ const client = new OpenAI({
 });
 
 const response = await client.responses.create({
-    model: "grok-4-1-fast-reasoning",
+    model: "grok-4.20-beta-latest-non-reasoning",
     input: [
         {
             role: "system",
@@ -7307,7 +8247,7 @@ console.log(response);
 console.log(response.id);
 
 const secondResponse = await client.responses.create({
-    model: "grok-4-1-fast-reasoning",
+    model: "grok-4.20-beta-latest-non-reasoning",
     input: [
         ...response.output,  // Use response.output instead of the stored response
         {"role": "user", "content": "What is the meaning of 42?"},
@@ -7326,7 +8266,7 @@ import { generateText } from 'ai';
 
 // First request with encrypted reasoning content
 const result = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   system: "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy.",
   prompt: "What is the meaning of life, the universe, and everything?",
   providerOptions: {
@@ -7341,7 +8281,7 @@ console.log(result.text);
 // Continue the conversation using previousResponseId
 // The encrypted content is automatically included when using previousResponseId
 const { text: secondResponse } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: "What is the meaning of 42?",
   providerOptions: {
     xai: {
@@ -7360,7 +8300,7 @@ curl https://api.x.ai/v1/responses \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -m 3600 \
   -d '{
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "input": [
         {
             "role": "system",
@@ -7548,6 +8488,551 @@ curl -X DELETE https://api.x.ai/v1/responses/{response_id} \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -m 3600
 ```
+
+
+===/developers/model-capabilities/text/multi-agent===
+#### Model Capabilities
+
+# Multi Agent
+
+This feature is currently in **beta**. The API interface and behavior may change as we iterate. Please bear in mind that the API interface is not final and may include breaking changes down the line.
+
+Realtime Multi-agent Research enables Grok to orchestrate multiple AI agents that work together in real time to perform deep, multi-step research tasks. Each agent specializes in a particular aspect of the research (searching the web, analyzing data, synthesizing findings) and they collaborate to deliver comprehensive, well-sourced answers.
+
+## Overview
+
+Multi-agent research goes beyond single-turn tool use by coordinating a team of specialized agents that can:
+
+* **Search and gather** information from multiple sources simultaneously
+* **Analyze and cross-reference** findings across different domains
+* **Synthesize** comprehensive answers with citations and supporting evidence
+* **Iterate** on research in real time, refining results based on intermediate findings
+
+## Getting Started
+
+To use Realtime Multi-agent Research, specify `grok-4.20-multi-agent-beta-0309` as the model name in your API requests. This model is optimized for orchestrating multiple agents that collaborate on research tasks.
+
+```python customLanguage="pythonXAI" highlightedLines="9"
+import os
+
+from xai_sdk import Client
+from xai_sdk.chat import user
+from xai_sdk.tools import web_search, x_search
+
+client = Client(api_key=os.getenv("XAI_API_KEY"))
+chat = client.chat.create(
+    model="grok-4.20-multi-agent-beta-0309",
+    tools=[web_search(), x_search()],
+    include=["verbose_streaming"],
+)
+
+chat.append(user("Research the latest breakthroughs in quantum computing and summarize the key findings."))
+
+is_thinking = True
+for response, chunk in chat.stream():
+    if response.usage.reasoning_tokens and is_thinking:
+        print(f"\rThinking... ({response.usage.reasoning_tokens} tokens)", end="", flush=True)
+    if chunk.content and is_thinking:
+        print("\n\nFinal Response:")
+        is_thinking = False
+    if chunk.content and not is_thinking:
+        print(chunk.content, end="", flush=True)
+
+print("\n\nUsage:")
+print(response.usage)
+```
+
+```python customLanguage="pythonOpenAISDK" highlightedLines="10"
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.getenv("XAI_API_KEY"),
+    base_url="https://api.x.ai/v1",
+)
+
+response = client.responses.create(
+    model="grok-4.20-multi-agent-beta-0309",
+    input=[
+        {
+            "role": "user",
+            "content": "Research the latest breakthroughs in quantum computing and summarize the key findings.",
+        },
+    ],
+    tools=[
+        {"type": "web_search"},
+        {"type": "x_search"},
+    ],
+)
+
+print(response)
+```
+
+```python customLanguage="pythonRequests" highlightedLines="10"
+import os
+import requests
+
+url = "https://api.x.ai/v1/responses"
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}"
+}
+payload = {
+    "model": "grok-4.20-multi-agent-beta-0309",
+    "input": [
+        {
+            "role": "user",
+            "content": "Research the latest breakthroughs in quantum computing and summarize the key findings."
+        }
+    ],
+    "tools": [
+        {"type": "web_search"},
+        {"type": "x_search"}
+    ]
+}
+response = requests.post(url, headers=headers, json=payload)
+print(response.json())
+```
+
+```bash customLanguage="bash" highlightedLines="5"
+curl https://api.x.ai/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -d '{
+  "model": "grok-4.20-multi-agent-beta-0309",
+  "input": [
+    {
+      "role": "user",
+      "content": "Research the latest breakthroughs in quantum computing and summarize the key findings."
+    }
+  ],
+  "tools": [
+    {"type": "web_search"},
+    {"type": "x_search"}
+  ]
+}'
+```
+
+```typescript customLanguage="javascriptAISDK" highlightedLines="5"
+import { xai } from "@ai-sdk/xai";
+import { generateText } from "ai";
+
+const { text } = await generateText({
+  model: xai.responses("grok-4.20-multi-agent-beta-0309"),
+  prompt:
+    "Research the latest breakthroughs in quantum computing and summarize the key findings.",
+  tools: {
+    web_search: xai.tools.webSearch(),
+    x_search: xai.tools.xSearch(),
+  },
+});
+
+console.log(text);
+```
+
+## How Multi-agent Works
+
+When you send a request to the multi-agent model, multiple agents are launched to discuss and collaborate on your query. Each agent contributes its own perspective, reasoning, and findings. A designated **leader agent** is responsible for synthesizing the discussion and presenting the final answer back to you.
+
+### Supported Models
+
+* `grok-4.20-multi-agent-beta-0309`
+
+### Built-in Tools Support
+
+xAI provides a set of built-in tools you can enable in the request to help with the most common use cases, e.g., `web_search`, `x_search`, `code_execution`, `collections_search`. Check out [this doc](/developers/tools/overview) for more information.
+
+Once you enable those tools in the request, the server will perform the agent loop to invoke those tools on the server side based on your query until the final answer is generated.
+
+Using built-in tools will incur an additional cost. Please review the [pricing details for built-in tools](/developers/models#tools-pricing).
+
+### Output Behavior
+
+Only the **tool calls** and the **final response** from the leader agent are sent back to the user. All sub-agent state — including their intermediate reasoning, tool calls, and outputs — is encrypted and included in the response only when `use_encrypted_content` is set to `True` in the xAI SDK. This keeps the default response clean and focused while still allowing you to preserve the full multi-agent context for multi-turn conversations.
+
+## Configuration
+
+You can configure how many agents collaborate on a request. The two available setups are **4 agents** and **16 agents**. More agents means deeper, more thorough research at the cost of higher token usage and latency.
+
+| SDK / API | Parameter | 4 Agents | 16 Agents |
+|---|---|---|---|
+| xAI SDK | `agent_count` | `4` | `16` |
+| OpenAI SDK | `reasoning.effort` | `"low"` or `"medium"` | `"high"` or `"xhigh"` |
+| Vercel AI SDK | `reasoningEffort` | `"low"` or `"medium"` | `"high"` or `"xhigh"` |
+| REST API | `reasoning.effort` | `"low"` or `"medium"` | `"high"` or `"xhigh"` |
+
+**Best For:** Use 4 agents for quick research and focused queries. Use 16 agents for deep research and complex multi-faceted topics.
+
+### 4-Agent Setup
+
+```python customLanguage="pythonXAI" highlightedLines="8,9"
+import os
+
+from xai_sdk import Client
+from xai_sdk.chat import user
+
+client = Client(api_key=os.getenv("XAI_API_KEY"))
+chat = client.chat.create(
+    model="grok-4.20-multi-agent-beta-0309",
+    agent_count=4,
+)
+
+chat.append(user("What are the key differences between TCP and UDP?"))
+for response, chunk in chat.stream():
+    if chunk.content:
+        print(chunk.content, end="", flush=True)
+```
+
+```python customLanguage="pythonOpenAISDK" highlightedLines="10,11"
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.getenv("XAI_API_KEY"),
+    base_url="https://api.x.ai/v1",
+)
+
+response = client.responses.create(
+    model="grok-4.20-multi-agent-beta-0309",
+    reasoning={"effort": "low"},
+    input=[
+        {
+            "role": "user",
+            "content": "What are the key differences between TCP and UDP?",
+        },
+    ],
+)
+
+print(response.output_text)
+```
+
+```python customLanguage="pythonRequests" highlightedLines="10,11"
+import os
+import requests
+
+url = "https://api.x.ai/v1/responses"
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}"
+}
+payload = {
+    "model": "grok-4.20-multi-agent-beta-0309",
+    "reasoning": {"effort": "low"},
+    "input": [
+        {
+            "role": "user",
+            "content": "What are the key differences between TCP and UDP?"
+        }
+    ]
+}
+response = requests.post(url, headers=headers, json=payload)
+print(response.json())
+```
+
+```bash customLanguage="bash" highlightedLines="5,6"
+curl https://api.x.ai/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -d '{
+  "model": "grok-4.20-multi-agent-beta-0309",
+  "reasoning": {"effort": "low"},
+  "input": [
+    {
+      "role": "user",
+      "content": "What are the key differences between TCP and UDP?"
+    }
+  ]
+}'
+```
+
+```typescript customLanguage="javascriptAISDK" highlightedLines="5,8"
+import { xai } from "@ai-sdk/xai";
+import { generateText } from "ai";
+
+const { text } = await generateText({
+  model: xai.responses("grok-4.20-multi-agent-beta-0309"),
+  prompt: "What are the key differences between TCP and UDP?",
+  providerOptions: {
+    xai: { reasoningEffort: "low" },
+  },
+});
+
+console.log(text);
+```
+
+### 16-Agent Setup
+
+```python customLanguage="pythonXAI" highlightedLines="8,9"
+import os
+
+from xai_sdk import Client
+from xai_sdk.chat import user
+
+client = Client(api_key=os.getenv("XAI_API_KEY"))
+chat = client.chat.create(
+    model="grok-4.20-multi-agent-beta-0309",
+    agent_count=16,
+)
+
+chat.append(user("Analyze the design trade-offs in modern programming languages: compare Rust's ownership model, Go's simplicity philosophy, and Haskell's pure functional approach. Cover memory safety, concurrency, developer productivity, and ecosystem maturity."))
+for response, chunk in chat.stream():
+    if chunk.content:
+        print(chunk.content, end="", flush=True)
+```
+
+```python customLanguage="pythonOpenAISDK" highlightedLines="10,11"
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.getenv("XAI_API_KEY"),
+    base_url="https://api.x.ai/v1",
+)
+
+response = client.responses.create(
+    model="grok-4.20-multi-agent-beta-0309",
+    reasoning={"effort": "high"},
+    input=[
+        {
+            "role": "user",
+            "content": "Analyze the design trade-offs in modern programming languages: compare Rust's ownership model, Go's simplicity philosophy, and Haskell's pure functional approach. Cover memory safety, concurrency, developer productivity, and ecosystem maturity.",
+        },
+    ],
+)
+
+print(response.output_text)
+```
+
+```python customLanguage="pythonRequests" highlightedLines="10,11"
+import os
+import requests
+
+url = "https://api.x.ai/v1/responses"
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}"
+}
+payload = {
+    "model": "grok-4.20-multi-agent-beta-0309",
+    "reasoning": {"effort": "high"},
+    "input": [
+        {
+            "role": "user",
+            "content": "Analyze the design trade-offs in modern programming languages: compare Rust's ownership model, Go's simplicity philosophy, and Haskell's pure functional approach. Cover memory safety, concurrency, developer productivity, and ecosystem maturity."
+        }
+    ]
+}
+response = requests.post(url, headers=headers, json=payload)
+print(response.json())
+```
+
+```bash customLanguage="bash" highlightedLines="5,6"
+curl https://api.x.ai/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -d '{
+  "model": "grok-4.20-multi-agent-beta-0309",
+  "reasoning": {"effort": "high"},
+  "input": [
+    {
+      "role": "user",
+      "content": "Analyze the design trade-offs in modern programming languages: compare Rust'\''s ownership model, Go'\''s simplicity philosophy, and Haskell'\''s pure functional approach. Cover memory safety, concurrency, developer productivity, and ecosystem maturity."
+    }
+  ]
+}'
+```
+
+```typescript customLanguage="javascriptAISDK" highlightedLines="5,9"
+import { xai } from "@ai-sdk/xai";
+import { generateText } from "ai";
+
+const { text } = await generateText({
+  model: xai.responses("grok-4.20-multi-agent-beta-0309"),
+  prompt:
+    "Analyze the design trade-offs in modern programming languages: compare Rust's ownership model, Go's simplicity philosophy, and Haskell's pure functional approach. Cover memory safety, concurrency, developer productivity, and ecosystem maturity.",
+  providerOptions: {
+    xai: { reasoningEffort: "high" },
+  },
+});
+
+console.log(text);
+```
+
+The 16-agent setup uses significantly more tokens than the 4-agent setup. Choose the agent count based on the complexity of your research task — use 4 agents for focused queries and 16 agents when you need comprehensive, multi-perspective analysis.
+
+## Common Patterns
+
+### Without Built-in Tools
+
+Multi-agent works without any built-in tools — the agents rely purely on their collective knowledge and reasoning to collaborate on a response.
+
+```python customLanguage="pythonXAI"
+import os
+
+from xai_sdk import Client
+from xai_sdk.chat import user
+
+client = Client(api_key=os.getenv("XAI_API_KEY"))
+chat = client.chat.create(
+    model="grok-4.20-multi-agent-beta-0309",
+    include=["verbose_streaming"],
+)
+
+chat.append(user("Compare the major approaches to distributed consensus in computer science: Paxos, Raft, and Byzantine fault tolerance. Analyze the trade-offs in safety guarantees, performance, and implementation complexity."))
+
+is_thinking = True
+for response, chunk in chat.stream():
+    if response.usage.reasoning_tokens and is_thinking:
+        print(f"\rThinking... ({response.usage.reasoning_tokens} tokens)", end="", flush=True)
+    if chunk.content and is_thinking:
+        print("\n\nFinal Response:")
+        is_thinking = False
+    if chunk.content and not is_thinking:
+        print(chunk.content, end="", flush=True)
+
+print("\n\nUsage:")
+print(response.usage)
+```
+
+```python customLanguage="pythonOpenAISDK"
+import os
+from openai import OpenAI
+
+client = OpenAI(
+    api_key=os.getenv("XAI_API_KEY"),
+    base_url="https://api.x.ai/v1",
+)
+
+response = client.responses.create(
+    model="grok-4.20-multi-agent-beta-0309",
+    input=[
+        {
+            "role": "user",
+            "content": "Compare the major approaches to distributed consensus in computer science: Paxos, Raft, and Byzantine fault tolerance. Analyze the trade-offs in safety guarantees, performance, and implementation complexity.",
+        },
+    ],
+)
+
+print(response)
+```
+
+```python customLanguage="pythonRequests"
+import os
+import requests
+
+url = "https://api.x.ai/v1/responses"
+headers = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}"
+}
+payload = {
+    "model": "grok-4.20-multi-agent-beta-0309",
+    "input": [
+        {
+            "role": "user",
+            "content": "Compare the major approaches to distributed consensus in computer science: Paxos, Raft, and Byzantine fault tolerance. Analyze the trade-offs in safety guarantees, performance, and implementation complexity."
+        }
+    ]
+}
+response = requests.post(url, headers=headers, json=payload)
+print(response.json())
+```
+
+```bash customLanguage="bash"
+curl https://api.x.ai/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -d '{
+  "model": "grok-4.20-multi-agent-beta-0309",
+  "input": [
+    {
+      "role": "user",
+      "content": "Compare the major approaches to distributed consensus in computer science: Paxos, Raft, and Byzantine fault tolerance. Analyze the trade-offs in safety guarantees, performance, and implementation complexity."
+    }
+  ]
+}'
+```
+
+```typescript customLanguage="javascriptAISDK"
+import { xai } from "@ai-sdk/xai";
+import { generateText } from "ai";
+
+const { text } = await generateText({
+  model: xai.responses("grok-4.20-multi-agent-beta-0309"),
+  prompt:
+    "Compare the major approaches to distributed consensus in computer science: Paxos, Raft, and Byzantine fault tolerance. Analyze the trade-offs in safety guarantees, performance, and implementation complexity.",
+});
+
+console.log(text);
+```
+
+### Multi-turn Conversation
+
+Multi-agent research supports multi-turn conversations using `previous_response_id`, just like any other model. You can ask follow-up questions to refine or expand on previous research results, and the agents will use the prior context to deliver more targeted answers.
+
+For the full multi-turn conversation pattern with reusable functions and code examples, see [Chaining the conversation](/developers/model-capabilities/text/generate-text#chaining-the-conversation).
+
+## Pricing
+
+All tokens consumed by both the **leader agent** and **sub-agents** are billed, including input tokens, output tokens, and reasoning tokens. Similarly, all **server-side tool calls** made by any agent — whether the leader or a sub-agent — count toward your tool usage and are billed accordingly.
+
+Because multiple agents may run in parallel and each can independently invoke tools, a single multi-agent request may use significantly more tokens and tool calls than a standard single-agent request. You can monitor your usage via the `usage` and `server_side_tool_usage` fields in the response.
+
+For detailed pricing information, see the [Models and Pricing](/developers/models) page and the [Tool Pricing](/developers/models#tools-pricing) page.
+
+## Prompting Guide
+
+Getting the most out of multi-agent research starts with how you frame your request. Here are patterns that work well:
+
+**Set the scope and depth explicitly**
+
+Rather than asking a broad question, tell the agents exactly what dimensions to cover:
+
+```text
+❌  "Tell me about electric vehicles."
+✅  "Compare the top 3 EV manufacturers by battery technology, range, charging infrastructure, and 2025 sales projections."
+```
+
+**Ask for structured output**
+
+Multi-agent research excels when you request organized, structured responses:
+
+```text
+✅  "Research the pros and cons of microservices vs monolithic architecture. Present your findings as a comparison table with categories: scalability, complexity, deployment, and team size requirements."
+```
+
+**Specify sources or perspectives**
+
+Guide the agents toward the types of evidence you value:
+
+```text
+✅  "Analyze the environmental impact of large language model training, citing recent academic papers and industry reports from 2024-2025."
+```
+
+**Break complex research into a conversation**
+
+For deep topics, start broad and narrow down with follow-ups rather than packing everything into one prompt:
+
+```text
+Turn 1: "What are the leading approaches to carbon capture technology?"
+Turn 2: "Which of those has the best cost-per-ton economics today?"
+Turn 3: "What are the main engineering challenges preventing that approach from scaling?"
+```
+
+**Provide context when relevant**
+
+If your research builds on prior knowledge or specific constraints, include that context in the prompt:
+
+```text
+✅  "I'm building a fintech app targeting Southeast Asian markets. Research the regulatory requirements for digital payments in Singapore, Indonesia, and the Philippines."
+```
+
+## Limitations
+
+* **Only leader agent output is exposed:** Only the leader agent's output is returned, including its tool calls and response content. Sub-agent state is encrypted and only included when `use_encrypted_content` is enabled — see [Output Behavior](#output-behavior) for details.
+* **No client-side or custom tools:** Client-side tools (function calling) and custom tools are not currently supported by the multi-agent model variant. We do support a set of built-in tools (e.g., `web_search`, `x_search`) and remote MCP tools. See our [built-in tool docs](/developers/tools/overview) for more details.
+* **Chat Completions API not supported:** The multi-agent model does **not** work with the OpenAI Chat Completions API. Use the [xAI SDK](/developers/sdk) or the [Responses API](/developers/responses-api) instead.
+* **`max_tokens` is not supported:** The `max_tokens` parameter is not currently supported by the multi-agent model variant.
 
 
 ===/developers/model-capabilities/text/reasoning===
@@ -7769,7 +9254,7 @@ client = Client(
     timeout=3600, # Override default timeout with longer timeout for reasoning models
 )
 
-chat = client.chat.create(model="grok-4-1-fast-reasoning")
+chat = client.chat.create(model="grok-4.20-beta-latest-non-reasoning")
 chat.append(
     system("You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."),
 )
@@ -7797,7 +9282,7 @@ client = OpenAI(
 )
 
 stream = client.chat.completions.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     messages=[
         {"role": "system", "content": "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."},
         {"role": "user", "content": "What is the meaning of life, the universe, and everything?"},
@@ -7818,7 +9303,7 @@ const openai = new OpenAI({
 });
 
 const stream = await openai.chat.completions.create({
-    model: "grok-4-1-fast-reasoning",
+    model: "grok-4.20-beta-latest-non-reasoning",
     messages: [
         { role: "system", content: "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy." },
         {
@@ -7866,7 +9351,7 @@ curl https://api.x.ai/v1/chat/completions \\
             "content": "What is the meaning of life, the universe, and everything?"
         }
     ],
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "stream": true
 }'
 ```
@@ -7876,7 +9361,7 @@ You'll get the event streams like these:
 ```json
 data: {
     "id":"<completion_id>","object":"chat.completion.chunk","created":<creation_time>,
-    "model":"grok-4-1-fast-reasoning",
+    "model":"grok-4.20-beta-latest-non-reasoning",
     "choices":[{"index":0,"delta":{"content":"Ah","role":"assistant"}}],
     "usage":{"prompt_tokens":41,"completion_tokens":1,"total_tokens":42,
     "prompt_tokens_details":{"text_tokens":41,"audio_tokens":0,"image_tokens":0,"cached_tokens":0}},
@@ -7885,7 +9370,7 @@ data: {
 
 data: {
     "id":"<completion_id>","object":"chat.completion.chunk","created":<creation_time>,
-    "model":"grok-4-1-fast-reasoning",
+    "model":"grok-4.20-beta-latest-non-reasoning",
     "choices":[{"index":0,"delta":{"content":",","role":"assistant"}}],
     "usage":{"prompt_tokens":41,"completion_tokens":2,"total_tokens":43,
     "prompt_tokens_details":{"text_tokens":41,"audio_tokens":0,"image_tokens":0,"cached_tokens":0}},
@@ -8087,7 +9572,7 @@ class Invoice(BaseModel):
     currency: Currency = Field(description="Currency of the invoice")
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
-chat = client.chat.create(model="grok-4-1-fast-reasoning")
+chat = client.chat.create(model="grok-4.20-beta-latest-non-reasoning")
 
 chat.append(system("Given a raw invoice, carefully analyze the text and extract the invoice data into JSON format."))
 chat.append(
@@ -8161,7 +9646,7 @@ client = OpenAI(
 )
 
 completion = client.beta.chat.completions.parse(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     messages=[
     {"role": "system", "content": "Given a raw invoice, carefully analyze the text and extract the invoice data into JSON format."},
     {"role": "user", "content": """
@@ -8218,7 +9703,7 @@ const client = new OpenAI({
 });
 
 const completion = await client.chat.completions.parse({
-    model: "grok-4-1-fast-reasoning",
+    model: "grok-4.20-beta-latest-non-reasoning",
     messages: [
     { role: "system", content: "Given a raw invoice, carefully analyze the text and extract the invoice data into JSON format." },
     { role: "user", content: \`
@@ -8768,7 +10253,7 @@ client = Client(api_key=os.getenv("XAI_API_KEY"))
 
 # Pass the Pydantic model to response_format instead of using parse()
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     response_format=Invoice,  # Pass the Pydantic model here
 )
 
@@ -8821,7 +10306,7 @@ class Summary(BaseModel):
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     response_format=Summary,  # Pass the Pydantic model here
 )
 
@@ -9434,6 +10919,106 @@ For full pricing details on the `grok-imagine-video` model, see the [model page]
 * [API Reference](/developers/rest-api-reference) — Full endpoint documentation
 
 
+===/developers/models/realtime-api===
+#### Models and Pricing
+
+# Realtime API
+
+The Voice Agent API enables real-time voice conversations over WebSocket, billed at a flat rate per minute of connection time. Supports function calling with web search, X search, collections, and custom functions.
+
+## At a glance
+
+| | Details |
+|---|---|
+| **Modalities** | Text, Audio → Text, Audio |
+| **Pricing** | $0.05 / min ($3.00 / hr) |
+| **Region** | us-east-1 |
+
+## Pricing
+
+| | Details |
+|---|---|
+| **Per minute** | $0.05 / min ($3.00 / hr) |
+
+When using the Voice Agent API with tools such as function calling, web search, X search, or collections, you will be charged for tool invocations in addition to the per-minute voice session cost. See [Tool Invocation Costs](/developers/models#tool-invocation-costs) for tool pricing details.
+
+## Rate Limits
+
+| | Details |
+|---|---|
+| **Concurrent sessions** | 100 per team |
+| **Max session duration** | 30 minutes |
+
+## Capabilities
+
+* Function calling
+* Web search
+* X search
+* Collections search
+
+## Availability
+
+| | Details |
+|---|---|
+| **Cluster** | us-east-1 |
+
+## Documentation
+
+* [Voice Agent Guide](/developers/model-capabilities/audio/voice-agent) — Getting started with real-time voice conversations
+* [API Reference](/developers/rest-api-reference/inference/voice) — WebSocket endpoint reference
+* [Models and Pricing](/developers/models#voice-api-pricing) — Full pricing overview
+
+
+===/developers/models/text-to-speech===
+#### Models and Pricing
+
+# Text to Speech
+
+The Text to Speech API converts text into natural speech, billed per input character. Supports multiple voices, streaming and batch output, in MP3, WAV, PCM, μ-law, and A-law formats.
+
+The Text to Speech API is currently in **beta**. Pricing and rate limits may change when the API becomes generally available.
+
+## At a glance
+
+| | Details |
+|---|---|
+| **Modalities** | Text → Audio |
+| **Pricing** | $4.20 / 1M characters (Beta Pricing) |
+| **Region** | us-east-1 |
+
+## Pricing
+
+| | Details |
+|---|---|
+| **Per 1M characters** | $4.20 / 1M characters (Beta Pricing) |
+
+## Rate Limits
+
+| | Details |
+|---|---|
+| **Requests per minute** | 600 RPM |
+| **Concurrent requests** | 10 per team |
+
+## Capabilities
+
+* Multiple voices
+* Streaming output
+* Batch output
+* MP3 / WAV / PCM / μ-law / A-law formats
+
+## Availability
+
+| | Details |
+|---|---|
+| **Cluster** | us-east-1 |
+
+## Documentation
+
+* [Text to Speech Guide](/developers/model-capabilities/audio/text-to-speech) — Getting started with text to speech
+* [API Reference](/developers/rest-api-reference/inference/text-to-speech) — TTS endpoint reference
+* [Models and Pricing](/developers/models#voice-api-pricing) — Full pricing overview
+
+
 ===/developers/models===
 #### Key Information
 
@@ -9443,23 +11028,29 @@ An overview of our models' capabilities and their associated pricing.
 
 | Model | Modalities | Capabilities | Context | Rate Limits | Pricing [in (cached in) / out] |
 | --- | --- | --- | --- | --- | --- |
-| grok-4-1-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-4-1-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
+| grok-4.20-multi-agent-beta-0309 | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
+| grok-4.20-multi-agent-beta-0309 | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
+| grok-4.20-beta-0309-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
+| grok-4.20-beta-0309-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
+| grok-4.20-beta-0309-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
+| grok-4.20-beta-0309-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
+| grok-4-1-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
+| grok-4-1-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
+| grok-4-1-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
+| grok-4-1-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-1-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-4-1-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-4-1-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-code-fast-1 | text → text | functions, structured, reasoning | 256,000 | 2M TPM, 480 RPM | $0.20 ($0.02) / $1.50 |
-| grok-code-fast-1 | text → text | functions, structured, reasoning | 256,000 | 2M TPM, 480 RPM | $0.20 ($0.02) / $1.50 |
-| grok-4-0709 | text, image → text | functions, structured, reasoning | 256,000 | 2M TPM, 480 RPM | $3.00 ($0.75) / $15.00 |
-| grok-4-0709 | text, image → text | functions, structured, reasoning | 256,000 | 2M TPM, 480 RPM | $3.00 ($0.75) / $15.00 |
-| grok-3 | text → text | functions, structured | 131,072 | 600 RPM | $3.00 ($0.75) / $15.00 |
-| grok-3 | text → text | functions, structured | 131,072 | 600 RPM | $3.00 ($0.75) / $15.00 |
-| grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 480 RPM | $0.30 ($0.07) / $0.50 |
-| grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 480 RPM | $0.30 ($0.07) / $0.50 |
-| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
+| grok-code-fast-1 | text → text | functions, structured, reasoning | 256,000 | 2M TPM, 2,125 RPM | $0.20 ($0.02) / $1.50 |
+| grok-code-fast-1 | text → text | functions, structured, reasoning | 256,000 | 2M TPM, 2,125 RPM | $0.20 ($0.02) / $1.50 |
+| grok-4-0709 | text, image → text | functions, structured, reasoning | 256,000 | 20M TPM, 500 RPM | $3.00 ($0.75) / $15.00 |
+| grok-4-0709 | text, image → text | functions, structured, reasoning | 256,000 | 20M TPM, 500 RPM | $3.00 ($0.75) / $15.00 |
+| grok-3 | text → text | functions, structured | 131,072 | 4M TPM, 900 RPM | $3.00 ($0.75) / $15.00 |
+| grok-3 | text → text | functions, structured | 131,072 | 4M TPM, 900 RPM | $3.00 ($0.75) / $15.00 |
+| grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 4M TPM, 1,450 RPM | $0.30 ($0.07) / $0.50 |
+| grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 4M TPM, 1,450 RPM | $0.30 ($0.07) / $0.50 |
+| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 10M TPM, 620 RPM | $0.20 ($0.05) / $0.50 |
+| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
+| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
+| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 10M TPM, 620 RPM | $0.20 ($0.05) / $0.50 |
 | grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
 | grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
 | grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
@@ -9490,14 +11081,14 @@ All standard token types are billed at the [rate](#model-pricing) for the model 
 | --- | --- | --- | --- |
 | Web Search | Search the internet and browse web pages | $5 | `web_search` |
 | X Search | Search X posts, user profiles, and threads | $5 | `x_search` |
-| Code Execution | Run Python code in a sandboxed environment | $5 | `code_execution`, `code_interpreter*` |
+| Code Execution | Run Python code in a sandboxed environment | $5 | `code_execution`, `code_interpreter[object Object]` |
 | File Attachments | Search through files attached to messages | $10 | `attachment_search` |
-| Collections Search | Query your uploaded document collections (RAG) | $2.50 | `collections_search`, `file_search*` |
-| Image Understanding | Analyze images found during Web Search and X Search\*\* | Token-based | `view_image` |
-| X Video Understanding | Analyze videos found during X Search\*\* | Token-based | `view_x_video` |
+| Collections Search | Query your uploaded document collections (RAG) | $2.50 | `collections_search`, `file_search[object Object]` |
+| Image Understanding | Analyze images found during Web Search and X Search\* | Token-based | `view_image` |
+| X Video Understanding | Analyze videos found during X Search\* | Token-based | `view_x_video` |
 | Remote MCP Tools | Connect and use custom MCP tool servers | Token-based | *(set by MCP server)* |
-\* All tool names work in the Responses API. In the gRPC API (Python xAI SDK), `code_interpreter` and `file_search` are not supported.
-\*\* Only applies to images and videos found by search tools — not to images passed directly in messages.
+\[object Object] All tool names work in the Responses API. In the gRPC API (Python xAI SDK), `code_interpreter` and `file_search` are not supported.
+\* Only applies to images and videos found by search tools — not to images passed directly in messages.
 
 For the view image and view x video tools, you will not be charged for the tool invocation itself but will be charged for the image tokens used to process the image or video.
 
@@ -9519,19 +11110,34 @@ The 50% discount applies to all token types — input tokens, output tokens, cac
 
 Batch API pricing applies to text and language models only. Image and video generation models are not supported in the Batch API. See [Batch API documentation](/developers/advanced-api-usage/batch-api) for full details, limitations, and usage examples.
 
-## Voice Agent API Pricing
+## Voice API Pricing
 
-The [Voice Agent API](/developers/model-capabilities/audio/voice-agent) is a real-time voice conversation offering, billed at a straightforward flat rate of $0.05 per minute of connection time.
+### Voice Agent API (Realtime)
+
+The [Voice Agent API](/developers/model-capabilities/audio/voice-agent) enables real-time voice conversations over WebSocket, billed at a flat rate per minute of connection time.
 
 | | Details |
 |---|---|
 | **Pricing** | $0.05 / minute ($3.00 / hour) |
-| **Rate Limit** | 100 concurrent sessions per team |
+| **Concurrent sessions** | 100 per team |
+| **Max session duration** | 30 minutes |
 | **Capabilities** | Function calling (web search, X search, collections, custom functions) |
 
 When using the Voice Agent API with tools such as function calling, web search, X search, or collections, you will be charged for the tool invocations in addition to the per-minute voice session cost. See [Tool Invocation Costs](#tool-invocation-costs) above for tool pricing details.
 
-For more details on how to get started with the Voice Agent API, see the [Voice Agent API documentation](/developers/model-capabilities/audio/voice-agent).
+For more details on how to get started, see the [Voice Agent API documentation](/developers/model-capabilities/audio/voice-agent).
+
+### Text to Speech API (Beta)
+
+The [Text to Speech API](/developers/model-capabilities/audio/text-to-speech) converts text into natural speech, billed per input character.
+
+| | Details |
+|---|---|
+| **Pricing** | $4.20 / 1M characters (Beta Pricing)|
+| **Concurrent requests** | 100 per team |
+| **Capabilities** | Multiple voices, streaming and batch output, MP3 / WAV / PCM / μ-law / A-law formats |
+
+The Text to Speech API is currently in **beta**. Pricing and rate limits may change when the API becomes generally available.
 
 ## Usage Guidelines Violation Fee
 
@@ -9702,7 +11308,7 @@ from xai_sdk.chat import user, system
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 
-chat = client.chat.create(model="grok-4-1-fast-reasoning")
+chat = client.chat.create(model="grok-4.20-beta-latest-non-reasoning")
 chat.append(system("You are Grok, a highly intelligent, helpful AI assistant."))
 chat.append(user("What is the meaning of life, the universe, and everything?"))
 
@@ -9720,7 +11326,7 @@ client = OpenAI(
 )
 
 completion = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {"role": "system", "content": "You are Grok, a highly intelligent, helpful AI assistant."},
         {"role": "user", "content": "What is the meaning of life, the universe, and everything?"},
@@ -9737,7 +11343,7 @@ import { generateText } from 'ai';
 const xai = createXai({ apiKey: process.env.XAI_API_KEY });
 
 const { text } = await generateText({
-    model: xai.responses('grok-4-1-fast-reasoning'),
+    model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
     system: 'You are Grok, a highly intelligent, helpful AI assistant.',
     prompt: 'What is the meaning of life, the universe, and everything?',
 });
@@ -9754,7 +11360,7 @@ const client = new OpenAI({
 });
 
 const response = await client.responses.create({
-    model: 'grok-4-1-fast-reasoning',
+    model: 'grok-4.20-beta-latest-non-reasoning',
     input: [
         { role: 'system', content: 'You are Grok, a highly intelligent, helpful AI assistant.' },
         { role: 'user', content: 'What is the meaning of life, the universe, and everything?' },
@@ -9769,7 +11375,7 @@ curl https://api.x.ai/v1/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -d '{
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "input": [
         {"role": "system", "content": "You are Grok, a highly intelligent, helpful AI assistant."},
         {"role": "user", "content": "What is the meaning of life, the universe, and everything?"}
@@ -10037,7 +11643,7 @@ from xai_sdk.chat import system, user
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 
 chat = client.chat.create(
-model="grok-4-1-fast-reasoning",
+model="grok-4.20-beta-latest-non-reasoning",
 messages=[system("You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy.")]
 )
 chat.append(user("What is the meaning of life, the universe, and everything?"))
@@ -10054,7 +11660,7 @@ XAI_API_KEY = os.getenv("XAI_API_KEY")
 client = OpenAI(base_url="https://api.x.ai/v1", api_key=XAI_API_KEY)
 
 completion = client.chat.completions.create(
-model="grok-4-1-fast-reasoning",
+model="grok-4.20-beta-latest-non-reasoning",
 messages=[
 {
 "role": "system",
@@ -10079,7 +11685,7 @@ baseURL: "https://api.x.ai/v1",
 });
 
 const completion = await openai.chat.completions.create({
-model: "grok-4-1-fast-reasoning",
+model: "grok-4.20-beta-latest-non-reasoning",
 messages: [
 {
 role: "system",
@@ -10135,7 +11741,7 @@ client = Client(
     api_host="us-east-1.api.x.ai" # Without the https://
 )
 
-chat = client.chat.create(model="grok-4-1-fast-reasoning")
+chat = client.chat.create(model="grok-4.20-beta-latest-non-reasoning")
 chat.append(user("What is the meaning of life?"))
 
 completion = chat.sample()
@@ -10150,7 +11756,7 @@ client = OpenAI(
 )
 
 completion = client.chat.completions.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     messages=[
         {"role": "user", "content": "What is the meaning of life?"}
     ]
@@ -10166,7 +11772,7 @@ const client = new OpenAI({
 });
 
 const completion = await client.chat.completions.create({
-    model: "grok-4-1-fast-reasoning",
+    model: "grok-4.20-beta-latest-non-reasoning",
     messages: [
         { role: "user", content: "What is the meaning of life?" }
     ]
@@ -10184,7 +11790,7 @@ curl https://us-east-1.api.x.ai/v1/chat/completions \\
             "content": "What is the meaning of life, the universe, and everything?"
         }
     ],
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "stream": false
 }'
 ```
@@ -10205,6 +11811,13 @@ for the available models to your team in each region, or [Models and Pricing](..
 # Release Notes
 
 Stay up to date with the latest changes to the xAI API.
+
+# March 2026
+
+### Grok 4.20 Beta and Grok 4.20 Multi-agent Beta are available
+
+* You can now use Grok 4.20 Beta in the xAI Enterprise API.
+* Grok 4.20 Multi-agent Beta can be accessed through the xAI Enterprise API. For more details, check out the [docs](/developers/model-capabilities/text/multi-agent)
 
 # January 2026
 
@@ -10552,9 +12165,36 @@ The base url for searching `collections` is shared with [REST API](/developers/r
 
 API endpoint for POST requests to /v1/documents/search.
 
+\*\*Request Body:\*\*
+
+```json
+{
+  "query": "What is the revenue in the last quarter?",
+  "source": {
+    "collection_ids": [
+      "collection_80100614-300c-4609-959b-a138fa90f542"
+    ]
+  },
+  "filter": "document_type = \"financial_report\" AND year > 2020"
+}
 ```
-Method: POST
-Path: /v1/documents/search
+
+\*\*Response:\*\*
+
+```json
+{
+  "matches": [
+    {
+      "file_id": "file_ac3c5728-7399-41fc-bd62-0fef0042de9c",
+      "chunk_id": "0199717c-511b-7a80-bab3-dfe9a27f82ab",
+      "chunk_content": ", deferred revenue related to such customer payments amounted to $2.10 billion and $1.77 billion, respectively, mainly due to contractual payment terms. Revenue recognized from the deferred revenue balances as of December 31, 2024 and 2023 was $944 million and $873 million for the six months ended June 30, 2025 and 2024, respectively. We have elected the practical expedient to omit disclosure of the amount of the transaction price allocated to remaining performance obligations for contracts with an original expected contract length of one year or less. As of June 30, 2025, total transaction price allocated to performance obligations that were unsatisfied or partially unsatisfied for contracts with an original expected length of more than one year was $10.38 billion. Of this amount, we expect to recognize $5.47 billion in the next 12 months and the rest over the remaining performance obligation period. Changes in government and economic incentives or tariffs may impact the transaction price or our ability to e",
+      "score": 1.1447691,
+      "collection_ids": [
+        "collection_80100614-300c-4609-959b-a138fa90f542"
+      ]
+    }
+  ]
+}
 ```
 
 
@@ -10657,28 +12297,6 @@ Path: /v1/files
 
 ***
 
-## POST /v1/files/batch\_upload
-
-API endpoint for POST requests to /v1/files/batch\_upload.
-
-```
-Method: POST
-Path: /v1/files/batch_upload
-```
-
-***
-
-## POST /v1/files/batch\_upload/\{batch\_job\_id}:complete
-
-API endpoint for POST requests to /v1/files/batch\_upload/\{batch\_job\_id}:complete.
-
-```
-Method: POST
-Path: /v1/files/batch_upload/{batch_job_id}:complete
-```
-
-***
-
 ## POST /v1/files:initialize
 
 API endpoint for POST requests to /v1/files:initialize.
@@ -10704,8 +12322,6 @@ Path: /v1/files:uploadChunks
 #### Inference API
 
 # Batches
-
-***
 
 ## POST /v1/batches
 
@@ -10788,15 +12404,67 @@ Path: /v1/batches/{batch_id}:cancel
 
 # Chat
 
-***
-
 ## POST /v1/chat/completions
 
 API endpoint for POST requests to /v1/chat/completions.
 
+\*\*Request Body:\*\*
+
+```json
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant that can answer questions and help with tasks."
+    },
+    {
+      "role": "user",
+      "content": "What is 101*3?"
+    }
+  ],
+  "model": "grok-4-0709"
+}
 ```
-Method: POST
-Path: /v1/chat/completions
+
+\*\*Response:\*\*
+
+```json
+{
+  "id": "a3d1008e-4544-40d4-d075-11527e794e4a",
+  "object": "chat.completion",
+  "created": 1752854522,
+  "model": "grok-4-0709",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "101 multiplied by 3 is 303.",
+        "refusal": null
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 32,
+    "completion_tokens": 9,
+    "total_tokens": 135,
+    "prompt_tokens_details": {
+      "text_tokens": 32,
+      "audio_tokens": 0,
+      "image_tokens": 0,
+      "cached_tokens": 6
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 94,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    },
+    "num_sources_used": 0
+  },
+  "system_fingerprint": "fp_3a7881249c"
+}
 ```
 
 ***
@@ -10805,9 +12473,84 @@ Path: /v1/chat/completions
 
 API endpoint for POST requests to /v1/responses.
 
+\*\*Request Body:\*\*
+
+```json
+{
+  "input": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant that can answer questions and help with tasks."
+    },
+    {
+      "role": "user",
+      "content": "What is 101*3?"
+    }
+  ],
+  "model": "grok-4-0709"
+}
 ```
-Method: POST
-Path: /v1/responses
+
+\*\*Response:\*\*
+
+```json
+{
+  "created_at": 1754475266,
+  "id": "ad5663da-63e6-86c6-e0be-ff15effa8357",
+  "max_output_tokens": null,
+  "model": "grok-4-0709",
+  "object": "response",
+  "output": [
+    {
+      "content": [
+        {
+          "type": "output_text",
+          "text": "101 multiplied by 3 is 303.",
+          "logprobs": null,
+          "annotations": []
+        }
+      ],
+      "id": "msg_ad5663da-63e6-86c6-e0be-ff15effa8357",
+      "role": "assistant",
+      "type": "message",
+      "status": "completed"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "previous_response_id": null,
+  "reasoning": null,
+  "temperature": null,
+  "text": {
+    "format": {
+      "type": "text"
+    }
+  },
+  "tool_choice": "auto",
+  "tools": [],
+  "top_p": null,
+  "usage": {
+    "prompt_tokens": 32,
+    "completion_tokens": 9,
+    "total_tokens": 151,
+    "prompt_tokens_details": {
+      "text_tokens": 32,
+      "audio_tokens": 0,
+      "image_tokens": 0,
+      "cached_tokens": 8
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 110,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    },
+    "num_sources_used": 0
+  },
+  "user": null,
+  "incomplete_details": null,
+  "status": "completed",
+  "store": true
+}
 ```
 
 ***
@@ -10816,9 +12559,77 @@ Path: /v1/responses
 
 API endpoint for GET requests to /v1/responses/\{response\_id}.
 
-```
-Method: GET
-Path: /v1/responses/{response_id}
+\*\*Response:\*\*
+
+```json
+{
+  "created_at": 1754475266,
+  "id": "ad5663da-63e6-86c6-e0be-ff15effa8357",
+  "max_output_tokens": null,
+  "model": "grok-4-0709",
+  "object": "response",
+  "output": [
+    {
+      "content": [
+        {
+          "type": "output_text",
+          "text": "101 multiplied by 3 is 303.",
+          "logprobs": null,
+          "annotations": []
+        }
+      ],
+      "id": "msg_ad5663da-63e6-86c6-e0be-ff15effa8357",
+      "role": "assistant",
+      "type": "message",
+      "status": "completed"
+    },
+    {
+      "id": "",
+      "summary": [
+        {
+          "text": "First, the user asked: \"What is 101*3?\"\n\nThis is a simple multiplication: 101 multiplied by 3.\n\nCalculating: 100 * 3 = 300, and 1 * 3 = 3, so 300 + 3 = 303.\n\nI should respond helpfully and directly, as per my system prompt: \"You are a helpful assistant that can answer questions and help with tasks.\"\n\nKeep the response concise and accurate. No need for extra fluff unless it adds value.\n\nFinal answer: 303.",
+          "type": "summary_text"
+        }
+      ],
+      "type": "reasoning",
+      "status": "completed"
+    }
+  ],
+  "parallel_tool_calls": true,
+  "previous_response_id": null,
+  "reasoning": null,
+  "temperature": null,
+  "text": {
+    "format": {
+      "type": "text"
+    }
+  },
+  "tool_choice": "auto",
+  "tools": [],
+  "top_p": null,
+  "usage": {
+    "prompt_tokens": 32,
+    "completion_tokens": 9,
+    "total_tokens": 151,
+    "prompt_tokens_details": {
+      "text_tokens": 32,
+      "audio_tokens": 0,
+      "image_tokens": 0,
+      "cached_tokens": 8
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 110,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    },
+    "num_sources_used": 0
+  },
+  "user": null,
+  "incomplete_details": null,
+  "status": "completed",
+  "store": true
+}
 ```
 
 ***
@@ -10827,9 +12638,14 @@ Path: /v1/responses/{response_id}
 
 API endpoint for DELETE requests to /v1/responses/\{response\_id}.
 
-```
-Method: DELETE
-Path: /v1/responses/{response_id}
+\*\*Response:\*\*
+
+```json
+{
+  "id": "ad5663da-63e6-86c6-e0be-ff15effa8357",
+  "object": "response",
+  "deleted": true
+}
 ```
 
 ***
@@ -10838,9 +12654,44 @@ Path: /v1/responses/{response_id}
 
 API endpoint for GET requests to /v1/chat/deferred-completion/\{request\_id}.
 
-```
-Method: GET
-Path: /v1/chat/deferred-completion/{request_id}
+\*\*Response:\*\*
+
+```json
+{
+  "id": "335b92e4-afa5-48e7-b99c-b9a4eabc1c8e",
+  "object": "chat.completion",
+  "created": 1743770624,
+  "model": "grok-4-0709",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "101 multiplied by 3 is 303.",
+        "refusal": null
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 31,
+    "completion_tokens": 11,
+    "total_tokens": 42,
+    "prompt_tokens_details": {
+      "text_tokens": 31,
+      "audio_tokens": 0,
+      "image_tokens": 0,
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "system_fingerprint": "fp_156d35dcaa"
+}
 ```
 
 
@@ -10849,15 +12700,36 @@ Path: /v1/chat/deferred-completion/{request_id}
 
 # Images
 
-***
-
 ## POST /v1/images/generations
 
 API endpoint for POST requests to /v1/images/generations.
 
+\*\*Request Body:\*\*
+
+```json
+{
+  "prompt": "A cat in a tree",
+  "model": "grok-imagine-image",
+  "response_format": "url",
+  "n": 2
+}
 ```
-Method: POST
-Path: /v1/images/generations
+
+\*\*Response:\*\*
+
+```json
+{
+  "data": [
+    {
+      "url": "...",
+      "revised_prompt": ""
+    },
+    {
+      "url": "...",
+      "revised_prompt": ""
+    }
+  ]
+}
 ```
 
 ***
@@ -10866,9 +12738,28 @@ Path: /v1/images/generations
 
 API endpoint for POST requests to /v1/images/edits.
 
+\*\*Request Body:\*\*
+
+```json
+{
+  "prompt": "Add a hat to this cat.",
+  "image": {
+    "url": "..."
+  },
+  "model": "grok-imagine-image"
+}
 ```
-Method: POST
-Path: /v1/images/edits
+
+\*\*Response:\*\*
+
+```json
+{
+  "data": [
+    {
+      "url": "..."
+    }
+  ]
+}
 ```
 
 
@@ -10877,15 +12768,54 @@ Path: /v1/images/edits
 
 # Legacy & Deprecated
 
-***
-
 ## POST /v1/completions
 
 API endpoint for POST requests to /v1/completions.
 
+\*\*Request Body:\*\*
+
+```json
+{
+  "prompt": "1, 2, 3, 4, ",
+  "model": "grok-3",
+  "max_tokens": 3
+}
 ```
-Method: POST
-Path: /v1/completions
+
+\*\*Response:\*\*
+
+```json
+{
+  "id": "873492b3-6144-4279-ac2e-2c45242c5ce6",
+  "object": "text_completion",
+  "created": 1743771779,
+  "model": "grok-3",
+  "choices": [
+    {
+      "index": 0,
+      "text": "5, ",
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 12,
+    "completion_tokens": 3,
+    "total_tokens": 15,
+    "prompt_tokens_details": {
+      "text_tokens": 12,
+      "audio_tokens": 0,
+      "image_tokens": 0,
+      "cached_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  },
+  "system_fingerprint": "fp_156d35dcaa"
+}
 ```
 
 ***
@@ -10896,9 +12826,44 @@ Path: /v1/completions
 
 API endpoint for POST requests to /v1/messages.
 
+\*\*Request Body:\*\*
+
+```json
+{
+  "model": "grok-4-0709",
+  "max_tokens": 32,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello, world"
+    }
+  ]
+}
 ```
-Method: POST
-Path: /v1/messages
+
+\*\*Response:\*\*
+
+```json
+{
+  "id": "4f224bfb-9d53-4c82-b40a-b7cd80831ec2",
+  "type": "message",
+  "role": "assistant",
+  "content": [
+    {
+      "type": "text",
+      "text": "Hello there! \"Hello, world\" is a classic, isn't it? Whether you're just saying hi or channeling your inner coder, I'm happy to greet you back"
+    }
+  ],
+  "model": "grok-4-0709",
+  "stop_reason": "max_tokens",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 9,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "output_tokens": 32
+  }
+}
 ```
 
 ***
@@ -10909,9 +12874,27 @@ Path: /v1/messages
 
 API endpoint for POST requests to /v1/complete.
 
+\*\*Request Body:\*\*
+
+```json
+{
+  "model": "grok-3",
+  "max_tokens_to_sample": 8,
+  "temperature": 0.1,
+  "prompt": "\n\nHuman: Hello, how are you?\n\nAssistant:"
+}
 ```
-Method: POST
-Path: /v1/complete
+
+\*\*Response:\*\*
+
+```json
+{
+  "type": "completion",
+  "id": "982044c5-760c-4c8d-8936-f906b5cedc26",
+  "completion": " Hey there! I'm doing great, thanks",
+  "stop_reason": "max_tokens",
+  "model": "grok-3"
+}
 ```
 
 
@@ -10920,15 +12903,54 @@ Path: /v1/complete
 
 # Models
 
-***
-
 ## GET /v1/models
 
 API endpoint for GET requests to /v1/models.
 
-```
-Method: GET
-Path: /v1/models
+\*\*Response:\*\*
+
+```json
+{
+  "data": [
+    {
+      "id": "grok-4-0709",
+      "created": 1752019200,
+      "object": "model",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-code-fast-1",
+      "created": 1755993600,
+      "object": "model",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-3",
+      "created": 1743724800,
+      "object": "model",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-3-mini",
+      "created": 1743724800,
+      "object": "model",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-2-image-1212",
+      "created": 1736726400,
+      "object": "model",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-2-vision-1212",
+      "created": 1733961600,
+      "object": "model",
+      "owned_by": "xai"
+    }
+  ],
+  "object": "list"
+}
 ```
 
 ***
@@ -10937,9 +12959,15 @@ Path: /v1/models
 
 API endpoint for GET requests to /v1/models/\{model\_id}.
 
-```
-Method: GET
-Path: /v1/models/{model_id}
+\*\*Response:\*\*
+
+```json
+{
+  "id": "grok-4-0709",
+  "created": 1743724800,
+  "object": "model",
+  "owned_by": "xai"
+}
 ```
 
 ***
@@ -10948,9 +12976,78 @@ Path: /v1/models/{model_id}
 
 API endpoint for GET requests to /v1/language-models.
 
-```
-Method: GET
-Path: /v1/language-models
+\*\*Response:\*\*
+
+```json
+{
+  "models": [
+    {
+      "id": "grok-3",
+      "fingerprint": "fp_898ae9f31c",
+      "created": 1743724800,
+      "object": "model",
+      "owned_by": "xai",
+      "version": "1.0",
+      "input_modalities": [
+        "text"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "prompt_text_token_price": 30000,
+      "cached_prompt_text_token_price": 7500,
+      "prompt_image_token_price": 0,
+      "completion_text_token_price": 150000,
+      "search_price": 250000000,
+      "aliases": [
+        "grok-3-latest",
+        "grok-3-beta"
+      ]
+    },
+    {
+      "id": "grok-3-mini",
+      "fingerprint": "fp_6a09108ff5",
+      "created": 1743724800,
+      "object": "model",
+      "owned_by": "xai",
+      "version": "1.0",
+      "input_modalities": [
+        "text"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "prompt_text_token_price": 3000,
+      "cached_prompt_text_token_price": 750,
+      "prompt_image_token_price": 0,
+      "completion_text_token_price": 5000,
+      "search_price": 250000000,
+      "aliases": [
+        "grok-3-mini-latest",
+        "grok-3-mini-beta"
+      ]
+    },
+    {
+      "id": "grok-2-vision-1212",
+      "fingerprint": "fp_daba7546e5",
+      "created": 1733961600,
+      "object": "model",
+      "owned_by": "xai",
+      "version": "0.1.0",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "output_modalities": [
+        "text"
+      ],
+      "prompt_text_token_price": 20000,
+      "prompt_image_token_price": 20000,
+      "completion_text_token_price": 100000,
+      "aliases": []
+    }
+  ]
+}
 ```
 
 ***
@@ -10959,9 +13056,31 @@ Path: /v1/language-models
 
 API endpoint for GET requests to /v1/language-models/\{model\_id}.
 
-```
-Method: GET
-Path: /v1/language-models/{model_id}
+\*\*Response:\*\*
+
+```json
+{
+  "id": "grok-4-0709",
+  "fingerprint": "fp_156d35dcaa",
+  "created": 1743724800,
+  "object": "model",
+  "owned_by": "xai",
+  "version": "1.0.0",
+  "input_modalities": [
+    "text"
+  ],
+  "output_modalities": [
+    "text"
+  ],
+  "prompt_text_token_price": 20000,
+  "cached_prompt_text_token_price": 0,
+  "prompt_image_token_price": 0,
+  "completion_text_token_price": 100000,
+  "aliases": [
+    "grok-4",
+    "grok-4-latest"
+  ]
+}
 ```
 
 ***
@@ -10970,9 +13089,26 @@ Path: /v1/language-models/{model_id}
 
 API endpoint for GET requests to /v1/image-generation-models.
 
-```
-Method: GET
-Path: /v1/image-generation-models
+\*\*Response:\*\*
+
+```json
+{
+  "models": [
+    {
+      "id": "grok-imagine-image",
+      "fingerprint": "fp_ca78641a52",
+      "max_prompt_length": 1024,
+      "created": 1738961600,
+      "object": "model",
+      "owned_by": "xai",
+      "version": "1.0.0",
+      "prompt_text_token_price": 100000,
+      "prompt_image_token_price": 100000,
+      "generated_image_token_price": 100000,
+      "aliases": []
+    }
+  ]
+}
 ```
 
 ***
@@ -10981,9 +13117,22 @@ Path: /v1/image-generation-models
 
 API endpoint for GET requests to /v1/image-generation-models/\{model\_id}.
 
-```
-Method: GET
-Path: /v1/image-generation-models/{model_id}
+\*\*Response:\*\*
+
+```json
+{
+  "id": "grok-imagine-image",
+  "fingerprint": "fp_ca78641a52",
+  "max_prompt_length": 1024,
+  "created": 1737961600,
+  "object": "model",
+  "owned_by": "xai",
+  "version": "1.0.0",
+  "prompt_text_token_price": 100000,
+  "prompt_image_token_price": 100000,
+  "generated_image_token_price": 100000,
+  "aliases": []
+}
 ```
 
 ***
@@ -10992,9 +13141,29 @@ Path: /v1/image-generation-models/{model_id}
 
 API endpoint for GET requests to /v1/video-generation-models.
 
-```
-Method: GET
-Path: /v1/video-generation-models
+\*\*Response:\*\*
+
+```json
+{
+  "models": [
+    {
+      "id": "grok-imagine-video",
+      "fingerprint": "fp_898ae9f31c",
+      "created": 1743724800,
+      "object": "model",
+      "owned_by": "xai",
+      "version": "1.0.0",
+      "input_modalities": [
+        "text",
+        "image"
+      ],
+      "output_modalities": [
+        "video"
+      ],
+      "aliases": []
+    }
+  ]
+}
 ```
 
 ***
@@ -11003,9 +13172,25 @@ Path: /v1/video-generation-models
 
 API endpoint for GET requests to /v1/video-generation-models/\{model\_id}.
 
-```
-Method: GET
-Path: /v1/video-generation-models/{model_id}
+\*\*Response:\*\*
+
+```json
+{
+  "id": "grok-imagine-video",
+  "fingerprint": "fp_898ae9f31c",
+  "created": 1743724800,
+  "object": "model",
+  "owned_by": "xai",
+  "version": "1.0",
+  "input_modalities": [
+    "text",
+    "image"
+  ],
+  "output_modalities": [
+    "video"
+  ],
+  "aliases": []
+}
 ```
 
 
@@ -11014,15 +13199,30 @@ Path: /v1/video-generation-models/{model_id}
 
 # Other
 
-***
-
 ## GET /v1/api-key
 
 API endpoint for GET requests to /v1/api-key.
 
-```
-Method: GET
-Path: /v1/api-key
+\*\*Response:\*\*
+
+```json
+{
+  "redacted_api_key": "xai-...b14o",
+  "user_id": "59fbe5f2-040b-46d5-8325-868bb8f23eb2",
+  "name": "My API Key",
+  "create_time": "2024-01-01T12:55:18.139305Z",
+  "modify_time": "2024-08-28T17:20:12.343321Z",
+  "modified_by": "3d38b4dc-4eb7-4785-ae26-c3fa8997ffc7",
+  "team_id": "5ea6f6bd-7815-4b8a-9135-28b2d7ba6722",
+  "acls": [
+    "api-key:model:*",
+    "api-key:endpoint:*"
+  ],
+  "api_key_id": "ae1e1841-4326-4b36-a8a9-8a1a7237db11",
+  "team_blocked": false,
+  "api_key_blocked": false,
+  "api_key_disabled": false
+}
 ```
 
 ***
@@ -11031,9 +13231,52 @@ Path: /v1/api-key
 
 API endpoint for POST requests to /v1/tokenize-text.
 
+\*\*Request Body:\*\*
+
+```json
+{
+  "text": "Hello world!",
+  "model": "grok-4-0709"
+}
 ```
-Method: POST
-Path: /v1/tokenize-text
+
+\*\*Response:\*\*
+
+```json
+{
+  "token_ids": [
+    {
+      "token_id": 13902,
+      "string_token": "Hello",
+      "token_bytes": [
+        72,
+        101,
+        108,
+        108,
+        111
+      ]
+    },
+    {
+      "token_id": 1749,
+      "string_token": " world",
+      "token_bytes": [
+        32,
+        119,
+        111,
+        114,
+        108,
+        100
+      ]
+    },
+    {
+      "token_id": 161,
+      "string_token": "!",
+      "token_bytes": [
+        33
+      ]
+    }
+  ]
+}
 ```
 
 
@@ -11050,6 +13293,7 @@ The base for all routes is at `https://api.x.ai`. For all routes, you have to au
 * [Chat](/developers/rest-api-reference/inference/chat)
 * [Images](/developers/rest-api-reference/inference/images)
 * [Videos](/developers/rest-api-reference/inference/videos)
+* [Voice](/developers/rest-api-reference/inference/voice)
 * [Models](/developers/rest-api-reference/inference/models)
 * [Files](/developers/rest-api-reference/files)
 * [Batches](/developers/rest-api-reference/inference/batches)
@@ -11057,20 +13301,72 @@ The base for all routes is at `https://api.x.ai`. For all routes, you have to au
 * [Legacy & Deprecated](/developers/rest-api-reference/inference/legacy)
 
 
+===/developers/rest-api-reference/inference/text-to-speech===
+#### Inference API
+
+# Voice
+
+***
+
+## POST /v1/tts
+
+API endpoint for POST requests to /v1/tts.
+
+```
+Method: POST
+Path: /v1/tts
+```
+
+***
+
+***
+
+## GET /v1/tts/voices
+
+API endpoint for GET requests to /v1/tts/voices.
+
+```
+Method: GET
+Path: /v1/tts/voices
+```
+
+***
+
+## GET /v1/tts/voices/\{voice\_id}
+
+API endpoint for GET requests to /v1/tts/voices/\{voice\_id}.
+
+```
+Method: GET
+Path: /v1/tts/voices/{voice_id}
+```
+
+
 ===/developers/rest-api-reference/inference/videos===
 #### Inference API
 
 # Videos
 
-***
-
 ## POST /v1/videos/generations
 
 API endpoint for POST requests to /v1/videos/generations.
 
+\*\*Request Body:\*\*
+
+```json
+{
+  "prompt": "A cat playing with a ball",
+  "model": "grok-imagine-video",
+  "duration": 6
+}
 ```
-Method: POST
-Path: /v1/videos/generations
+
+\*\*Response:\*\*
+
+```json
+{
+  "request_id": "a3d1008e-4544-40d4-d075-11527e794e4a"
+}
 ```
 
 ***
@@ -11079,9 +13375,24 @@ Path: /v1/videos/generations
 
 API endpoint for POST requests to /v1/videos/edits.
 
+\*\*Request Body:\*\*
+
+```json
+{
+  "prompt": "Add snow to the scene",
+  "video": {
+    "url": "https://example.com/video.mp4"
+  },
+  "model": "grok-imagine-video"
+}
 ```
-Method: POST
-Path: /v1/videos/edits
+
+\*\*Response:\*\*
+
+```json
+{
+  "request_id": "a3d1008e-4544-40d4-d075-11527e794e4a"
+}
 ```
 
 ***
@@ -11093,6 +13404,58 @@ API endpoint for GET requests to /v1/videos/\{request\_id}.
 ```
 Method: GET
 Path: /v1/videos/{request_id}
+```
+
+
+===/developers/rest-api-reference/inference/voice===
+#### Inference API
+
+# Voice
+
+## POST /v1/realtime/client\_secrets
+
+API endpoint for POST requests to /v1/realtime/client\_secrets.
+
+```
+Method: POST
+Path: /v1/realtime/client_secrets
+```
+
+***
+
+***
+
+## POST /v1/tts
+
+API endpoint for POST requests to /v1/tts.
+
+```
+Method: POST
+Path: /v1/tts
+```
+
+***
+
+***
+
+## GET /v1/tts/voices
+
+API endpoint for GET requests to /v1/tts/voices.
+
+```
+Method: GET
+Path: /v1/tts/voices
+```
+
+***
+
+## GET /v1/tts/voices/\{voice\_id}
+
+API endpoint for GET requests to /v1/tts/voices/\{voice\_id}.
+
+```
+Method: GET
+Path: /v1/tts/voices/{voice_id}
 ```
 
 
@@ -11149,6 +13512,17 @@ API endpoint for PUT requests to /auth/api-keys/\{api\_key\_id}.
 ```
 Method: PUT
 Path: /auth/api-keys/{api_key_id}
+```
+
+***
+
+## POST /auth/api-keys/\{apiKeyId}/rotate
+
+API endpoint for POST requests to /auth/api-keys/\{apiKeyId}/rotate.
+
+```
+Method: POST
+Path: /auth/api-keys/{apiKeyId}/rotate
 ```
 
 ***
@@ -11447,7 +13821,7 @@ For more details, check [Identifying Tool Call Types](/developers/tools/tool-usa
        ),
    ]
 
-   model = "grok-4-1-fast-reasoning"
+   model = "grok-4.20-beta-latest-non-reasoning"
    ```
 
 2. Perform the tool loop with conversation continuation:
@@ -11578,7 +13952,7 @@ For more details, see [Identifying Tool Call Types](/developers/tools/tool-usage
        # In a real app, this would query your database
        return f"The weather in {city} is sunny."
 
-   model = "grok-4-1-fast-reasoning"
+   model = "grok-4.20-beta-latest-non-reasoning"
    tools = [
        {
            "type": "function",
@@ -11737,7 +14111,7 @@ from xai_sdk.tools import web_search, x_search
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 # First turn.
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",  # reasoning model
+    model="grok-4.20-beta-latest-non-reasoning",  # reasoning model
     tools=[web_search(), x_search()],
     store_messages=True,
 )
@@ -11749,7 +14123,7 @@ print("\\n\\nUsage for first turn:", response.server_side_tool_usage)
 
 # Second turn.
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",  # reasoning model
+    model="grok-4.20-beta-latest-non-reasoning",  # reasoning model
     tools=[web_search(), x_search()],
     # pass the response id of the first turn to continue the conversation
     previous_response_id=response.id,
@@ -11782,7 +14156,7 @@ from xai_sdk.tools import web_search, x_search
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 # First turn.
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",  # reasoning model
+    model="grok-4.20-beta-latest-non-reasoning",  # reasoning model
     tools=[web_search(), x_search()],
     use_encrypted_content=True,
 )
@@ -11867,7 +14241,7 @@ from xai_sdk.tools import web_search, x_search
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",  # reasoning model
+    model="grok-4.20-beta-latest-non-reasoning",  # reasoning model
     tools=[
         web_search(),
         x_search(),
@@ -11910,7 +14284,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {
             "role": "user",
@@ -11940,7 +14314,7 @@ headers = {
     "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}"
 }
 payload = {
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "input": [
         {
             "role": "user",
@@ -11965,7 +14339,7 @@ curl https://api.x.ai/v1/responses \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer $XAI_API_KEY" \\
   -d '{
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "input": [
     {
       "role": "user",
@@ -11996,7 +14370,7 @@ from xai_sdk.tools import web_search, code_execution
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",  # reasoning model
+    model="grok-4.20-beta-latest-non-reasoning",  # reasoning model
     # research_tools
     tools=[
         web_search(),
@@ -12021,7 +14395,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {
             "role": "user",
@@ -12052,7 +14426,7 @@ headers = {
     "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}"
 }
 payload = {
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "input": [
         {
             "role": "user",
@@ -12078,7 +14452,7 @@ curl https://api.x.ai/v1/responses \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer $XAI_API_KEY" \\
   -d '{
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "input": [
     {
       "role": "user",
@@ -12112,7 +14486,7 @@ from xai_sdk.tools import web_search, x_search
 # Create the client and define the server-side tools to use
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",  # reasoning model
+    model="grok-4.20-beta-latest-non-reasoning",  # reasoning model
     tools=[web_search(), x_search()],
     include=["verbose_streaming"],
 )
@@ -12195,7 +14569,7 @@ curl https://api.x.ai/v1/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -d '{
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "input": [
     {"role": "user", "content": "What is xAI?"}
   ],
@@ -12212,7 +14586,7 @@ from xai_sdk.tools import web_search, x_search
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         web_search(),
         x_search(),
@@ -12237,7 +14611,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {"role": "user", "content": "What is xAI?"}
     ],
@@ -12259,7 +14633,7 @@ import { xai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
 
 const { text, sources } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'What is xAI?',
   tools: {
     web_search: xai.tools.webSearch(),
@@ -12282,7 +14656,7 @@ const client = new OpenAI({
 });
 
 const response = await client.responses.create({
-  model: 'grok-4-1-fast-reasoning',
+  model: 'grok-4.20-beta-latest-non-reasoning',
   input: [
     { role: 'user', content: 'What is xAI?' }
   ],
@@ -12336,7 +14710,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {"role": "user", "content": "What is xAI?"}
     ],
@@ -12365,7 +14739,7 @@ response = requests.post(
         "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}",
     },
     json={
-        "model": "grok-4-1-fast-reasoning",
+        "model": "grok-4.20-beta-latest-non-reasoning",
         "include": ["no_inline_citations"],
         "input": [
             {"role": "user", "content": "What is xAI?"}
@@ -12387,7 +14761,7 @@ curl https://api.x.ai/v1/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -d '{
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "include": ["no_inline_citations"],
   "input": [
     {"role": "user", "content": "What is xAI?"}
@@ -12442,7 +14816,7 @@ import { xai } from '@ai-sdk/xai';
 import { streamText } from 'ai';
 
 const { fullStream } = streamText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'What is xAI?',
   tools: {
     web_search: xai.tools.webSearch(),
@@ -12578,7 +14952,7 @@ from xai_sdk.tools import code_execution
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",  # reasoning model
+    model="grok-4.20-beta-latest-non-reasoning",  # reasoning model
     tools=[code_execution()],
     include=["verbose_streaming"],
 )
@@ -12619,7 +14993,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {
             "role": "user",
@@ -12646,7 +15020,7 @@ headers = {
     "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}"
 }
 payload = {
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "input": [
         {
             "role": "user",
@@ -12668,7 +15042,7 @@ curl https://api.x.ai/v1/responses \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer $XAI_API_KEY" \\
   -d '{
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "input": [
     {
       "role": "user",
@@ -12688,7 +15062,7 @@ import { xai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
 
 const { text } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'Calculate the compound interest for $10,000 at 5% annually for 10 years',
   tools: {
     code_execution: xai.tools.codeExecution(),
@@ -12710,7 +15084,7 @@ client = Client(api_key=os.getenv("XAI_API_KEY"))
 
 # Multi-turn conversation with data analysis
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",  # reasoning model
+    model="grok-4.20-beta-latest-non-reasoning",  # reasoning model
     tools=[code_execution()],
     include=["verbose_streaming"],
 )
@@ -12780,7 +15154,7 @@ import { generateText } from 'ai';
 
 // Step 1: Load and analyze data
 const step1 = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: \`I have sales data for Q1-Q4: [120000, 135000, 98000, 156000].
 Please analyze this data and create a visualization showing:
 1. Quarterly trends
@@ -12796,7 +15170,7 @@ console.log(step1.text);
 
 // Step 2: Follow-up analysis using previousResponseId
 const step2 = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'Now predict Q1 next year using linear regression',
   tools: {
     code_execution: xai.tools.codeExecution(),
@@ -12842,7 +15216,7 @@ Data: [['2024-01', 50000, 35000], ['2024-02', 55000, 38000], ...]
 ### 3. **Use Appropriate Model Settings**
 
 * **Temperature**: Use lower values (0.0-0.3) for mathematical calculations
-* **Model**: Use reasoning models like `grok-4-1-fast-reasoning` for better code generation
+* **Model**: Use reasoning models like `grok-4.20-beta-latest-non-reasoning` for better code generation
 
 ## Common Use Cases
 
@@ -12990,7 +15364,7 @@ async def main():
 
     # Step 3: Create a chat with collections search enabled
     chat = client.chat.create(
-        model="grok-4-1-fast-reasoning",  # Use a reasoning model for better analysis
+        model="grok-4.20-beta-latest-non-reasoning",  # Use a reasoning model for better analysis
         tools=[
             collections_search(
                 collection_ids=[response.collection_id],
@@ -13051,7 +15425,7 @@ client = OpenAI(
 # Note: You must create the collection and upload documents first using either the xAI console (console.x.ai) or the xAI SDK
 # The collection_id below should be replaced with your actual collection ID
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {
             "role": "user",
@@ -13081,7 +15455,7 @@ const openai = createOpenAI({
 });
 
 const result = streamText({
-  model: openai('grok-4-1-fast-reasoning'),
+  model: openai('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'What documents do you have access to?',
   tools: {
     file_search: openai.tools.fileSearch({
@@ -13103,7 +15477,7 @@ headers = {
     "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}"
 }
 payload = {
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "input": [
         {
             "role": "user",
@@ -13129,7 +15503,7 @@ curl https://api.x.ai/v1/responses \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer $XAI_API_KEY" \\
   -d '{
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "input": [
     {
       "role": "user",
@@ -13396,7 +15770,7 @@ curl https://api.x.ai/v1/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -d '{
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "input": [
     {"role": "user", "content": "What is the temperature in San Francisco?"}
   ],
@@ -13444,7 +15818,7 @@ tools = [
 ]
 
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=tools,
 )
 chat.append(user("What is the temperature in San Francisco?"))
@@ -13491,7 +15865,7 @@ tools = [
 ]
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[{"role": "user", "content": "What is the temperature in San Francisco?"}],
     tools=tools,
 )
@@ -13503,7 +15877,7 @@ for item in response.output:
         result = {"location": args["location"], "temperature": 59, "unit": args.get("unit", "fahrenheit")}
         
         response = client.responses.create(
-            model="grok-4-1-fast-reasoning",
+            model="grok-4.20-beta-latest-non-reasoning",
             input=[{"type": "function_call_output", "call_id": item.call_id, "output": json.dumps(result)}],
             tools=tools,
             previous_response_id=response.id,
@@ -13520,7 +15894,7 @@ import { streamText, tool } from 'ai';
 import { z } from 'zod';
 
 const result = streamText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   tools: {
     getTemperature: tool({
       description: 'Get current temperature for a location',
@@ -13663,7 +16037,7 @@ for item in response.output:
             output = json.dumps(tools_map[name](**args))
         
         response = client.responses.create(
-            model="grok-4-1-fast-reasoning",
+            model="grok-4.20-beta-latest-non-reasoning",
             input=[{"type": "function_call_output", "call_id": item.call_id, "output": output}],
             tools=tools,
             previous_response_id=response.id,
@@ -13699,7 +16073,7 @@ tools = [
 ]
 
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=tools,
 )
 ```
@@ -13792,7 +16166,7 @@ import { streamText, tool, stepCountIs } from 'ai';
 import { z } from 'zod';
 
 const result = streamText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   tools: {
     getCurrentTemperature: tool({
       description: 'Get current temperature for a location',
@@ -13880,7 +16254,7 @@ curl https://api.x.ai/v1/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -d '{
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "stream": true,
   "input": [
     {
@@ -13905,7 +16279,7 @@ from xai_sdk.tools import web_search, x_search, code_execution
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         web_search(),
         x_search(),
@@ -13932,7 +16306,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {"role": "user", "content": "What are the latest updates from xAI?"}
     ],
@@ -13954,7 +16328,7 @@ import { xai } from '@ai-sdk/xai';
 import { streamText } from 'ai';
 
 const { fullStream } = streamText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'What are the latest updates from xAI?',
   tools: {
     web_search: xai.tools.webSearch(),
@@ -13981,7 +16355,7 @@ const client = new OpenAI({
 });
 
 const stream = await client.responses.create({
-  model: "grok-4-1-fast-reasoning",
+  model: "grok-4.20-beta-latest-non-reasoning",
   input: [
     { role: "user", content: "What are the latest updates from xAI?" }
   ],
@@ -14051,7 +16425,7 @@ from xai_sdk.tools import mcp
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         mcp(server_url="https://mcp.deepwiki.com/mcp"),
     ],
@@ -14091,7 +16465,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {
             "role": "user",
@@ -14120,7 +16494,7 @@ headers = {
     "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}"
 }
 payload = {
-    "model": "grok-4-1-fast-reasoning",
+    "model": "grok-4.20-beta-latest-non-reasoning",
     "input": [
         {
             "role": "user",
@@ -14144,7 +16518,7 @@ curl https://api.x.ai/v1/responses \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer $XAI_API_KEY" \\
   -d '{
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "input": [
     {
       "role": "user",
@@ -14188,7 +16562,7 @@ Enable multiple MCP servers simultaneously to create a rich ecosystem of special
 
 ```pythonXAI
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         mcp(server_url="https://mcp.deepwiki.com/mcp", server_label="deepwiki"),
         mcp(server_url="https://your-custom-tools.com/mcp", server_label="custom"),
@@ -14233,7 +16607,7 @@ from xai_sdk.tools import code_execution, web_search, x_search
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         web_search(),
         x_search(),
@@ -14265,7 +16639,7 @@ import { xai } from '@ai-sdk/xai';
 import { streamText } from 'ai';
 
 const { fullStream } = streamText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'What are the latest updates from xAI?',
   tools: {
     web_search: xai.tools.webSearch(),
@@ -14298,7 +16672,7 @@ from xai_sdk.tools import code_execution, web_search, x_search
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         web_search(),
         x_search(),
@@ -14328,7 +16702,7 @@ import { generateText } from 'ai';
 
 // Synchronous request - waits for complete response
 const { text, sources } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'What is the latest update from xAI?',
   tools: {
     web_search: xai.tools.webSearch(),
@@ -14359,7 +16733,7 @@ from xai_sdk.tools import web_search, x_search
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     store_messages=True,  # Enable Responses API
     tools=[
         web_search(),
@@ -14388,7 +16762,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {
             "role": "user",
@@ -14413,7 +16787,7 @@ curl https://api.x.ai/v1/responses \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer $XAI_API_KEY" \\
   -d '{
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "input": [
     {
       "role": "user",
@@ -14454,7 +16828,7 @@ from xai_sdk.tools import code_execution
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         code_execution(),
     ],
@@ -14599,7 +16973,7 @@ from xai_sdk.tools import web_search, x_search
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         web_search(),
         x_search(),
@@ -14690,7 +17064,7 @@ from xai_sdk.tools import web_search
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",  # reasoning model
+    model="grok-4.20-beta-latest-non-reasoning",  # reasoning model
     tools=[web_search()],
     include=["verbose_streaming"],
 )
@@ -14724,7 +17098,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {
             "role": "user",
@@ -14746,7 +17120,7 @@ import { xai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
 
 const { text, sources } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'What is xAI?',
   tools: {
     web_search: xai.tools.webSearch(),
@@ -14762,7 +17136,7 @@ curl https://api.x.ai/v1/responses \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer $XAI_API_KEY" \\
   -d '{
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "input": [
     {
       "role": "user",
@@ -14800,7 +17174,7 @@ from xai_sdk.tools import web_search
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         web_search(allowed_domains=["grokipedia.com"]),
     ],
@@ -14812,7 +17186,7 @@ chat.append(user("What is xAI?"))
 
 ```pythonOpenAISDK
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[{"role": "user", "content": "What is xAI?"}],
     tools=[
         {
@@ -14825,7 +17199,7 @@ response = client.responses.create(
 
 ```javascriptAISDK
 const { text } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'What is xAI?',
   tools: {
     web_search: xai.tools.webSearch({
@@ -14841,7 +17215,7 @@ Use `excluded_domains` to prevent the model from including the specified domains
 
 ```pythonXAI
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         web_search(excluded_domains=["grokipedia.com"]),
     ],
@@ -14850,7 +17224,7 @@ chat = client.chat.create(
 
 ```pythonOpenAISDK
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[{"role": "user", "content": "What is xAI?"}],
     tools=[
         {
@@ -14878,7 +17252,7 @@ from xai_sdk.tools import web_search
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         web_search(enable_image_understanding=True),
     ],
@@ -14890,7 +17264,7 @@ chat.append(user("What is included in the image in xAI's official website?"))
 
 ```pythonOpenAISDK
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {
             "role": "user",
@@ -14908,7 +17282,7 @@ response = client.responses.create(
 
 ```javascriptAISDK
 const { text } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: "What is included in the image in xAI's official website?",
   tools: {
     web_search: xai.tools.webSearch({
@@ -14951,7 +17325,7 @@ from xai_sdk.tools import x_search
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",  # reasoning model
+    model="grok-4.20-beta-latest-non-reasoning",  # reasoning model
     tools=[x_search()],
     include=["verbose_streaming"],
 )
@@ -14985,7 +17359,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[
         {
             "role": "user",
@@ -15007,7 +17381,7 @@ import { xai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
 
 const { text, sources } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'What are people saying about xAI on X?',
   tools: {
     x_search: xai.tools.xSearch(),
@@ -15023,7 +17397,7 @@ curl https://api.x.ai/v1/responses \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer $XAI_API_KEY" \\
   -d '{
-  "model": "grok-4-1-fast-reasoning",
+  "model": "grok-4.20-beta-latest-non-reasoning",
   "input": [
     {
       "role": "user",
@@ -15064,7 +17438,7 @@ from xai_sdk.tools import x_search
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         x_search(allowed_x_handles=["elonmusk"]),
     ],
@@ -15076,7 +17450,7 @@ chat.append(user("What is the current status of xAI?"))
 
 ```pythonOpenAISDK
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[{"role": "user", "content": "What is the current status of xAI?"}],
     tools=[
         {
@@ -15089,7 +17463,7 @@ response = client.responses.create(
 
 ```javascriptAISDK
 const { text } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'What is the current status of xAI?',
   tools: {
     x_search: xai.tools.xSearch({
@@ -15105,7 +17479,7 @@ Use `excluded_x_handles` to prevent the model from including X posts from the sp
 
 ```pythonXAI
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         x_search(excluded_x_handles=["elonmusk"]),
     ],
@@ -15114,7 +17488,7 @@ chat = client.chat.create(
 
 ```pythonOpenAISDK
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[{"role": "user", "content": "What is the current status of xAI?"}],
     tools=[
         {
@@ -15127,7 +17501,7 @@ response = client.responses.create(
 
 ```javascriptAISDK
 const { text } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'What is the current status of xAI?',
   tools: {
     x_search: xai.tools.xSearch({
@@ -15153,7 +17527,7 @@ from xai_sdk.tools import x_search
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         x_search(
             from_date=datetime(2025, 10, 1),
@@ -15168,7 +17542,7 @@ chat.append(user("What is the current status of xAI?"))
 
 ```pythonOpenAISDK
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[{"role": "user", "content": "What is the current status of xAI?"}],
     tools=[
         {
@@ -15182,7 +17556,7 @@ response = client.responses.create(
 
 ```javascriptAISDK
 const { text } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'What is the current status of xAI?',
   tools: {
     x_search: xai.tools.xSearch({
@@ -15199,7 +17573,7 @@ Setting `enable_image_understanding` to true allows the agent to analyze images 
 
 ```pythonXAI
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         x_search(enable_image_understanding=True),
     ],
@@ -15208,7 +17582,7 @@ chat = client.chat.create(
 
 ```pythonOpenAISDK
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[{"role": "user", "content": "Find X posts with images about AI"}],
     tools=[
         {
@@ -15221,7 +17595,7 @@ response = client.responses.create(
 
 ```javascriptAISDK
 const { text } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'Find X posts with images about AI',
   tools: {
     x_search: xai.tools.xSearch({
@@ -15237,7 +17611,7 @@ Setting `enable_video_understanding` to true allows the agent to analyze videos 
 
 ```pythonXAI
 chat = client.chat.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     tools=[
         x_search(enable_video_understanding=True),
     ],
@@ -15246,7 +17620,7 @@ chat = client.chat.create(
 
 ```pythonOpenAISDK
 response = client.responses.create(
-    model="grok-4-1-fast-reasoning",
+    model="grok-4.20-beta-latest-non-reasoning",
     input=[{"role": "user", "content": "Find X posts with videos about AI"}],
     tools=[
         {
@@ -15259,7 +17633,7 @@ response = client.responses.create(
 
 ```javascriptAISDK
 const { text } = await generateText({
-  model: xai.responses('grok-4-1-fast-reasoning'),
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
   prompt: 'Find X posts with videos about AI',
   tools: {
     x_search: xai.tools.xSearch({
