@@ -267,3 +267,4 @@ xhash
 xtampered
 yoyo
 yzhang
+pipefail
