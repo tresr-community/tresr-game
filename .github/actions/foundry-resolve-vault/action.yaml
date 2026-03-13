@@ -184,6 +184,7 @@ runs:
       env:
         RPC_URL: ${{ inputs.rpc-url }}
         DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
+        VAULT_PROXY_ADDRESS: ${{ inputs.vault-address }}
         IMPL_CHANGED: ${{ steps.check_vault_impl.outputs.changed }}
       run: |
         cd contracts
@@ -208,11 +209,13 @@ runs:
         DRY_RUN_LOG=$(mktemp)
 
         set +e
+        set -o pipefail
         forge script script/UpgradeVault.s.sol:UpgradeVault \
           --rpc-url "$RPC_URL" \
           --skip-simulation \
           -vvvv 2>&1 | tee "$DRY_RUN_LOG"
         DRY_EXIT=$?
+        set +o pipefail
         set -e
 
         if [[ $DRY_EXIT -eq 0 ]] && grep -qiE "(CREATE|CALL|Transactions)" "$DRY_RUN_LOG"; then

@@ -19,6 +19,9 @@ verbosity = 3
 
 verbosity = 3
 evm_version = 'cancun'
+# Fuji RPC rejects eth_getBlockByNumber("finalized"); disable storage-cache
+# forking to avoid "-32000: cannot query unfinalized data" errors on broadcast.
+no_storage_caching = true
 
 [profile.mainnet]
 
