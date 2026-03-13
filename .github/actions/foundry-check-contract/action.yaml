@@ -1,0 +1,143 @@
+---
+name: Foundry Check Contract
+description: >-
+  Compare a deployed contract's on-chain bytecode against the locally built
+  artifact. Strips Solidity CBOR metadata before comparing so that CI
+  environment differences (Nix paths, source maps) do not cause false positives.
+  Writes a one-line status row to GITHUB_STEP_SUMMARY.
+  Output `changed` is 'true' when the contract needs deploying or upgrading.
+
+inputs:
+  contract-name:
+    description: "Human-readable contract name (e.g. RonToken)"
+    required: true
+  artifact-path:
+    description: >-
+      Path to the Forge JSON artifact relative to contracts/ directory
+      (e.g. out/Token.sol/RonToken.json)
+    required: true
+  on-chain-address:
+    description: >-
+      Existing on-chain address from config (zero address or empty = first deploy)
+    required: true
+  rpc-url:
+    description: "RPC URL for the target network"
+    required: true
+
+outputs:
+  changed:
+    description: "'true' if bytecode differs or no on-chain code exists"
+    value: ${{ steps.compare.outputs.changed }}
+
+runs:
+  using: composite
+  steps:
+    - id: compare
+      name: Compare ${{ inputs.contract-name }} Bytecode
+      shell: devenv shell --quiet bash -- -e {0}
+      env:
+        CONTRACT_NAME: ${{ inputs.contract-name }}
+        ARTIFACT_PATH: ${{ inputs.artifact-path }}
+        ON_CHAIN_ADDR: ${{ inputs.on-chain-address }}
+        RPC_URL: ${{ inputs.rpc-url }}
+      run: |
+        # Run from contracts/ so FOUNDRY_PROFILE resolves foundry.toml
+        cd contracts
+
+        ZERO="0x0000000000000000000000000000000000000000"
+        STATUS_ICON=""
+        STATUS_TEXT=""
+
+        # ──────────────────────────────────────────────
+        # Strip Solidity CBOR metadata suffix before comparing.
+        #
+        # Every Solidity deployedBytecode ends with:
+        #   <logic bytecode><cbor metadata><2-byte metadata length>
+        # The 2-byte length field tells us how many bytes the metadata is.
+        # Stripping this makes the comparison deterministic across builds.
+        # ──────────────────────────────────────────────
+        strip_metadata() {
+          local hex="${1#0x}"         # remove leading 0x if present
+          local len=${#hex}
+          if (( len < 4 )); then
+            echo "$hex"
+            return
+          fi
+          # Last 4 hex chars = 2 bytes = CBOR metadata length value
+          local meta_len_hex="${hex: -4}"
+          local meta_len=$(( 16#$meta_len_hex ))
+          # Chars to strip: metadata bytes * 2 + 4 chars for the length field
+          local strip=$(( meta_len * 2 + 4 ))
+          if (( strip >= len )); then
+            echo "$hex"
+            return
+          fi
+          echo "${hex:0:$(( len - strip ))}"
+        }
+
+        # ──────────────────────────────────────────────
+        # 1. First deploy: address is zero or empty
+        # ──────────────────────────────────────────────
+        if [[ -z "$ON_CHAIN_ADDR" || "$ON_CHAIN_ADDR" == "$ZERO" || \
+              "$ON_CHAIN_ADDR" == "null" ]]; then
+          echo "🆕 ${CONTRACT_NAME}: no on-chain address — first deploy"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          STATUS_ICON="🆕"
+          STATUS_TEXT="Not deployed"
+          printf "| %s | \`%s\` | %s First deploy |\n" \
+            "$CONTRACT_NAME" "—" "$STATUS_ICON" >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+
+        # ──────────────────────────────────────────────
+        # 2. Fetch on-chain bytecode
+        # ──────────────────────────────────────────────
+        ON_CHAIN_CODE=""
+        ON_CHAIN_CODE=$(cast code "$ON_CHAIN_ADDR" --rpc-url "$RPC_URL" \
+          --block finalized 2>&1) || ON_CHAIN_CODE=""
+
+        if [[ -z "$ON_CHAIN_CODE" || "$ON_CHAIN_CODE" == "0x" ]]; then
+          echo "::warning::${CONTRACT_NAME}: no on-chain code at ${ON_CHAIN_ADDR} — treating as first deploy"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          printf "| %s | \`%s\` | 🆕 No code on-chain — first deploy |\n" \
+            "$CONTRACT_NAME" "${ON_CHAIN_ADDR:0:10}...${ON_CHAIN_ADDR: -6}" \
+            >> "$GITHUB_STEP_SUMMARY"
+          exit 0
+        fi
+
+        # ──────────────────────────────────────────────
+        # 3. Load local artifact
+        # ──────────────────────────────────────────────
+        if [[ ! -f "$ARTIFACT_PATH" ]]; then
+          echo "::error::${CONTRACT_NAME}: build artifact not found at ${ARTIFACT_PATH}"
+          echo "::error::Run forge build first (foundry-deploy-setup must precede this action)"
+          exit 1
+        fi
+
+        LOCAL_CODE="0x$(jq -r '.deployedBytecode.object' "$ARTIFACT_PATH" \
+          | sed 's/^0x//')"
+
+        # ──────────────────────────────────────────────
+        # 4. Normalise + strip metadata from both sides
+        # ──────────────────────────────────────────────
+        ON_CHAIN_STRIPPED=$(strip_metadata \
+          "$(echo "$ON_CHAIN_CODE" | tr '[:upper:]' '[:lower:]')")
+        LOCAL_STRIPPED=$(strip_metadata \
+          "$(echo "$LOCAL_CODE" | tr '[:upper:]' '[:lower:]')")
+
+        ADDR_SHORT="${ON_CHAIN_ADDR:0:10}...${ON_CHAIN_ADDR: -6}"
+
+        # ──────────────────────────────────────────────
+        # 5. Compare and output
+        # ──────────────────────────────────────────────
+        if [[ "$ON_CHAIN_STRIPPED" == "$LOCAL_STRIPPED" ]]; then
+          echo "✅ ${CONTRACT_NAME}: bytecode matches on-chain — skipping"
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+          printf "| %s | \`%s\` | ✅ Unchanged |\n" \
+            "$CONTRACT_NAME" "$ADDR_SHORT" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "⚡ ${CONTRACT_NAME}: bytecode DIFFERS from on-chain"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          printf "| %s | \`%s\` | ⚡ Changed |\n" \
+            "$CONTRACT_NAME" "$ADDR_SHORT" >> "$GITHUB_STEP_SUMMARY"
+        fi

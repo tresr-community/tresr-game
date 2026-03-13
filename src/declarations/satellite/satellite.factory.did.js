@@ -42,9 +42,9 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'delete_errors' : IDL.Func([IDL.Vec(IDL.Text)], [Result_1], []),
+    'get_config_hash' : IDL.Func([], [IDL.Text], ['query']),
     'get_errors' : IDL.Func([], [Result_2], []),
     'get_oracle_address' : IDL.Func([], [Result_3], []),
-    'get_config_hash' : IDL.Func([], [IDL.Text], ['query']),
     'report_error' : IDL.Func([ErrorPayload], [Result_3], []),
     'resolve_error' : IDL.Func([IDL.Text, IDL.Bool], [Result_1], []),
   });

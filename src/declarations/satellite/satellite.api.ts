@@ -22,6 +22,14 @@ export const deleteErrors = async (value0: Array<string>): Promise<Result_1> => 
 	return await delete_errors(value0);
 }
 
+export const getConfigHash = async (): Promise<string> => {
+	const {get_config_hash} = await getSatelliteExtendedActor<SatelliteActor>({
+		idlFactory
+	});
+
+	return await get_config_hash();
+}
+
 export const getErrors = async (): Promise<Result_2> => {
 	const {get_errors} = await getSatelliteExtendedActor<SatelliteActor>({
 		idlFactory
@@ -36,14 +44,6 @@ export const getOracleAddress = async (): Promise<Result_3> => {
 	});
 
 	return await get_oracle_address();
-}
-
-export const getConfigHash = async (): Promise<string> => {
-	const {get_config_hash} = await getSatelliteExtendedActor<SatelliteActor>({
-		idlFactory
-	});
-
-	return await get_config_hash();
 }
 
 export const reportError = async (value0: ErrorPayload): Promise<Result_3> => {
