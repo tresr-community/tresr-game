@@ -2261,19 +2261,19 @@ With this setup, only `on_set_doc` and `assert_set_doc` must be implemented with
 
 ---
 
-## Maintenance
+## Upgrade
 
 After deployment, keeping your Satellite functional and optimized requires ongoing monitoring and updates. Staying up to date is also a key factor, as we may introduce new features that need to be integrated into your Satellite to ensure full functionality within the Juno Console.
 
-Since your project includes all Satellite features using `include_satellite!();`, it's essential to stay in sync with Juno’s updates to maintain compatibility.
+Since your project includes all Satellite features using `include_satellite!();`, it's essential to stay in sync with Juno's updates to maintain compatibility.
 
-**Caution:**
+**Important:**
 
-Always upgrade iteratively and avoid skipping version numbers. While we strive to minimize breaking changes, it's crucial to upgrade through each released version sequentially.
+If your Satellite includes custom serverless functions, **do not upgrade through the Juno Console**. The Console upgrade replaces your Satellite with the stock version, which would overwrite your custom code.
 
-For example, if you're on **v0.0.23** and the latest release is **v0.0.26**, first upgrade to **v0.0.24**, then **v0.0.25**, and finally **v0.0.26**. Skipping versions could lead to unexpected issues.
+When the Console notifies you of a new version, use it as a reminder to update your dependencies and redeploy your custom build, as described below.
 
-### Updating Your Satellite
+### What to do
 
 To upgrade your Satellite, bump the dependencies in your `Cargo.toml` file located in `/src/satellite/`. The key dependencies to check and update are:
 
@@ -2285,9 +2285,17 @@ To upgrade your Satellite, bump the dependencies in your `Cargo.toml` file locat
 
 If other crates in your project depend on these, they should also be upgraded accordingly.
 
-The recommended versions for each release can be found in the [changelog](/changelog) or [release notes on GitHub](https://github.com/junobuild/juno/releases).
+Once updated, build your functions and redeploy using the CLI or the GitHub Actions flow.
+
+👉 Check the [Crate Versions](/docs/reference/functions/rust/crate-versions.md) reference page for the exact versions to use.
 
 If you need assistance, feel free to reach out through the available support channels.
+
+**Caution:**
+
+Always upgrade iteratively and avoid skipping version numbers. While we strive to minimize breaking changes, it's crucial to upgrade through each released version sequentially.
+
+For example, if you're on **v0.0.23** and the latest release is **v0.0.26**, first upgrade to **v0.0.24**, then **v0.0.25**, and finally **v0.0.26**. Skipping versions could lead to unexpected issues.
 
 ---
 
@@ -2325,11 +2333,27 @@ This page covers advanced options for writing serverless functions in TypeScript
 
 ---
 
-## Maintenance
+## Upgrade
 
 Since your project includes all Satellite features, it's essential to stay in sync with Juno’s updates to maintain compatibility.
 
 Always check the [releases](https://github.com/junobuild/juno/releases) page for the latest changes, and update your local container image (source [repo](https://github.com/junobuild/juno-docker)) accordingly to ensure you're running the latest runtime and features.
+
+**Important:**
+
+If your Satellite includes custom serverless functions, **do not upgrade through the Juno Console**. The Console upgrade replaces your Satellite with the stock version, which would overwrite your custom code.
+
+When the Console notifies you of a new version, use it as a reminder to update your dependencies and redeploy your custom build, as described below.
+
+### What to do
+
+The most important step is to keep your local Docker image up to date by pulling the latest version. The entire toolchain is shipped within the emulator, so you don't have to install additional tools on your machine, but it also means the image needs to stay current.
+
+Check the [releases](https://github.com/junobuild/juno/releases) page to know when a new image is available.
+
+If a release also includes updates to the JavaScript library, bump the relevant package in your project accordingly.
+
+If you deploy with GitHub Actions, your workflow always inherits the latest image, so triggering a new CI run is enough to stay up to date, unless you have pinned a specific action version, in which case update it to `latest`.
 
 **Caution:**
 
@@ -10268,7 +10292,7 @@ API reference for writing serverless functions in Rust or TypeScript.
 
 [## 🗃️ Rust
 
-3 items](/docs/reference/functions/rust.md)
+4 items](/docs/reference/functions/rust.md)
 
 [## 🗃️ TypeScript
 
@@ -10666,6 +10690,10 @@ All utilities on this page are provided by the junobuild-utils crate.](/docs/ref
 
 In the context of Juno, it enables your Satellite to perform low-level operations such as logging, accessing your Satellite identities, or communicating with other canisters — all essential when writing advanced serverless functions.](/docs/reference/functions/rust/ic-cdk.md)
 
+[## 📄️ Crate Versions
+
+This page lists the crate versions for each Juno release, to help you upgrade your Rust Serverless Functions. If a release is not listed, no crate updates were required for that version.](/docs/reference/functions/rust/crate-versions.md)
+
 # TypeScript
 
 API reference for writing serverless functions with TypeScript.
@@ -10689,6 +10717,70 @@ The following functions can be used to interact with well-known Internet Compute
 [## 📄️ Node.js
 
 The TypeScript runtime used in Juno does not provide full Node.js support. Polyfills are added iteratively to keep the environment stable and predictable.](/docs/reference/functions/typescript/node.md)
+
+# Crate Versions
+
+This page lists the crate versions for each Juno release, to help you upgrade your Rust Serverless Functions. If a release is not listed, no crate updates were required for that version.
+
+**Tip:**
+
+It is advised to locate the entry matching your current `junobuild-satellite` version and work your way up from there, one release at a time. For each step, build and redeploy before moving to the next. It's a bit tedious but ensures nothing goes wrong.
+
+---
+
+## Juno v0.0.69
+
+Release notes on [GitHub](https://github.com/junobuild/juno/releases/tag/v0.0.69).
+
+```
+[dependencies]candid = "0.10.20"ic-cdk = "0.19.0"ic-cdk-macros = "0.19.0"serde = "1.0.225"serde_cbor = "0.11.2"junobuild-satellite = "0.5.0"junobuild-macros = "0.2.0"junobuild-utils = "0.2.0"
+```
+
+---
+
+## Juno v0.0.63
+
+Release notes on [GitHub](https://github.com/junobuild/juno/releases/tag/v0.0.63).
+
+```
+[dependencies]candid = "0.10.20"ic-cdk = "0.19.0"ic-cdk-macros = "0.19.0"serde = "1.0.225"serde_cbor = "0.11.2"junobuild-satellite = "0.4.0"junobuild-macros = "0.2.0"junobuild-utils = "0.2.0"
+```
+
+---
+
+## Juno v0.0.61
+
+Release notes on [GitHub](https://github.com/junobuild/juno/releases/tag/v0.0.61).
+
+```
+[dependencies]candid = "0.10.20"ic-cdk = "0.19.0"ic-cdk-macros = "0.19.0"serde = "1.0.225"serde_cbor = "0.11.2"junobuild-satellite = "0.3.1"junobuild-macros = "0.1.1"junobuild-utils = "0.1.5"
+```
+
+---
+
+## Juno v0.0.59
+
+Release notes on [GitHub](https://github.com/junobuild/juno/releases/tag/v0.0.59).
+
+```
+[dependencies]candid = "0.10.19"ic-cdk = "0.18.5"ic-cdk-macros = "0.18.5"serde = "1.0.225"serde_cbor = "0.11.2"junobuild-satellite = "0.3.0"junobuild-macros = "0.1.1"junobuild-utils = "0.1.4"
+```
+
+---
+
+## Juno v0.0.57
+
+Release notes on [GitHub](https://github.com/junobuild/juno/releases/tag/v0.0.57).
+
+```
+[dependencies]candid = "0.10.19"ic-cdk = "0.18.5"ic-cdk-macros = "0.18.5"serde = "1.0.225"serde_cbor = "0.11.2"junobuild-satellite = "0.2.6"junobuild-macros = "0.1.1"junobuild-utils = "0.1.3"
+```
+
+---
+
+## Older Versions
+
+If your current version is not listed, refer to the [release notes on GitHub](https://github.com/junobuild/juno/releases) for older crate versions.
 
 # IC-CDK
 
