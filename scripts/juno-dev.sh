@@ -120,17 +120,21 @@ function cmd_juno_deploy() {
 		cmd_astro_build
 	fi
 
-	log_info "📤 Juno hosting deploy (mode=$mode)..."
-
+	# Two-step deploy to match CI (cd-juno-testnet.yaml):
+	#   1. clear — cheap delete of stale hashed chunks (low instruction cost)
+	#   2. deploy — diff-based commit of only changed files (avoids 40B limit)
 	# NOTE: --config is intentionally NOT passed here.
 	# Config (collection rules + storage headers) is applied separately via
 	# cmd_juno_config to avoid the emulator hitting the 40B instruction limit
 	# in set_storage_config when files are large/numerous.
-	# NOTE: PWA/SW update testing break when --clear is on.
-	#       Use juno-dev clear-satellite instead.
-	local -a deploy_flags=(--immediate --mode "$mode")
+	log_info "🗑️  Clearing stale assets (mode=$mode)..."
+	if ! juno hosting clear --mode "$mode"; then
+		log_error "Hosting clear failed!"
+		return 1
+	fi
 
-	if ! juno hosting deploy "${deploy_flags[@]}"; then
+	log_info "📤 Juno hosting deploy (mode=$mode)..."
+	if ! juno hosting deploy --immediate --mode "$mode"; then
 		log_error "Deploy failed!"
 		return 1
 	fi
@@ -995,12 +999,17 @@ oneshot | loop)
 		exit 9
 	}
 	log_success "✅ Build done."
-	# --clear removes existing assets first (empty satellite = set_storage_config
-	# stays well under the 40B instruction limit).
-	# --config applies collection rules + storage headers after upload succeeds.
-	# Both happen in one atomic CLI call so there's no separate clear/config step.
-	log_info "📤 Juno hosting deploy --clear --config (mode=development)..."
-	if ! juno hosting deploy --clear --config --immediate --mode development; then
+	# Two-step deploy to match CI:
+	#   1. clear — cheap delete of stale hashed chunks (low instruction cost)
+	#   2. deploy — diff-based commit of only changed files (avoids 40B limit)
+	# NOTE: --config is intentionally omitted; apply separately via `juno-dev config`.
+	log_info "🗑️  Clearing stale assets (mode=development)..."
+	if ! juno hosting clear --mode development; then
+		log_error "Clear failed!"
+		exit 13
+	fi
+	log_info "📤 Juno hosting deploy (mode=development)..."
+	if ! juno hosting deploy --immediate --mode development; then
 		log_error "Deploy failed!"
 		exit 13
 	fi

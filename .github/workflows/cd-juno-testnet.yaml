@@ -163,16 +163,26 @@ jobs:
         shell: devenv shell --quiet bash -- -e {0}
         run: bun run build -- --mode staging
 
+      - id: clear_hosting
+        name: Clear Stale Assets
+        uses: junobuild/juno-action@main
+        with:
+          # Clear stale hashed chunks from previous releases separately from deploy.
+          # A standalone clear is a delete operation (cheap on instructions).
+          # Keeping this separate from deploy means the commit proposal only
+          # covers changed/new files — not all 700+ files — avoiding the
+          # 40B instruction limit on commit_asset_upload.
+          # NOTE: --config is intentionally omitted — set_storage_config requires
+          # Admin controller access. The OIDC automation key is Editor/Submitter only.
+          # Apply config changes manually: juno config apply --mode staging
+          args: hosting clear --mode staging
+
       - id: deploy_hosting
         name: Deploy Hosting
         uses: junobuild/juno-action@main
         with:
-          # --clear removes stale hashed chunks from previous releases.
-          # Safe for CI: Submitter/Editor permission is sufficient.
-          # NOTE: --config is intentionally omitted — set_storage_config requires
-          # Admin controller access. The OIDC automation key is Editor/Submitter only.
-          # Apply config changes manually: juno config apply --mode staging
-          args: hosting deploy --clear --mode staging
+          # Deploy only uploads/commits changed files (diff-based, hash-compared).
+          args: hosting deploy --mode staging
 
       - id: publish_functions
         name: Publish Functions
