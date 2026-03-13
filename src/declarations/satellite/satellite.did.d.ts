@@ -44,6 +44,18 @@ export interface _SERVICE {
    */
   'delete_errors' : ActorMethod<[Array<string>], Result_1>,
   /**
+   * Returns the build-time config hash so the client can verify that the deployed
+   * satellite was built from the same config as the running frontend.
+   * 
+   * Called by the game pre-flight check in game.astro before the fee gate opens.
+   * A mismatch means the satellite and frontend are out of sync (e.g. during a
+   * rolling deploy) and the player should see an "Under Maintenance" notice.
+   * 
+   * The hash is baked into the Wasm at build time from `server-constants.ts`
+   * via `build.rs` — it never changes at runtime.
+   */
+  'get_config_hash' : ActorMethod<[], string>,
+  /**
    * Returns all `ErrorRecord` documents from the errors collection.
    * Only callable by principals listed in `config::ADMIN_PRINCIPALS`.
    */
@@ -53,12 +65,6 @@ export interface _SERVICE {
    * This is the oracle address used for on-chain signature verification.
    */
   'get_oracle_address' : ActorMethod<[], Result_3>,
-  /**
-   * Returns the build-time config hash for client/satellite sync verification.
-   * Called by the game pre-flight check before the fee gate.
-   * A mismatch means the frontend and satellite are out of sync (e.g. mid-deploy).
-   */
-  'get_config_hash' : ActorMethod<[], string>,
   /**
    * Report a client-side error. Anyone (including unauthenticated callers) can
    * report errors. The satellite generates the `error_id` server-side so the
