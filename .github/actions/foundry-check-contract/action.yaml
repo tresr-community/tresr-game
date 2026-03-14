@@ -84,8 +84,8 @@ runs:
           echo "changed=true" >> "$GITHUB_OUTPUT"
           STATUS_ICON="🆕"
           STATUS_TEXT="Not deployed"
-          printf "| %s | \`%s\` | %s First deploy |\n" \
-            "$CONTRACT_NAME" "—" "$STATUS_ICON" >> "$GITHUB_STEP_SUMMARY"
+          printf "| %s | \`—\` | %s First deploy |\n" \
+            "$CONTRACT_NAME" "$STATUS_ICON" >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
 
@@ -99,8 +99,8 @@ runs:
         if [[ -z "$ON_CHAIN_CODE" || "$ON_CHAIN_CODE" == "0x" ]]; then
           echo "::warning::${CONTRACT_NAME}: no on-chain code at ${ON_CHAIN_ADDR} — treating as first deploy"
           echo "changed=true" >> "$GITHUB_OUTPUT"
-          printf "| %s | \`%s\` | 🆕 No code on-chain — first deploy |\n" \
-            "$CONTRACT_NAME" "${ON_CHAIN_ADDR:0:10}...${ON_CHAIN_ADDR: -6}" \
+          printf "| %s | \`%s...%s\` | 🆕 No code on-chain — first deploy |\n" \
+            "$CONTRACT_NAME" "${ON_CHAIN_ADDR:0:10}" "${ON_CHAIN_ADDR: -6}" \
             >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
@@ -133,11 +133,11 @@ runs:
         if [[ "$ON_CHAIN_STRIPPED" == "$LOCAL_STRIPPED" ]]; then
           echo "✅ ${CONTRACT_NAME}: bytecode matches on-chain — skipping"
           echo "changed=false" >> "$GITHUB_OUTPUT"
-          printf "| %s | \`%s\` | ✅ Unchanged |\n" \
-            "$CONTRACT_NAME" "$ADDR_SHORT" >> "$GITHUB_STEP_SUMMARY"
+          printf "| %s | \`%s...%s\` | ✅ Unchanged |\n" \
+            "$CONTRACT_NAME" "${ON_CHAIN_ADDR:0:10}" "${ON_CHAIN_ADDR: -6}" >> "$GITHUB_STEP_SUMMARY"
         else
           echo "⚡ ${CONTRACT_NAME}: bytecode DIFFERS from on-chain"
           echo "changed=true" >> "$GITHUB_OUTPUT"
-          printf "| %s | \`%s\` | ⚡ Changed |\n" \
-            "$CONTRACT_NAME" "$ADDR_SHORT" >> "$GITHUB_STEP_SUMMARY"
+          printf "| %s | \`%s...%s\` | ⚡ Changed |\n" \
+            "$CONTRACT_NAME" "${ON_CHAIN_ADDR:0:10}" "${ON_CHAIN_ADDR: -6}" >> "$GITHUB_STEP_SUMMARY"
         fi
