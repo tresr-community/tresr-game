@@ -78,12 +78,17 @@ export async function getTotalFees(): Promise<bigint> {
       functionName: "totalFeesCollected",
     })) as bigint;
   } catch (err) {
-    // When vault is not yet deployed this is expected — don't surface as a toast.
     const msg = String(err);
-    if (msg.includes("not deployed") || msg.includes("invalid address")) {
+    // Stale Anvil deployment (pre-counters) or vault not yet deployed — not an error.
+    if (
+      msg.includes("not deployed") ||
+      msg.includes("invalid address") ||
+      msg.includes("returned no data") ||
+      msg.includes("ContractFunctionExecutionError")
+    ) {
       log.debug(
         COMPONENT_NAME,
-        "Vault not deployed, skipping totalFeesCollected"
+        "Vault not deployed or outdated — skipping totalFeesCollected"
       );
     } else {
       log.error(COMPONENT_NAME, "Failed to fetch totalFeesCollected", msg);
@@ -106,10 +111,15 @@ export async function getTotalRewards(): Promise<bigint> {
     })) as bigint;
   } catch (err) {
     const msg = String(err);
-    if (msg.includes("not deployed") || msg.includes("invalid address")) {
+    if (
+      msg.includes("not deployed") ||
+      msg.includes("invalid address") ||
+      msg.includes("returned no data") ||
+      msg.includes("ContractFunctionExecutionError")
+    ) {
       log.debug(
         COMPONENT_NAME,
-        "Vault not deployed, skipping totalRewardsPaid"
+        "Vault not deployed or outdated — skipping totalRewardsPaid"
       );
     } else {
       log.error(COMPONENT_NAME, "Failed to fetch totalRewardsPaid", msg);
@@ -132,8 +142,16 @@ export async function getVaultTotalBurned(): Promise<bigint> {
     })) as bigint;
   } catch (err) {
     const msg = String(err);
-    if (msg.includes("not deployed") || msg.includes("invalid address")) {
-      log.debug(COMPONENT_NAME, "Vault not deployed, skipping totalBurned");
+    if (
+      msg.includes("not deployed") ||
+      msg.includes("invalid address") ||
+      msg.includes("returned no data") ||
+      msg.includes("ContractFunctionExecutionError")
+    ) {
+      log.debug(
+        COMPONENT_NAME,
+        "Vault not deployed or outdated — skipping totalBurned"
+      );
     } else {
       log.error(COMPONENT_NAME, "Failed to fetch totalBurned", msg);
     }
