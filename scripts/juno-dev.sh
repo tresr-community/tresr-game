@@ -138,6 +138,7 @@ function cmd_juno_deploy() {
 		log_error "Deploy failed!"
 		return 1
 	fi
+
 	local url
 	url="http://${VITE_DEVELOPMENT_SATELLITE_ID}.localhost:5987/"
 	log_success "Satellite live: $url"
