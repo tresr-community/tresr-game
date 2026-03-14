@@ -209,7 +209,7 @@
         address: vaultAddress,
         abi: VaultAbi,
         eventName: "Claim",
-        onLogs: (logs) => {
+        onLogs: (logs: {args?: {user?: string; amount?: bigint}}[]) => {
           for (const l of logs) {
             const args = l.args as {user?: string; amount?: bigint} | undefined;
             if (args?.user && args?.amount) {
@@ -270,6 +270,11 @@
 
   async function updateBalance() {
     if (disposed || !connectedAddress) return;
+    // Not yet deployed — show placeholder, no errors.
+    if (!isVaultDeployed(config)) {
+      if (balanceEl) balanceEl.textContent = "--";
+      return;
+    }
     try {
       const balance = await getVaultCurrentBalance();
       if (balanceEl) balanceEl.textContent = formatVaultDisplay(balance);

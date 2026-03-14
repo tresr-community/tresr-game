@@ -78,11 +78,16 @@ export async function getTotalFees(): Promise<bigint> {
       functionName: "totalFeesCollected",
     })) as bigint;
   } catch (err) {
-    log.error(
-      COMPONENT_NAME,
-      "Failed to fetch totalFeesCollected",
-      String(err)
-    );
+    // When vault is not yet deployed this is expected — don't surface as a toast.
+    const msg = String(err);
+    if (msg.includes("not deployed") || msg.includes("invalid address")) {
+      log.debug(
+        COMPONENT_NAME,
+        "Vault not deployed, skipping totalFeesCollected"
+      );
+    } else {
+      log.error(COMPONENT_NAME, "Failed to fetch totalFeesCollected", msg);
+    }
     return 0n;
   }
 }
@@ -100,7 +105,15 @@ export async function getTotalRewards(): Promise<bigint> {
       functionName: "totalRewardsPaid",
     })) as bigint;
   } catch (err) {
-    log.error(COMPONENT_NAME, "Failed to fetch totalRewardsPaid", String(err));
+    const msg = String(err);
+    if (msg.includes("not deployed") || msg.includes("invalid address")) {
+      log.debug(
+        COMPONENT_NAME,
+        "Vault not deployed, skipping totalRewardsPaid"
+      );
+    } else {
+      log.error(COMPONENT_NAME, "Failed to fetch totalRewardsPaid", msg);
+    }
     return 0n;
   }
 }
@@ -118,7 +131,12 @@ export async function getVaultTotalBurned(): Promise<bigint> {
       functionName: "totalBurned",
     })) as bigint;
   } catch (err) {
-    log.error(COMPONENT_NAME, "Failed to fetch totalBurned", String(err));
+    const msg = String(err);
+    if (msg.includes("not deployed") || msg.includes("invalid address")) {
+      log.debug(COMPONENT_NAME, "Vault not deployed, skipping totalBurned");
+    } else {
+      log.error(COMPONENT_NAME, "Failed to fetch totalBurned", msg);
+    }
     return 0n;
   }
 }

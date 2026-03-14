@@ -18,11 +18,13 @@ There are 3 environments, but only 2 are managed with CI/CD.
 
 ### Testnet
 
-Testnet deployments happen automatically on any merge into the _trunk_ branch.
+Testnet deployments are triggered manually via `workflow_dispatch` on `cd.yaml`. This allows
+multiple PRs to accumulate on trunk before cutting a release, so the changelog captures all
+changes in one entry.
 
 ```mermaid
 graph TD
-    A["Push to trunk"] --> B["pre-release"]
+    A["Run cd.yaml<br/>(manual dispatch — Testnet)"] --> B["pre-release"]
     B --> C["deploy-juno-testnet"]
     B --> D["deploy-foundry-testnet"]
     C --> E["update-config"]
@@ -55,13 +57,14 @@ graph TD
     C --> D["PR approved"]
     D --> E["Merge queue"]
     E --> F["Merged to trunk"]
-    F --> G["Pre-release created </br> (automatic)"]
-    G --> H["Testnet deployed"]
-    H --> I["UAT / QA"]
-    I --> J["Run cd.yaml </br> (Mainnet 1st run)"]
-    J --> K["Contracts deployed </br> + config PR created"]
-    K -->|merge PR| L["Run cd.yaml </br> (Mainnet 2nd run)"]
-    L --> M["Config applied </br> + deployed"]
+    F --> G["Merge more PRs </br> (accumulate changes)"]
+    G --> H["Run cd.yaml </br> (Testnet — manual)"]
+    H --> I["Pre-release + Testnet deployed"]
+    I --> J["UAT / QA"]
+    J --> K["Run cd.yaml </br> (Mainnet 1st run)"]
+    K --> L["Contracts deployed </br> + config PR created"]
+    L -->|merge PR| M["Run cd.yaml </br> (Mainnet 2nd run)"]
+    M --> N["Config applied </br> + deployed"]
 ```
 
 ## The "Gatekeeper" Strategy

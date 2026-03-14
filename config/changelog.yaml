@@ -1,9 +1,10 @@
 ---
 versions:
   - version: "0.4.0"
-    date: "TBD: Planning stage..."
+    date: "2026-03-15"
     title: "Prizes for losers"
     notes:
+      - "Parachute physics for Key airdrops"
       - "Consolation prize for expired #1 active score — a participation trophy for degens"
 
   - version: "0.3.0"
