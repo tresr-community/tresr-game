@@ -111,7 +111,10 @@ jobs:
   ##################################################
   ci-devenv:
     name: Check Devenv
-    needs: [check-cache, setup-environment]
+    needs:
+      - check-cache
+      - setup-environment
+
     if: always() && needs.check-cache.result == 'success'
     uses: ./.github/workflows/ci-devenv.yaml
     secrets: inherit
@@ -121,7 +124,10 @@ jobs:
   ##################################################
   ci-foundry:
     name: Check Foundry
-    needs: [check-cache, setup-environment]
+    needs:
+      - check-cache
+      - setup-environment
+
     if: always() && needs.check-cache.result == 'success'
     uses: ./.github/workflows/ci-foundry.yaml
     secrets: inherit
@@ -131,7 +137,10 @@ jobs:
   ##################################################
   ci-juno:
     name: Check Juno
-    needs: [check-cache, setup-environment]
+    needs:
+      - check-cache
+      - setup-environment
+
     if: always() && needs.check-cache.result == 'success'
     uses: ./.github/workflows/ci-juno.yaml
     secrets: inherit

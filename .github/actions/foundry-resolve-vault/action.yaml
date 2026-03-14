@@ -112,7 +112,7 @@ runs:
           echo "    3. Update oracle_address in config/tresr.yaml under blockchain.avalanche.testnet"
           echo "    4. Re-run this workflow — the vault will then be deployed automatically"
           echo "::warning::Vault deploy skipped — missing prerequisite addresses: ${MISSING[*]}. See step log for next steps."
-          printf "| TresrVault | — | ⏭️ Prereqs missing: %s |\n" \
+          printf "| TresrVault | \`—\` | ⏭️ Prereqs missing: %s |\n" \
             "${MISSING[*]}" >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
@@ -126,7 +126,7 @@ runs:
           echo "deployed=true" >> "$GITHUB_OUTPUT"
           echo "🆕 Vault mode: FRESH DEPLOY"
           echo "   No existing proxy found in config — deploying implementation + proxy for the first time."
-          printf "| TresrVault | — | 🆕 First deploy |\n" \
+          printf "| TresrVault | \`—\` | 🆕 First deploy |\n" \
             >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
@@ -148,7 +148,7 @@ runs:
           echo "::warning::Could not read implementation slot — treating as first deploy"
           echo "mode=deploy"   >> "$GITHUB_OUTPUT"
           echo "deployed=true" >> "$GITHUB_OUTPUT"
-          printf "| TresrVault (impl) | — | 🆕 Slot unreadable — first deploy |\n" \
+          printf "| TresrVault (impl) | \`—\` | 🆕 Slot unreadable — first deploy |\n" \
             >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi

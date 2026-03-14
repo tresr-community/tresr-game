@@ -126,7 +126,9 @@ jobs:
   ##################################################
   pre-release:
     name: Pre-Release
-    needs: [check-cache, setup-environment]
+    needs:
+      - check-cache
+      - setup-environment
 
     if: >-
       always() &&
@@ -283,7 +285,7 @@ jobs:
   ##################################################
   deploy-foundry-testnet:
     name: Deploy Contracts (Testnet)
-    needs: [pre-release]
+    needs: pre-release
     if: always() && needs.pre-release.result == 'success' && needs.pre-release.outputs.skip != 'true'
     uses: ./.github/workflows/cd-foundry-testnet.yaml
     secrets: inherit
@@ -293,12 +295,13 @@ jobs:
   ##################################################
   update-config-testnet:
     name: Update Config (Testnet)
-    needs: [pre-release, deploy-juno-testnet, deploy-foundry-testnet]
+    needs:
+      - deploy-juno-testnet
+      - deploy-foundry-testnet
     if: >-
       always() &&
-      needs.pre-release.result == 'success' &&
-      needs.pre-release.outputs.skip != 'true' &&
       needs.deploy-foundry-testnet.result == 'success'
+
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -335,7 +338,9 @@ jobs:
   ##################################################
   promote:
     name: Promote to Release (Mainnet)
-    needs: [check-cache, setup-environment]
+    needs:
+      - check-cache
+      - setup-environment
 
     if: >-
       always() &&
@@ -464,7 +469,9 @@ jobs:
   ##################################################
   deploy-foundry-mainnet:
     name: Deploy Contracts (Mainnet)
-    needs: [promote]
+    needs:
+      - promote
+
     if: always() && needs.promote.result == 'success'
     uses: ./.github/workflows/cd-foundry-mainnet.yaml
     secrets: inherit
@@ -474,7 +481,11 @@ jobs:
   ##################################################
   update-config-mainnet:
     name: Update Config (Mainnet)
-    needs: [promote, deploy-juno-mainnet, deploy-foundry-mainnet]
+    needs:
+      - promote
+      - deploy-juno-mainnet
+      - deploy-foundry-mainnet
+
     if: >-
       always() &&
       needs.promote.result == 'success' &&
