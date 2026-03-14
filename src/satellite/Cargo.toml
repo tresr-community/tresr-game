@@ -29,7 +29,7 @@ junobuild-satellite = { version = "0.5.0", default-features = false, features = 
     "on_init_random_seed",
 ] }
 junobuild-shared = "0.7.0"
-junobuild-macros = "0.2.0"
+junobuild-macros = "0.3.1"
 junobuild-storage = { version = "0.6.0", default-features = false }
 junobuild-utils = "0.2.0"
 

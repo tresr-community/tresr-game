@@ -1151,9 +1151,9 @@ dependencies = [
 
 [[package]]
 name = "junobuild-macros"
-version = "0.2.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70a8e55646cac08a36a7ea5996ea6a64984b5a33a7dcbc57a02a6113d1831041"
+checksum = "4aaaef4de34b9df819f9cd37b04e9f226aa5a3258f1801300a16dd07a183176d"
 dependencies = [
  "proc-macro2",
  "quote",
