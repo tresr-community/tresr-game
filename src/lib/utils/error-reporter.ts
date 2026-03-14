@@ -9,7 +9,8 @@
  * to support; devs filter by it in the admin key-matcher.
  * Never throws — error reporting must never disrupt the caller.
  */
-import {reportError as satelliteReportError} from "@/declarations/satellite/satellite.api";
+import {functions as satelliteApi} from "@/declarations/satellite/satellite.api";
+const satelliteReportError = satelliteApi.reportError;
 
 /**
  * Reports an error to the satellite and returns the error_id (= doc key) or null.

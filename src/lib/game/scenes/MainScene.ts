@@ -14,7 +14,8 @@ import {SpriteManager, type SpritesConfig} from "@/lib/game/SpriteManager";
 import {Preloader} from "@/lib/game/scenes/Preloader";
 import {config as clientConfig} from "@/lib/config/client";
 import {setDoc} from "@junobuild/core";
-import {claimAuthorize} from "@/declarations/satellite/satellite.api";
+import {functions as satelliteApi} from "@/declarations/satellite/satellite.api";
+const {claimAuthorize} = satelliteApi;
 import {enqueueProfileWrite} from "@/lib/user";
 import {getAuthState} from "@/lib/auth";
 import {
