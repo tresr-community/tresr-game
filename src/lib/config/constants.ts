@@ -38,7 +38,7 @@ log.debug(COMPONENT_NAME, `Juno Internet Identity: ${JUNO_INTERNET_IDENTITY}`);
 // In production: use real canister ID
 // Only exported if avalanche auth is enabled in config
 export const JUNO_SIWA_PROVIDER = config.auth.avalanche.enabled
-  ? import.meta.env.VITE_SIWA_PROVIDER_ID
+  ? (import.meta.env.VITE_SIWA_PROVIDER_ID ?? "")
   : "";
 log.debug(COMPONENT_NAME, `Juno SIWA Provider: ${JUNO_SIWA_PROVIDER}`);
 
