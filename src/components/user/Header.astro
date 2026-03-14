@@ -150,7 +150,8 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
   import {log} from "@/lib/utils/log";
   import {config} from "@/lib/config/client";
   import {initSatellite} from "@junobuild/core";
-  import {getErrors} from "@/declarations/satellite/satellite.api";
+  import {functions as satelliteApi} from "@/declarations/satellite/satellite.api";
+  const {getErrors} = satelliteApi;
 
   const COMPONENT_NAME = "Header";
 

@@ -434,11 +434,8 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 
   <script>
     import {initSatellite, listDocs} from "@junobuild/core";
-    import {
-      getErrors,
-      deleteErrors,
-      resolveError,
-    } from "@/declarations/satellite/satellite.api";
+    import {functions as satelliteApi} from "@/declarations/satellite/satellite.api";
+    const {getErrors, deleteErrors, resolveError} = satelliteApi;
     import type {ErrorRecord} from "@/declarations/satellite/satellite.did";
     import type {UserProfile} from "@/types/backend";
     import {getTresrBalance, formatBalance} from "@/lib/blockchain/balance";

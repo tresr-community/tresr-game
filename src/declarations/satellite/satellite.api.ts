@@ -74,7 +74,3 @@ export const functions = {
 	reportError,
 	resolveError
 };
-
-// Named re-exports so callers can import functions directly.
-// NOTE: if the Juno CLI regenerates this file, re-apply these exports.
-export {claimAuthorize, deleteErrors, getConfigHash, getErrors, getOracleAddress, reportError, resolveError};
