@@ -13,12 +13,17 @@ const COMPONENT_NAME = "Astro";
 const require = createRequire(import.meta.url);
 const PACKAGE_VERSION = require("./package.json").version;
 
-// Build ID: short git hash + timestamp. Frozen at build time.
-// Used by the PWA version-poll to detect new deploys.
+// Build ID: short git hash + commit timestamp. Stable for the same commit —
+// re-running the build on the same commit produces the same BUILD_ID, which
+// keeps Vite chunk hashes stable and avoids uploading unchanged files to Juno.
+// The PWA version-poll detects new deploys from the hash changing between commits.
 const gitHash = execSync("git rev-parse --short HEAD", {
   encoding: "utf8",
 }).trim();
-const BUILD_ID = `${gitHash}-${Date.now()}`;
+const gitTimestamp = execSync("git log -1 --format=%ct HEAD", {
+  encoding: "utf8",
+}).trim();
+const BUILD_ID = `${gitHash}-${gitTimestamp}`;
 log.info(COMPONENT_NAME, `version: ${PACKAGE_VERSION}, build_id: ${BUILD_ID}`);
 
 // Logs in the build output window.
