@@ -60,6 +60,7 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
     event Claim(bytes32 indexed sessionId, address indexed user, uint256 amount);
     event BurnRateUpdated(uint256 newRate);
     event ClaimCooldownUpdated(uint256 newCooldown);
+    event BurnAddressUpdated(address indexed newBurnAddress);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -160,8 +161,16 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
     }
 
     function setClaimCooldown(uint256 newCooldown) external onlyRole(ADMIN_ROLE) {
+        require(newCooldown >= 60, "Min cooldown 60s");
+        require(newCooldown <= 7 days, "Max cooldown 7 days");
         claimCooldown = newCooldown;
         emit ClaimCooldownUpdated(newCooldown);
+    }
+
+    function setBurnAddress(address newBurnAddress) external onlyRole(ADMIN_ROLE) {
+        require(newBurnAddress != address(0), "Zero address");
+        burnAddress = newBurnAddress;
+        emit BurnAddressUpdated(newBurnAddress);
     }
 
     /**
@@ -187,4 +196,7 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
      * @notice Only DEFAULT_ADMIN_ROLE can authorize upgrades.
      */
     function _authorizeUpgrade(address newImplementation) internal override onlyRole(DEFAULT_ADMIN_ROLE) {}
+
+    // slither-disable-next-line naming-convention,unused-state
+    uint256[50] private __gap;
 }
