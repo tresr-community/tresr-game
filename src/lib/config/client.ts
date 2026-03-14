@@ -102,10 +102,10 @@ export const config: ConfigTypes = {
           "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB",
+        "tresr_token_contract": "0x0B306BF915C4d645ff596e518fAf3F9669b97016",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "vault_contract": "0x998abeb3E57409262aE5b751f60747921B33613E",
-        "faucet_contract": "0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8",
+        "vault_contract": "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
+        "faucet_contract": "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
         "explorer_url": "http://localhost:8545/tx/"
       },
