@@ -9,7 +9,7 @@ inputs:
     description: "Network name (testnet or mainnet)"
     required: true
   rpc-url:
-    description: "RPC URL"
+    description: "Elected RPC URL (healthy, pre-validated by foundry-deploy-setup)"
     required: true
   chain-id:
     description: "Chain ID"
@@ -74,9 +74,9 @@ runs:
       run: |
         cd contracts
 
-        VAULT_ADDR="${{ inputs.vault-address }}"
         TOKEN_ADDR="${{ inputs.token-address }}"
         ORACLE_ADDR="${{ inputs.oracle-address }}"
+        VAULT_ADDR="$VAULT_PROXY_ADDRESS"
         ZERO="0x0000000000000000000000000000000000000000"
 
         echo "🔎 Vault resolve inputs:"
@@ -141,7 +141,7 @@ runs:
         IMPL_SLOT="0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
         RAW_IMPL=""
         RAW_IMPL=$(cast storage "$VAULT_ADDR" "$IMPL_SLOT" \
-          --rpc-url "$RPC_URL" --block finalized 2>&1) || RAW_IMPL=""
+          --rpc-url "$RPC_URL" --block finalized 2>/dev/null) || RAW_IMPL=""
 
         if [[ -z "$RAW_IMPL" || \
               "$RAW_IMPL" == "0x0000000000000000000000000000000000000000000000000000000000000000" ]]; then
@@ -207,6 +207,7 @@ runs:
         # Prevents spurious upgrades from metadata-only differences.
         # ──────────────────────────────────────────────
         DRY_RUN_LOG=$(mktemp)
+        DRY_EXIT=1
 
         set +e
         set -o pipefail
@@ -269,11 +270,12 @@ runs:
       shell: devenv shell --quiet bash -- -e {0}
       env:
         VAULT_PROXY_ADDRESS: ${{ inputs.vault-address }}
+        DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
         SNOWTRACE_API_KEY: ${{ inputs.snowtrace-api-key }}
       run: |
         cd contracts
         forge script script/UpgradeVault.s.sol:UpgradeVault \
-          --rpc-url ${{ inputs.rpc-url }} \
+          --rpc-url "$RPC_URL" \
           --broadcast \
           --slow \
           --skip-simulation \

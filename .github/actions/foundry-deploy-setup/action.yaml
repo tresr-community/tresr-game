@@ -28,8 +28,8 @@ outputs:
     description: "Resolved network name (lowercase)"
     value: ${{ steps.resolve_environment.outputs.network }}
   RPC_URL:
-    description: "RPC URL from config"
-    value: ${{ steps.read_config.outputs.RPC_URL }}
+    description: "Elected RPC URL — first healthy endpoint from config rpc_urls[]"
+    value: ${{ steps.elect_rpc.outputs.RPC_URL }}
   CHAIN_ID:
     description: "Chain ID from config"
     value: ${{ steps.read_config.outputs.CHAIN_ID }}
@@ -93,7 +93,10 @@ runs:
       run: |
         NETWORK="${{ steps.resolve_environment.outputs.network }}"
         {
-          echo "RPC_URL=$(yq ".client.blockchain.avalanche.${NETWORK}.rpc_urls[0]" config/tresr.yaml)"
+          # Read all configured RPC URLs as a newline-separated list for health checking
+          echo "RPC_URLS_RAW<<EOF"
+          yq ".client.blockchain.avalanche.${NETWORK}.rpc_urls[]" config/tresr.yaml
+          echo "EOF"
           echo "CHAIN_ID=$(yq ".client.blockchain.avalanche.${NETWORK}.chain_id" config/tresr.yaml)"
           echo "TOKEN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.tresr_token_contract" config/tresr.yaml)"
           echo "ORACLE_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.oracle_address" config/tresr.yaml)"
@@ -113,11 +116,40 @@ runs:
           echo "FAUCET_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.faucet_contract" config/tresr.yaml)"
         } >> "$GITHUB_OUTPUT"
 
+    - id: elect_rpc
+      name: Elect RPC Endpoint
+      shell: devenv shell --quiet bash -- -e {0}
+      env:
+        RPC_URLS_RAW: ${{ steps.read_config.outputs.RPC_URLS_RAW }}
+      run: |
+        cd contracts
+        ELECTED=""
+        while IFS= read -r url; do
+          [[ -z "$url" ]] && continue
+          echo -n "  ⏳ Checking ${url} ... "
+          if cast block-number --rpc-url "$url" --timeout 5 >/dev/null 2>&1; then
+            echo "✅ healthy"
+            ELECTED="$url"
+            break
+          else
+            echo "❌ unreachable"
+          fi
+        done <<< "$RPC_URLS_RAW"
+
+        if [[ -z "$ELECTED" ]]; then
+          echo "::error::All configured RPC endpoints are unreachable. Check rpc_urls[] in tresr.yaml."
+          exit 1
+        fi
+
+        echo "🔗 Elected RPC: ${ELECTED}"
+        echo "RPC_URL=${ELECTED}" >> "$GITHUB_OUTPUT"
+        echo "RPC_URL=${ELECTED}" >> "$GITHUB_ENV"
+
     - id: validate_config
       name: Validate Config
       shell: bash
       env:
-        RPC_URL: ${{ steps.read_config.outputs.RPC_URL }}
+        RPC_URL: ${{ steps.elect_rpc.outputs.RPC_URL }}
         CHAIN_ID: ${{ steps.read_config.outputs.CHAIN_ID }}
         TOKEN_ADDRESS: ${{ steps.read_config.outputs.TOKEN_ADDRESS }}
         ORACLE_ADDRESS: ${{ steps.read_config.outputs.ORACLE_ADDRESS }}
@@ -159,7 +191,7 @@ runs:
       name: Check Deployer Balance
       shell: devenv shell --quiet bash -- -e {0}
       env:
-        RPC_URL: ${{ steps.read_config.outputs.RPC_URL }}
+        # RPC_URL is set by elect_rpc into GITHUB_ENV — available to all subsequent steps
         DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
         MIN_DEPLOYER_BALANCE: ${{ inputs.min-deployer-balance }}
       run: |
