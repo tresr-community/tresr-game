@@ -166,12 +166,15 @@ jobs:
         name: Deploy Hosting
         uses: junobuild/juno-action@main
         with:
-          # --clear removes stale hashed chunks from previous releases.
-          # Safe for CI: Submitter/Editor permission is sufficient.
-          # NOTE: --config is intentionally omitted — set_storage_config requires
-          # Admin controller access. The OIDC automation key is Editor/Submitter only.
-          # Apply config changes manually: juno config apply --mode production
-          args: hosting deploy --clear --mode production
+          args: hosting deploy --mode production
+
+      # TODO: Enable when PR merged.
+      # - id: prune_hosting
+      #   name: Prune Hosting
+      #   uses: junobuild/juno-action@main
+      #   with:
+      #     # Prune stale assets
+      #     args: hosting prune --mode staging
 
       - id: publish_functions
         name: Publish Functions

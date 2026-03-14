@@ -173,12 +173,29 @@ export const ERC20Abi = [
     stateMutability: "view",
     type: "function",
   },
-  // Symbol
   {
     inputs: [],
     name: "symbol",
     outputs: [{internalType: "string", name: "", type: "string"}],
     stateMutability: "view",
     type: "function",
+  },
+  {
+    inputs: [
+      {internalType: "address", name: "spender", type: "address"},
+      {internalType: "uint256", name: "allowance", type: "uint256"},
+      {internalType: "uint256", name: "needed", type: "uint256"},
+    ],
+    name: "ERC20InsufficientAllowance",
+    type: "error",
+  },
+  {
+    inputs: [
+      {internalType: "address", name: "sender", type: "address"},
+      {internalType: "uint256", name: "balance", type: "uint256"},
+      {internalType: "uint256", name: "needed", type: "uint256"},
+    ],
+    name: "ERC20InsufficientBalance",
+    type: "error",
   },
 ] as const;

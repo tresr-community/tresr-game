@@ -24,8 +24,10 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 contract RonToken is ERC20, Ownable, ERC20Burnable {
     bool public bootingUp = true;
     address public initialLiquidityPool;
-    // 1% of TRESR will be put into the LP, 1% of the LP can be purchased
     uint256 public constant initialLimit = 100 * 100;
+
+    event BootingUpUpdated(bool state);
+    event LiquidityPoolSet(address indexed liquidityPool);
 
     /// @param tokenName  Full token name, e.g. "Ron Token" (anvil/testnet) or "TRESR" (mainnet).
     /// @param tokenSymbol Token ticker, e.g. "tRON" (anvil/testnet) or "TRESR" (mainnet).
@@ -44,11 +46,14 @@ contract RonToken is ERC20, Ownable, ERC20Burnable {
 
     function setBootingUp(bool state) external onlyOwner {
         bootingUp = state;
+        emit BootingUpUpdated(state);
     }
 
     function setLiquidityPool(address liquidityPool) external onlyOwner {
+        require(initialLiquidityPool == address(0), "LP already set");
         require(liquidityPool != address(0), "Zero address");
         initialLiquidityPool = liquidityPool;
+        emit LiquidityPoolSet(liquidityPool);
     }
 
     /**
