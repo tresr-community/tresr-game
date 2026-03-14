@@ -19,6 +19,10 @@ const webauthnEnabled: ConfigTypes["auth"]["webauthn"]["enabled"] =
 
 // Normie mode feature flag — when disabled, hide the normie tab entirely
 const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
+
+// Degen tab is only useful when at least one Degen auth provider is available.
+// When vault isn't deployed yet all blockchain-gated options are off.
+const degenEnabled: boolean = iidEnabled || avalancheEnabled || webauthnEnabled;
 ---
 
 <div class="flex flex-col items-center gap-0.5">
@@ -84,83 +88,108 @@ const guestEnabled: boolean = config.gameplay?.guest?.enabled ?? true;
         )
       }
 
-      <!-- Degen Tab -->
-      <input
-        type="radio"
-        name="auth_tabs"
-        class="tab"
-        aria-label="Degen"
-        checked={!guestEnabled}
-      />
-      <div class="tab-content border-base-300 bg-base-100 p-6">
-        <p class="mb-6 text-center text-sm italic opacity-70">
-          "Join the decentralized elite. High risk, high reward."
-        </p>
+      <!-- Degen Tab (only rendered when at least one Degen provider is available) -->
+      {
+        degenEnabled ? (
+          <>
+            <input
+              type="radio"
+              name="auth_tabs"
+              class="tab"
+              aria-label="Degen"
+              checked={!guestEnabled}
+            />
+            <div class="tab-content border-base-300 bg-base-100 p-6">
+              <p class="mb-6 text-center text-sm italic opacity-70">
+                "Join the decentralized elite. High risk, high reward."
+              </p>
 
-        <div class="flex flex-col gap-3">
-          <!-- Internet Identity -->
-          <button
-            id="btn-login-ii"
-            class:list={[
-              "btn btn-primary w-full font-bold tracking-widest uppercase",
-              {hidden: !iidEnabled},
-            ]}
-          >
-            Login with Internet Identity
-          </button>
+              <div class="flex flex-col gap-3">
+                {/* Internet Identity */}
+                <button
+                  id="btn-login-ii"
+                  class:list={[
+                    "btn btn-primary w-full font-bold tracking-widest uppercase",
+                    {hidden: !iidEnabled},
+                  ]}
+                >
+                  Login with Internet Identity
+                </button>
 
-          <!-- Unified Wallet Login Button (Opens AppKit modal with all options) -->
-          <button
-            id="btn-login-avalanche"
-            class:list={[
-              "btn btn-accent w-full gap-2 font-bold tracking-widest uppercase",
-              {hidden: !avalancheEnabled},
-            ]}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              class="h-5 w-5"
-            >
-              <path
-                d="M2.273 5.625A4.483 4.483 0 015.25 4.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 3H5.25a3 3 0 00-2.977 2.625zM2.273 8.625A4.483 4.483 0 015.25 7.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 6H5.25a3 3 0 00-2.977 2.625zM5.25 9a3 3 0 00-3 3v6a3 3 0 003 3h13.5a3 3 0 003-3v-6a3 3 0 00-3-3H15a.75.75 0 00-.75.75 2.25 2.25 0 01-4.5 0A.75.75 0 009 9H5.25z"
-              ></path>
-            </svg>
-            Login with Avalanche Wallet
-          </button>
+                {/* Unified Wallet Login Button (Opens AppKit modal with all options) */}
+                <button
+                  id="btn-login-avalanche"
+                  class:list={[
+                    "btn btn-accent w-full gap-2 font-bold tracking-widest uppercase",
+                    {hidden: !avalancheEnabled},
+                  ]}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    class="h-5 w-5"
+                  >
+                    <path d="M2.273 5.625A4.483 4.483 0 015.25 4.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 3H5.25a3 3 0 00-2.977 2.625zM2.273 8.625A4.483 4.483 0 015.25 7.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 6H5.25a3 3 0 00-2.977 2.625zM5.25 9a3 3 0 00-3 3v6a3 3 0 003 3h13.5a3 3 0 003-3v-6a3 3 0 00-3-3H15a.75.75 0 00-.75.75 2.25 2.25 0 01-4.5 0A.75.75 0 009 9H5.25z" />
+                  </svg>
+                  Login with Avalanche Wallet
+                </button>
 
-          <div
-            class:list={[
-              "divider text-[10px] tracking-tighter uppercase opacity-50",
-              {hidden: !webauthnEnabled},
-            ]}
-          >
-            Login with a Passkey
-          </div>
+                <div
+                  class:list={[
+                    "divider text-[10px] tracking-tighter uppercase opacity-50",
+                    {hidden: !webauthnEnabled},
+                  ]}
+                >
+                  Login with a Passkey
+                </div>
 
-          <div class="flex gap-2">
-            <button
-              id="btn-login-webauthn"
-              class:list={[
-                "btn btn-outline flex-1 font-bold tracking-widest uppercase",
-                {hidden: !webauthnEnabled},
-              ]}
-            >
-              Login
-            </button>
-            <button
-              id="btn-register-webauthn"
-              class:list={[
-                "btn btn-outline text-secondary flex-1 font-bold tracking-widest uppercase",
-                {hidden: !webauthnEnabled},
-              ]}
-            >
-              Register
-            </button>
-          </div>
-        </div>
-      </div>
+                <div class="flex gap-2">
+                  <button
+                    id="btn-login-webauthn"
+                    class:list={[
+                      "btn btn-outline flex-1 font-bold tracking-widest uppercase",
+                      {hidden: !webauthnEnabled},
+                    ]}
+                  >
+                    Login
+                  </button>
+                  <button
+                    id="btn-register-webauthn"
+                    class:list={[
+                      "btn btn-outline text-secondary flex-1 font-bold tracking-widest uppercase",
+                      {hidden: !webauthnEnabled},
+                    ]}
+                  >
+                    Register
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          /* No Degen providers available yet — contracts are deploying */
+          <>
+            <input
+              type="radio"
+              name="auth_tabs"
+              class="tab"
+              aria-label="Degen"
+              checked={!guestEnabled}
+              disabled
+            />
+            <div class="tab-content border-base-300 bg-base-100 p-6">
+              <p class="text-warning mb-2 text-center text-sm font-bold tracking-widest uppercase">
+                🛠️ Contracts Deploying
+              </p>
+              <p class="text-center text-xs opacity-60">
+                Degen login is coming soon. Check back after the first
+                deployment is complete.
+              </p>
+            </div>
+          </>
+        )
+      }
     </div>
   </div>
   <form method="dialog" class="modal-backdrop">

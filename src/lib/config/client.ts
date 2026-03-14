@@ -747,14 +747,17 @@ export const config: ConfigTypes = {
         }
       },
       "key": {
-        "speed": 50,
-        "gravity": 0.3,
-        "bounce_threshold": 2,
+        "speed": 60,
+        "gravity": 0.5,
+        "terminal_vz": 4.5,
+        "drag": 0.06,
+        "wind_frequency": 0.4,
+        "bounce_threshold": 0.5,
         "oscillation": {
-          "frequency": 2,
-          "amplitude": 30
+          "frequency": 3,
+          "amplitude": 12
         },
-        "bounce_damping": 0.5,
+        "bounce_damping": 0.2,
         "offscreen_kill_distance": 200,
         "animations": {
           "fade_duration": 500,
@@ -1441,9 +1444,10 @@ export const config: ConfigTypes = {
     "versions": [
       {
         "version": "0.4.0",
-        "date": "TBD: Planning stage...",
+        "date": "2026-03-15",
         "title": "Prizes for losers",
         "notes": [
+          "Parachute physics for Key airdrops",
           "Consolation prize for expired #1 active score — a participation trophy for degens"
         ]
       },
@@ -1507,5 +1511,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "0edcda1fd0ea15f2fc9123c84013a9fb88c89a8c6d31e12948b90ed3482ef358"
+  "configHash": "557abfc65775dfccb27038c69b6b793715d534d04127d3f637d795f7db045ec9"
 };

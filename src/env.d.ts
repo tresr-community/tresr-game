@@ -392,6 +392,9 @@ declare module "/config-client.json" {
         };
         key: {          speed: number;
           gravity: number;
+          terminal_vz: number;
+          drag: number;
+          wind_frequency: number;
           bounce_threshold: number;
           oscillation: {            frequency: number;
             amplitude: number;
@@ -1145,6 +1148,9 @@ declare module "../../../public/config-client.json" {
         };
         key: {          speed: number;
           gravity: number;
+          terminal_vz: number;
+          drag: number;
+          wind_frequency: number;
           bounce_threshold: number;
           oscillation: {            frequency: number;
             amplitude: number;

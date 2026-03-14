@@ -212,6 +212,9 @@ export interface GameplayConfig {
     key: {
       speed: number;
       gravity: number;
+      terminal_vz: number;
+      drag: number;
+      wind_frequency: number;
       bounce_threshold: number;
       oscillation: {frequency: number; amplitude: number};
       bounce_damping: number;

@@ -37,7 +37,10 @@
 </div>
 
 <script>
-  import {getEnvironmentKey} from "@/lib/blockchain/networks/chain";
+  import {
+    getEnvironmentKey,
+    isVaultDeployed,
+  } from "@/lib/blockchain/networks/chain";
   import {
     getTotalFees,
     getTotalRewards,
@@ -68,6 +71,11 @@
   if (burnedTickerEl) burnedTickerEl.textContent = `$${ticker}`;
 
   async function loadStats() {
+    // Contracts not yet deployed — keep the card hidden, no errors.
+    if (!isVaultDeployed(config)) {
+      log.debug(COMPONENT_NAME, "Vault not deployed, skipping stats fetch");
+      return;
+    }
     try {
       const [fees, rewarded, burned] = await Promise.all([
         getTotalFees(),

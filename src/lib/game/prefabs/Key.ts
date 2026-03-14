@@ -18,9 +18,16 @@ const COMPONENT_NAME = "Key";
 export class Key extends BaseEntity {
   private initialX: number = 0;
   private time: number = 0;
-  private speed: number = 50;
-  private oscillationFrequency: number = 2;
-  private oscillationAmplitude: number = 30;
+  // Horizontal drift: wind swing amplitude (px)
+  private speed: number = 60;
+  // Slow large oscillation — simulates wind drift
+  private windFrequency: number = 0.4;
+  // Fast small oscillation — simulates canopy wobble
+  private oscillationFrequency: number = 3;
+  private oscillationAmplitude: number = 12;
+  // Air resistance: keys reach a terminal velocity instead of free-falling
+  private terminalVz: number = 4.5;
+  private drag: number = 0.06;
   private isFading: boolean = false;
   private fadeTween: Phaser.Tweens.Tween | null = null;
 
@@ -30,9 +37,12 @@ export class Key extends BaseEntity {
 
     const keyConfig = this.config.gameplay.entities.key;
     this.speed = keyConfig.speed;
+    this.windFrequency = keyConfig.wind_frequency ?? 0.4;
     this.oscillationFrequency = keyConfig.oscillation.frequency;
     this.oscillationAmplitude = keyConfig.oscillation.amplitude;
     this.gravity = keyConfig.gravity;
+    this.terminalVz = keyConfig.terminal_vz ?? 4.5;
+    this.drag = keyConfig.drag ?? 0.06;
 
     // Disable Arcade gravity — we use custom Z-axis physics for vertical movement.
     // Body stays enabled for overlap detection (key collection).
@@ -58,8 +68,13 @@ export class Key extends BaseEntity {
     const gravityScale = frameDt / this.referenceDt;
     const resScale = this.resolutionScale;
     if (this.z > 0 || this.vz !== 0) {
-      this.z += this.vz * gravityScale * resScale;
+      // Apply gravity then drag toward terminal velocity.
+      // drag pulls vz toward -terminalVz (downward) so the key floats at a
+      // steady speed rather than accelerating like a free-fall object.
       this.vz -= this.gravity * gravityScale;
+      this.vz += (-this.terminalVz - this.vz) * this.drag;
+
+      this.z += this.vz * gravityScale * resScale;
 
       if (this.z <= 0) {
         this.z = 0;
@@ -68,17 +83,20 @@ export class Key extends BaseEntity {
       }
     }
 
-    // Horizontal drift with oscillation (parachute sway effect)
-    // Only sway while airborne — once landed (z == 0), freeze X position.
+    // Horizontal parachute sway — dual-sine model:
+    //   windDrift  : slow, large wave — simulates wind pushing the key back/forth
+    //   swayOffset : fast, small wave — simulates canopy wobble
+    // The key stays near its spawn X instead of sliding off-screen.
     if (this.z > 0) {
       this.time += frameDt;
+      const timeS = this.time / 1000; // convert ms → seconds for clean frequency values
       const {width} = this.scene.cameras.main;
       const halfWidth = this.displayWidth / 2;
+      const windDrift = this.speed * Math.sin(timeS * this.windFrequency);
+      const swayOffset =
+        this.oscillationAmplitude * Math.sin(timeS * this.oscillationFrequency);
       this.x = Phaser.Math.Clamp(
-        this.initialX +
-          this.speed * this.time +
-          Math.sin(this.time * this.oscillationFrequency) *
-            this.oscillationAmplitude,
+        this.initialX + windDrift + swayOffset,
         halfWidth,
         width - halfWidth
       );
@@ -124,8 +142,11 @@ export class Key extends BaseEntity {
 
     this.gravity = keyConfig.gravity;
     this.speed = keyConfig.speed;
+    this.windFrequency = keyConfig.wind_frequency ?? 0.4;
     this.oscillationFrequency = keyConfig.oscillation.frequency;
     this.oscillationAmplitude = keyConfig.oscillation.amplitude;
+    this.terminalVz = keyConfig.terminal_vz ?? 4.5;
+    this.drag = keyConfig.drag ?? 0.06;
 
     // Keep body enabled (for overlap collection) but prevent Arcade movement
     if (this.body) {

@@ -654,13 +654,16 @@ client:
         animations:
           death_delay: 1000 # Delay before kill() after death animation (ms)
       key:
-        speed: 50
-        gravity: 0.3 # Reduced gravity for parachute effect
-        bounce_threshold: 2 # Minimum vz to trigger bounce
+        speed: 60 # Wind drift amplitude (px) — key swings ±60px around spawn X
+        gravity: 0.5 # Higher gravity balanced by drag reaching terminal velocity
+        terminal_vz: 4.5 # Max fall speed (px/frame-unit) — air resistance cap
+        drag: 0.06 # Air drag coefficient — how quickly terminal velocity is reached
+        wind_frequency: 0.4 # Slow wind oscillation (radians/sec) — large back-and-forth swing
+        bounce_threshold: 0.5 # Lower: parachute landing is soft, minimal bounce
         oscillation:
-          frequency: 2
-          amplitude: 30
-        bounce_damping: 0.5
+          frequency: 3 # Fast canopy wobble (radians/sec)
+          amplitude: 12 # Small canopy wobble (px)
+        bounce_damping: 0.2
         offscreen_kill_distance: 200
         animations:
           fade_duration: 500
