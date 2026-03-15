@@ -724,6 +724,10 @@ export class MainScene extends Phaser.Scene {
     // Signal music to start now that gameplay has begun
     window.dispatchEvent(new Event("tresr:gameplay-start"));
 
+    // Ensure the game canvas has focus so keyboard input isn't trapped by HTML buttons
+    // (e.g., the 'Pay & Start Mission' button in FeeGate)
+    this.game.canvas.focus();
+
     // Survival Clock
     this.survivalCountdown = this.time.addEvent({
       delay: 1000,

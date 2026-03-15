@@ -738,6 +738,11 @@ declare module "/config-client.json" {
     anti_cheat: {      ban_durations_hours: Array<number>;
       permanent_after_offence: number;
       ban_reasons: string[];
+      replay: {        max_actions: number;
+        min_action_gap_ms: number;
+        min_attack_gap_ms: number;
+        grace_ms: number;
+      };
     };
     credits: {      description: string;
       coders: Array<{        name: string;
@@ -1494,6 +1499,11 @@ declare module "../../../public/config-client.json" {
     anti_cheat: {      ban_durations_hours: Array<number>;
       permanent_after_offence: number;
       ban_reasons: string[];
+      replay: {        max_actions: number;
+        min_action_gap_ms: number;
+        min_attack_gap_ms: number;
+        grace_ms: number;
+      };
     };
     credits: {      description: string;
       coders: Array<{        name: string;

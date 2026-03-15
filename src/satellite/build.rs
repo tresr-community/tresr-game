@@ -33,6 +33,15 @@ struct Juno {
 struct AntiCheat {
     ban_durations_hours: Vec<u64>,
     permanent_after_offence: u64,
+    replay: Replay,
+}
+
+#[derive(Deserialize)]
+struct Replay {
+    max_actions: u64,
+    min_action_gap_ms: u64,
+    min_attack_gap_ms: u64,
+    grace_ms: u64,
 }
 
 #[derive(Deserialize)]
@@ -304,16 +313,16 @@ pub const ADMIN_PRINCIPALS: &[&str] = &[{admin_principals}];
 pub const TIME_LIMIT_MS: u64 = {time_limit_ms};
 
 /// Maximum recorded actions per session — must match Recorder::MAX_ACTIONS in TS (#171)
-pub const REPLAY_MAX_ACTIONS: u64 = 50_000;
+pub const REPLAY_MAX_ACTIONS: u64 = {replay_max_actions};
 
 /// Minimum gap between any two consecutive actions in ms — one browser frame (#171)
-pub const REPLAY_MIN_ACTION_GAP_MS: u64 = 16;
+pub const REPLAY_MIN_ACTION_GAP_MS: u64 = {replay_min_action_gap_ms};
 
 /// Minimum gap between consecutive attack actions — conservative human limit (#171)
-pub const REPLAY_MIN_ATTACK_GAP_MS: u64 = 200;
+pub const REPLAY_MIN_ATTACK_GAP_MS: u64 = {replay_min_attack_gap_ms};
 
 /// Grace period added to TIME_LIMIT_MS for replay timestamp validation (#171)
-pub const REPLAY_GRACE_MS: u64 = 5_000;
+pub const REPLAY_GRACE_MS: u64 = {replay_grace_ms};
 "#,
         network = network,
         ban_durations = ban_durations,
@@ -343,6 +352,10 @@ pub const REPLAY_GRACE_MS: u64 = 5_000;
         config_hash = config_hash,
         admin_principals = admin_principals,
         time_limit_ms = config.client.gameplay.time_limit_seconds * 1000,
+        replay_max_actions = config.server.anti_cheat.replay.max_actions,
+        replay_min_action_gap_ms = config.server.anti_cheat.replay.min_action_gap_ms,
+        replay_min_attack_gap_ms = config.server.anti_cheat.replay.min_attack_gap_ms,
+        replay_grace_ms = config.server.anti_cheat.replay.grace_ms,
     );
 
     // Write to OUT_DIR

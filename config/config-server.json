@@ -72,7 +72,13 @@
       "replay_validation_failure",
       "score_exceeds_maximum",
       "wallet_tampering"
-    ]
+    ],
+    "replay": {
+      "max_actions": 50000,
+      "min_action_gap_ms": 10,
+      "min_attack_gap_ms": 200,
+      "grace_ms": 5000
+    }
   },
   "highscore": {
     "score_ttl_hours": 24,

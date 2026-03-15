@@ -1373,7 +1373,13 @@ export const config: ConfigTypes = {
       "replay_validation_failure",
       "score_exceeds_maximum",
       "wallet_tampering"
-    ]
+    ],
+    "replay": {
+      "max_actions": 50000,
+      "min_action_gap_ms": 10,
+      "min_attack_gap_ms": 200,
+      "grace_ms": 5000
+    }
   },
   "credits": {
     "description": "Look here degen, this is just a fun, unofficial game whipped up for the TRESR community.\n\nIt's kind of like fanfic but with crypto twists and pixels.\n\nNo official ties to the TRESR project (you know, the ones slinging those killer t-shirts over at tresr.com).\n\nBugs might creep in, or things could glitch out.\n\nBut that's all on me – the TRESR folks aren't to blame; they're the pros laying the groundwork we all love.\n\nThis was put together with a ton of love ❤️, some wild ideas, and mad respect for the TRESR community.\n\nDisclaimer out of the way, let's hit the credits!\n\nThis whole thing's built on the work of some absolute legends; without 'em, we'd be nowhere in this crypto playground.\n\nBig ups to these folks;\n",

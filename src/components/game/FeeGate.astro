@@ -227,10 +227,9 @@
       // disconnected or locked (auto-lock scenario).
       markStep("wallet", "active");
       let address: `0x${string}`;
-      const existingAddr = isConnected() ? getConnectedAddress() : undefined;
 
-      if (existingAddr) {
-        address = existingAddr;
+      if (isConnected()) {
+        address = (await connectWallet()).address;
         showStatus("Wallet connected ✓");
         log.info(COMPONENT_NAME, `Wallet already connected: ${address}`);
       } else {
