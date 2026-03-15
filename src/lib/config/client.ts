@@ -497,7 +497,7 @@ export const config: ConfigTypes = {
           "hit_stop_ms": 50
         },
         "super": {
-          "damage": 500,
+          "damage": 250,
           "splash_damage": 250,
           "splash_radius": 100,
           "speed": 500,
@@ -674,7 +674,7 @@ export const config: ConfigTypes = {
         }
       },
       "boss": {
-        "health": 250,
+        "health": 500,
         "damage": 25,
         "speed": 150,
         "knockback": {
@@ -1521,5 +1521,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "d61adb513ea3681ea22779f1ec194cf82485ad6ba6a77787e472da64b5779e81"
+  "configHash": "d288a9b7b4e52f4206b7253765efc5e7844f930905b9efb98aa75f6e3ff0bb8a"
 };

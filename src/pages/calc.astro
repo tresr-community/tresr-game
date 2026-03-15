@@ -236,7 +236,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         calculate();
       }
     } catch (e) {
-      log.info("Calc", "Could not fetch on-chain vault balance", e);
+      log.warn("Calc", "Could not fetch on-chain vault balance", e);
     }
   }
 

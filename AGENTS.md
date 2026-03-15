@@ -310,7 +310,6 @@ Every log message that writes to a Juno collection **must** follow this format:
 Examples:
 
 - `[Scores] Updated collection scores for user <principal> with score=3230, nickname=Bug Hunter 01`
-- `[Economy] Updated collection economy (global) with total_collected=1000, total_rewarded=500, total_burned=50`
 - `[Scores] Updated collection scores (top_scorer cache) with key=<principal>, score=9999`
 
 ---

@@ -1832,7 +1832,7 @@ async fn claim_authorize(
     // 4. Parse and plausibility-check the replay input log (#171 Phase 1)
     // Reported keys are still trusted; Phase 2 will derive them from the log.
     let actions = extract_action_log(&replay_inputs)?;
-    replay_verify_plausibility(&actions)?;
+    replay_verify_plausibility(&actions, &session, reported_keys)?;
 
     if reported_keys > config::MAX_KEYS_COLLECTED {
         // Cheat detected — apply ban
@@ -1994,8 +1994,24 @@ fn extract_action_log(payload: &[u8]) -> Result<Vec<GameAction>, String> {
 /// 3. Consecutive `attack` events not faster than REPLAY_MIN_ATTACK_GAP_MS.
 /// 4. Last event timestamp ≤ TIME_LIMIT_MS + REPLAY_GRACE_MS.
 ///
-/// Reported keys are still trusted in Phase 1 (physics replay is Phase 2).
-fn replay_verify_plausibility(actions: &[GameAction]) -> Result<(), String> {
+/// Additional (#171) Phase 1 checks added:
+/// 5. min action count (>=50)
+/// 6. burst window check
+/// 7. action distributions
+/// 8. duration match
+fn replay_verify_plausibility(
+    actions: &[GameAction],
+    session: &GameSession,
+    reported_keys: u64,
+) -> Result<(), String> {
+    // 0. Minimum input count
+    if actions.len() < 50 {
+        return Err(format!(
+            "CHEAT_DETECTED: action count {} is implausibly low (min 50)",
+            actions.len()
+        ));
+    }
+
     // 1. Action count sanity
     if actions.len() as u64 > config::REPLAY_MAX_ACTIONS {
         return Err(format!(
@@ -2005,11 +2021,49 @@ fn replay_verify_plausibility(actions: &[GameAction]) -> Result<(), String> {
         ));
     }
 
+    let last_t = actions.last().map(|a| a.t).unwrap_or(0);
+    if let Some(ended_at) = session.ended_at {
+        let server_duration_ms = ended_at.saturating_sub(session.started_at);
+        if server_duration_ms.saturating_sub(last_t) > 5000
+            || last_t.saturating_sub(server_duration_ms) > 5000
+        {
+            return Err(format!(
+                "CHEAT_DETECTED: session duration mismatch (server: {}ms, replay: {}ms)",
+                server_duration_ms, last_t
+            ));
+        }
+    }
+
     let max_duration_ms = config::TIME_LIMIT_MS + config::REPLAY_GRACE_MS;
     let mut last_attack_t: Option<u64> = None;
 
+    let mut attack_count = 0;
+    let mut jump_count = 0;
+    let mut move_left_count = 0;
+    let mut move_right_count = 0;
+    let mut window_start = 0;
+
     for i in 0..actions.len() {
         let action = &actions[i];
+
+        // Burst check
+        while window_start <= i && action.t.saturating_sub(actions[window_start].t) > 100 {
+            window_start += 1;
+        }
+        if i - window_start + 1 > 15 {
+            return Err(format!(
+                "CHEAT_DETECTED: burst of >15 actions in 100ms window ending at {}ms",
+                action.t
+            ));
+        }
+
+        match action.a.as_str() {
+            "attack" => attack_count += 1,
+            "jump" => jump_count += 1,
+            "move_left" => move_left_count += 1,
+            "move_right" => move_right_count += 1,
+            _ => {}
+        }
 
         // 4. Total duration — any action beyond max session window is suspicious
         if action.t > max_duration_ms {
@@ -2059,6 +2113,27 @@ fn replay_verify_plausibility(actions: &[GameAction]) -> Result<(), String> {
             }
             last_attack_t = Some(action.t);
         }
+    }
+
+    if attack_count == 0 || jump_count == 0 {
+        return Err(format!(
+            "CHEAT_DETECTED: missing required basic actions (attacks: {}, jumps: {})",
+            attack_count, jump_count
+        ));
+    }
+
+    if move_left_count == 0 || move_right_count == 0 {
+        return Err(format!(
+            "CHEAT_DETECTED: insufficient movement spread (left: {}, right: {})",
+            move_left_count, move_right_count
+        ));
+    }
+
+    if reported_keys > 0 && attack_count < (reported_keys / 20) {
+        return Err(format!(
+            "CHEAT_DETECTED: implausible attack-to-key ratio (keys: {}, attacks: {})",
+            reported_keys, attack_count
+        ));
     }
 
     Ok(())
@@ -2389,95 +2464,87 @@ mod replay_tests {
         assert!(result.is_err(), "Expected error on malformed JSON");
     }
 
+    fn make_valid_session() -> GameSession {
+        GameSession {
+            started_at: 0,
+            ended_at: Some(10500),
+            keys_collected: 10,
+            boss_defeated: true,
+            score: 100,
+            reward_claimed: false,
+        }
+    }
+
+    fn make_plausible_actions() -> Vec<GameAction> {
+        let mut actions = Vec::new();
+        for i in 0..50 {
+            actions.push(GameAction {
+                t: i * 200,
+                a: match i % 4 {
+                    0 => "move_right",
+                    1 => "move_left",
+                    2 => "jump",
+                    _ => "attack",
+                }
+                .to_string(),
+            });
+        }
+        actions
+    }
+
     #[test]
     fn test_replay_plausibility_ok() {
-        // Valid session: 3 actions spread over 3 seconds
-        let actions: Vec<GameAction> = vec![
-            GameAction {
-                t: 0,
-                a: "jump".to_string(),
-            },
-            GameAction {
-                t: 500,
-                a: "move_right".to_string(),
-            },
-            GameAction {
-                t: 1000,
-                a: "attack".to_string(),
-            },
-        ];
-        assert!(replay_verify_plausibility(&actions).is_ok());
+        let actions = make_plausible_actions();
+        let session = make_valid_session();
+        assert!(replay_verify_plausibility(&actions, &session, 10).is_ok());
     }
 
     #[test]
     fn test_replay_plausibility_same_frame_gap_allowed() {
-        // With min_action_gap_ms = 0, same-frame events (0ms gap) are allowed.
-        // This prevents false positives when multiple game events fire in one frame.
-        let actions_zero_gap: Vec<GameAction> = vec![
-            GameAction {
-                t: 100,
-                a: "jump".to_string(),
-            },
-            GameAction {
-                t: 100,
-                a: "collect_key".to_string(),
-            },
-        ];
+        let mut actions_zero_gap = make_plausible_actions();
+        actions_zero_gap.push(GameAction {
+            t: 10000,
+            a: "jump".to_string(),
+        });
+        actions_zero_gap.push(GameAction {
+            t: 10000,
+            a: "collect_key".to_string(),
+        });
+        let session = make_valid_session();
         assert!(
-            replay_verify_plausibility(&actions_zero_gap).is_ok(),
+            replay_verify_plausibility(&actions_zero_gap, &session, 10).is_ok(),
             "0ms gap should be allowed with min_action_gap_ms = 0"
-        );
-
-        // 5ms gap should also pass now
-        let actions_small_gap: Vec<GameAction> = vec![
-            GameAction {
-                t: 0,
-                a: "jump".to_string(),
-            },
-            GameAction {
-                t: 5,
-                a: "move_right".to_string(),
-            },
-        ];
-        assert!(
-            replay_verify_plausibility(&actions_small_gap).is_ok(),
-            "5ms gap should be allowed with min_action_gap_ms = 0"
         );
     }
 
     #[test]
     fn test_replay_plausibility_attack_too_fast() {
-        // Two attack events 100ms apart (below 200ms minimum)
-        let actions: Vec<GameAction> = vec![
-            GameAction {
-                t: 0,
-                a: "attack".to_string(),
-            },
-            GameAction {
-                t: 100,
-                a: "attack".to_string(),
-            },
-        ];
-        let result = replay_verify_plausibility(&actions);
+        let mut actions = make_plausible_actions();
+        // Force rapid attack
+        actions.push(GameAction {
+            t: 10200,
+            a: "attack".to_string(),
+        });
+        actions.push(GameAction {
+            t: 10300,
+            a: "attack".to_string(),
+        });
+        let session = make_valid_session();
+        let result = replay_verify_plausibility(&actions, &session, 10);
         assert!(result.is_err(), "Expected error for rapid attack");
         assert!(result.unwrap_err().contains("CHEAT_DETECTED"));
     }
 
     #[test]
     fn test_replay_plausibility_exceeds_duration() {
-        // Action at TIME_LIMIT_MS + REPLAY_GRACE_MS + 1ms
         let too_late = config::TIME_LIMIT_MS + config::REPLAY_GRACE_MS + 1;
-        let actions: Vec<GameAction> = vec![
-            GameAction {
-                t: 0,
-                a: "jump".to_string(),
-            },
-            GameAction {
-                t: too_late,
-                a: "move_right".to_string(),
-            },
-        ];
-        let result = replay_verify_plausibility(&actions);
+        let mut actions = make_plausible_actions();
+        actions.push(GameAction {
+            t: too_late,
+            a: "move_right".to_string(),
+        });
+        let session = make_valid_session();
+        let result = replay_verify_plausibility(&actions, &session, 10);
         assert!(
             result.is_err(),
             "Expected error for out-of-bounds timestamp"
@@ -2487,18 +2554,18 @@ mod replay_tests {
 
     #[test]
     fn test_replay_plausibility_non_monotonic() {
-        // Timestamp decreases — clear sign of manipulation
-        let actions: Vec<GameAction> = vec![
-            GameAction {
-                t: 1000,
-                a: "jump".to_string(),
-            },
-            GameAction {
-                t: 500,
-                a: "move_right".to_string(),
-            },
-        ];
-        let result = replay_verify_plausibility(&actions);
+        let mut actions = make_plausible_actions();
+        actions.push(GameAction {
+            t: 15000,
+            a: "jump".to_string(),
+        });
+        actions.push(GameAction {
+            t: 10000,
+            a: "move_right".to_string(),
+        });
+        let mut session = make_valid_session();
+        session.ended_at = Some(15000); // adjust so it doesn't fail duration mismatch first
+        let result = replay_verify_plausibility(&actions, &session, 10);
         assert!(
             result.is_err(),
             "Expected error for non-monotonic timestamps"

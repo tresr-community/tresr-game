@@ -418,7 +418,7 @@ client:
           attack_range: 80 # Hitbox radius for player attacks (matches enemy range)
           hit_stop_ms: 50 # Duration of hit stop effect on attack
         super:
-          damage: 500
+          damage: 250
           splash_damage: 250
           splash_radius: 100
           speed: 500
@@ -591,7 +591,7 @@ client:
           bob_duration: 600 # Duration of bob cycle (ms)
           despawn_ms: 8000 # Auto-despawn time (ms)
       boss:
-        health: 250
+        health: 500
         damage: 25
         speed: 150
         knockback:
