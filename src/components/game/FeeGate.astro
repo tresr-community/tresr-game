@@ -75,11 +75,7 @@
   import {getExplorerUrl} from "@/lib/blockchain/networks/display";
   import {payFeeForGame} from "@/lib/blockchain/contracts/vault";
   import {setDoc} from "@junobuild/core";
-  import {
-    connectWallet,
-    isConnected,
-    getConnectedAddress,
-  } from "@/lib/wallet/connection";
+  import {connectWallet, isConnected} from "@/lib/wallet/connection";
   import {confirmReceipt} from "@/lib/blockchain/tx";
   import {getTresrBalance, formatBalance} from "@/lib/blockchain/balance";
   import {parseBalance} from "@/lib/blockchain/balance";
