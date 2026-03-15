@@ -99,7 +99,17 @@ runs:
           echo "EOF"
           echo "CHAIN_ID=$(yq ".client.blockchain.avalanche.${NETWORK}.chain_id" config/tresr.yaml)"
           echo "TOKEN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.tresr_token_contract" config/tresr.yaml)"
-          echo "ORACLE_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.oracle_address" config/tresr.yaml)"
+          # Allow oracle-address input to override the config value.
+          # This is used by the bootstrap workflow to pass the oracle directly
+          # from the Juno deploy output without requiring a config PR in between.
+          ORACLE_OVERRIDE="${{ inputs.oracle-address }}"
+          ZERO="0x0000000000000000000000000000000000000000"
+          if [[ -n "$ORACLE_OVERRIDE" && "$ORACLE_OVERRIDE" != "$ZERO" ]]; then
+            echo "ORACLE_ADDRESS=${ORACLE_OVERRIDE}"
+            echo "::notice::Oracle address overridden via input: ${ORACLE_OVERRIDE}"
+          else
+            echo "ORACLE_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.oracle_address" config/tresr.yaml)"
+          fi
           SAFE=$(yq ".client.blockchain.avalanche.${NETWORK}.safe_address // \"\"" config/tresr.yaml)
           ADMIN=$(yq ".client.blockchain.avalanche.${NETWORK}.admin_address // \"\"" config/tresr.yaml)
           if [[ -n "$SAFE" && "$SAFE" != "null" ]]; then
@@ -123,27 +133,47 @@ runs:
         RPC_URLS_RAW: ${{ steps.read_config.outputs.RPC_URLS_RAW }}
       run: |
         ELECTED=""
+        # CREATE2 factory — Foundry always queries eth_getCode on this address before broadcast.
+        # If the RPC rejects this query (e.g. "-32000: cannot query unfinalized data"),
+        # Foundry sharedbackend fails even with --skip-simulation.
+        FORGE_PROBE_ADDR="0x1804c8AB1F12E6bbf3894d4083f33e07309d1f38"
+
         while IFS= read -r url; do
           [[ -z "$url" ]] && continue
           echo -n "  ⏳ Checking ${url} ... "
-          # Probe with a minimal eth_blockNumber JSON-RPC call (no Foundry tools required)
+
+          # Phase 1: basic reachability (eth_blockNumber)
           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
             --max-time 10 \
             -X POST \
             -H 'Content-Type: application/json' \
             -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
             "$url")
-          if [[ "$HTTP_CODE" =~ ^2 ]]; then
-            echo "✅ healthy (HTTP ${HTTP_CODE})"
-            ELECTED="$url"
-            break
-          else
+          if [[ ! "$HTTP_CODE" =~ ^2 ]]; then
             echo "❌ unreachable (HTTP ${HTTP_CODE:-000})"
+            continue
           fi
+
+          # Phase 2: Forge sharedbackend compatibility
+          # eth_getCode at 'latest' — the exact query Foundry makes on startup.
+          # Avalanche Fuji nodes may reject 'latest' with -32000 (unfinalized data).
+          GETCODE=$(curl -s --max-time 10 \
+            -X POST -H 'Content-Type: application/json' \
+            -d "{\"jsonrpc\":\"2.0\",\"method\":\"eth_getCode\",\"params\":[\"${FORGE_PROBE_ADDR}\",\"latest\"],\"id\":2}" \
+            "$url")
+          if echo "$GETCODE" | grep -q '"error"'; then
+            ERR=$(echo "$GETCODE" | grep -oP '(?<="message":")([^"]+)')
+            echo "⚠️ forge-incompatible ($ERR)"
+            continue
+          fi
+
+          echo "✅ healthy + forge-compatible"
+          ELECTED="$url"
+          break
         done <<< "$RPC_URLS_RAW"
 
         if [[ -z "$ELECTED" ]]; then
-          echo "::error::All configured RPC endpoints are unreachable. Check rpc_urls[] in tresr.yaml."
+          echo "::error::All configured RPC endpoints are unreachable or forge-incompatible. Check rpc_urls[] in tresr.yaml."
           exit 1
         fi
 

@@ -33,7 +33,7 @@ permissions:
 env:
   NIXPKGS_ALLOW_UNFREE: 1
   SECRETSPEC_PROVIDER: env
-  FOUNDRY_PROFILE: mainnet
+  FOUNDRY_PROFILE: ${{ vars.FOUNDRY_PROFILE || 'mainnet' }}
   FOUNDRY_DISABLE_NIGHTLY_WARNING: 1
 
 defaults:
