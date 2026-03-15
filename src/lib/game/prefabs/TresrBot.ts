@@ -75,6 +75,7 @@ export class TresrBot extends BaseEntity {
       (this.body as Phaser.Physics.Arcade.Body).enable = true;
       (this.body as Phaser.Physics.Arcade.Body).setVelocity(0, 0);
     }
+    this.syncBodyPosition();
 
     // Show shadow and health bar
     if (this.shadow) this.shadow.setVisible(true);

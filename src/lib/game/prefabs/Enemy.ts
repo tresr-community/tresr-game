@@ -284,6 +284,10 @@ export class Enemy extends BaseEntity {
       const clamped = this._walkableArea.clampToWalkable(this.x, this.groundY);
       if (clamped.x !== this.x) {
         this.setVelocityX(0);
+        // Switch to idle animation if pushing against the wall to prevent moonwalking
+        if (!this._ctx.isAttacking) {
+          this.safePlay(this._animKeys.idle, true);
+        }
       }
       this.x = clamped.x;
     }

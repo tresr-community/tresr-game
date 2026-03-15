@@ -197,9 +197,18 @@ export class CombatManager {
           enemy.anims.currentAnim?.key.endsWith("_attack");
         if (!isAttacking) return;
 
-        const hDist = Math.abs(player.x - enemy.x);
+        const dx = player.x - enemy.x;
+        const hDist = Math.abs(dx);
         const dDist = Math.abs(player.groundY - enemy.groundY);
-        if (hDist < enemyAttackRange && dDist < depthThreshold) {
+
+        // Check if enemy is actually facing the player
+        const isFacingPlayer = enemy.flipX ? dx < 10 : dx > -10;
+
+        // Use a tighter hitbox for actual damage (e.g. 70% of the AI trigger range)
+        // so the player isn't hit at the extreme edge before the visual swing connects
+        const hitRange = enemyAttackRange * 0.7;
+
+        if (hDist < hitRange && dDist < depthThreshold && isFacingPlayer) {
           player.takeDamage(enemyDamage);
           player.applyKnockback(enemy.x, pkb.force, pkb.stun_ms);
           this.playSound("hurt");

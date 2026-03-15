@@ -74,6 +74,8 @@ export class SpawnManager {
 
   createGroups() {
     const entities = this.config.entities;
+    // Cap max pool sizes based on mobile performance tier
+    const multiplier = this.scene.registry.get("effects_multiplier") ?? 1.0;
 
     // Bombs group (falling bombs that explode on impact)
     // Note: runChildUpdate disabled - we manually call update() in scene update()
@@ -82,7 +84,10 @@ export class SpawnManager {
     // allowGravity: false prevents Arcade gravity from fighting with our Z-axis system
     this.bombs = this.scene.physics.add.group({
       classType: Bomb,
-      maxSize: entities.bomb.spawner.pool_size,
+      maxSize: Math.max(
+        1,
+        Math.floor(entities.bomb.spawner.pool_size * multiplier)
+      ),
       runChildUpdate: false,
       enable: false,
       allowGravity: false,
@@ -92,7 +97,10 @@ export class SpawnManager {
     this.enemies = this.scene.physics.add.group({
       classType: Enemy,
       defaultKey: "enemy_1_idle",
-      maxSize: entities.enemy.spawner.pool_size,
+      maxSize: Math.max(
+        5,
+        Math.floor(entities.enemy.spawner.pool_size * multiplier)
+      ),
       runChildUpdate: false,
     });
     // Store in registry so swarm AI can find nearby allies
@@ -105,7 +113,10 @@ export class SpawnManager {
     // Body stays enabled for overlap detection (key collection during fall)
     this.keys = this.scene.physics.add.group({
       classType: Key,
-      maxSize: entities.key.spawner.pool_size,
+      maxSize: Math.max(
+        2,
+        Math.floor(entities.key.spawner.pool_size * multiplier)
+      ),
       runChildUpdate: false,
       allowGravity: false,
       immovable: true,
@@ -114,7 +125,10 @@ export class SpawnManager {
     // Loot drop pool (ticket #192)
     this.lootDrops = this.scene.physics.add.group({
       classType: LootDrop,
-      maxSize: entities.enemy.loot.pool_size,
+      maxSize: Math.max(
+        2,
+        Math.floor(entities.enemy.loot.pool_size * multiplier)
+      ),
       runChildUpdate: false,
       allowGravity: false,
     });

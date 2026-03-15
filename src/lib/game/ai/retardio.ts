@@ -116,13 +116,21 @@ export class RetardioBehavior implements AIBehavior {
 
     // No enemies nearby — wander erratically
     if (this.jitterTimer > jitterTime) {
-      ctx.setFlipX(ctx.rng.frac() < 0.5);
-      ctx.setVelocityX(
-        (ctx.rng.frac() - 0.5) * ctx.speed * ctx.resolutionScale
-      );
+      const wanderAngle = ctx.rng.frac() * Math.PI * 2;
+      ctx.setFlipX(Math.cos(wanderAngle) < 0);
+      ctx.setVelocityX(Math.cos(wanderAngle) * ctx.speed * ctx.resolutionScale);
+      // Update groundY instead of relying solely on pure horizontal movement over time
+      ctx.groundY +=
+        Math.sin(wanderAngle) * ctx.speed * ctx.resolutionScale * dt;
       this.jitterTimer = 0;
     }
     ctx.setVelocityY(0);
+
+    if (ctx.walkableArea) {
+      const clamped = ctx.walkableArea.clampToWalkable(ctx.x, ctx.groundY);
+      ctx.groundY = clamped.groundY;
+    }
+
     ctx.safePlay(ctx.animKeys.walk, true);
 
     return {action: "handled"};

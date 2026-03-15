@@ -23,6 +23,10 @@ export const getGameConfig = (
     parent: containerId,
     backgroundColor: display.background_color,
     pixelArt: display.pixel_art,
+    clearBeforeRender: false,
+    powerPreference: "high-performance",
+    antialias: false,
+    antialiasGL: false,
     scale: {
       mode: Phaser.Scale.RESIZE,
       autoCenter: Phaser.Scale.CENTER_BOTH,
