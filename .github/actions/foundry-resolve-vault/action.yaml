@@ -48,20 +48,6 @@ runs:
   using: composite
   steps:
     # ──────────────────────────────────────────────
-    # Step summary header
-    # ──────────────────────────────────────────────
-    - id: summary_header
-      name: Summary Header
-      shell: bash
-      run: |
-        {
-          echo "## 🏦 Vault Contract Bytecode Check"
-          echo ""
-          echo "| Contract | Address | Bytecode |"
-          echo "|---|---|---|"
-        } >> "$GITHUB_STEP_SUMMARY"
-
-    # ──────────────────────────────────────────────
     # Detect vault mode: prerequisite checks + bytecode comparison
     # ──────────────────────────────────────────────
     - id: detect_vault_mode
@@ -112,8 +98,13 @@ runs:
           echo "    3. Update oracle_address in config/tresr.yaml under blockchain.avalanche.testnet"
           echo "    4. Re-run this workflow — the vault will then be deployed automatically"
           echo "::warning::Vault deploy skipped — missing prerequisite addresses: ${MISSING[*]}. See step log for next steps."
-          printf "| TresrVault | \`—\` | ⏭️ Prereqs missing: %s |\n" \
-            "${MISSING[*]}" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## 🏦 Vault Contract Bytecode Check"
+            echo ""
+            echo "| Contract | Address | Bytecode |"
+            echo "|---|---|---|"
+            printf "| TresrVault | \`—\` | ⏭️ Prereqs missing: %s |\n" "${MISSING[*]}"
+          } >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
 
@@ -126,8 +117,13 @@ runs:
           echo "deployed=true" >> "$GITHUB_OUTPUT"
           echo "🆕 Vault mode: FRESH DEPLOY"
           echo "   No existing proxy found in config — deploying implementation + proxy for the first time."
-          printf "| TresrVault | \`—\` | 🆕 First deploy |\n" \
-            >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## 🏦 Vault Contract Bytecode Check"
+            echo ""
+            echo "| Contract | Address | Bytecode |"
+            echo "|---|---|---|"
+            echo "| TresrVault | \`—\` | 🆕 First deploy |"
+          } >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
 
@@ -148,8 +144,13 @@ runs:
           echo "::warning::Could not read implementation slot — treating as first deploy"
           echo "mode=deploy"   >> "$GITHUB_OUTPUT"
           echo "deployed=true" >> "$GITHUB_OUTPUT"
-          printf "| TresrVault (impl) | \`—\` | 🆕 Slot unreadable — first deploy |\n" \
-            >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## 🏦 Vault Contract Bytecode Check"
+            echo ""
+            echo "| Contract | Address | Bytecode |"
+            echo "|---|---|---|"
+            echo "| TresrVault (impl) | \`—\` | 🆕 Slot unreadable — first deploy |"
+          } >> "$GITHUB_STEP_SUMMARY"
           exit 0
         fi
 
@@ -186,8 +187,22 @@ runs:
         DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
         VAULT_PROXY_ADDRESS: ${{ inputs.vault-address }}
         IMPL_CHANGED: ${{ steps.check_vault_impl.outputs.changed }}
+        VAULT_CHECK_ROW: ${{ steps.check_vault_impl.outputs.row }}
       run: |
         cd contracts
+
+        # ──────────────────────────────────────────────
+        # Write the complete vault bytecode check table in ONE block.
+        # Including the row from check_vault_impl ensures the table is
+        # contiguous — split writes across steps break GitHub GFM tables.
+        # ──────────────────────────────────────────────
+        {
+          echo "## 🏦 Vault Contract Bytecode Check"
+          echo ""
+          echo "| Contract | Address | Bytecode |"
+          echo "|---|---|---|"
+          echo "$VAULT_CHECK_ROW"
+        } >> "$GITHUB_STEP_SUMMARY"
 
         if [[ "$IMPL_CHANGED" != "true" ]]; then
           echo "✅ Vault implementation matches on-chain — no upgrade needed"

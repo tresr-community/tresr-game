@@ -138,15 +138,30 @@ runs:
           --json number \
           --jq '.[0].number' 2>/dev/null || echo "")
 
+        ZERO="0x0000000000000000000000000000000000000000"
+        _fmt() {
+          local val="$1"
+          if [[ -z "$val" || "$val" == "$ZERO" || "$val" == "null" ]]; then
+            echo "_not deployed_"
+          else
+            echo "\`${val}\`"
+          fi
+        }
+
+        ORACLE_FMT=$(_fmt "${{ inputs.oracle-address }}")
+        TOKEN_FMT=$(_fmt  "${{ inputs.token-address }}")
+        VAULT_FMT=$(_fmt  "${{ inputs.vault-address }}")
+        FAUCET_FMT=$(_fmt "${{ inputs.faucet-address }}")
+
         BODY=$(cat <<EOF
         Auto-generated after ${{ inputs.environment }} contract deployment.
 
         | Address | Value |
         |---------|-------|
-        | Oracle | \`${{ inputs.oracle-address }}\` |
-        | Token | \`${{ inputs.token-address }}\` |
-        | Vault | \`${{ inputs.vault-address }}\` |
-        | Faucet | \`${{ inputs.faucet-address }}\` |
+        | Oracle  | ${ORACLE_FMT} |
+        | Token   | ${TOKEN_FMT} |
+        | Vault   | ${VAULT_FMT} |
+        | Faucet  | ${FAUCET_FMT} |
         EOF
         )
 

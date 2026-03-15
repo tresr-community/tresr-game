@@ -43,20 +43,6 @@ runs:
   using: composite
   steps:
     # ──────────────────────────────────────────────
-    # Step summary header
-    # ──────────────────────────────────────────────
-    - id: summary_header
-      name: Summary Header
-      shell: bash
-      run: |
-        {
-          echo "## 📦 Token Contract Bytecode Check"
-          echo ""
-          echo "| Contract | Address | Bytecode |"
-          echo "|---|---|---|"
-        } >> "$GITHUB_STEP_SUMMARY"
-
-    # ──────────────────────────────────────────────
     # Per-contract bytecode checks
     # ──────────────────────────────────────────────
     - id: check_token
@@ -88,8 +74,25 @@ runs:
         DEPLOYER_PRIVATE_KEY: ${{ inputs.deployer-private-key }}
         TOKEN_CHANGED: ${{ steps.check_token.outputs.changed }}
         FAUCET_CHANGED: ${{ steps.check_faucet.outputs.changed }}
+        TOKEN_ROW: ${{ steps.check_token.outputs.row }}
+        FAUCET_ROW: ${{ steps.check_faucet.outputs.row }}
       run: |
         cd contracts
+
+        # ──────────────────────────────────────────────
+        # Write complete token bytecode check table in ONE contiguous block.
+        # GitHub GFM requires header+separator+rows to be adjacent — split
+        # writes across steps break the table into raw pipe-text.
+        # ──────────────────────────────────────────────
+        {
+          echo "## 📦 Token Contract Bytecode Check"
+          echo ""
+          echo "| Contract | Address | Bytecode |"
+          echo "|---|---|---|"
+          echo "$TOKEN_ROW"
+          echo "$FAUCET_ROW"
+        } >> "$GITHUB_STEP_SUMMARY"
+
 
         # ──────────────────────────────────────────────
         # All contracts match on-chain → skip
