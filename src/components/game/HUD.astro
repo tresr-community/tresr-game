@@ -216,8 +216,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
   import {gameActions, gameState} from "@/lib/game/state";
   import {config} from "@/lib/config/client";
   import {initSatellite} from "@junobuild/core";
-  import {functions as satelliteApi} from "@/declarations/satellite/satellite.api";
-  const {getErrors} = satelliteApi;
+  import {getErrors} from "@/lib/satellite/satellite-api";
 
   // Show admin icon if the caller is an admin (canister confirms via get_errors).
   // initSatellite() must be called before any satellite API. It is idempotent,
