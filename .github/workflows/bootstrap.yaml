@@ -128,7 +128,7 @@ jobs:
           echo ""
           echo "✅ All addresses are zero — safe to proceed"
 
-      # ── Setup (1×) ────────────────────────────────────────────────────
+      # ── Setup ────────────────────────────────────────────────────
       - id: setup_devenv
         name: Setup Devenv
         uses: ./.github/actions/setup-devenv
@@ -234,9 +234,14 @@ jobs:
       - id: deploy_juno_pass2
         name: Deploy Juno
         if: steps.update_config.outputs.changed == 'true'
-        shell: devenv shell --quiet bash -- -e {0}
-        run: |
-          juno deploy             --satellite-id "${{ vars.VITE_SATELLITE_ID }}"
+        uses: ./.github/actions/deploy-juno
+        with:
+          mode: ${{ inputs.environment == 'Mainnet' && 'production' || 'staging' }}
+          satellite-id: ${{ vars.VITE_SATELLITE_ID }}
+          orbiter-id: ${{ vars.VITE_ORBITER_ID }}
+          astro-site-url: ${{ vars.VITE_ASTRO_SITE_URL }}
+          siwa-provider-id: ${{ vars.VITE_SIWA_PROVIDER_ID }}
+          walletconnect-project-id: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
 
       # ── Summary ───────────────────────────────────────────────────────
       - id: summarize_bootstrap
