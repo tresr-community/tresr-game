@@ -23631,7 +23631,7 @@ export default defineConfig({
       provider: fontProviders.google(),
       // Default included:
       // weights: [400] ,
-      // styles: ["normal", "italics"],
+      // styles: ["normal", "italic"],
       // subsets: ["latin"],
       // fallbacks: ["sans-serif"],
       // formats: ["woff2"],
@@ -65800,6 +65800,12 @@ Multiple calls to `cache.set()` within a single request are merged:
 
 Middleware, layouts, content loaders, and page code can each contribute cache directives independently.
 
+### Dev mode behavior
+
+[Section titled “Dev mode behavior”](#dev-mode-behavior)
+
+In dev mode, the cache API is available so that route code does not need conditional checks, but no actual caching occurs. `cache.enabled` is `false`, and `cache.set()` and `cache.invalidate()` are no-ops. To test your caching locally, build then preview your site.
+
 ## Using with live content collections
 
 [Section titled “Using with live content collections”](#using-with-live-content-collections)
@@ -66406,12 +66412,6 @@ Thrown when `cache.invalidate()` is called without a configured cache provider. 
 [Section titled “CacheProviderNotFound”](#cacheprovidernotfound)
 
 Thrown at build time when the configured cache provider cannot be resolved. This typically means the package is not installed or the import path is incorrect.
-
-## Dev mode behavior
-
-[Section titled “Dev mode behavior”](#dev-mode-behavior)
-
-In dev mode, the cache API is available so that route code does not need conditional checks, but no actual caching occurs. `cache.enabled` is `false`, and `cache.set()` and `cache.invalidate()` are no-ops.
 
 ## Further reading
 
@@ -78232,7 +78232,7 @@ Here, you will connect your GitHub repository to Netlify. Netlify will use that 
 
 We’ll use…
 
-This tutorial will use **Netlify**, but you are welcome to use your preferred hosting service for deploying your site to the internet.
+This tutorial will use **Netlify**, but you are welcome to use your preferred hosting service for [deploying your Astro site to the internet](/en/guides/deploy/).
 
 ## Create a new Netlify site
 

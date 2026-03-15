@@ -235,11 +235,8 @@ jobs:
         name: Deploy Juno
         if: steps.update_config.outputs.changed == 'true'
         shell: devenv shell --quiet bash -- -e {0}
-        env:
-          JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
         run: |
-          JUNO_TOKEN="$JUNO_TOKEN" juno deploy \
-            --satellite-id "${{ vars.VITE_SATELLITE_ID }}"
+          juno deploy             --satellite-id "${{ vars.VITE_SATELLITE_ID }}"
 
       # ── Summary ───────────────────────────────────────────────────────
       - id: summarize_bootstrap

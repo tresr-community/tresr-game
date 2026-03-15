@@ -13,7 +13,7 @@
         "@dfinity/identity": "3.4.3",
         "@dfinity/principal": "3.4.3",
         "@junobuild/analytics": "0.2.11",
-        "@junobuild/cli": "0.13.14",
+        "@junobuild/cli": "0.14.0",
         "@junobuild/core": "5.2.1",
         "@reown/appkit": "1.8.19",
         "@reown/appkit-adapter-wagmi": "1.8.19",
@@ -25,7 +25,7 @@
         "clsx": "2.1.1",
         "ic-siwa": "0.2.5",
         "js-yaml": "4.1.1",
-        "nanostores": "1.1.1",
+        "nanostores": "1.2.0",
         "phaser": "3.90.0",
         "rehype-stringify": "10.0.1",
         "remark-breaks": "4.0.0",
@@ -339,9 +339,9 @@
 
     "@junobuild/cdn": ["@junobuild/cdn@2.3.0", "", { "peerDependencies": { "@dfinity/utils": "^4.1", "@icp-sdk/canisters": "^3.3", "@icp-sdk/core": "^5", "@junobuild/config": "*", "@junobuild/ic-client": "^8", "@junobuild/storage": "^2.3", "semver": "7.*" } }, "sha512-w+B1YvkSwYclBo/67Jyo/mUmTmEodE9ZJyg1LDja0kcDZLSEK3SQC2Rb3T0yS7E5SMDlA/mFzsSAycGRKzLVgw=="],
 
-    "@junobuild/cli": ["@junobuild/cli@0.13.14", "", { "dependencies": { "@dfinity/utils": "^4.1.0", "@dfinity/zod-schemas": "^3.0.2", "@icp-sdk/canisters": "^3.3.0", "@icp-sdk/core": "^5.0.0", "@junobuild/admin": "^4.1.0", "@junobuild/cdn": "^2.3.0", "@junobuild/cli-tools": "^0.10.2", "@junobuild/config": "^2.11.0", "@junobuild/config-loader": "^0.4.8", "@junobuild/core": "^5.2.0", "@junobuild/did-tools": "^0.3.10", "@junobuild/ic-client": "^8.0.0", "@junobuild/storage": "^2.3.0", "@junobuild/utils": "^0.2.6", "chokidar": "^4.0.3", "conf": "^14.0.0", "open": "^11.0.0", "ora": "^9.0.0", "portfinder": "^1.0.38", "prompts": "^2.4.2", "semver": "^7.7.3", "terminal-link": "^5.0.0", "zod": "^4.3.5" }, "bin": { "juno": "dist/index.js" } }, "sha512-7kzxlZCbP0omh3RoIGtYagpOWIxpm1c/cqJlFXVynXPg3BqPYA8P/7cupInClKjbjzIPH1xValrmWIoLMvB5gA=="],
+    "@junobuild/cli": ["@junobuild/cli@0.14.0", "", { "dependencies": { "@dfinity/utils": "^4.1.0", "@icp-sdk/canisters": "^3.3.0", "@icp-sdk/core": "^5.0.0", "@junobuild/admin": "^4.2.0", "@junobuild/cdn": "^2.3.0", "@junobuild/cli-tools": "^0.12.2", "@junobuild/config": "^2.14.1", "@junobuild/config-loader": "^0.4.8", "@junobuild/core": "^5.2.1", "@junobuild/functions-tools": "^0.5.2", "@junobuild/ic-client": "^8.0.1", "@junobuild/schema": "^1.1.0", "@junobuild/storage": "^2.3.0", "@junobuild/utils": "^0.3.0", "chokidar": "^4.0.3", "conf": "^14.0.0", "open": "^11.0.0", "ora": "^9.0.0", "portfinder": "^1.0.38", "prompts": "^2.4.2", "semver": "^7.7.3", "terminal-link": "^5.0.0" }, "bin": { "juno": "dist/index.js" } }, "sha512-JS1RsVnx8frEzaXYmdvbq9QHeEveRqMT6o6B58hNJRAqoilFoXWzmX05AAwCFMdmaSIn5W/wpsg+CagA6Wnayg=="],
 
-    "@junobuild/cli-tools": ["@junobuild/cli-tools@0.10.2", "", { "dependencies": { "file-type": "^21.1.1", "listr2": "^9.0.5", "mime-types": "^3.0.2", "minimatch": "^10.1.2" }, "peerDependencies": { "@dfinity/utils": "^4.1", "@junobuild/cdn": "^2.3", "@junobuild/config": "^2.7", "@junobuild/storage": "^2.3", "esbuild": "^0.27.0", "ora": "^9" } }, "sha512-AyQYdSIqxIj3RSF422l/4vN8fzsbw3RwwWuv+/KV/YUrZ7xllBNjsxWTSIjY3XahbXmPbBibBlRYFAjfc8wWMg=="],
+    "@junobuild/cli-tools": ["@junobuild/cli-tools@0.12.2", "", { "dependencies": { "file-type": "^21.1.1", "listr2": "^9.0.5", "mime-types": "^3.0.2", "minimatch": "^10.1.2" }, "peerDependencies": { "@dfinity/utils": "^4.1", "@junobuild/cdn": "^2.3", "@junobuild/config": "^2.14", "@junobuild/functions-tools": "^0.5.2", "@junobuild/storage": "^2.3", "esbuild": "^0.27.0", "ora": "^9" } }, "sha512-YkAxYfAUlQ/s+8JPcaTH7zgXkiyz/hZG6723B56wM9lOR4Dsnr9eYdEwMdoL7VlO1mew8kAIdCKXdTd+y04kAA=="],
 
     "@junobuild/config": ["@junobuild/config@2.14.1", "", { "peerDependencies": { "@junobuild/schema": "^1.1", "zod": "^4.3" } }, "sha512-4dmMKIXQtumjZ0ZpwLktgk5+BBffNMH++Q9ZcMnILY07oQsBZEvoiUJtDnp7ACTYSmZU0hisEzg2y9kjuZQEsA=="],
 
@@ -349,9 +349,11 @@
 
     "@junobuild/core": ["@junobuild/core@5.2.1", "", { "dependencies": { "@junobuild/auth": "^4", "@junobuild/errors": "*", "@junobuild/ic-client": "^8", "@junobuild/storage": "^2.3", "@junobuild/utils": "*" }, "peerDependencies": { "@dfinity/utils": "^4.1", "@icp-sdk/auth": "^5", "@icp-sdk/core": "^5" } }, "sha512-grqxh+/7GhSM72s5SkZKKtUq27BlzcNkmG+hO8n4D9RLGyZSveBplCnWJp8YK2ZOnVBW71PP502kroMy2g3Ahw=="],
 
-    "@junobuild/did-tools": ["@junobuild/did-tools@0.3.10", "", { "peerDependencies": { "@babel/core": "7.28.4", "@babel/parser": "7.28.4", "@babel/plugin-transform-modules-commonjs": "7.27.1", "@babel/preset-typescript": "7.27.1", "@babel/traverse": "7.28.4", "@babel/types": "7.28.4", "@dfinity/utils": "^4.1" } }, "sha512-3waVJ9fGgizy5sgekOZ2wIoszL6ZXKbnTQ9N2Wti410iXEj0zfVWRMKXmIMb0yiznI3hfveFrTyoJm3RHNy2YA=="],
-
     "@junobuild/errors": ["@junobuild/errors@0.2.3", "", {}, "sha512-uyfpITxVCDfxcALXi1CVxrwSK8yoVPZW8pgzf5fD1c2Vp1k7B0AIs/s4usW8SLR1CVvjOzf9m/jtVeFe6kuOtQ=="],
+
+    "@junobuild/functions": ["@junobuild/functions@0.7.1", "", { "peerDependencies": { "@dfinity/utils": "^4.1", "@icp-sdk/core": "^5", "@junobuild/schema": "^1.1", "zod": "^4.3" } }, "sha512-dsQuKQJnwfOklIETaqCesZlvsyBfPgaU+0gL5ukeKR4cjFI/Lyhr93wdI29WjzKosK/O3/ZioSRtUfHNTXRl9g=="],
+
+    "@junobuild/functions-tools": ["@junobuild/functions-tools@0.5.2", "", { "peerDependencies": { "@babel/core": "7.28.4", "@babel/parser": "7.28.4", "@babel/plugin-transform-modules-commonjs": "7.27.1", "@babel/preset-typescript": "7.27.1", "@babel/traverse": "7.28.4", "@babel/types": "7.28.4", "@dfinity/utils": "^4.1", "@junobuild/functions": "^0.7", "@junobuild/schema": "^1.1", "@junobuild/utils": "^0.3", "zod": "^4.3" } }, "sha512-lCEW9vH3QGrSFo127+aQdRlsFgDIvWiuaAiEKNLSk+sAN2sZ/U94vG+hIuWHfnCx+xirlmlg/DgNmd9KoLD1SA=="],
 
     "@junobuild/ic-client": ["@junobuild/ic-client@8.0.1", "", { "peerDependencies": { "@dfinity/utils": "^4.1", "@icp-sdk/core": "^5", "idb-keyval": "^6.2.2" } }, "sha512-LnT3LQy5sugcQfOh1hNEdu8BzxDBvYXLxCMwG89eU2k/PkEJGNgS5bWio/FyAQoRoCFXth2uhXgEnQMMauQPUw=="],
 
@@ -361,7 +363,7 @@
 
     "@junobuild/storage": ["@junobuild/storage@2.3.0", "", { "peerDependencies": { "@dfinity/utils": "^4.1", "@icp-sdk/core": "^5", "@junobuild/ic-client": "^8", "@junobuild/utils": "*" } }, "sha512-12ka/OKlqAD1CZ90dJzKW978LRPUVlgezhammO4WoIT1hkHJoguAO5Avu7vRTW36qJSKsoBHepj+l/W5ch9WdQ=="],
 
-    "@junobuild/utils": ["@junobuild/utils@0.2.6", "", { "peerDependencies": { "@dfinity/utils": "^4.1" } }, "sha512-Xt9AtEvyU3UFVF3v9mQ64GE77zDhSxRzNsFWawoskGBUMWIOud8C7cyjJlv0A6A+qtNVN1vxE7t50/csG/UDXA=="],
+    "@junobuild/utils": ["@junobuild/utils@0.3.0", "", { "peerDependencies": { "@dfinity/utils": "^4.1" } }, "sha512-mFOGBLqzR304gryvYkKLlXXVHaJbeEINRszGrAkow2nyVaKWnvTvkgC2xVuYfKFIg24NzoR1VQiPkuH1IhPHxQ=="],
 
     "@junobuild/vite-plugin": ["@junobuild/vite-plugin@4.7.1", "", { "dependencies": { "@junobuild/plugin-tools": "*" }, "peerDependencies": { "vite": ">=4.0.0" } }, "sha512-UwB4eCpP24SRxwGhlVv/I5SX7ggSbL1kOapNs9eq6kczQxUN4ZzAuhoOEmMd023Im18HK7SgBP759jQ/gqDWtg=="],
 
@@ -1433,7 +1435,7 @@
 
     "nanoid": ["nanoid@3.3.11", "", { "bin": { "nanoid": "bin/nanoid.cjs" } }, "sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w=="],
 
-    "nanostores": ["nanostores@1.1.1", "", {}, "sha512-EYJqS25r2iBeTtGQCHidXl1VfZ1jXM7Q04zXJOrMlxVVmD0ptxJaNux92n1mJ7c5lN3zTq12MhH/8x59nP+qmg=="],
+    "nanostores": ["nanostores@1.2.0", "", {}, "sha512-F0wCzbsH80G7XXo0Jd9/AVQC7ouWY6idUCTnMwW5t/Rv9W8qmO6endavDwg7TNp5GbugwSukFMVZqzPSrSMndg=="],
 
     "natural-compare": ["natural-compare@1.4.0", "", {}, "sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw=="],
 
@@ -1991,12 +1993,6 @@
 
     "@junobuild/analytics/nanoid": ["nanoid@5.1.6", "", { "bin": { "nanoid": "bin/nanoid.js" } }, "sha512-c7+7RQ+dMB5dPwwCp4ee1/iV/q2P6aK1mTZcfr1BTuVlyW9hJYiMPybJCcnBlQtuSmTIWNeazm/zqNoZSSElBg=="],
 
-    "@junobuild/cli/@junobuild/config": ["@junobuild/config@2.11.0", "", { "peerDependencies": { "@dfinity/zod-schemas": "^3", "zod": "^4" } }, "sha512-APzzQ8a8N52ZRGFD3VPIzhC/Ud7CvuYPFJX2ZR2ypaxPjhS2Jriz5aWRvQOE9RrEryHQXk2CQwzHNmzH4jcbkQ=="],
-
-    "@junobuild/cli/@junobuild/core": ["@junobuild/core@5.2.0", "", { "dependencies": { "@junobuild/auth": "^4", "@junobuild/errors": "*", "@junobuild/ic-client": "^8", "@junobuild/storage": "^2.3", "@junobuild/utils": "*" }, "peerDependencies": { "@dfinity/utils": "^4.1", "@icp-sdk/auth": "^5", "@icp-sdk/core": "^5" } }, "sha512-QHZbuDL4n5eLJkRopKxZNe5AZ+0NEHY2EVydW1u3Yp7+lpwFt3y+11gb6dcxCWvKLdJYOdLo0Qbe34LAQ5GJHA=="],
-
-    "@junobuild/core/@junobuild/utils": ["@junobuild/utils@0.3.0", "", { "peerDependencies": { "@dfinity/utils": "^4.1" } }, "sha512-mFOGBLqzR304gryvYkKLlXXVHaJbeEINRszGrAkow2nyVaKWnvTvkgC2xVuYfKFIg24NzoR1VQiPkuH1IhPHxQ=="],
-
     "@junobuild/plugin-tools/@junobuild/config": ["@junobuild/config@2.11.0", "", { "peerDependencies": { "@dfinity/zod-schemas": "^3", "zod": "^4" } }, "sha512-APzzQ8a8N52ZRGFD3VPIzhC/Ud7CvuYPFJX2ZR2ypaxPjhS2Jriz5aWRvQOE9RrEryHQXk2CQwzHNmzH4jcbkQ=="],
 
     "@modelcontextprotocol/sdk/zod": ["zod@3.25.76", "", {}, "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="],
@@ -2176,8 +2172,6 @@
     "@coinbase/cdp-sdk/viem/@noble/curves": ["@noble/curves@1.9.1", "", { "dependencies": { "@noble/hashes": "1.8.0" } }, "sha512-k11yZxZg+t+gWvBbIswW0yoJlu8cHOC7dhunwOzoWH/mXGBiYyR4YY6hAEK/3EUs4UpB8la1RfdRpeGsFHkWsA=="],
 
     "@coinbase/cdp-sdk/viem/abitype": ["abitype@1.2.3", "", { "peerDependencies": { "typescript": ">=5.0.4", "zod": "^3.22.0 || ^4.0.0" }, "optionalPeers": ["typescript", "zod"] }, "sha512-Ofer5QUnuUdTFsBRwARMoWKOH1ND5ehwYhJ3OJ/BQO+StkwQjHw0XyVh4vDttzHB7QOFhPHa/o413PJ82gU/Tg=="],
-
-    "@junobuild/cli/@junobuild/core/@junobuild/utils": ["@junobuild/utils@0.3.0", "", { "peerDependencies": { "@dfinity/utils": "^4.1" } }, "sha512-mFOGBLqzR304gryvYkKLlXXVHaJbeEINRszGrAkow2nyVaKWnvTvkgC2xVuYfKFIg24NzoR1VQiPkuH1IhPHxQ=="],
 
     "@reown/appkit-common/viem/@noble/curves": ["@noble/curves@1.9.1", "", { "dependencies": { "@noble/hashes": "1.8.0" } }, "sha512-k11yZxZg+t+gWvBbIswW0yoJlu8cHOC7dhunwOzoWH/mXGBiYyR4YY6hAEK/3EUs4UpB8la1RfdRpeGsFHkWsA=="],
 
