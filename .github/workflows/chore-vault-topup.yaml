@@ -27,7 +27,7 @@ jobs:
       # ----------------------------------------------------------------
       # Setup
       # ----------------------------------------------------------------
-      - id: checkout
+      - id: checkout_repository
         name: Checkout
         uses: actions/checkout@v6
         with:

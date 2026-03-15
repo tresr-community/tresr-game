@@ -2,17 +2,14 @@
 # Name: bootstrap.yaml
 # Description: First-time environment bootstrap
 #
-# Runs ONCE per environment to solve the oracle → vault → config dependency
-# triangle. Executes sequentially in a SINGLE JOB:
+# Runs ONCE per environment to solve the oracle → vault → config dependency triangle.
 #
-#   guard → setup → Juno Pass 1 → Deploy Contracts
-#   → Patch config + Re-deploy Juno (pass 2) → Open config PR
+# Executes sequentially in a SINGLE JOB:
 #
 # Guards:
 #   - Aborts if any contract address in config is already non-zero.
 #   - Manual dispatch only — never triggered automatically.
 #
-# After this runs successfully, use cd-testnet.yaml / cd-mainnet.yaml for all subsequent releases.
 ##################################################
 
 name: Bootstrap Environment
@@ -77,7 +74,8 @@ jobs:
 
     steps:
       # ── Guard ─────────────────────────────────────────────────────────
-      - name: Confirm intent
+      - id: confirm_intent
+        name: Confirm intent
         run: |
           if [[ "${{ inputs.confirm }}" != "ship it" ]]; then
             echo "::error::Confirmation must be exactly \"ship it\". Got: \"${{ inputs.confirm }}\""
@@ -85,7 +83,7 @@ jobs:
           fi
           echo "✅ Confirmation accepted"
 
-      - id: checkout
+      - id: checkout_repository
         name: Checkout Repository
         uses: actions/checkout@v6
         with:
@@ -94,7 +92,8 @@ jobs:
           submodules: recursive
           lfs: true
 
-      - name: Verify all addresses are zero (safe to bootstrap)
+      - id: verify_addresses
+        name: Verify all addresses are zero (safe to bootstrap)
         run: |
           NETWORK=$(echo "${{ inputs.environment }}" | tr '[:upper:]' '[:lower:]')
           CONFIG="config/tresr.yaml"
@@ -140,7 +139,7 @@ jobs:
 
       # ── Juno Deploy — Pass 1 (no vault address yet) ───────────────────
       - id: deploy_juno_pass1
-        name: Deploy Juno (Pass 1)
+        name: Deploy Juno
         uses: ./.github/actions/deploy-juno
         with:
           mode: ${{ inputs.environment == 'Mainnet' && 'production' || 'staging' }}
@@ -150,7 +149,8 @@ jobs:
           siwa-provider-id: ${{ vars.VITE_SIWA_PROVIDER_ID }}
           walletconnect-project-id: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
 
-      - name: Verify Oracle Address
+      - id: verify_oracle
+        name: Verify Oracle Address
         run: |
           ORACLE="${{ steps.deploy_juno_pass1.outputs.oracle_address }}"
           if [[ -z "$ORACLE" ]]; then
@@ -197,7 +197,8 @@ jobs:
           deployer-private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
           snowtrace-api-key: ${{ secrets.SNOWTRACE_API_KEY }}
 
-      - name: Contract Deploy Summary
+      - id: summarize_deploy
+        name: Contract Deploy Summary
         if: always()
         run: |
           {
@@ -213,7 +214,7 @@ jobs:
 
       # ── Patch config + Juno Pass 2 ────────────────────────────────────
       - id: update_config
-        name: Patch tresr.yaml
+        name: Patch Config
         uses: ./.github/actions/update-tresr-config
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -224,12 +225,14 @@ jobs:
           vault-address: ${{ steps.resolve_vault.outputs.vault_address }}
           faucet-address: ${{ steps.resolve_token.outputs.faucet_address }}
 
-      - name: Build (with vault)
+      - id: build_hosting
+        name: Build Juno
         if: steps.update_config.outputs.changed == 'true'
         shell: devenv shell --quiet bash -- -e {0}
         run: bun run build
 
-      - name: Re-deploy Juno with Vault
+      - id: deploy_juno_pass2
+        name: Deploy Juno
         if: steps.update_config.outputs.changed == 'true'
         shell: devenv shell --quiet bash -- -e {0}
         env:
@@ -239,7 +242,8 @@ jobs:
             --satellite-id "${{ vars.VITE_SATELLITE_ID }}"
 
       # ── Summary ───────────────────────────────────────────────────────
-      - name: Bootstrap Complete Summary
+      - id: summarize_bootstrap
+        name: Bootstrap Complete Summary
         run: |
           {
             echo "## 🎉 Bootstrap Complete — ${{ inputs.environment }}"

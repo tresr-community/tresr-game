@@ -62,12 +62,12 @@ jobs:
         name: Setup Juno
         uses: ./.github/actions/setup-juno
 
-      - id: lint
+      - id: run_lint
         name: Lint
         run: |
           bun run lint
 
-      - id: test
+      - id: run_tests
         name: Test
         run: |
           bun test

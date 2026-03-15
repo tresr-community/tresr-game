@@ -35,7 +35,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - id: compare
+    - id: compare_bytecode
       name: Compare ${{ inputs.contract-name }} Bytecode
       shell: devenv shell --quiet bash -- -e {0}
       env:

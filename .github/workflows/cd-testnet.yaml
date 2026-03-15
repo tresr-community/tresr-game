@@ -125,7 +125,8 @@ jobs:
       skip: ${{ steps.compute_version.outputs.skip }}
 
     steps:
-      - name: Confirm intent
+      - id: confirm_intent
+        name: Confirm intent
         run: |
           if [[ "${{ inputs.confirm }}" != "ship it" ]]; then
             echo "::error::Confirmation must be exactly \"ship it\". Got: \"${{ inputs.confirm }}\""

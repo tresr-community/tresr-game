@@ -128,7 +128,8 @@ jobs:
       tag: ${{ steps.validate_tag.outputs.tag }}
 
     steps:
-      - name: Confirm intent
+      - id: confirm_intent
+        name: Confirm intent
         run: |
           if [[ "${{ inputs.confirm }}" != "ship it" ]]; then
             echo "::error::Confirmation must be exactly \"ship it\". Got: \"${{ inputs.confirm }}\""
