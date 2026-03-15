@@ -2407,14 +2407,14 @@ mod replay_tests {
 
     #[test]
     fn test_replay_plausibility_sub_frame_gap() {
-        // Two events 10ms apart (below 16ms minimum)
+        // Two events 5ms apart (below the configured min_action_gap_ms = 10)
         let actions: Vec<GameAction> = vec![
             GameAction {
                 t: 0,
                 a: "jump".to_string(),
             },
             GameAction {
-                t: 10,
+                t: 5,
                 a: "move_right".to_string(),
             },
         ];
