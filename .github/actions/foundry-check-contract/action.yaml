@@ -27,10 +27,10 @@ inputs:
 outputs:
   changed:
     description: "'true' if bytecode differs or no on-chain code exists"
-    value: ${{ steps.compare.outputs.changed }}
+    value: ${{ steps.compare_bytecode.outputs.changed }}
   row:
     description: "Formatted markdown table row for this contract's check result"
-    value: ${{ steps.compare.outputs.row }}
+    value: ${{ steps.compare_bytecode.outputs.row }}
 
 runs:
   using: composite
