@@ -50,10 +50,9 @@ runs:
         # Fetch the latest remote HEAD for the base branch
         git fetch origin "${BASE_REF}"
 
-        # We don't care about LFS smudged files blocking the flow.
-        # Bypass Git LFS filters explicitly to prevent pointer mismatch errors
-        git -c filter.lfs.smudge= -c filter.lfs.clean= -c filter.lfs.process= -c filter.lfs.required=false reset --hard "origin/${BASE_REF}"
-        git -c filter.lfs.smudge= -c filter.lfs.clean= -c filter.lfs.process= -c filter.lfs.required=false checkout -B "${BRANCH}"
+        # Reset to the base ref
+        git reset --hard "origin/${BASE_REF}"
+        git checkout -B "${BRANCH}"
 
     - id: update_yaml
       name: Update tresr.yaml
