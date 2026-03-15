@@ -106,7 +106,7 @@ runs:
           ZERO="0x0000000000000000000000000000000000000000"
           if [[ -n "$ORACLE_OVERRIDE" && "$ORACLE_OVERRIDE" != "$ZERO" ]]; then
             echo "ORACLE_ADDRESS=${ORACLE_OVERRIDE}"
-            echo "::notice::Oracle address overridden via input: ${ORACLE_OVERRIDE}"
+            echo "::notice::Oracle address overridden via input: ${ORACLE_OVERRIDE}" >&2
           else
             echo "ORACLE_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.oracle_address" config/tresr.yaml)"
           fi

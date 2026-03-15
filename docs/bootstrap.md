@@ -84,21 +84,27 @@ _That's it. The pipeline takes ~25–40 minutes to complete._
 guard
   └─ verify all addresses are 0x0, confirmation is "bootstrap"
 
-setup-environment
-  └─ warm devenv / Nix cache (reuses CI cache action)
+check-cache
+  └─ looks up devenv / Nix cache
 
-deploy-juno  [Pass 1 — no vault yet]
+setup-environment  [if cache miss]
+  └─ setup devenv / Nix cache
+
+deploy-juno-testnet / deploy-juno-mainnet  [Pass 1 — no vault yet]
   ├─ build frontend
   ├─ deploy functions to satellite
   ├─ deploy hosting to satellite
   └─ call get_oracle_address on satellite → captures oracle
 
-deploy-contracts  [needs: deploy-juno.oracle_address]
+obtain-oracle  [needs: deploy-juno-*]
+  └─ consolidates oracle address from Pass 1
+
+deploy-contracts  [needs: obtain-oracle]
   ├─ foundry-deploy-setup (oracle injected directly — no config read)
   ├─ foundry-resolve-token → deploys Token + Faucet (testnet only)
   └─ foundry-resolve-vault → deploys Vault with oracle ✅
 
-update-config-and-redeploy  [needs: deploy-juno, deploy-contracts]
+update-and-redeploy  [needs: obtain-oracle, deploy-contracts]
   ├─ update-tresr-config → patches tresr.yaml, opens config PR
   ├─ build frontend (now includes vault address)
   └─ juno deploy → re-deploys hosting (Pass 2 — with vault) ✅
