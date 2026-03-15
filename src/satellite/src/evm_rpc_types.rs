@@ -1,11 +1,13 @@
-//! Vendored types from `evm-rpc-canister-types` v5.0.1
+//! Vendored types from `evm-rpc-canister-types` — synced with live canister
+//! `7hfb6-caaaa-aaaar-qadga-cai` Candid interface (2025).
 //!
 //! The upstream crate depends on `ic-cdk ^0.14` which conflicts with our
 //! `ic-cdk 0.19`. The only runtime dependency is the inter-canister call
 //! mechanism, which changed from `call_with_payment128` (0.14) to the builder
-//! `Call` API (0.19). All Candid types are identical.
+//! `Call` API (0.19). All Candid types are kept in sync with the live canister
+//! Candid spec at `candid/evm_rpc.did` in the upstream repository.
 //!
-//! Source: <https://github.com/letmejustputthishere/chain-fusion-starter>
+//! Source: <https://github.com/internet-computer-protocol/evm-rpc-canister>
 //! License: Apache-2.0
 
 #![allow(non_snake_case, clippy::large_enum_variant, dead_code)]
@@ -221,6 +223,22 @@ pub enum RequestCostResult {
     Err(RpcError),
 }
 
+/// Result for a single-provider `multi_request` / `json_request` call.
+/// Mirrors `JsonRequestResult` in the upstream Candid spec.
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub enum JsonRequestResult {
+    Ok(String),
+    Err(RpcError),
+}
+
+/// Result for the multi-provider `multi_request` endpoint.
+/// Mirrors `MultiJsonRequestResult` in the upstream Candid spec.
+#[derive(CandidType, Deserialize, Debug, Clone)]
+pub enum MultiJsonRequestResult {
+    Consistent(JsonRequestResult),
+    Inconsistent(Vec<(RpcService, JsonRequestResult)>),
+}
+
 // ============================================================================
 // Structs
 // ============================================================================
@@ -303,6 +321,8 @@ pub struct LogEntry {
 pub struct TransactionReceipt {
     pub to: Option<String>,
     pub status: Option<candid::Nat>,
+    /// Pre-EIP-658 state root (None for EIP-658 chains that use `status`).
+    pub root: Option<String>,
     pub transactionHash: String,
     pub blockNumber: candid::Nat,
     pub from: String,
@@ -314,6 +334,8 @@ pub struct TransactionReceipt {
     pub logsBloom: String,
     pub contractAddress: Option<String>,
     pub gasUsed: candid::Nat,
+    /// Total gas used in the block up to and including this transaction.
+    pub cumulativeGasUsed: candid::Nat,
 }
 
 // ============================================================================
@@ -401,8 +423,32 @@ impl EvmRpcCanister {
             .map_err(|e| format!("{e:?}"))
     }
 
-    // -- single-provider raw JSON-RPC request --------------------------------
+    // -- multi-provider raw JSON-RPC request (preferred) --------------------
 
+    /// Raw JSON-RPC request sent to multiple providers for consensus.
+    /// This is the current recommended endpoint (replaces the deprecated
+    /// single-provider `request` method).
+    pub async fn multi_request(
+        &self,
+        arg0: RpcServices,
+        arg1: Option<RpcConfig>,
+        arg2: String,
+        cycles: u128,
+    ) -> CanisterCallResult<(MultiJsonRequestResult,)> {
+        Call::unbounded_wait(self.0, "multi_request")
+            .with_args(&(arg0, arg1, arg2))
+            .with_cycles(cycles)
+            .await
+            .map_err(|e| format!("{e:?}"))?
+            .candid::<(MultiJsonRequestResult,)>()
+            .map_err(|e| format!("{e:?}"))
+    }
+
+    // -- single-provider raw JSON-RPC request (DEPRECATED) ------------------
+
+    /// DEPRECATED: Use `multi_request` instead.
+    /// Kept for reference; no longer called from production code.
+    #[allow(dead_code)]
     pub async fn request(
         &self,
         arg0: RpcService,

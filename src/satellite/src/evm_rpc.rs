@@ -2,9 +2,9 @@
 
 use crate::evm_rpc_types::{
     BlockTag, CallArgs, CallResult as EvmCallResult, EvmRpcCanister, GetTransactionCountArgs,
-    GetTransactionCountResult, GetTransactionReceiptResult, MultiCallResult,
-    MultiGetTransactionCountResult, MultiGetTransactionReceiptResult, RequestResult, RpcApi,
-    RpcConfig, RpcService, RpcServices, TransactionRequest,
+    GetTransactionCountResult, GetTransactionReceiptResult, JsonRequestResult, MultiCallResult,
+    MultiGetTransactionCountResult, MultiGetTransactionReceiptResult, MultiJsonRequestResult,
+    RpcApi, RpcConfig, RpcServices, TransactionRequest,
 };
 use candid::Principal;
 use ic_cdk::management_canister::{
@@ -93,7 +93,8 @@ fn default_rpc_config() -> Option<RpcConfig> {
 // Helper: raw JSON-RPC via multi_request (for methods without typed bindings)
 // ---------------------------------------------------------------------------
 
-/// Send a raw JSON-RPC call through the EVM RPC canister's `request` method.
+/// Send a raw JSON-RPC call through the EVM RPC canister's `multi_request` method.
+/// Uses all configured Avalanche RPC URLs for multi-provider consensus.
 /// Used for methods that don't have typed bindings in evm-rpc-canister-types
 /// (e.g. eth_getTransactionByHash, eth_gasPrice, eth_estimateGas).
 async fn json_rpc_request(method: &str, params: &str) -> Result<String, String> {
@@ -104,18 +105,29 @@ async fn json_rpc_request(method: &str, params: &str) -> Result<String, String> 
         method, params
     );
 
-    let service = RpcService::Custom(RpcApi {
-        url: crate::config::AVALANCHE_RPC_URLS[0].to_string(),
-        headers: None,
-    });
-
     let result = canister
-        .request(service, json_body, 2048, cycles_for_call(2048))
+        .multi_request(
+            avalanche_rpc_services(),
+            default_rpc_config(),
+            json_body,
+            cycles_for_call(2048),
+        )
         .await?;
 
     match result.0 {
-        RequestResult::Ok(body) => Ok(body),
-        RequestResult::Err(e) => Err(format!("RPC request error: {:?}", e)),
+        MultiJsonRequestResult::Consistent(JsonRequestResult::Ok(body)) => Ok(body),
+        MultiJsonRequestResult::Consistent(JsonRequestResult::Err(e)) => {
+            Err(format!("RPC request error: {:?}", e))
+        }
+        MultiJsonRequestResult::Inconsistent(results) => Err(format!(
+            "Inconsistent JSON-RPC results from {} providers: {:?}",
+            results.len(),
+            results
+                .into_iter()
+                .map(|(svc, r)| format!("{:?}: {:?}", svc, r))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )),
     }
 }
 
