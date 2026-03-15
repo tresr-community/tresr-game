@@ -279,7 +279,8 @@ export class Enemy extends BaseEntity {
     // Clamp x to walkable area (behaviors handle their own groundY clamping)
     // If X was clamped, zero the X velocity so the enemy doesn't oscillate
     // against the wall every frame (classic boundary-bounce stuck bug).
-    if (this._walkableArea) {
+    // Certain AI states (like Passive walking off screen) can opt out of this strict clamp.
+    if (this._walkableArea && !result.ignoreHorizontalBounds) {
       const clamped = this._walkableArea.clampToWalkable(this.x, this.groundY);
       if (clamped.x !== this.x) {
         this.setVelocityX(0);

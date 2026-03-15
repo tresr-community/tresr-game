@@ -191,9 +191,9 @@ jobs:
     uses: ./.github/workflows/cd-juno-mainnet.yaml
     secrets: inherit
 
-  # Aggregate oracle from whichever Juno job ran.
-  aggregate-oracle:
-    name: Aggregate Oracle Address
+  # Obtain the oracle address from whichever Juno job ran.
+  obtain-oracle:
+    name: Obtain Oracle Address
     needs:
       - deploy-juno-testnet
       - deploy-juno-mainnet
@@ -208,23 +208,24 @@ jobs:
         run: |
           TESTNET="${{ needs.deploy-juno-testnet.outputs.oracle_address }}"
           MAINNET="${{ needs.deploy-juno-mainnet.outputs.oracle_address }}"
-          ADDR="${TESTNET:-$MAINNET}"
-          if [[ -z "$ADDR" ]]; then
+          ORACLE_ADDR="${TESTNET:-$MAINNET}"
+          if [[ -z "$ORACLE_ADDR" ]]; then
             echo "::error::No oracle address from either Juno deploy job"
             exit 1
           fi
-          echo "oracle_address=${ADDR}" >> "$GITHUB_OUTPUT"
-          echo "✅ Oracle: ${ADDR}"
+          echo "oracle_address=${ORACLE_ADDR}" >> "$GITHUB_OUTPUT"
+          echo "✅ Oracle: ${ORACLE_ADDR}"
 
   ##################################################
   # Deploy Contracts — Token + Faucet + Vault.
-  # Oracle is injected from deploy-juno output —
-  # no config file update needed between jobs.
+  # Oracle is injected from deploy-juno output
   ##################################################
   deploy-contracts:
     name: Deploy Contracts
 
-    needs: aggregate-oracle
+    needs: obtain-oracle
+
+    if: ${{ !cancelled() && needs.obtain-oracle.result == 'success' }}
 
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -262,7 +263,7 @@ jobs:
         with:
           environment: ${{ inputs.environment }}
           # ↓ Oracle comes directly from Juno — no config PR needed between jobs.
-          oracle-address: ${{ needs.aggregate-oracle.outputs.oracle_address }}
+          oracle-address: ${{ needs.obtain-oracle.outputs.oracle_address }}
           deployer-private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
           snowtrace-api-key: ${{ secrets.SNOWTRACE_API_KEY }}
 
@@ -302,7 +303,7 @@ jobs:
             echo ""
             echo "| Contract | Address |"
             echo "|----------|---------|"
-            echo "| Oracle   | \`${{ needs.aggregate-oracle.outputs.oracle_address }}\` |"
+            echo "| Oracle   | \`${{ needs.obtain-oracle.outputs.oracle_address }}\` |"
             echo "| Token    | \`${{ steps.resolve_token.outputs.token_address }}\` |"
             echo "| Vault    | \`${{ steps.resolve_vault.outputs.vault_address }}\` |"
             echo "| Faucet   | \`${{ steps.resolve_token.outputs.faucet_address }}\` |"
@@ -316,8 +317,10 @@ jobs:
     name: Update Config + Re-deploy Juno (Pass 2)
 
     needs:
-      - aggregate-oracle
+      - obtain-oracle
       - deploy-contracts
+
+    if: ${{ !cancelled() && needs.obtain-oracle.result == 'success' && needs.deploy-contracts.result == 'success' }}
 
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -356,7 +359,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           environment: ${{ inputs.environment == 'Testnet' && 'testnet' || 'mainnet' }}
-          oracle-address: ${{ needs.aggregate-oracle.outputs.oracle_address }}
+          oracle-address: ${{ needs.obtain-oracle.outputs.oracle_address }}
           token-address: ${{ needs.deploy-contracts.outputs.token_address }}
           vault-address: ${{ needs.deploy-contracts.outputs.vault_address }}
           faucet-address: ${{ needs.deploy-contracts.outputs.faucet_address }}
@@ -384,7 +387,7 @@ jobs:
             echo ""
             echo "| Key | Value |"
             echo "|-----|-------|"
-            echo "| Oracle  | \`${{ needs.aggregate-oracle.outputs.oracle_address }}\` |"
+            echo "| Oracle  | \`${{ needs.obtain-oracle.outputs.oracle_address }}\` |"
             echo "| Token   | \`${{ needs.deploy-contracts.outputs.token_address }}\` |"
             echo "| Vault   | \`${{ needs.deploy-contracts.outputs.vault_address }}\` |"
             echo "| Faucet  | \`${{ needs.deploy-contracts.outputs.faucet_address }}\` |"

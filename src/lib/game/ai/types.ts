@@ -86,11 +86,15 @@ export interface GroupMemberView {
 /**
  * Result returned by AIBehavior.update() telling Enemy what to do.
  */
-export type BehaviorResult =
+export type BehaviorResult = (
   | {action: "chase"; targetX: number; targetGY: number}
   | {action: "handled"}
   | {action: "idle"}
-  | {action: "kill"};
+  | {action: "kill"}
+) & {
+  /** If true, Enemy.ts will not forcefully clamp this enemy's X position to the screen edge. */
+  ignoreHorizontalBounds?: boolean;
+};
 
 /**
  * Interface that all AI behavior strategies must implement.

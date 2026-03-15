@@ -57,6 +57,6 @@ export class PassiveBehavior implements AIBehavior {
     ctx.setVelocityY(0);
     ctx.safePlay(ctx.animKeys.walk, true);
 
-    return {action: "handled"};
+    return {action: "handled", ignoreHorizontalBounds: true};
   }
 }

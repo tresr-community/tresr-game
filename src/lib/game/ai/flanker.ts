@@ -87,7 +87,21 @@ export class FlankerBehavior implements AIBehavior {
       ctx.safePlay(ctx.animKeys.walk, true);
 
       // Only accrue lunge timer if we are relatively close to the orbit radius
-      if (Math.abs(distanceError) < 40) {
+      // OR if we are pinned against the boundary trying to move further outward (prevents infinite orbit lock).
+      let pinned = false;
+      if (ctx.walkableArea) {
+        if (ctx.x <= ctx.walkableArea.getLeftX() + 5 && moveX < 0)
+          pinned = true;
+        if (ctx.x >= ctx.walkableArea.getRightX() - 5 && moveX > 0)
+          pinned = true;
+        // Also check Y boundaries just to be safe
+        if (ctx.groundY <= ctx.walkableArea.getTopY() + 5 && moveY < 0)
+          pinned = true;
+        if (ctx.groundY >= ctx.walkableArea.getBottomY() - 5 && moveY > 0)
+          pinned = true;
+      }
+
+      if (Math.abs(distanceError) < 40 || pinned) {
         this.timer += dt;
       }
 
