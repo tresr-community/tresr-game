@@ -40,6 +40,21 @@ outputs:
 runs:
   using: composite
   steps:
+    - id: switch_branch
+      name: Switch to PR branch
+      shell: bash
+      run: |
+        BRANCH="chore/update-${{ inputs.environment }}-contract-address"
+        BASE_REF="${{ inputs.base-ref }}"
+
+        # Fetch the latest remote HEAD for the base branch
+        git fetch origin "${BASE_REF}"
+
+        # We don't care about LFS smudged files blocking the flow.
+        # Using git reset to ensure we cleanly start matching the base ref
+        git reset --hard "origin/${BASE_REF}"
+        git checkout -B "${BRANCH}"
+
     - id: update_yaml
       name: Update tresr.yaml
       shell: bash
@@ -114,7 +129,7 @@ runs:
       if: steps.check_diff.outputs.changed == 'true'
       env:
         GH_TOKEN: ${{ inputs.github-token }}
-      shell: devenv shell --quiet bash -- -e {0}
+      shell: bash
       run: |
         BRANCH="chore/update-${{ inputs.environment }}-contract-address"
         TITLE="chore: update ${{ inputs.environment }} contract addresses"
@@ -122,36 +137,6 @@ runs:
 
         git config user.name  "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-        # Fetch the latest remote HEAD for the base branch so the PR branch
-        # only contains config changes — not stale diffs for unrelated files
-        # (e.g. workflow YAML that changed on the base branch after dispatch).
-        git fetch origin "${BASE_REF}"
-
-        # Stash the staged config changes before switching branches.
-        # checkout -B with a start-point resets the worktree, so we must
-        # preserve the config diff that client-config --stage produced.
-        git stash push --include-untracked -m "config-update"
-
-        # Create (or reset) the PR branch from the latest remote base
-        git checkout -B "${BRANCH}" "origin/${BASE_REF}"
-
-        # ── Fix LFS-smudged files ──────────────────────────────
-        # checkout -B can smudge LFS pointer files (expand them to
-        # full binary), leaving the worktree dirty. This causes
-        # `git stash pop` to fail with "local changes would be
-        # overwritten". Restore the clean checkout state and remove
-        # any stray untracked files before applying the stash.
-        git checkout -- .
-        git clean -fd
-
-        # Re-apply the stashed config changes on top of the fresh base
-        git stash pop
-
-        # Re-run client-config --stage to regenerate derived files and
-        # stage exactly the right files. The checkout wiped our staged
-        # index, and manual `git add` risks picking up LFS-smudged fonts.
-        bun run client-config --stage
 
         # Commit only what client-config --stage staged — no git add -A
         git commit \
