@@ -6,6 +6,7 @@
 
 import type {_SERVICE as SatelliteActor, ErrorPayload, ErrorRecord, Result, Result_1, Result_2, Result_3} from './satellite.did';
 import type { Principal } from '@icp-sdk/core/principal';
+// @ts-expect-error - generated JS file without type declarations
 import {idlFactory} from './satellite.factory.did.js';
 import {getSatelliteExtendedActor} from '@junobuild/core';
 

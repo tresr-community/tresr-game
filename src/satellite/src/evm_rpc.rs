@@ -157,25 +157,7 @@ fn parse_json_rpc_result(body: &str) -> Result<serde_json::Value, String> {
 
 /// Verify a fee transaction on Avalanche.
 /// Returns the parsed fee data including amount and sender address.
-/// `caller_wallet` is used by the ANVIL mock to return the correct `from` address
-/// so the wallet-match check in `on_fee_created` passes in local dev.
-pub async fn verify_avalanche_fee(
-    tx_hash: &str,
-    caller_wallet: Option<&str>,
-) -> Result<ParsedFee, String> {
-    // Anvil mock: skip real RPC verification in local dev
-    if crate::config::NETWORK_NAME == "anvil" {
-        crate::logging::log_debug(
-            "EvmRpc",
-            &format!("ANVIL_MOCK: verify_avalanche_fee for {}", tx_hash),
-        );
-        // Echo back the caller's wallet so the from-address check passes.
-        let from = caller_wallet
-            .unwrap_or("0x0000000000000000000000000000000000000000")
-            .to_string();
-        return Ok(ParsedFee { amount: 10, from });
-    }
-
+pub async fn verify_avalanche_fee(tx_hash: &str) -> Result<ParsedFee, String> {
     // eth_getTransactionByHash — no typed binding, use raw JSON-RPC
     let params = format!("[\"{}\"]", tx_hash);
     let body = json_rpc_request("eth_getTransactionByHash", &params).await?;
@@ -206,15 +188,6 @@ pub async fn verify_avalanche_claim_tx(
     expected_amount: u64,
     expected_keys: u64,
 ) -> Result<(), String> {
-    // Anvil mock: skip real RPC verification in local dev
-    if crate::config::NETWORK_NAME == "anvil" {
-        crate::logging::log_debug(
-            "EvmRpc",
-            &format!("ANVIL_MOCK: verify_avalanche_claim_tx for {}", tx_hash),
-        );
-        return Ok(());
-    }
-
     // eth_getTransactionByHash — no typed binding, use raw JSON-RPC
     let params = format!("[\"{}\"]", tx_hash);
     let body = json_rpc_request("eth_getTransactionByHash", &params).await?;
@@ -806,15 +779,6 @@ async fn extract_signature_components(
 /// Get the ERC-20 token balance for a wallet address.
 /// Uses the typed `eth_call` method.
 pub async fn get_token_balance(wallet_address: &str) -> Result<u64, String> {
-    // Anvil mock: return fake balance in local dev
-    if crate::config::NETWORK_NAME == "anvil" {
-        crate::logging::log_debug(
-            "EvmRpc",
-            &format!("ANVIL_MOCK: get_token_balance for {}", wallet_address),
-        );
-        return Ok(1000);
-    }
-
     let canister = evm_rpc_canister()?;
 
     // ABI encode balanceOf(address): selector 0x70a08231 + 32-byte padded address

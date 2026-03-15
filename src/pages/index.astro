@@ -198,7 +198,7 @@ const timeLimitMinutes = Math.floor(config.gameplay.time_limit_seconds / 60);
 
   // Vault status — lock START button when vault is below minimum cap
   const loginBtn = document.getElementById("login-button");
-  let originalLoginText = loginBtn?.textContent?.trim() ?? "LOGIN";
+  let originalLoginHTML = loginBtn?.innerHTML ?? "LOGIN";
   let vaultLocked = false;
 
   function handleVaultStatus(e: Event) {
@@ -214,7 +214,7 @@ const timeLimitMinutes = Math.floor(config.gameplay.time_limit_seconds / 60);
       vaultLocked = false;
       loginBtn.removeAttribute("disabled");
       loginBtn.classList.remove("btn-disabled", "opacity-50");
-      loginBtn.textContent = originalLoginText;
+      loginBtn.innerHTML = originalLoginHTML;
     }
   }
 

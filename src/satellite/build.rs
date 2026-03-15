@@ -118,8 +118,15 @@ struct AvalancheNetwork {
 }
 
 #[derive(Deserialize)]
+struct EvmRpcCanisterIds {
+    anvil: String,
+    testnet: String,
+    mainnet: String,
+}
+
+#[derive(Deserialize)]
 struct Icp {
-    evm_rpc_canister_id: String,
+    evm_rpc_canister_id: EvmRpcCanisterIds,
 }
 
 fn main() {
@@ -329,7 +336,15 @@ pub const REPLAY_GRACE_MS: u64 = {replay_grace_ms};
         permanent = config.server.anti_cheat.permanent_after_offence,
         max_keys = config.client.gameplay.max_keys,
         max_score = config.client.gameplay.vault.max_score,
-        evm_rpc_canister_id = config.client.blockchain.icp.evm_rpc_canister_id,
+        evm_rpc_canister_id = match network.as_str() {
+            "anvil" => &config.client.blockchain.icp.evm_rpc_canister_id.anvil,
+            "testnet" => &config.client.blockchain.icp.evm_rpc_canister_id.testnet,
+            "mainnet" => &config.client.blockchain.icp.evm_rpc_canister_id.mainnet,
+            other => panic!(
+                "Unknown SATELLITE_NETWORK for evm_rpc_canister_id: '{}'",
+                other
+            ),
+        },
         chain_id = chain.chain_id,
         vault_contract = chain.vault_contract,
         token_contract = chain.tresr_token_contract,

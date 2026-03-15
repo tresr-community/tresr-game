@@ -277,3 +277,5 @@ xhash
 xtampered
 yoyo
 yzhang
+jetbrainsmono
+netcat

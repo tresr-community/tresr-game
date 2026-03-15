@@ -74,7 +74,7 @@
   import {getEnvironmentKey} from "@/lib/blockchain/networks/chain";
   import {getExplorerUrl} from "@/lib/blockchain/networks/display";
   import {payFeeForGame} from "@/lib/blockchain/contracts/vault";
-  import {setDoc} from "@junobuild/core";
+  import {setDoc, getDoc} from "@junobuild/core";
   import {connectWallet, isConnected} from "@/lib/wallet/connection";
   import {confirmReceipt} from "@/lib/blockchain/tx";
   import {getTresrBalance, formatBalance} from "@/lib/blockchain/balance";
@@ -310,17 +310,49 @@
             tx_hash: txHash,
             tx_url: getExplorerUrl(txHash), // optional, stored for debugging
             amount: feeAmount, // required by FeeRequest — tokens (not wei)
-            status: "pending", // The rust backend verification updates this
+            status: "pending", // satellite on_set_doc hook will update this
           },
         },
       });
 
+      // Step 6: Poll satellite until fee is verified or failed.
+      // The on_set_doc hook verifies the tx on-chain and writes back
+      // status: "verified" or status: "failed".
+      // Under NO circumstances do we resolve the fee gate until verified.
+      markStep("confirm", "active");
+      showStatus("Verifying transaction on satellite...");
+
+      const POLL_INTERVAL_MS = 1500;
+      const POLL_TIMEOUT_MS = 30_000;
+      const deadline = Date.now() + POLL_TIMEOUT_MS;
+
+      let feeStatus = "pending";
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+        const feeDoc = await getDoc({
+          collection: "audit",
+          key: `fee_${txHash}`,
+        });
+        const docData = feeDoc?.data as {status?: string} | undefined;
+        feeStatus = docData?.status ?? "pending";
+        if (feeStatus === "verified" || feeStatus === "failed") break;
+      }
+
+      if (feeStatus !== "verified") {
+        // Satellite rejected or timed out — do NOT let the player in!
+        const reason =
+          feeStatus === "failed"
+            ? "Fee rejected by satellite — transaction did not pass verification."
+            : "Satellite verification timed out — please contact support.";
+        throw new Error(reason);
+      }
+
       trackFeePaid(txHash);
       log.info(COMPONENT_NAME, `Fee paid: ${txHash}, session: ${sessionId}`);
-      showStatus("Payment confirmed! Starting mission...");
+      showStatus("Verified! Starting mission...");
 
       // Brief pause so user sees the success state
-      await new Promise((r) => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 600));
 
       clearPaymentTimeout();
       modal.close();

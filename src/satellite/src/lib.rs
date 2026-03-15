@@ -604,20 +604,8 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
         return Ok(());
     }
 
-    // Verify the transaction on Avalanche
-    // Pass the caller's wallet so the ANVIL mock can echo it back and pass the from-check.
-    let caller_wallet_for_mock = if crate::config::NETWORK_NAME == "anvil" {
-        // Pre-fetch caller wallet only for the mock path to avoid an extra read on mainnet.
-        let user_key = context.caller.to_text();
-        get_doc_store(context.caller, "users".to_string(), user_key)
-            .ok()
-            .flatten()
-            .and_then(|doc| decode_doc_data::<UserProfile>(&doc.data).ok())
-            .and_then(|p| p.evm_wallet)
-    } else {
-        None
-    };
-    match evm_rpc::verify_avalanche_fee(&fee.tx_hash, caller_wallet_for_mock.as_deref()).await {
+    // Verify the transaction on Avalanche via the local EVM RPC canister.
+    match evm_rpc::verify_avalanche_fee(&fee.tx_hash).await {
         Ok(parsed) => {
             // Validate tx.from matches the caller's linked EVM wallet (ticket #285)
             let user_key = context.caller.to_text();
@@ -1806,8 +1794,7 @@ async fn claim_authorize(
     }
 
     // 2. Verify fee transaction on-chain and get actual fee amount
-    // Pass wallet_addr to the mock so the from-address check passes in local dev.
-    let parsed_fee = evm_rpc::verify_avalanche_fee(&fee_tx_hash, Some(&wallet_addr)).await?;
+    let parsed_fee = evm_rpc::verify_avalanche_fee(&fee_tx_hash).await?;
 
     // Validate that the fee sender matches the caller's linked wallet
     if !parsed_fee.from.eq_ignore_ascii_case(&wallet_addr) {

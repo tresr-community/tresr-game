@@ -282,7 +282,11 @@ client:
         vault_contract: "0x0000000000000000000000000000000000000000"
         explorer_url: "https://snowtrace.io/tx/"
     icp:
-      evm_rpc_canister_id: 7hfb6-caaaa-aaaar-qadga-cai
+      evm_rpc_canister_id:
+        # Get the canister ID with: dfx canister id evm_rpc --network juno
+        anvil: lm4fb-uh777-77777-aaacq-cai
+        testnet: 7hfb6-caaaa-aaaar-qadga-cai
+        mainnet: 7hfb6-caaaa-aaaar-qadga-cai
   wallet:
     faucet_cooldown_hours: 24
     balance_refresh_cooldown_ms: 30000

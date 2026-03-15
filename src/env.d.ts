@@ -70,7 +70,10 @@ declare module "/config-client.json" {
           explorer_url: string;
         };
       };
-      icp: {        evm_rpc_canister_id: string;
+      icp: {        evm_rpc_canister_id: {          anvil: string;
+          testnet: string;
+          mainnet: string;
+        };
       };
     };
     wallet: {      faucet_cooldown_hours: number;
@@ -831,7 +834,10 @@ declare module "../../../public/config-client.json" {
           explorer_url: string;
         };
       };
-      icp: {        evm_rpc_canister_id: string;
+      icp: {        evm_rpc_canister_id: {          anvil: string;
+          testnet: string;
+          mainnet: string;
+        };
       };
     };
     wallet: {      faucet_cooldown_hours: number;

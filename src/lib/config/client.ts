@@ -152,7 +152,11 @@ export const config: ConfigTypes = {
       }
     },
     "icp": {
-      "evm_rpc_canister_id": "7hfb6-caaaa-aaaar-qadga-cai"
+      "evm_rpc_canister_id": {
+        "anvil": "lm4fb-uh777-77777-aaacq-cai",
+        "testnet": "7hfb6-caaaa-aaaar-qadga-cai",
+        "mainnet": "7hfb6-caaaa-aaaar-qadga-cai"
+      }
     }
   },
   "wallet": {
