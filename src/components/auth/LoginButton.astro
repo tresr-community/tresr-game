@@ -667,7 +667,7 @@ const degenEnabled: boolean = iidEnabled || avalancheEnabled || webauthnEnabled;
     maintenancePollId = setInterval(async () => {
       try {
         const {isSatelliteInSync} = await import("@/lib/satellite/config-hash");
-        const inSync = await isSatelliteInSync();
+        const inSync = await isSatelliteInSync({quiet: true});
         if (inSync && loginButton) {
           // Satellite is back in sync — deactivate maintenance.
           const {maintenanceState} = await import(

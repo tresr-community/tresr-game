@@ -17,7 +17,9 @@ import {maintenanceState} from "@/lib/utils/maintenance-state";
 
 const COMPONENT_NAME = "PreflightCheck";
 
-export async function isSatelliteInSync(): Promise<boolean> {
+export async function isSatelliteInSync(
+  opts: {quiet?: boolean} = {}
+): Promise<boolean> {
   try {
     const {get_config_hash} = await getSatelliteExtendedActor<SatelliteActor>({
       idlFactory,
@@ -26,10 +28,12 @@ export async function isSatelliteInSync(): Promise<boolean> {
     if (serverHash !== SERVER_CONFIG_HASH) {
       // Activate before logging so the warn itself doesn't trigger a toast.
       maintenanceState.activate();
-      log.warn(
-        COMPONENT_NAME,
-        `Config hash mismatch: server=${serverHash.slice(0, 8)}… client=${SERVER_CONFIG_HASH.slice(0, 8)}…`
-      );
+      if (!opts.quiet) {
+        log.warn(
+          COMPONENT_NAME,
+          `Config hash mismatch: server=${serverHash.slice(0, 8)}… client=${SERVER_CONFIG_HASH.slice(0, 8)}…`
+        );
+      }
       return false;
     }
     log.debug(COMPONENT_NAME, `Config hash OK: ${serverHash.slice(0, 8)}…`);
@@ -38,11 +42,13 @@ export async function isSatelliteInSync(): Promise<boolean> {
     // Satellite unreachable (not deployed, not activated, or network error) → maintenance.
     // Activate before logging so the warn itself doesn't trigger a toast.
     maintenanceState.activate();
-    log.warn(
-      COMPONENT_NAME,
-      "Satellite unreachable — treating as maintenance",
-      err
-    );
+    if (!opts.quiet) {
+      log.warn(
+        COMPONENT_NAME,
+        "Satellite unreachable — treating as maintenance",
+        err
+      );
+    }
     return false;
   }
 }

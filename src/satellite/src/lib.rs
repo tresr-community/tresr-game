@@ -2020,6 +2020,7 @@ fn replay_verify_plausibility(actions: &[GameAction]) -> Result<(), String> {
         }
 
         // 2. Minimum gap between consecutive actions (catch sub-frame injection)
+        //    When min_action_gap_ms = 0, same-frame events are allowed (no gap enforcement).
         if i > 0 {
             let prev_t = actions[i - 1].t;
             if action.t < prev_t {
@@ -2028,15 +2029,18 @@ fn replay_verify_plausibility(actions: &[GameAction]) -> Result<(), String> {
                     i, action.t, prev_t
                 ));
             }
-            let gap = action.t - prev_t;
-            if gap < config::REPLAY_MIN_ACTION_GAP_MS {
-                return Err(format!(
-                    "CHEAT_DETECTED: actions at index {} and {} are {}ms apart (min {}ms)",
-                    i - 1,
-                    i,
-                    gap,
-                    config::REPLAY_MIN_ACTION_GAP_MS
-                ));
+            #[allow(clippy::absurd_extreme_comparisons)]
+            if config::REPLAY_MIN_ACTION_GAP_MS > 0 {
+                let gap = action.t - prev_t;
+                if gap < config::REPLAY_MIN_ACTION_GAP_MS {
+                    return Err(format!(
+                        "CHEAT_DETECTED: actions at index {} and {} are {}ms apart (min {}ms)",
+                        i - 1,
+                        i,
+                        gap,
+                        config::REPLAY_MIN_ACTION_GAP_MS
+                    ));
+                }
             }
         }
 
@@ -2406,9 +2410,26 @@ mod replay_tests {
     }
 
     #[test]
-    fn test_replay_plausibility_sub_frame_gap() {
-        // Two events 5ms apart (below the configured min_action_gap_ms = 10)
-        let actions: Vec<GameAction> = vec![
+    fn test_replay_plausibility_same_frame_gap_allowed() {
+        // With min_action_gap_ms = 0, same-frame events (0ms gap) are allowed.
+        // This prevents false positives when multiple game events fire in one frame.
+        let actions_zero_gap: Vec<GameAction> = vec![
+            GameAction {
+                t: 100,
+                a: "jump".to_string(),
+            },
+            GameAction {
+                t: 100,
+                a: "collect_key".to_string(),
+            },
+        ];
+        assert!(
+            replay_verify_plausibility(&actions_zero_gap).is_ok(),
+            "0ms gap should be allowed with min_action_gap_ms = 0"
+        );
+
+        // 5ms gap should also pass now
+        let actions_small_gap: Vec<GameAction> = vec![
             GameAction {
                 t: 0,
                 a: "jump".to_string(),
@@ -2418,9 +2439,10 @@ mod replay_tests {
                 a: "move_right".to_string(),
             },
         ];
-        let result = replay_verify_plausibility(&actions);
-        assert!(result.is_err(), "Expected error for sub-frame gap");
-        assert!(result.unwrap_err().contains("CHEAT_DETECTED"));
+        assert!(
+            replay_verify_plausibility(&actions_small_gap).is_ok(),
+            "5ms gap should be allowed with min_action_gap_ms = 0"
+        );
     }
 
     #[test]
