@@ -242,6 +242,8 @@ client:
         rpc_urls:
           - https://api.avax-test.network/ext/bc/C/rpc
           - https://avalanche-fuji-c-chain-rpc.publicnode.com
+          - https://rpc.ankr.com/avalanche_fuji
+          - https://avalanche-fuji.drpc.org
         allowed_origins:
           - https://game-testnet.tresr.community
         token_ticker: tRON
