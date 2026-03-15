@@ -3,16 +3,16 @@
 # Description: First-time environment bootstrap
 #
 # Runs ONCE per environment to solve the oracle → vault → config dependency
-# triangle. Executes sequentially:
+# triangle. Executes sequentially in a SINGLE JOB:
 #
-#   guard → warm cache → Deploy Juno (pass 1) → Deploy Contracts
+#   guard → setup → Juno Pass 1 → Deploy Contracts
 #   → Patch config + Re-deploy Juno (pass 2) → Open config PR
 #
 # Guards:
 #   - Aborts if any contract address in config is already non-zero.
 #   - Manual dispatch only — never triggered automatically.
 #
-# After this runs successfully, use cd.yaml for all subsequent releases.
+# After this runs successfully, use cd-testnet.yaml / cd-mainnet.yaml for all subsequent releases.
 ##################################################
 
 name: Bootstrap Environment
@@ -59,15 +59,24 @@ defaults:
 
 jobs:
   ##################################################
-  # Guard — abort if env is not fully zeroed.
+  # Bootstrap
   ##################################################
-  guard:
-    name: Bootstrap Guard
+  bootstrap:
+    name: Bootstrap ${{ inputs.environment }}
 
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 120
+    continue-on-error: false
+
+    environment: ${{ inputs.environment }}
+
+    env:
+      FOUNDRY_PROFILE: >-
+        ${{ vars.FOUNDRY_PROFILE ||
+            (inputs.environment == 'Mainnet' && 'mainnet' || 'testnet') }}
 
     steps:
+      # ── Guard ─────────────────────────────────────────────────────────
       - name: Confirm intent
         run: |
           if [[ "${{ inputs.confirm }}" != "ship it" ]]; then
@@ -76,9 +85,14 @@ jobs:
           fi
           echo "✅ Confirmation accepted"
 
-      - uses: actions/checkout@v4
+      - id: checkout
+        name: Checkout Repository
+        uses: actions/checkout@v6
         with:
-          fetch-depth: 1
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          submodules: recursive
+          lfs: true
 
       - name: Verify all addresses are zero (safe to bootstrap)
         run: |
@@ -108,165 +122,50 @@ jobs:
           if [[ $ABORT -gt 0 ]]; then
             echo ""
             echo "::error::Bootstrap aborted — $ABORT address(es) are already deployed."
-            echo "Use cd.yaml for subsequent releases."
+            echo "Use cd-testnet.yaml / cd-mainnet.yaml for subsequent releases."
             exit 1
           fi
 
           echo ""
           echo "✅ All addresses are zero — safe to proceed"
 
-  ##################################################
-  # Warm devenv / Nix cache
-  ##################################################
-  check-cache:
-    name: Check Cache
-    needs: guard
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-
-    outputs:
-      cache-hit: ${{ steps.nix_cache_lookup.outputs.cache-hit }}
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-
-      - id: nix_cache_lookup
-        name: Lookup Nix Cache
-        uses: actions/cache@v5
-        with:
-          path: /nix
-          key: >-
-            ${{ runner.os }}-nix-${{ hashFiles('devenv.lock', 'devenv.nix') }}
-          lookup-only: true
-
-  setup-environment:
-    name: Setup Environment
-    needs: check-cache
-    if: needs.check-cache.outputs.cache-hit != 'true'
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: ./.github/actions/setup-devenv
+      # ── Setup (1×) ────────────────────────────────────────────────────
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-  ##################################################
-  # Deploy Juno — Pass 1 (no vault address yet).
-  # Two conditional jobs because GitHub does not allow
-  # expressions in `uses:` for reusable workflow calls.
-  # Exactly one of these runs depending on the environment.
-  ##################################################
-  deploy-juno-testnet:
-    name: Deploy Juno Testnet
-    if: >-
-      always() &&
-      inputs.environment == 'Testnet' &&
-      needs.check-cache.result == 'success' &&
-      (needs.setup-environment.result == 'success' ||
-       needs.setup-environment.result == 'skipped')
-    needs:
-      - check-cache
-      - setup-environment
-    uses: ./.github/workflows/cd-juno-testnet.yaml
-    secrets: inherit
+      # ── Juno Deploy — Pass 1 (no vault address yet) ───────────────────
+      - id: deploy_juno_pass1
+        name: Deploy Juno (Pass 1)
+        uses: ./.github/actions/deploy-juno
+        with:
+          mode: ${{ inputs.environment == 'Mainnet' && 'production' || 'staging' }}
+          satellite-id: ${{ vars.VITE_SATELLITE_ID }}
+          orbiter-id: ${{ vars.VITE_ORBITER_ID }}
+          astro-site-url: ${{ vars.VITE_ASTRO_SITE_URL }}
+          siwa-provider-id: ${{ vars.VITE_SIWA_PROVIDER_ID }}
+          walletconnect-project-id: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
 
-  deploy-juno-mainnet:
-    name: Deploy Juno Mainnet
-    if: >-
-      always() &&
-      inputs.environment == 'Mainnet' &&
-      needs.check-cache.result == 'success' &&
-      (needs.setup-environment.result == 'success' ||
-       needs.setup-environment.result == 'skipped')
-    needs:
-      - check-cache
-      - setup-environment
-    uses: ./.github/workflows/cd-juno-mainnet.yaml
-    secrets: inherit
-
-  # Obtain the oracle address from whichever Juno job ran.
-  obtain-oracle:
-    name: Obtain Oracle Address
-    needs:
-      - deploy-juno-testnet
-      - deploy-juno-mainnet
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      oracle_address: ${{ steps.pick.outputs.oracle_address }}
-    steps:
-      - id: pick
-        name: Pick Oracle
+      - name: Verify Oracle Address
         run: |
-          TESTNET="${{ needs.deploy-juno-testnet.outputs.oracle_address }}"
-          MAINNET="${{ needs.deploy-juno-mainnet.outputs.oracle_address }}"
-          ORACLE_ADDR="${TESTNET:-$MAINNET}"
-          if [[ -z "$ORACLE_ADDR" ]]; then
-            echo "::error::No oracle address from either Juno deploy job"
+          ORACLE="${{ steps.deploy_juno_pass1.outputs.oracle_address }}"
+          if [[ -z "$ORACLE" ]]; then
+            echo "::error::No oracle address from Juno deploy"
             exit 1
           fi
-          echo "oracle_address=${ORACLE_ADDR}" >> "$GITHUB_OUTPUT"
-          echo "✅ Oracle: ${ORACLE_ADDR}"
+          echo "✅ Oracle: ${ORACLE}"
 
-  ##################################################
-  # Deploy Contracts — Token + Faucet + Vault.
-  # Oracle is injected from deploy-juno output
-  ##################################################
-  deploy-contracts:
-    name: Deploy Contracts
-
-    needs: obtain-oracle
-
-    if: ${{ !cancelled() && needs.obtain-oracle.result == 'success' }}
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    continue-on-error: false
-
-    environment: ${{ inputs.environment }}
-
-    env:
-      FOUNDRY_PROFILE: >-
-        ${{ vars.FOUNDRY_PROFILE ||
-            (inputs.environment == 'Mainnet' && 'mainnet' || 'testnet') }}
-
-    outputs:
-      token_address: ${{ steps.resolve_token.outputs.token_address }}
-      vault_address: ${{ steps.resolve_vault.outputs.vault_address }}
-      faucet_address: ${{ steps.resolve_token.outputs.faucet_address }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Free Disk Space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-
-      - uses: ./.github/actions/setup-devenv
-        name: Setup Devenv
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
-          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
+      # ── Deploy Contracts — Token + Faucet + Vault ─────────────────────
       - id: foundry_deploy_setup
         name: Resolve Environment
         uses: ./.github/actions/foundry-deploy-setup
         with:
           environment: ${{ inputs.environment }}
-          # ↓ Oracle comes directly from Juno — no config PR needed between jobs.
-          oracle-address: ${{ needs.obtain-oracle.outputs.oracle_address }}
+          oracle-address: ${{ steps.deploy_juno_pass1.outputs.oracle_address }}
           deployer-private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
           snowtrace-api-key: ${{ secrets.SNOWTRACE_API_KEY }}
 
@@ -306,60 +205,13 @@ jobs:
             echo ""
             echo "| Contract | Address |"
             echo "|----------|---------|"
-            echo "| Oracle   | \`${{ needs.obtain-oracle.outputs.oracle_address }}\` |"
+            echo "| Oracle   | \`${{ steps.deploy_juno_pass1.outputs.oracle_address }}\` |"
             echo "| Token    | \`${{ steps.resolve_token.outputs.token_address }}\` |"
             echo "| Vault    | \`${{ steps.resolve_vault.outputs.vault_address }}\` |"
             echo "| Faucet   | \`${{ steps.resolve_token.outputs.faucet_address }}\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
-  ##################################################
-  # Patch tresr.yaml, rebuild, re-deploy Juno (pass 2),
-  # and open the config PR to persist addresses.
-  ##################################################
-  update-and-redeploy:
-    name: Update Juno Config
-
-    needs:
-      - obtain-oracle
-      - deploy-contracts
-
-    if: ${{ !cancelled() && needs.obtain-oracle.result == 'success' && needs.deploy-contracts.result == 'success' }}
-
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    continue-on-error: false
-
-    environment: ${{ inputs.environment }}
-
-    env:
-      VITE_STAGING_SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
-      VITE_STAGING_ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
-      VITE_ASTRO_SITE_URL: ${{ vars.VITE_ASTRO_SITE_URL }}
-      VITE_SIWA_PROVIDER_ID: ${{ vars.VITE_SIWA_PROVIDER_ID }}
-      PUBLIC_WALLETCONNECT_PROJECT_ID: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          # Use the branch selected in the dispatch UI (latest HEAD, not
-          # the immutable github.sha from dispatch-time) so the PR branch
-          # doesn't include stale diffs for files changed after dispatch.
-          ref: ${{ github.ref }}
-          fetch-depth: 0
-
-      - name: Free Disk Space
-        uses: jlumbroso/free-disk-space@main
-        with:
-          tool-cache: false
-
-      - uses: ./.github/actions/setup-devenv
-        name: Setup Devenv
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
-          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-      # ── Step 1: Patch tresr.yaml in the workspace ───────────────────────────
+      # ── Patch config + Juno Pass 2 ────────────────────────────────────
       - id: update_config
         name: Patch tresr.yaml
         uses: ./.github/actions/update-tresr-config
@@ -367,18 +219,16 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           environment: ${{ inputs.environment == 'Testnet' && 'testnet' || 'mainnet' }}
           base-ref: ${{ github.ref_name }}
-          oracle-address: ${{ needs.obtain-oracle.outputs.oracle_address }}
-          token-address: ${{ needs.deploy-contracts.outputs.token_address }}
-          vault-address: ${{ needs.deploy-contracts.outputs.vault_address }}
-          faucet-address: ${{ needs.deploy-contracts.outputs.faucet_address }}
+          oracle-address: ${{ steps.deploy_juno_pass1.outputs.oracle_address }}
+          token-address: ${{ steps.resolve_token.outputs.token_address }}
+          vault-address: ${{ steps.resolve_vault.outputs.vault_address }}
+          faucet-address: ${{ steps.resolve_token.outputs.faucet_address }}
 
-      # ── Step 2: Rebuild with vault address now in tresr.yaml ────────────────
       - name: Build (with vault)
         if: steps.update_config.outputs.changed == 'true'
         shell: devenv shell --quiet bash -- -e {0}
         run: bun run build
 
-      # ── Step 3: Re-deploy hosting so satellite is aware of vault_contract ───
       - name: Re-deploy Juno with Vault
         if: steps.update_config.outputs.changed == 'true'
         shell: devenv shell --quiet bash -- -e {0}
@@ -386,8 +236,9 @@ jobs:
           JUNO_TOKEN: ${{ secrets.JUNO_TOKEN }}
         run: |
           JUNO_TOKEN="$JUNO_TOKEN" juno deploy \
-            --satellite-id "$VITE_STAGING_SATELLITE_ID"
+            --satellite-id "${{ vars.VITE_SATELLITE_ID }}"
 
+      # ── Summary ───────────────────────────────────────────────────────
       - name: Bootstrap Complete Summary
         run: |
           {
@@ -395,11 +246,11 @@ jobs:
             echo ""
             echo "| Key | Value |"
             echo "|-----|-------|"
-            echo "| Oracle  | \`${{ needs.obtain-oracle.outputs.oracle_address }}\` |"
-            echo "| Token   | \`${{ needs.deploy-contracts.outputs.token_address }}\` |"
-            echo "| Vault   | \`${{ needs.deploy-contracts.outputs.vault_address }}\` |"
-            echo "| Faucet  | \`${{ needs.deploy-contracts.outputs.faucet_address }}\` |"
+            echo "| Oracle  | \`${{ steps.deploy_juno_pass1.outputs.oracle_address }}\` |"
+            echo "| Token   | \`${{ steps.resolve_token.outputs.token_address }}\` |"
+            echo "| Vault   | \`${{ steps.resolve_vault.outputs.vault_address }}\` |"
+            echo "| Faucet  | \`${{ steps.resolve_token.outputs.faucet_address }}\` |"
             echo ""
             echo "A config PR has been opened with all four addresses."
-            echo "Merge it — subsequent releases use \`cd.yaml\`."
+            echo "Merge it — subsequent releases use \`cd-testnet.yaml\` / \`cd-mainnet.yaml\`."
           } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,216 @@
+---
+name: Deploy Juno
+description: >
+  Build and deploy Juno hosting + functions to a satellite canister,
+  then retrieve the ECDSA-derived oracle address.
+  Requires checkout and setup-devenv to be run first.
+
+inputs:
+  mode:
+    description: "Juno deploy mode: staging or production"
+    required: true
+  satellite-id:
+    description: "Juno satellite canister ID"
+    required: true
+  orbiter-id:
+    description: "Juno Orbiter ID"
+    required: false
+    default: ""
+  astro-site-url:
+    description: "Deployed Astro site URL"
+    required: true
+  siwa-provider-id:
+    description: "SIWA provider ID"
+    required: true
+  walletconnect-project-id:
+    description: "WalletConnect project ID"
+    required: true
+  version:
+    description: "Release version tag (e.g. v0.1.0). Leave empty to skip versioning."
+    required: false
+    default: ""
+  version-mode:
+    description: "How to determine the version: bump, current, or explicit"
+    required: false
+    default: "bump"
+  skip-functions:
+    description: "Skip function build/publish (e.g. for bootstrap Pass 2 re-deploy)"
+    required: false
+    default: "false"
+
+outputs:
+  oracle_address:
+    description: "ECDSA-derived oracle contract address from the satellite"
+    value: ${{ steps.get_oracle_address.outputs.oracle_address }}
+
+runs:
+  using: composite
+  steps:
+    - id: check_vars
+      name: Check Variables
+      shell: bash
+      env:
+        SATELLITE_ID: ${{ inputs.satellite-id }}
+        ASTRO_SITE_URL: ${{ inputs.astro-site-url }}
+        SIWA_PROVIDER_ID: ${{ inputs.siwa-provider-id }}
+      run: |
+        REQUIRED_VARS=(
+          SATELLITE_ID
+          ASTRO_SITE_URL
+          SIWA_PROVIDER_ID
+        )
+        for VAR in "${REQUIRED_VARS[@]}";
+        do
+          if [[ -z "${!VAR}" ]];
+          then
+            echo "::error::${VAR} is not set"
+            exit 1
+          fi
+        done
+        echo "All required variables are set"
+
+    - id: set_vite_env
+      name: Set VITE Environment Variables
+      shell: bash
+      run: |
+        MODE="${{ inputs.mode }}"
+        if [[ "$MODE" == "staging" ]]; then
+          PREFIX="STAGING"
+        else
+          PREFIX="PRODUCTION"
+        fi
+
+        echo "VITE_${PREFIX}_SATELLITE_ID=${{ inputs.satellite-id }}" >> "$GITHUB_ENV"
+        echo "VITE_${PREFIX}_ORBITER_ID=${{ inputs.orbiter-id }}" >> "$GITHUB_ENV"
+        echo "VITE_ASTRO_SITE_URL=${{ inputs.astro-site-url }}" >> "$GITHUB_ENV"
+        echo "VITE_SIWA_PROVIDER_ID=${{ inputs.siwa-provider-id }}" >> "$GITHUB_ENV"
+        echo "PUBLIC_WALLETCONNECT_PROJECT_ID=${{ inputs.walletconnect-project-id }}" >> "$GITHUB_ENV"
+
+    - id: cache_bun
+      name: Cache Bun
+      uses: ./.github/actions/cache-bun
+
+    - id: parse_tag
+      name: Parse Release Tag
+      if: inputs.version != ''
+      shell: bash
+      run: |
+        VERSION="${{ inputs.version }}"
+        VERSION="${VERSION#v}"
+        VERSION="${VERSION%-testnet}"
+        echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+    - id: set_version
+      name: Set Version
+      if: inputs.version != ''
+      uses: ./.github/actions/version
+      with:
+        mode: ${{ inputs.version-mode }}
+        version: ${{ steps.parse_tag.outputs.version }}
+
+    - id: setup_juno
+      name: Setup Juno
+      uses: ./.github/actions/setup-juno
+
+    - id: detect_function_changes
+      name: Detect Function Changes
+      if: inputs.skip-functions != 'true'
+      shell: bash
+      run: |
+        # Find the previous tag to diff against
+        PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        if [[ -z "${PREV_TAG}" ]]; then
+          echo "No previous tag found, assuming functions changed"
+          echo "changed=true" >> "${GITHUB_OUTPUT}"
+          exit 0
+        fi
+
+        CHANGED=$(git diff --name-only "${PREV_TAG}"...HEAD -- 'config/*.yaml' 'src/satellite/' || true)
+        if [[ -z "${CHANGED}" ]]; then
+          echo "changed=false" >> "${GITHUB_OUTPUT}"
+          echo "No function-related changes detected, skipping build/publish"
+        else
+          echo "changed=true" >> "${GITHUB_OUTPUT}"
+          echo "Function-related changes detected:"
+          echo "${CHANGED}"
+        fi
+
+    - id: build_functions
+      name: Build Juno Functions
+      if: >-
+        inputs.skip-functions != 'true' &&
+        steps.detect_function_changes.outputs.changed == 'true'
+      shell: devenv shell --quiet bash -- -e {0}
+      run: |
+        cargo generate-lockfile
+        juno functions build
+
+    - id: build_hosting
+      name: Build Hosting
+      shell: devenv shell --quiet bash -- -e {0}
+      run: bun run build -- --mode ${{ inputs.mode }}
+
+    - id: deploy_hosting
+      name: Deploy Hosting
+      uses: junobuild/juno-action@main
+      with:
+        args: hosting deploy --mode ${{ inputs.mode }}
+
+    - id: publish_functions
+      name: Publish Functions
+      if: >-
+        inputs.skip-functions != 'true' &&
+        steps.detect_function_changes.outputs.changed == 'true'
+      uses: junobuild/juno-action@full
+      with:
+        args: functions publish --mode ${{ inputs.mode }}
+
+    - id: get_oracle_address
+      name: Get Oracle Address
+      shell: devenv shell --quiet bash -- -e {0}
+      env:
+        SATELLITE_ID: ${{ inputs.satellite-id }}
+        # Safe: this is a read-only query, no cycles/ICP at risk
+        DFX_WARNING: -mainnet_plaintext_identity
+      run: |
+        # Create anonymous identity silently to prevent seed phrase from being printed
+        dfx identity new --storage-mode=plaintext anonymous-ci 2>/dev/null || true
+        dfx identity use anonymous-ci 2>/dev/null
+
+        # Call the satellite canister to get the ECDSA-derived oracle address
+        ORACLE=$(dfx canister call "$SATELLITE_ID" get_oracle_address '()' --ic 2>&1) || true
+        # Parse the Ok variant: (variant { Ok = "0x..." })
+        ADDR=$(echo "$ORACLE" | grep -oP '0x[0-9a-fA-F]{40}' | head -1)
+        if [[ -n "$ADDR" ]]; then
+          echo "oracle_address=${ADDR}" >> "$GITHUB_OUTPUT"
+          echo "✅ Oracle address: ${ADDR}"
+        else
+          echo "::warning::Could not retrieve oracle address — raw output: ${ORACLE}"
+          echo "oracle_address=" >> "$GITHUB_OUTPUT"
+        fi
+
+    - id: deploy_summary
+      name: Deploy Summary
+      if: always()
+      shell: bash
+      env:
+        SATELLITE_ID: ${{ inputs.satellite-id }}
+        ORACLE: ${{ steps.get_oracle_address.outputs.oracle_address }}
+        MODE: ${{ inputs.mode }}
+      run: |
+        {
+          echo "## 🚀 Juno Deploy Summary"
+          echo ""
+          echo "| | |"
+          echo "|---|---|"
+          echo "| **Satellite** | \`${SATELLITE_ID}\` |"
+          echo "| **Mode** | ${MODE} |"
+          if [[ -n "$ORACLE" ]]; then
+            echo "| **Oracle Address** | \`${ORACLE}\` |"
+          else
+            echo "| **Oracle Address** | ⚠️ _not retrieved_ |"
+          fi
+          echo ""
+          echo "---"
+          echo "*Deployed via \`deploy-juno\` action • $(date -u '+%Y-%m-%d %H:%M UTC')*"
+        } >> "$GITHUB_STEP_SUMMARY"

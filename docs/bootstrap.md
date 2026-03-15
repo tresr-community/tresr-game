@@ -2,7 +2,7 @@
 
 > **When to use this:** First-time deployment into a fresh environment (all
 > contract addresses are `0x0` in `config/tresr.yaml`). After the bootstrap
-> completes, use the normal `cd.yaml` release pipeline for all subsequent
+> completes, use the normal `cd-testnet.yaml` / `cd-mainnet.yaml` pipelines for all subsequent
 > deployments.
 
 ---
@@ -74,40 +74,33 @@ safety guard to prevent accidental re-bootstrap of a live environment._
 4. Type `bootstrap` in the confirmation field (exact text required).
 5. Click **Run workflow**.
 
-_That's it. The pipeline takes ~25–40 minutes to complete._
+_That's it. The pipeline takes ~20–30 minutes to complete._
 
 ---
 
 ## What the Pipeline Does
 
+Everything runs in a **single job** on one runner — no redundant setup steps:
+
 ```text
-guard
-  └─ verify all addresses are 0x0, confirmation is "bootstrap"
-
-check-cache
-  └─ looks up devenv / Nix cache
-
-setup-environment  [if cache miss]
-  └─ setup devenv / Nix cache
-
-deploy-juno-testnet / deploy-juno-mainnet  [Pass 1 — no vault yet]
-  ├─ build frontend
-  ├─ deploy functions to satellite
-  ├─ deploy hosting to satellite
-  └─ call get_oracle_address on satellite → captures oracle
-
-obtain-oracle  [needs: deploy-juno-*]
-  └─ consolidates oracle address from Pass 1
-
-deploy-contracts  [needs: obtain-oracle]
-  ├─ foundry-deploy-setup (oracle injected directly — no config read)
-  ├─ foundry-resolve-token → deploys Token + Faucet (testnet only)
-  └─ foundry-resolve-vault → deploys Vault with oracle ✅
-
-update-and-redeploy  [needs: obtain-oracle, deploy-contracts]
-  ├─ update-tresr-config → patches tresr.yaml, opens config PR
-  ├─ build frontend (now includes vault address)
-  └─ juno deploy → re-deploys hosting (Pass 2 — with vault) ✅
+bootstrap (single job)
+  ├─ guard: verify confirmation + all addresses are 0x0
+  ├─ setup: checkout + devenv (1×)
+  │
+  ├─ Juno Pass 1 (deploy-juno action — no vault yet)
+  │   ├─ build frontend
+  │   ├─ deploy functions to satellite
+  │   ├─ deploy hosting to satellite
+  │   └─ get_oracle_address from satellite → captures oracle
+  │
+  ├─ deploy contracts (oracle injected from Pass 1)
+  │   ├─ foundry-resolve-token → deploys Token + Faucet (testnet only)
+  │   └─ foundry-resolve-vault → deploys Vault with oracle ✅
+  │
+  └─ patch config + Juno Pass 2
+      ├─ update-tresr-config → patches tresr.yaml, opens config PR
+      ├─ build frontend (now includes vault address)
+      └─ juno deploy → re-deploys hosting (Pass 2 — with vault) ✅
 ```
 
 After the pipeline completes:
@@ -130,7 +123,7 @@ so they go through code review and any branch protection checks, keeping the
 audit trail clean.
 
 Once merged, `config/tresr.yaml` will contain all four addresses. From this
-point, the normal `cd.yaml` pipeline handles all future releases.
+point, the normal `cd-testnet.yaml` / `cd-mainnet.yaml` pipelines handle all future releases.
 
 ---
 
@@ -142,7 +135,7 @@ compare on-chain bytecode against local artifacts and skip unchanged contracts.
 
 ```bash
 # Normal release flow — NOT bootstrap
-Actions → All Workflows → cd.yaml → Run workflow
+Actions → All Workflows → cd-testnet.yaml (or cd-mainnet.yaml) → Run workflow
 ```
 
 ---

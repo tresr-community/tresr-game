@@ -1,0 +1,396 @@
+---
+##################################################
+# Name: cd-mainnet.yaml
+# Description: Mainnet release pipeline
+#
+# Triggers:
+#   - Manual dispatch with environment = Mainnet
+#
+# Flow:
+#   1. check-cache probes the Nix store cache key (lookup-only, ~5s).
+#   2. setup-environment only runs on a cache miss (~60 min warm-up).
+#   3. release validates + promotes a pre-release tag to full release.
+#   4. deploy-juno + deploy-foundry run in parallel.
+#   5. update-config patches tresr.yaml and opens a PR.
+##################################################
+
+name: Release (Mainnet)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag to promote — leave blank to auto-promote the latest pre-release"
+        required: false
+        type: string
+        default: ""
+      confirm:
+        description: |
+          Type "ship it" to confirm the Mainnet release.
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: write
+  id-token: write
+  packages: read
+  pull-requests: write
+  statuses: write
+
+env:
+  NIXPKGS_ALLOW_UNFREE: 1
+  SECRETSPEC_PROVIDER: env
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  ##################################################
+  # Gatekeeper - Check whether the Nix cache already exists
+  ##################################################
+  check-cache:
+    name: Check Cache
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 5
+    continue-on-error: false
+
+    outputs:
+      cache-hit: ${{ steps.nix_cache_lookup.outputs.cache-hit }}
+
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - id: nix_cache_lookup
+        name: Lookup Nix Cache
+        uses: actions/cache@v5
+        with:
+          path: /nix
+          key: ${{ runner.os }}-nix-${{ hashFiles('devenv.lock', 'devenv.nix') }}
+          lookup-only: true
+
+  ##################################################
+  # Warm Cache - Only runs on a cache miss
+  ##################################################
+  setup-environment:
+    name: Setup Environment
+
+    needs: check-cache
+    if: needs.check-cache.outputs.cache-hit != 'true'
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+  ##################################################
+  # Promote a pre-release to a full release
+  ##################################################
+  release:
+    name: Release
+    needs:
+      - check-cache
+      - setup-environment
+
+    if: >-
+      always() &&
+      needs.check-cache.result == 'success'
+
+    runs-on: ubuntu-latest
+    environment: Mainnet
+
+    timeout-minutes: 120
+    continue-on-error: false
+
+    outputs:
+      tag: ${{ steps.validate_tag.outputs.tag }}
+
+    steps:
+      - name: Confirm intent
+        run: |
+          if [[ "${{ inputs.confirm }}" != "ship it" ]]; then
+            echo "::error::Confirmation must be exactly \"ship it\". Got: \"${{ inputs.confirm }}\""
+            exit 1
+          fi
+          echo "✅ Confirmation accepted"
+
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: validate_tag
+        name: Validate Release Tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.inputs.release_tag }}
+        run: |
+          if [[ -n "${RELEASE_TAG}" ]]; then
+            # User specified a tag — use it directly
+            TAG="${RELEASE_TAG}"
+            echo "Using provided release tag: ${TAG}"
+          else
+            # Auto-discover the latest pre-release
+            TAG=$(gh release list --json tagName,isPrerelease \
+              --jq '[.[] | select(.isPrerelease==true)] | first | .tagName' 2>/dev/null || echo "")
+
+            if [[ -z "${TAG}" || "${TAG}" == "null" ]]; then
+              echo "::error::No pre-releases found. Create one first via a Testnet deployment."
+              exit 1
+            fi
+            echo "Auto-discovered latest pre-release: ${TAG}"
+          fi
+
+          # Verify the release exists and IS a pre-release
+          RELEASE_INFO=$(gh release view "${TAG}" --json isPrerelease,tagName 2>&1) || {
+            echo "::error::Release '${TAG}' not found"
+            exit 1
+          }
+
+          IS_PRERELEASE=$(echo "${RELEASE_INFO}" | jq -r '.isPrerelease')
+          if [[ "${IS_PRERELEASE}" != "true" ]]; then
+            echo "::error::Release '${TAG}' has already been promoted to a full release."
+            echo "::error::If you want to promote a specific pre-release, enter the tag (e.g. v0.2.3)."
+            exit 1
+          fi
+
+          echo "tag=${TAG}" >> "${GITHUB_OUTPUT}"
+          echo "Validated: ${TAG} is a pre-release, ready to promote"
+
+      - id: generate_changelog
+        name: Generate Release Changelog
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
+          ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
+        run: |
+          TAG="${{ steps.validate_tag.outputs.tag }}"
+
+          # Get existing release body (has changelog + testnet table)
+          EXISTING=$(gh release view "${TAG}" --json body -q '.body')
+
+          {
+            echo "${EXISTING}"
+            echo ""
+            echo "## :globe_with_meridians: Mainnet Deployment"
+            echo ""
+            echo "| Resource | ID |"
+            echo "|----------|-----|"
+            echo "| Satellite | ${SATELLITE_ID} |"
+            echo "| Orbiter | ${ORBITER_ID} |"
+            echo ""
+            echo ":link: [Juno Console](https://console.juno.build/)"
+          } > /tmp/changelog.md
+
+          echo "Generated release changelog with mainnet deployment for ${TAG}"
+
+      - id: promote_release
+        name: Promote Pre-Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ steps.validate_tag.outputs.tag }}" \
+            --prerelease=false \
+            --title "Release ${{ steps.validate_tag.outputs.tag }}" \
+            --notes-file /tmp/changelog.md
+
+          echo "Promoted ${{ steps.validate_tag.outputs.tag }} to release"
+
+  ##################################################
+  # Deploy to Mainnet (Juno)
+  ##################################################
+  deploy-juno:
+    name: Deploy Juno
+    needs: release
+    if: always() && needs.release.result == 'success'
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    continue-on-error: false
+    environment: Mainnet
+
+    outputs:
+      oracle_address: ${{ steps.deploy_juno.outputs.oracle_address }}
+
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          lfs: true
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: deploy_juno
+        name: Deploy Juno
+        uses: ./.github/actions/deploy-juno
+        with:
+          mode: production
+          satellite-id: ${{ vars.VITE_SATELLITE_ID }}
+          orbiter-id: ${{ vars.VITE_ORBITER_ID }}
+          astro-site-url: ${{ vars.VITE_ASTRO_SITE_URL }}
+          siwa-provider-id: ${{ vars.VITE_SIWA_PROVIDER_ID }}
+          walletconnect-project-id: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
+          version: ${{ needs.release.outputs.tag }}
+          version-mode: current
+
+  ##################################################
+  # Deploy Solidity contracts (Mainnet)
+  # Runs in parallel with deploy-juno.
+  # Uses the real TRESR token from config — no test token.
+  ##################################################
+  deploy-foundry:
+    name: Deploy Contracts
+    needs: release
+    if: always() && needs.release.result == 'success'
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    continue-on-error: false
+    environment: Mainnet
+
+    env:
+      FOUNDRY_PROFILE: ${{ vars.FOUNDRY_PROFILE || 'mainnet' }}
+      FOUNDRY_DISABLE_NIGHTLY_WARNING: 1
+
+    outputs:
+      vault_address: ${{ steps.resolve_vault.outputs.vault_address }}
+      deployed: ${{ steps.resolve_vault.outputs.deployed }}
+
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          lfs: true
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: foundry_deploy_setup
+        name: Foundry Deploy Setup
+        uses: ./.github/actions/foundry-deploy-setup
+        with:
+          environment: Mainnet
+          deployer-private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          snowtrace-api-key: ${{ secrets.SNOWTRACE_API_KEY }}
+
+      # Mainnet: Vault only (uses real TRESR token from config — no test token)
+      - id: resolve_vault
+        name: Resolve Vault
+        uses: ./.github/actions/foundry-resolve-vault
+        with:
+          network: mainnet
+          rpc-url: ${{ steps.foundry_deploy_setup.outputs.RPC_URL }}
+          chain-id: ${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}
+          token-address: ${{ steps.foundry_deploy_setup.outputs.TOKEN_ADDRESS }}
+          oracle-address: ${{ steps.foundry_deploy_setup.outputs.ORACLE_ADDRESS }}
+          admin-address: ${{ steps.foundry_deploy_setup.outputs.ADMIN_ADDRESS }}
+          vault-address: ${{ steps.foundry_deploy_setup.outputs.VAULT_ADDRESS }}
+          deployer-private-key: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          snowtrace-api-key: ${{ secrets.SNOWTRACE_API_KEY }}
+
+      - id: deploy_summary
+        name: Deploy Summary
+        if: always()
+        uses: ./.github/actions/foundry-deploy-summary
+        with:
+          network: mainnet
+          chain-id: ${{ steps.foundry_deploy_setup.outputs.CHAIN_ID }}
+          oracle-address: ${{ steps.foundry_deploy_setup.outputs.ORACLE_ADDRESS }}
+          admin-address: ${{ steps.foundry_deploy_setup.outputs.ADMIN_ADDRESS }}
+          token-address: ${{ steps.foundry_deploy_setup.outputs.TOKEN_ADDRESS }}
+          vault-address: ${{ steps.resolve_vault.outputs.vault_address }}
+          workflow-name: cd-mainnet
+
+  ##################################################
+  # Update config/tresr.yaml with mainnet addresses
+  ##################################################
+  update-config:
+    name: Update Config
+    needs:
+      - release
+      - deploy-juno
+      - deploy-foundry
+
+    if: >-
+      always() &&
+      needs.release.result == 'success' &&
+      needs.deploy-foundry.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - id: checkout_repository
+        name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          lfs: true
+
+      - id: setup_devenv
+        name: Setup Devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      - id: update_config
+        name: Update TRESR Config
+        uses: ./.github/actions/update-tresr-config
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          environment: mainnet
+          base-ref: ${{ github.event.repository.default_branch }}
+          oracle-address: ${{ needs.deploy-juno.outputs.oracle_address }}
+          vault-address: ${{ needs.deploy-foundry.outputs.vault_address }}

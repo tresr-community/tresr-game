@@ -114,7 +114,7 @@ runs:
       if: steps.check_diff.outputs.changed == 'true'
       env:
         GH_TOKEN: ${{ inputs.github-token }}
-      shell: bash
+      shell: devenv shell --quiet bash -- -e {0}
       run: |
         BRANCH="chore/update-${{ inputs.environment }}-contract-address"
         TITLE="chore: update ${{ inputs.environment }} contract addresses"
@@ -136,12 +136,22 @@ runs:
         # Create (or reset) the PR branch from the latest remote base
         git checkout -B "${BRANCH}" "origin/${BASE_REF}"
 
+        # ── Fix LFS-smudged files ──────────────────────────────
+        # checkout -B can smudge LFS pointer files (expand them to
+        # full binary), leaving the worktree dirty. This causes
+        # `git stash pop` to fail with "local changes would be
+        # overwritten". Restore the clean checkout state and remove
+        # any stray untracked files before applying the stash.
+        git checkout -- .
+        git clean -fd
+
         # Re-apply the stashed config changes on top of the fresh base
         git stash pop
 
-        # Stage only the files that differ from the clean base
-        git add config/tresr.yaml
-        git diff --name-only HEAD | xargs -r git add
+        # Re-run client-config --stage to regenerate derived files and
+        # stage exactly the right files. The checkout wiped our staged
+        # index, and manual `git add` risks picking up LFS-smudged fonts.
+        bun run client-config --stage
 
         # Commit only what client-config --stage staged — no git add -A
         git commit \

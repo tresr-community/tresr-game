@@ -18,13 +18,13 @@ There are 3 environments, but only 2 are managed with CI/CD.
 
 ### Testnet
 
-Testnet deployments are triggered manually via `workflow_dispatch` on `cd.yaml`. This allows
+Testnet deployments are triggered manually via `workflow_dispatch` on `cd-testnet.yaml`. This allows
 multiple PRs to accumulate on trunk before cutting a release, so the changelog captures all
 changes in one entry.
 
 ```mermaid
 graph TD
-    A["Run cd.yaml<br/>(manual dispatch — Testnet)"] --> B["pre-release"]
+    A["Run cd-testnet.yaml<br/>(manual dispatch)"] --> B["pre-release"]
     B --> C["deploy-juno-testnet"]
     B --> D["deploy-foundry-testnet"]
     C --> E["update-config"]
@@ -58,12 +58,12 @@ graph TD
     D --> E["Merge queue"]
     E --> F["Merged to trunk"]
     F --> G["Merge more PRs </br> (accumulate changes)"]
-    G --> H["Run cd.yaml </br> (Testnet — manual)"]
+    G --> H["Run cd-testnet.yaml </br> (manual)"]
     H --> I["Pre-release + Testnet deployed"]
     I --> J["UAT / QA"]
-    J --> K["Run cd.yaml </br> (Mainnet 1st run)"]
+    J --> K["Run cd-mainnet.yaml </br> (1st run)"]
     K --> L["Contracts deployed </br> + config PR created"]
-    L -->|merge PR| M["Run cd.yaml </br> (Mainnet 2nd run)"]
+    L -->|merge PR| M["Run cd-mainnet.yaml </br> (2nd run)"]
     M --> N["Config applied </br> + deployed"]
 ```
 
@@ -84,14 +84,14 @@ the coming week, so developers' PRs hit the fast path the rest of the time.
 
 ## Foundry Deploy
 
-Foundry deploys are split into two `workflow_call`-only workflows called by the unified `cd.yaml`:
+Foundry deploy steps are inlined directly into each environment's CD workflow:
 
-| Workflow                  | Environment | Contracts deployed            |
-| ------------------------- | ----------- | ----------------------------- |
-| `cd-foundry-testnet.yaml` | Testnet     | Test Token, Faucet, Vault     |
-| `cd-foundry-mainnet.yaml` | Mainnet     | Vault only (real TRESR token) |
+| Workflow          | Environment | Contracts deployed            |
+| ----------------- | ----------- | ----------------------------- |
+| `cd-testnet.yaml` | Testnet     | Test Token, Faucet, Vault     |
+| `cd-mainnet.yaml` | Mainnet     | Vault only (real TRESR token) |
 
-Both are `workflow_call` only — they read `oracle_address` from `config/tresr.yaml` via `foundry-deploy-setup`, and run in parallel with their corresponding Juno deploy job.
+Each workflow reads `oracle_address` from `config/tresr.yaml` via the `foundry-deploy-setup` composite action and runs the Foundry deploy in parallel with the Juno deploy job.
 
 > [!NOTE]
 > On first bootstrap, the oracle address must be in `config/tresr.yaml` **before** the Foundry
@@ -129,7 +129,7 @@ If the balance is too low, the workflow fails early with a clear error.
 ### Token + Faucet (Testnet Only)
 
 The `DeployToken.s.sol` script deploys `RonToken` (test ERC-20)
-and `TresrFaucet`. This exists only in `cd-foundry-testnet.yaml` —
+and `TresrFaucet`. This exists only in `cd-testnet.yaml` —
 the mainnet workflow deploys the Vault only (using the real TRESR token).
 
 ### Vault (Deploy vs Upgrade)
