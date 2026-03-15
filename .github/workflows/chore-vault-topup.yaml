@@ -1,5 +1,5 @@
 ---
-name: "Chore: Vault Top-up"
+name: "Vault Top-up"
 
 on:
   schedule:
