@@ -43,13 +43,33 @@ mkdir -p "$JUNO_LOG_DIR"
 # Build: Astro Build (Clean + Hooks + Static Dist)
 # =============================================================================
 
+# Regenerate and bake the client configuration (env vars → static JSON).
+# Called explicitly before lint so type generation is fresh, and optionally
+# skipped inside cmd_astro_build when it has already been run.
+function cmd_prebuild() {
+	log_info "Regenerating client config..."
+	bun run client-config || {
+		log_error "Could not regenerate client config."
+		return 1
+	}
+}
+
+# Build the Astro static site.
+# skip_prebuild=true → skip the bun prebuild lifecycle hook (client-config
+# already ran earlier in the same session, e.g. before lint in oneshot).
 function cmd_astro_build() {
+	local skip_prebuild="${1:-false}"
 	log_info "🚀 Clean Astro build..."
 	rm -rf dist node_modules/.vite .astro # Vite/Astro caches
 	bun install
-	# NOTE: bun automatically runs the `prebuild` lifecycle hook before `build`,
-	# so client-config is regenerated exactly once without an explicit call here.
-	bun run build # astro build → NEW dist/_astro/sw-[HASH].js!
+	if [[ $skip_prebuild == "true" ]]; then
+		# client-config already ran; invoke astro directly to avoid a second run.
+		bun x astro build || return 1
+	else
+		# NOTE: bun automatically runs the `prebuild` lifecycle hook before `build`,
+		# so client-config is regenerated exactly once without an explicit call here.
+		bun run build || return 1
+	fi
 	log_success "✅ Build done. NEW SW: $(find dist/_astro -name 'sw*' -print -quit 2>/dev/null || echo 'None')"
 }
 
@@ -120,24 +140,17 @@ function cmd_juno_deploy() {
 		cmd_astro_build
 	fi
 
-	# Two-step deploy to match CI (cd-juno-testnet.yaml):
-	#   1. clear — cheap delete of stale hashed chunks (low instruction cost)
-	#   2. deploy — diff-based commit of only changed files (avoids 40B limit)
-	# NOTE: --config is intentionally NOT passed here.
-	# Config (collection rules + storage headers) is applied separately via
-	# cmd_juno_config to avoid the emulator hitting the 40B instruction limit
-	# in set_storage_config when files are large/numerous.
-	log_info "🗑️  Clearing stale assets (mode=$mode)..."
-	if ! juno hosting clear --mode "$mode"; then
-		log_error "Hosting clear failed!"
-		return 1
-	fi
-
 	log_info "📤 Juno hosting deploy (mode=$mode)..."
 	if ! juno hosting deploy --immediate --mode "$mode"; then
 		log_error "Deploy failed!"
 		return 1
 	fi
+
+	#log_info "🗑️  Pruning stale assets (mode=$mode)..."
+	#if ! juno hosting prune --mode "$mode"; then
+	#	log_error "Hosting prune failed!"
+	#	return 1
+	#fi
 
 	local url
 	url="http://${VITE_DEVELOPMENT_SATELLITE_ID}.localhost:5987/"
@@ -912,7 +925,7 @@ logs | l)
 
 # Lint the code (prebuild first to regenerate types)
 lint)
-	bun run prebuild || {
+	cmd_prebuild || {
 		log_error "Prebuild failed."
 		exit 7
 	}
@@ -969,11 +982,10 @@ oneshot | loop)
 		log_error "Could not clean artifacts."
 		exit 8
 	}
-	# Generate config once — needed by astro check (lint) and bun run build.
-	# We call it explicitly here so lint has types, then skip-scripts in build
-	# to avoid bun auto-running prebuild a second time.
-	log_info "Regenerating client config..."
-	bun run client-config || {
+	# Generate client config once — needed by lint (type generation) and build.
+	# We call cmd_prebuild explicitly here so lint has fresh types, then pass
+	# skip_prebuild=true to cmd_astro_build to avoid running it a second time.
+	cmd_prebuild || {
 		log_error "Could not regenerate client config."
 		exit 8
 	}
@@ -989,33 +1001,16 @@ oneshot | loop)
 		log_error "TypeScript type check failed."
 		exit 20
 	}
-	# Build: inline steps and explicitly skip the prebuild script so client-config
-	# doesn't run a second time (it already ran above for lint).
-	log_info "Full rebuild..."
-	log_info "🚀 Clean Astro build..."
-	rm -rf dist node_modules/.vite .astro
-	bun install
-	bun x astro build || {
+	# skip_prebuild=true: client-config already ran above for lint.
+	cmd_astro_build true || {
 		log_error "Build failed."
 		exit 9
 	}
-	log_success "✅ Build done."
-	# Two-step deploy to match CI:
-	#   1. clear — cheap delete of stale hashed chunks (low instruction cost)
-	#   2. deploy — diff-based commit of only changed files (avoids 40B limit)
-	# NOTE: --config is intentionally omitted; apply separately via `juno-dev config`.
-	log_info "🗑️  Clearing stale assets (mode=development)..."
-	if ! juno hosting clear --mode development; then
-		log_error "Clear failed!"
+	# skip_build=true: Astro build already completed above.
+	cmd_juno_deploy development true || {
+		log_error "Could not deploy to Juno."
 		exit 13
-	fi
-	log_info "📤 Juno hosting deploy (mode=development)..."
-	if ! juno hosting deploy --immediate --mode development; then
-		log_error "Deploy failed!"
-		exit 13
-	fi
-	url="http://${VITE_DEVELOPMENT_SATELLITE_ID}.localhost:5987/"
-	log_success "Satellite live: $url"
+	}
 	cmd_functions_deploy development || {
 		log_error "Could not deploy serverless functions."
 		exit 2

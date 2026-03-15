@@ -11,7 +11,7 @@
 //! - `stats`: Aggregate burn/payout statistics
 //!
 //! HTTP Endpoints:
-//! - `game_sessions`: Game session data for anti-cheat validation
+//! - `audit`: Game session data for anti-cheat validation (key: "session_{sessionId}")
 //! - `balance_refresh`: Requests to sync balance from on-chain
 
 mod evm_rpc;
@@ -910,7 +910,7 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
             // 1. Fetch Game Session
             let session_doc = get_doc_store(
                 context.caller,
-                "game_sessions".to_string(),
+                "audit".to_string(),
                 claim.game_session_id.clone(),
             )?;
 
@@ -995,7 +995,7 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
                     // is in a safe state (claimed=true with no signature issued).
                     if let Ok(Some(rollback_doc)) = get_doc_store(
                         context.caller,
-                        "game_sessions".to_string(),
+                        "audit".to_string(),
                         claim.game_session_id.clone(),
                     ) && let Ok(mut rb_session) =
                         decode_doc_data::<GameSession>(&rollback_doc.data)
@@ -1108,12 +1108,7 @@ async fn update_session_doc(
         version: Some(version),
     };
 
-    set_doc_store(
-        context.caller,
-        "game_sessions".to_string(),
-        key,
-        updated_doc,
-    )?;
+    set_doc_store(context.caller, "audit".to_string(), key, updated_doc)?;
     Ok(())
 }
 
@@ -1794,8 +1789,10 @@ async fn claim_authorize(
         ));
     }
 
-    // 1b. Fetch session from Datastore
-    let session_doc = get_doc_store(caller, "game_sessions".to_string(), session_id.clone())?;
+    // 1b. Fetch session from Datastore ("audit" collection — key is "session_{sessionId}"
+    //     to match the satellite's assert_set_doc prefix requirement)
+    let session_key = format!("session_{}", session_id);
+    let session_doc = get_doc_store(caller, "audit".to_string(), session_key.clone())?;
     let session: GameSession = match session_doc {
         Some(ref doc) => decode_doc_data(&doc.data)?,
         None => return Err("Game session not found".to_string()),
@@ -1931,8 +1928,8 @@ async fn claim_authorize(
     };
     set_doc_store(
         caller,
-        "game_sessions".to_string(),
-        session_id.clone(),
+        "audit".to_string(),
+        session_key.clone(),
         claimed_doc,
     )?;
 

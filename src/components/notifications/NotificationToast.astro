@@ -37,7 +37,7 @@
     const {message, urgency, type, details, errorId} = doc.data;
 
     const toast = document.createElement("div");
-    toast.className = `alert ${getUrgencyClass(urgency)} shadow-lg animate-in slide-in-from-right duration-300 pointer-events-auto flex flex-col items-start gap-2 min-w-[300px] max-w-[90vw] max-w-xs`;
+    toast.className = `alert ${getUrgencyClass(urgency)} shadow-lg animate-in slide-in-from-right duration-300 pointer-events-auto flex flex-col items-start gap-2 min-w-[300px] max-w-[90vw] sm:max-w-sm`;
 
     const isUpdate = type === "app_update";
 
@@ -50,7 +50,7 @@
     const iconSpan = document.createElement("span");
     iconSpan.textContent = urgency === "urgent" ? "\u{1F6A8}" : "\u{1F514}";
     const msgSpan = document.createElement("span");
-    msgSpan.className = "font-bold truncate";
+    msgSpan.className = "font-bold break-words min-w-0";
     msgSpan.textContent = message;
     headerLeft.append(iconSpan, msgSpan);
 

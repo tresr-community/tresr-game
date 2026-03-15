@@ -129,6 +129,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 
 <script>
   import {getVaultCurrentBalance} from "@/lib/blockchain/contracts/vault";
+  import {log} from "@/lib/utils/log";
 
   // Game constants replicating config/tresr.yaml and satellite/src/lib.rs exactly
   const VAULT_TIER_BUILDING = 10000n * 10n ** 18n;
@@ -211,7 +212,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
       });
       resultEl.textContent = `${formatted} TRESR`;
     } catch (e) {
-      console.error(e);
+      log.error("Calc", "Calculation failed", e);
       resultEl.textContent = "0.00 TRESR";
     }
   }
@@ -235,7 +236,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         calculate();
       }
     } catch (e) {
-      console.warn("Could not fetch on-chain vault balance", e);
+      log.info("Calc", "Could not fetch on-chain vault balance", e);
     }
   }
 

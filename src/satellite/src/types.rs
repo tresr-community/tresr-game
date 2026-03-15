@@ -387,7 +387,7 @@ pub enum ClaimStatus {
 }
 
 // =============================================================================
-// Game Session (stored in "game_sessions" collection)
+// Game Session (stored in "audit" collection — key: "session_{sessionId}")
 // =============================================================================
 
 /// Game session data for validation

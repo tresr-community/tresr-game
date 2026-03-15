@@ -49,6 +49,15 @@ function ensureReconnected(config: Config): Promise<unknown> {
 }
 
 /**
+ * Reset the cached reconnect promise so the next ensureReconnected()
+ * call starts a fresh handshake. Called when a disconnect/lock event fires
+ * so that stale wagmi state doesn't bypass the AppKit modal.
+ */
+export function resetReconnect(): void {
+  _reconnectPromise = null;
+}
+
+/**
  * Eagerly warm the wagmi connection during auth init so that when the
  * user clicks "Sign in" the reconnect handshake is already complete and
  * the wallet modal opens instantly.
@@ -58,6 +67,51 @@ function ensureReconnected(config: Config): Promise<unknown> {
 export function initWalletReconnect(): void {
   const config = getWagmiConfig();
   void ensureReconnected(config);
+}
+
+/**
+ * Probe whether the currently connected wallet connector is actually live
+ * (i.e. not locked/disconnected under the hood).
+ *
+ * Brave Wallet and MetaMask can auto-lock without emitting a disconnect
+ * event, leaving wagmi in a stale "connected" state. A quick getChainId
+ * call against the connector surfaces the failure immediately.
+ *
+ * Returns true if the connector responds within the timeout, false if it
+ * throws or times out (indicating the wallet is locked or unavailable).
+ */
+async function probeConnectorLiveness(
+  config: Config,
+  timeoutMs = 2_000
+): Promise<boolean> {
+  const account = getConnection(config);
+  if (!account.isConnected || !account.connector) return false;
+
+  // Only probe against the *hydrated* live connector from config.connectors.
+  // account.connector is a serialized snapshot from the wagmi store — calling
+  // getChainId() on it throws even when the wallet is healthy, because the
+  // unhydrated copy lacks the provider binding. If we can't find the live
+  // instance, assume the connector is alive (we can't distinguish "locked"
+  // from "not yet hydrated" at this point).
+  const liveConnector = config.connectors.find(
+    (c) => c.uid === account.connector?.uid
+  );
+  if (!liveConnector) return true;
+
+  try {
+    await Promise.race([
+      // getChainId is a lightweight call that requires the wallet to be unlocked.
+      // It throws immediately if the extension is locked.
+      (liveConnector as {getChainId?: () => Promise<number>}).getChainId?.() ??
+        Promise.resolve(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Liveness probe timeout")), timeoutMs)
+      ),
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -113,7 +167,28 @@ export async function connectWallet(): Promise<WalletConnection> {
     account = getConnection(config);
   }
 
-  if (!account.isConnected) {
+  // ── Liveness probe ─────────────────────────────────────────────────────
+  // Even when wagmi reports "connected", the wallet extension may have
+  // auto-locked in the background (Brave Wallet, MetaMask). A quick
+  // getChainId probe surfaces this immediately. If the probe fails we reset
+  // the reconnect singleton and treat it as not connected — the AppKit modal
+  // will open and ask the user to unlock/reconnect.
+  let walletNeedsReconnect = !account.isConnected;
+  if (account.isConnected) {
+    const alive = await probeConnectorLiveness(config);
+    if (!alive) {
+      log.info(
+        COMPONENT_NAME,
+        "Wallet appears locked or unresponsive — requesting reconnect..."
+      );
+      resetReconnect();
+      walletNeedsReconnect = true;
+    } else {
+      log.info(COMPONENT_NAME, `Already connected: ${account.address}`);
+    }
+  }
+
+  if (walletNeedsReconnect) {
     log.info(COMPONENT_NAME, "Opening AppKit connection modal...");
 
     // Open AppKit modal - shows all wallet options
@@ -126,8 +201,6 @@ export async function connectWallet(): Promise<WalletConnection> {
     }
 
     log.info(COMPONENT_NAME, `Connected via AppKit: ${address}`);
-  } else {
-    log.info(COMPONENT_NAME, `Already connected: ${account.address}`);
   }
 
   // Ensure correct chain
@@ -329,6 +402,12 @@ export function getConfig(): Config {
 /**
  * Subscribe to connection state changes.
  *
+ * If wagmi is still in the "reconnecting" phase when this is called (e.g.
+ * right after login, when the injected wallet extension is completing its
+ * async handshake), we defer the initial callback until the status settles.
+ * This prevents the faucet button from getting stuck in "Connecting wallet…"
+ * even after the wallet is already connected.
+ *
  * @param callback - Called when connection state changes
  * @returns Unsubscribe function
  */
@@ -336,17 +415,36 @@ export function subscribeToConnection(
   callback: (connected: boolean, address?: `0x${string}`) => void
 ): () => void {
   const config = getWagmiConfig();
+  let disposed = false;
 
-  // Initial call with current state
-  const account = getConnection(config);
-  callback(account.isConnected, account.address as `0x${string}` | undefined);
-
-  // Subscribe to wagmi state changes
-  return config.subscribe(
+  // Subscribe to wagmi state changes (runs on every status transition)
+  const unsub = config.subscribe(
     (state: {status: string}) => state.status,
     () => {
+      if (disposed) return;
       const acc = getConnection(config);
       callback(acc.isConnected, acc.address as `0x${string}` | undefined);
     }
   );
+
+  const currentStatus = (config.state as {status?: string}).status;
+
+  if (currentStatus === "reconnecting") {
+    // Wallet is still handshaking — wait for it to settle, then fire the
+    // initial callback once. Subsequent changes are handled by the subscriber above.
+    waitForReconnect(config).then(() => {
+      if (disposed) return;
+      const acc = getConnection(config);
+      callback(acc.isConnected, acc.address as `0x${string}` | undefined);
+    });
+  } else {
+    // Already settled — fire immediately with current state
+    const account = getConnection(config);
+    callback(account.isConnected, account.address as `0x${string}` | undefined);
+  }
+
+  return () => {
+    disposed = true;
+    unsub();
+  };
 }

@@ -1326,6 +1326,22 @@ export class MainScene extends Phaser.Scene {
       offset += 4;
       payload.set(seedBytes, offset);
 
+      // Save game session BEFORE calling claimAuthorize so the Rust handler
+      // can read it immediately. The satellite's claim_authorize looks up the
+      // session doc by raw sessionId — if it isn't there yet, it returns
+      // "Game session not found" and blocks the reward.
+      try {
+        await this.saveGameSession(true);
+      } catch (err) {
+        // Don't abort the claim if the session write fails — the Rust side
+        // will surface the error cleanly.
+        log.error(
+          COMPONENT_NAME,
+          "Failed to save game session before claim:",
+          err
+        );
+      }
+
       // Juno: direct #[update] call to Rust claim_authorize() —
       //   validates replay, checks ban status, calculates reward, returns (amount, signature).
       //   On cheat detection: calls apply_ban() and saves ban to "users" collection.
@@ -1370,9 +1386,7 @@ export class MainScene extends Phaser.Scene {
             log.error(COMPONENT_NAME, "Failed to save win stats:", err);
           }
         }
-
-        // Save game session for leaderboard active score tracking
-        await this.saveGameSession(true);
+        // Game session already saved above — nothing more to do here.
       } else {
         log.error(COMPONENT_NAME, "Claim authorization failed:", result.Err);
       }

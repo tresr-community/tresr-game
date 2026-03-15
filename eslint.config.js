@@ -21,5 +21,18 @@ export default tseslint.config(
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+  },
+  // Enforce centralized logging in Astro client scripts and TypeScript source.
+  // Exceptions per AGENTS.md: log.ts itself, sw.ts (ServiceWorker), integrations/, bin/
+  {
+    files: ["src/**/*.ts"],
+    ignores: [
+      "src/lib/utils/log.ts",
+      "src/lib/pwa/sw.ts",
+      "src/integrations/**",
+    ],
+    rules: {
+      "no-console": "error",
+    },
   }
 );

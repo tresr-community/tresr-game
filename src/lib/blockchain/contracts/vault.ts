@@ -246,16 +246,21 @@ export async function payFeeForGame(
   }
 
   // --- Approve only if current allowance is insufficient ---
+  // We approve 10× the fee amount so the user only re-approves every 10 games.
+  // The exact-amount pattern was broken: safeTransferFrom consumes the allowance
+  // on every payFee() call, resetting it to 0 and re-triggering an approval
+  // popup on every single game.
+  const approvalAmount = amount * 10n;
   if (allowance < amount) {
     log.info(
       COMPONENT_NAME,
-      `Allowance insufficient (${formatUnits(allowance, 18)} < ${formatUnits(amount, 18)}), requesting approval...`
+      `Allowance insufficient (${formatUnits(allowance, 18)} < ${formatUnits(amount, 18)}), requesting approval for 10 games...`
     );
 
     const approveData = encodeFunctionData({
       abi: ERC20Abi,
       functionName: "approve",
-      args: [vaultAddr, amount],
+      args: [vaultAddr, approvalAmount],
     });
 
     const approveGas = await publicClient.estimateGas({
@@ -269,7 +274,7 @@ export async function payFeeForGame(
       address: tokenAddr,
       abi: ERC20Abi,
       functionName: "approve",
-      args: [vaultAddr, amount],
+      args: [vaultAddr, approvalAmount],
       chain,
       gas: approveGas,
     });

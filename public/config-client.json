@@ -668,7 +668,7 @@
         }
       },
       "boss": {
-        "health": 500,
+        "health": 1000,
         "damage": 25,
         "speed": 150,
         "knockback": {
@@ -743,15 +743,15 @@
         }
       },
       "key": {
-        "speed": 60,
-        "gravity": 0.5,
-        "terminal_vz": 4.5,
-        "drag": 0.06,
+        "speed": 80,
+        "gravity": 0.04,
+        "terminal_vz": 1.5,
+        "drag": 0.12,
         "wind_frequency": 0.4,
-        "bounce_threshold": 0.5,
+        "bounce_threshold": 0.3,
         "oscillation": {
           "frequency": 3,
-          "amplitude": 12
+          "amplitude": 18
         },
         "bounce_damping": 0.2,
         "offscreen_kill_distance": 200,
@@ -1444,7 +1444,9 @@
         "title": "Prizes for losers",
         "notes": [
           "Parachute physics for Key airdrops",
-          "Consolation prize for expired #1 active score — a participation trophy for degens"
+          "Consolation prize for expired #1 active score — a participation trophy for degens",
+          "Squashed bugs like there was a cockroach infestation",
+          "Game sessions are used for Claim Authorizations. Cheaters will now be banned"
         ]
       },
       {
@@ -1507,5 +1509,5 @@
       }
     ]
   },
-  "configHash": "557abfc65775dfccb27038c69b6b793715d534d04127d3f637d795f7db045ec9"
+  "configHash": "31b9b2b91d368050f07bfa9522064f64d222f291c15240e80a90d37e0df36f51"
 }

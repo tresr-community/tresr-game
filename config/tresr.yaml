@@ -584,8 +584,7 @@ client:
           bob_duration: 600 # Duration of bob cycle (ms)
           despawn_ms: 8000 # Auto-despawn time (ms)
       boss:
-        #health: 1000
-        health: 500 # TODO: Revert after demo. Lower HP for testing.
+        health: 1000
         damage: 25
         speed: 150
         knockback:
@@ -654,15 +653,15 @@ client:
         animations:
           death_delay: 1000 # Delay before kill() after death animation (ms)
       key:
-        speed: 60 # Wind drift amplitude (px) — key swings ±60px around spawn X
-        gravity: 0.5 # Higher gravity balanced by drag reaching terminal velocity
-        terminal_vz: 4.5 # Max fall speed (px/frame-unit) — air resistance cap
-        drag: 0.06 # Air drag coefficient — how quickly terminal velocity is reached
+        speed: 80 # Wind drift amplitude (px) — key swings ±80px around spawn X
+        gravity: 0.04 # Very low gravity — parachute resists freefall, drag does the work
+        terminal_vz: 1.5 # Slow terminal fall speed (px/frame-unit) — floaty airdrop descent
+        drag: 0.12 # High air drag — quickly reaches slow terminal velocity, prevents acceleration
         wind_frequency: 0.4 # Slow wind oscillation (radians/sec) — large back-and-forth swing
-        bounce_threshold: 0.5 # Lower: parachute landing is soft, minimal bounce
+        bounce_threshold: 0.3 # Soft landing threshold — parachute means minimal bounce needed
         oscillation:
           frequency: 3 # Fast canopy wobble (radians/sec)
-          amplitude: 12 # Small canopy wobble (px)
+          amplitude: 18 # Slightly more canopy wobble for visible parachute sway
         bounce_damping: 0.2
         offscreen_kill_distance: 200
         animations:
