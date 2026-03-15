@@ -547,11 +547,30 @@ export class MainScene extends Phaser.Scene {
     // Non-blocking — queues load while countdown plays
     this.loadDeferredSfx();
 
-    // Input: ESC for Pause
+    // Input: ESC for Pause and capture other keys to prevent default browser behavior
     if (this.input.keyboard) {
       this.escKey = this.input.keyboard.addKey(
         Phaser.Input.Keyboard.KeyCodes.ESC
       );
+
+      // Prevent browser shortcuts from stealing focus when canvas is active
+      // e.g., Alt+D or Ctrl+L (address bar), Tab, WASD, Space, Arrows, etc.
+      this.input.keyboard.addCapture([
+        Phaser.Input.Keyboard.KeyCodes.ALT,
+        Phaser.Input.Keyboard.KeyCodes.CTRL,
+        Phaser.Input.Keyboard.KeyCodes.SHIFT,
+        Phaser.Input.Keyboard.KeyCodes.TAB,
+        Phaser.Input.Keyboard.KeyCodes.L,
+        Phaser.Input.Keyboard.KeyCodes.D,
+        Phaser.Input.Keyboard.KeyCodes.W,
+        Phaser.Input.Keyboard.KeyCodes.A,
+        Phaser.Input.Keyboard.KeyCodes.S,
+        Phaser.Input.Keyboard.KeyCodes.UP,
+        Phaser.Input.Keyboard.KeyCodes.DOWN,
+        Phaser.Input.Keyboard.KeyCodes.LEFT,
+        Phaser.Input.Keyboard.KeyCodes.RIGHT,
+        Phaser.Input.Keyboard.KeyCodes.SPACE,
+      ]);
     }
 
     // Background — scale wallpaper to fill the canvas (cover fit)
@@ -1462,17 +1481,15 @@ export class MainScene extends Phaser.Scene {
     const deathPhase = this.phase;
     this.phase = "lost";
     gameActions.setPhase("lost");
-    log.info(COMPONENT_NAME, "PLAYER DIED. System Critical.");
+    log.info(COMPONENT_NAME, "PLAYER DIED. Rug pulled.");
 
-    // Freeze the simulation — stop all spawning, physics, and timers so
-    // bombs/enemies/boss stop processing. The scene stays alive (no black
-    // screen) so the death overlay renders over the frozen game world.
-    this.physics.world.pause();
-    this.anims.pauseAll();
-    this.time.paused = true;
-    if (this.survivalCountdown) this.survivalCountdown.paused = true;
-    this.spawnManager.pauseTimers();
-    this.combatManager.pauseTimers();
+    // Completely freeze the scene to save CPU cycles on mobile.
+    // The death overlay renders over the frozen game world via DOM.
+    // We use a small delay so the player's death animation frame or any
+    // immediate visual feedback can register before the simulation halts.
+    this.time.delayedCall(100, () => {
+      this.scene.pause();
+    });
 
     // Kill bot on game end
     if (this.tresrBot && this.tresrBot.active) {
@@ -1482,7 +1499,7 @@ export class MainScene extends Phaser.Scene {
 
     this.playSound("game_over");
     void MusicManager.getInstance().stop();
-    this.uiManager.showPhaseAnnouncement("DEFEAT");
+    this.uiManager.showPhaseAnnouncement("RUG PULLED");
     const deathDuration = Math.round(
       this.gameplayConfig.time_limit_seconds - this.survivalTimer
     );

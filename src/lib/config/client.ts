@@ -551,7 +551,7 @@ export const config: ConfigTypes = {
       "enemy": {
         "health": 100,
         "damage": 10,
-        "speed": 100,
+        "speed": 150,
         "flee_speed_mult": 1.5,
         "flee_margin_px": 50,
         "offscreen_kill_distance_px": 100,
@@ -674,7 +674,7 @@ export const config: ConfigTypes = {
         }
       },
       "boss": {
-        "health": 1000,
+        "health": 250,
         "damage": 25,
         "speed": 150,
         "knockback": {
@@ -1515,5 +1515,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "31b9b2b91d368050f07bfa9522064f64d222f291c15240e80a90d37e0df36f51"
+  "configHash": "d61adb513ea3681ea22779f1ec194cf82485ad6ba6a77787e472da64b5779e81"
 };

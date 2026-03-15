@@ -457,7 +457,7 @@ client:
       enemy:
         health: 100
         damage: 10
-        speed: 100
+        speed: 150
         flee_speed_mult: 1.5 # Multiplier applied to base speed when fleeing off-screen
         flee_margin_px: 50 # Distance outside camera bounds before fleeing enemy is killed
         offscreen_kill_distance_px: 100 # Maximum distance outside camera bounds before active enemy is killed
@@ -586,7 +586,7 @@ client:
           bob_duration: 600 # Duration of bob cycle (ms)
           despawn_ms: 8000 # Auto-despawn time (ms)
       boss:
-        health: 1000
+        health: 250
         damage: 25
         speed: 150
         knockback:

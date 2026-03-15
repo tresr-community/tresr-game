@@ -112,7 +112,7 @@ export class UIManager {
       .setAlpha(0)
       .setScale(0.5);
 
-    if (text === "DEFEAT" || text === "SYSTEM CRITICAL") {
+    if (text === "RUG PULLED" || text === "SYSTEM CRITICAL") {
       overlay.setColor("#ff0000");
     } else if (text === "BULL MARKET") {
       overlay.setColor("#ffaa00");

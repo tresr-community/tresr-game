@@ -619,18 +619,26 @@ const degenEnabled: boolean = iidEnabled || avalancheEnabled || webauthnEnabled;
     }
   }
 
+  /** Interval ID for maintenance auto-recovery polling. */
+  let maintenancePollId: ReturnType<typeof setInterval> | null = null;
+
   /**
    * Check satellite maintenance status after the user is authenticated.
-   * Runs once per page load — IC query is ~100 ms and free.
+   * IC query is ~100 ms and free.
    * If the satellite is mid-deploy, converts the START button into a greyed-out
-   * UPGRADING button and blocks navigation until the check passes.
+   * UPGRADING button and starts polling for recovery every 15 s.
    */
   async function checkMaintenanceStatus() {
     if (!loginButton) return;
+
+    // Already in maintenance — skip redundant IC queries (fires on every
+    // auth state change, which can be 3-4× during init).
+    if (loginButton.dataset.maintenance === "true") return;
+
     try {
       const {isSatelliteInSync} = await import("@/lib/satellite/config-hash");
       const inSync = await isSatelliteInSync();
-      if (!inSync && loginButton.dataset.maintenance !== "true") {
+      if (!inSync) {
         loginButton.dataset.maintenance = "true";
         loginButton.innerText = "UPGRADING";
         loginButton.classList.remove(
@@ -640,10 +648,49 @@ const degenEnabled: boolean = iidEnabled || avalancheEnabled || webauthnEnabled;
         );
         loginButton.classList.add("btn-warning", "opacity-60");
         log.info(COMPONENT_NAME, "Maintenance detected — START button locked");
+
+        // Start polling for recovery so the user doesn't need to refresh.
+        startMaintenancePoll();
       }
     } catch {
       // Best-effort — if the check itself fails, we don't block the user.
     }
+  }
+
+  /** Poll every 15 s for satellite recovery and auto-unlock the button. */
+  function startMaintenancePoll() {
+    if (maintenancePollId) return; // already polling
+
+    const POLL_INTERVAL_MS = 15_000;
+    log.info(COMPONENT_NAME, "Starting maintenance recovery poll (every 15 s)");
+
+    maintenancePollId = setInterval(async () => {
+      try {
+        const {isSatelliteInSync} = await import("@/lib/satellite/config-hash");
+        const inSync = await isSatelliteInSync();
+        if (inSync && loginButton) {
+          // Satellite is back in sync — deactivate maintenance.
+          const {maintenanceState} = await import(
+            "@/lib/utils/maintenance-state"
+          );
+          maintenanceState.deactivate();
+
+          loginButton.dataset.maintenance = "false";
+          loginButton.innerText = "START";
+          loginButton.classList.remove("btn-warning", "opacity-60");
+          loginButton.classList.add("btn-success", "animate-pulse");
+          log.info(
+            COMPONENT_NAME,
+            "Satellite back in sync — START button unlocked"
+          );
+
+          clearInterval(maintenancePollId!);
+          maintenancePollId = null;
+        }
+      } catch {
+        // Keep polling on error — satellite may still be deploying.
+      }
+    }, POLL_INTERVAL_MS);
   }
 
   // Reactive State Subscription (ticket #199: store cleanup on navigation)
@@ -682,6 +729,11 @@ const degenEnabled: boolean = iidEnabled || avalancheEnabled || webauthnEnabled;
       unsubProfile();
       window.removeEventListener("auth-modal:open", handleAuthModalOpen);
       window.removeEventListener("tresr:auth-progress", onAuthProgress);
+      // Clear maintenance recovery poller to avoid stale IC calls.
+      if (maintenancePollId) {
+        clearInterval(maintenancePollId);
+        maintenancePollId = null;
+      }
     },
     {once: true}
   );

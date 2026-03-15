@@ -12,8 +12,7 @@
       Entry Fee Required
     </h3>
     <p class="py-2 text-sm opacity-70 sm:py-4 sm:text-base">
-      Pay the entry fee to start your mission. Your fee enters the vault as
-      potential loot.
+      Pay the entry fee to start your mission taking down bankers.
     </p>
 
     <div class="stats stats-vertical bg-base-200/50 my-2 w-full shadow sm:my-4">
@@ -76,7 +75,11 @@
   import {getExplorerUrl} from "@/lib/blockchain/networks/display";
   import {payFeeForGame} from "@/lib/blockchain/contracts/vault";
   import {setDoc} from "@junobuild/core";
-  import {connectWallet} from "@/lib/wallet/connection";
+  import {
+    connectWallet,
+    isConnected,
+    getConnectedAddress,
+  } from "@/lib/wallet/connection";
   import {confirmReceipt} from "@/lib/blockchain/tx";
   import {getTresrBalance, formatBalance} from "@/lib/blockchain/balance";
   import {parseBalance} from "@/lib/blockchain/balance";
@@ -217,28 +220,37 @@
         window.location.href = "/";
       }, PAYMENT_TIMEOUT_MS);
 
-      // Step 1: Connect wallet — always goes through connectWallet() so the
-      // liveness probe fires even when a session address is already cached.
-      // This catches auto-locked wallets (Brave, MetaMask) that leave wagmi
-      // in a stale "connected" state without emitting a disconnect event.
+      // Step 1: Connect wallet
+      // Fast path: if the wallet is already connected from login, skip the
+      // AppKit modal entirely — no overlay, no dialog close/reopen needed.
+      // Only show the reconnection flow when the wallet is genuinely
+      // disconnected or locked (auto-lock scenario).
       markStep("wallet", "active");
-      showStatus("Connecting wallet...");
-      // Close the fee-gate dialog before opening the AppKit wallet selector.
-      // Native <dialog> elements occupy the browser's top layer, which sits
-      // above any regular z-index stacking context — including AppKit's own
-      // --w3m-z-index: 99999. Without closing first, the AppKit modal opens
-      // behind the fee-gate backdrop and is invisible to the user.
-      // Show the reconnect overlay first so there's no blank-screen flash.
-      showWalletOverlay();
-      modal.close();
-      const connection = await connectWallet();
-      hideWalletOverlay();
-      const address = connection.address;
-      markStep("wallet", "done");
+      let address: `0x${string}`;
+      const existingAddr = isConnected() ? getConnectedAddress() : undefined;
 
-      // Re-open fee-gate after wallet connected so the rest of the flow
-      // (balance check, approve, pay) is visible to the user.
-      modal.showModal();
+      if (existingAddr) {
+        address = existingAddr;
+        showStatus("Wallet connected ✓");
+        log.info(COMPONENT_NAME, `Wallet already connected: ${address}`);
+      } else {
+        showStatus("Connecting wallet...");
+        // Close the fee-gate dialog before opening the AppKit wallet selector.
+        // Native <dialog> elements occupy the browser's top layer, which sits
+        // above any regular z-index stacking context — including AppKit's own
+        // --w3m-z-index: 99999. Without closing first, the AppKit modal opens
+        // behind the fee-gate backdrop and is invisible to the user.
+        // Show the reconnect overlay first so there's no blank-screen flash.
+        showWalletOverlay();
+        modal.close();
+        const connection = await connectWallet();
+        hideWalletOverlay();
+        address = connection.address;
+        // Re-open fee-gate after wallet connected so the rest of the flow
+        // (balance check, approve, pay) is visible to the user.
+        modal.showModal();
+      }
+      markStep("wallet", "done");
 
       // Step 2: Check balance
       markStep("balance", "active");
@@ -275,13 +287,12 @@
         .map((b) => b.toString(16).padStart(2, "0"))
         .join("")}`;
 
-      // Step 3 & 4: Approve + Pay Fee (payFeeForGame does both)
+      // Step 3 & 4: Approve + Pay Fee (payFeeForGame does both internally)
+      // payFeeForGame checks on-chain allowance and skips approval if the
+      // 10× batch is still sufficient. The user only sees a wallet prompt
+      // for the payFee call, not a redundant approve prompt.
       markStep("approve", "active");
-      showStatus("Approve the token spend in your wallet...");
-
-      // payFeeForGame calls approve() then payFee() — both prompt the wallet.
-      // We can't hook into the middle, so we mark approve as active,
-      // then update to fee after a short delay (approve is fast on local).
+      showStatus("Checking token approval...");
       const txHash = await payFeeForGame(sessionId, feeWei);
       markStep("approve", "done");
       markStep("fee", "done");

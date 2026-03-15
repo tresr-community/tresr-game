@@ -267,6 +267,7 @@ const timerSec = (timerSeconds % 60).toString().padStart(2, "0");
 
   function handlePauseClick() {
     gameActions.togglePause();
+    btnPause?.blur();
   }
   btnPause?.addEventListener("click", handlePauseClick);
 

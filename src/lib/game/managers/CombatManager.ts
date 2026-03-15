@@ -204,9 +204,9 @@ export class CombatManager {
         // Check if enemy is actually facing the player
         const isFacingPlayer = enemy.flipX ? dx < 10 : dx > -10;
 
-        // Use a tighter hitbox for actual damage (e.g. 70% of the AI trigger range)
-        // so the player isn't hit at the extreme edge before the visual swing connects
-        const hitRange = enemyAttackRange * 0.7;
+        // Enemy handles its own advance/stop distance. The damage hit code must match the
+        // swing distance so the player actually takes damage when inside the enemy's attack range.
+        const hitRange = enemyAttackRange;
 
         if (hDist < hitRange && dDist < depthThreshold && isFacingPlayer) {
           player.takeDamage(enemyDamage);

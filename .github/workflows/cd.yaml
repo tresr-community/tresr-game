@@ -285,7 +285,7 @@ jobs:
         name: Checkout Repository
         uses: actions/checkout@v6
         with:
-          ref: trunk
+          ref: ${{ github.event.repository.default_branch }}
           lfs: true
 
       - id: setup_devenv
@@ -302,6 +302,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           environment: testnet
+          base-ref: ${{ github.event.repository.default_branch }}
           oracle-address: ${{ needs.deploy-juno-testnet.outputs.oracle_address }}
           token-address: ${{ needs.deploy-foundry-testnet.outputs.token_address }}
           vault-address: ${{ needs.deploy-foundry-testnet.outputs.vault_address }}
@@ -474,7 +475,7 @@ jobs:
         name: Checkout Repository
         uses: actions/checkout@v6
         with:
-          ref: trunk
+          ref: ${{ github.event.repository.default_branch }}
           lfs: true
 
       - id: setup_devenv
@@ -491,5 +492,6 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           environment: mainnet
+          base-ref: ${{ github.event.repository.default_branch }}
           oracle-address: ${{ needs.deploy-juno-mainnet.outputs.oracle_address }}
           vault-address: ${{ needs.deploy-foundry-mainnet.outputs.vault_address }}

@@ -28,6 +28,9 @@ inputs:
     description: "Faucet contract address (testnet only)"
     required: false
     default: ""
+  base-ref:
+    description: "The PR target branch (e.g. main, master, trunk)."
+    required: true
 
 outputs:
   changed:
@@ -115,12 +118,30 @@ runs:
       run: |
         BRANCH="chore/update-${{ inputs.environment }}-contract-address"
         TITLE="chore: update ${{ inputs.environment }} contract addresses"
+        BASE_REF="${{ inputs.base-ref }}"
 
         git config user.name  "github-actions[bot]"
         git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-        # Create (or reset) the PR branch from the current HEAD
-        git checkout -B "${BRANCH}"
+        # Fetch the latest remote HEAD for the base branch so the PR branch
+        # only contains config changes — not stale diffs for unrelated files
+        # (e.g. workflow YAML that changed on the base branch after dispatch).
+        git fetch origin "${BASE_REF}"
+
+        # Stash the staged config changes before switching branches.
+        # checkout -B with a start-point resets the worktree, so we must
+        # preserve the config diff that client-config --stage produced.
+        git stash push --include-untracked -m "config-update"
+
+        # Create (or reset) the PR branch from the latest remote base
+        git checkout -B "${BRANCH}" "origin/${BASE_REF}"
+
+        # Re-apply the stashed config changes on top of the fresh base
+        git stash pop
+
+        # Stage only the files that differ from the clean base
+        git add config/tresr.yaml
+        git diff --name-only HEAD | xargs -r git add
 
         # Commit only what client-config --stage staged — no git add -A
         git commit \
@@ -133,7 +154,7 @@ runs:
         # Idempotent: create the PR or update it if it already exists
         EXISTING=$(gh pr list \
           --head "${BRANCH}" \
-          --base trunk \
+          --base "${BASE_REF}" \
           --state open \
           --json number \
           --jq '.[0].number' 2>/dev/null || echo "")
@@ -171,7 +192,7 @@ runs:
         else
           gh pr create \
             --head "${BRANCH}" \
-            --base trunk \
+            --base "${BASE_REF}" \
             --title "${TITLE}" \
             --body "${BODY}" \
             --label "contracts" \

@@ -152,7 +152,13 @@
         modal.showModal();
       }
     } else {
-      if (modal.open) modal.close();
+      if (modal.open) {
+        modal.close();
+        // Remove focus so Spacebar (Jump) doesn't re-trigger the pause button
+        // after the browser automatically restores focus on dialog close.
+        (document.activeElement as HTMLElement)?.blur();
+        document.querySelector("canvas")?.focus();
+      }
       quitConfirm?.classList.add("hidden");
     }
   });

@@ -166,7 +166,7 @@ jobs:
   # Exactly one of these runs depending on the environment.
   ##################################################
   deploy-juno-testnet:
-    name: Deploy Juno Testnet (Pass 1)
+    name: Deploy Juno Testnet
     if: >-
       always() &&
       inputs.environment == 'Testnet' &&
@@ -180,7 +180,7 @@ jobs:
     secrets: inherit
 
   deploy-juno-mainnet:
-    name: Deploy Juno Mainnet (Pass 1)
+    name: Deploy Juno Mainnet
     if: >-
       always() &&
       inputs.environment == 'Mainnet' &&
@@ -254,6 +254,7 @@ jobs:
           tool-cache: false
 
       - uses: ./.github/actions/setup-devenv
+        name: Setup Devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
@@ -316,7 +317,7 @@ jobs:
   # and open the config PR to persist addresses.
   ##################################################
   update-and-redeploy:
-    name: Update Config + Re-deploy Juno (Pass 2)
+    name: Update Juno Config
 
     needs:
       - obtain-oracle
@@ -340,7 +341,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Need full history for the PR diff to be sensible.
+          # Use the branch selected in the dispatch UI (latest HEAD, not
+          # the immutable github.sha from dispatch-time) so the PR branch
+          # doesn't include stale diffs for files changed after dispatch.
+          ref: ${{ github.ref }}
           fetch-depth: 0
 
       - name: Free Disk Space
@@ -349,6 +353,7 @@ jobs:
           tool-cache: false
 
       - uses: ./.github/actions/setup-devenv
+        name: Setup Devenv
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           cachix-cache-name: ${{ vars.CACHIX_CACHE_NAME }}
@@ -361,6 +366,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           environment: ${{ inputs.environment == 'Testnet' && 'testnet' || 'mainnet' }}
+          base-ref: ${{ github.ref_name }}
           oracle-address: ${{ needs.obtain-oracle.outputs.oracle_address }}
           token-address: ${{ needs.deploy-contracts.outputs.token_address }}
           vault-address: ${{ needs.deploy-contracts.outputs.vault_address }}
@@ -373,7 +379,7 @@ jobs:
         run: bun run build
 
       # ── Step 3: Re-deploy hosting so satellite is aware of vault_contract ───
-      - name: Re-deploy Hosting (Pass 2 — with vault)
+      - name: Re-deploy Juno with Vault
         if: steps.update_config.outputs.changed == 'true'
         shell: devenv shell --quiet bash -- -e {0}
         env:

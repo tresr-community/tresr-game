@@ -14,10 +14,14 @@
 let _inMaintenance = false;
 
 export const maintenanceState = {
-  /** Mark maintenance mode as active for this session. Irreversible per-load. */
+  /** Mark maintenance mode as active for this session. */
   activate: () => {
     _inMaintenance = true;
   },
-  /** Returns true once activate() has been called. */
+  /** Clear maintenance mode (satellite is back in sync). */
+  deactivate: () => {
+    _inMaintenance = false;
+  },
+  /** Returns true once activate() has been called (and deactivate() has not). */
   isActive: () => _inMaintenance,
 };
