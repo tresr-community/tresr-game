@@ -28,9 +28,11 @@ on:
           - Testnet
           - Mainnet
       confirm:
-        description: >-
-          Type "bootstrap" to confirm. The workflow aborts if any contract
-          address in config is already non-zero.
+        description: |
+          Type "ship it" in the box below to confirm.
+
+          The workflow will abort if any contract
+          address in config is already populated.
         required: true
         type: string
 
@@ -68,8 +70,8 @@ jobs:
     steps:
       - name: Confirm intent
         run: |
-          if [[ "${{ inputs.confirm }}" != "bootstrap" ]]; then
-            echo "::error::Confirmation must be exactly \"bootstrap\". Got: \"${{ inputs.confirm }}\""
+          if [[ "${{ inputs.confirm }}" != "ship it" ]]; then
+            echo "::error::Confirmation must be exactly \"ship it\". Got: \"${{ inputs.confirm }}\""
             exit 1
           fi
           echo "✅ Confirmation accepted"
