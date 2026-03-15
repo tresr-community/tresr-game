@@ -11,6 +11,7 @@ import type {ConfigTypes} from "@/types/config.ts";
 import {config} from "@/lib/config/client.ts";
 
 const appName: ConfigTypes["app"]["name"] = config.app.name;
+const timeLimitMinutes = Math.floor(config.gameplay.time_limit_seconds / 60);
 ---
 
 <BaseLayout title={appName}>
@@ -74,7 +75,7 @@ const appName: ConfigTypes["app"]["name"] = config.app.name;
                   <div class="stat-value text-secondary text-xl md:text-3xl">
                     SURVIVE
                   </div>
-                  <div class="stat-desc">5 Minutes</div>
+                  <div class="stat-desc">{timeLimitMinutes} Minutes</div>
                 </div>
               </div>
             </div>
