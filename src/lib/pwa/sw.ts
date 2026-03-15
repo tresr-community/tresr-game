@@ -33,14 +33,22 @@ async function loadPrecacheManifest(): Promise<string[]> {
 self.addEventListener("install", (event: ExtendableEvent) => {
   console.log(`[SW] [INFO] Install event fired (build: ${BUILD_ID})`);
   event.waitUntil(
-    loadPrecacheManifest()
-      .then((assets) =>
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(assets))
-      )
-      .catch((err) => {
-        console.error("[SW] [ERROR] Install failed:", err);
-        throw err;
+    loadPrecacheManifest().then((assets) =>
+      caches.open(CACHE_NAME).then((cache) => {
+        // Cache assets individually so a single 404 (e.g. during a partial
+        // deploy or missing wallpaper) doesn't abort the entire SW install.
+        return Promise.all(
+          assets.map((url) =>
+            cache.add(url).catch((err) => {
+              console.warn(
+                `[SW] [WARN] Skipping uncacheable asset: ${url}`,
+                err
+              );
+            })
+          )
+        );
       })
+    )
   );
 });
 

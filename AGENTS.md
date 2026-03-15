@@ -255,12 +255,13 @@ Security Best Practices for Juno:
 
 These are the **only** Juno Datastore collections in the project. Do not create new ones without updating `config/tresr.yaml`, `AGENTS.md`, and `docs/spec.md`.
 
-| Collection | Access  | Purpose                                            |
-| ---------- | ------- | -------------------------------------------------- |
-| `audit`    | Managed | Private admin audit trail (fees, claims, sessions) |
-| `economy`  | Public  | Economy-wide stats: `global` doc with totals       |
-| `scores`   | Public  | Per-user leaderboard entries + `top_scorer` cache  |
-| `users`    | Managed | Per-user preferences, stats, wallet, notifications |
+| Collection | Access  | Purpose                                                 |
+| ---------- | ------- | ------------------------------------------------------- |
+| `audit`    | Managed | Private admin audit trail (fees, sessions)              |
+| `claims`   | Managed | Reward claim requests + status tracking                 |
+| `errors`   | Managed | Satellite error records (admin-only, `err_{timestamp}`) |
+| `scores`   | Public  | Per-user leaderboard entries + `top_scorer` cache       |
+| `users`    | Managed | Per-user preferences, stats, wallet, notifications      |
 
 Juno Storage:
 
@@ -280,8 +281,8 @@ This applies to; Juno collections, document keys, JSON fields and YAML keys.
 
 These identifiers cross language boundaries and must be uniform:
 
-- Juno collection names: `audit`, `economy`, `scores`, `users`, `images`
-- Document keys: `top_scorer`, `global`, `fee_<id>`, `claim_<id>`, `session_<id>`
+- Juno collection names: `audit`, `claims`, `errors`, `scores`, `users`, `images`
+- Document keys: `top_scorer`, `fee_<id>`, `claim_<id>`, `session_<id>`, `err_<timestamp_ns>`
 - JSON/YAML config keys: `total_collected`, `total_rewarded`, `total_burned`, `high_score`, `games_won`
 - Rust struct fields: `snake_case` (Rust default — no change needed)
 

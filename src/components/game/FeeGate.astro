@@ -55,13 +55,28 @@
   </div>
 </dialog>
 
+<!-- Wallet reconnect overlay — shown while fee-gate dialog is closed and
+     the AppKit wallet selector is opening. Prevents a confusing blank screen
+     during the top-layer handoff between the native dialog and AppKit. -->
+<div
+  id="fee-wallet-overlay"
+  class="bg-base-300/80 pointer-events-none fixed inset-0 z-[99998] hidden items-center justify-center backdrop-blur-sm"
+>
+  <div class="flex flex-col items-center gap-4 text-center">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+    <p class="text-base font-bold tracking-wide opacity-80">
+      Awaiting wallet reconnection…
+    </p>
+  </div>
+</div>
+
 <script>
   import {config} from "@/lib/config/client";
   import {getEnvironmentKey} from "@/lib/blockchain/networks/chain";
   import {getExplorerUrl} from "@/lib/blockchain/networks/display";
   import {payFeeForGame} from "@/lib/blockchain/contracts/vault";
   import {setDoc} from "@junobuild/core";
-  import {connectWallet, isConnected} from "@/lib/wallet/connection";
+  import {connectWallet} from "@/lib/wallet/connection";
   import {confirmReceipt} from "@/lib/blockchain/tx";
   import {getTresrBalance, formatBalance} from "@/lib/blockchain/balance";
   import {parseBalance} from "@/lib/blockchain/balance";
@@ -155,6 +170,27 @@
 
   // Mutex to prevent duplicate payments on rapid clicks (ticket #168)
   let paymentInProgress = false;
+  let paymentTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  const PAYMENT_TIMEOUT_MS = 60_000;
+
+  function clearPaymentTimeout() {
+    if (paymentTimeoutId !== null) {
+      clearTimeout(paymentTimeoutId);
+      paymentTimeoutId = null;
+    }
+  }
+
+  // Wallet reconnect overlay — bridges the blank-screen gap between the
+  // fee-gate dialog closing and the AppKit modal appearing.
+  const walletOverlay = document.getElementById("fee-wallet-overlay");
+  function showWalletOverlay() {
+    walletOverlay?.classList.remove("hidden");
+    walletOverlay?.classList.add("flex");
+  }
+  function hideWalletOverlay() {
+    walletOverlay?.classList.add("hidden");
+    walletOverlay?.classList.remove("flex");
+  }
 
   const payHandler = async () => {
     if (paymentInProgress) return;
@@ -167,24 +203,42 @@
     showProgress();
 
     try {
-      // Step 1: Connect wallet (skip if already connected)
+      // 60s hard abort: if anything hangs (locked wallet, RPC stall, etc.)
+      // show a toast and send the user home rather than leaving them frozen.
+      paymentTimeoutId = setTimeout(() => {
+        clearPaymentTimeout();
+        paymentInProgress = false;
+        window.showWarningToast?.(
+          "Connection timed out",
+          "Your wallet took too long to respond — please try again."
+        );
+        modal.close();
+        rejectFeeGate();
+        window.location.href = "/";
+      }, PAYMENT_TIMEOUT_MS);
+
+      // Step 1: Connect wallet — always goes through connectWallet() so the
+      // liveness probe fires even when a session address is already cached.
+      // This catches auto-locked wallets (Brave, MetaMask) that leave wagmi
+      // in a stale "connected" state without emitting a disconnect event.
       markStep("wallet", "active");
+      showStatus("Connecting wallet...");
+      // Close the fee-gate dialog before opening the AppKit wallet selector.
+      // Native <dialog> elements occupy the browser's top layer, which sits
+      // above any regular z-index stacking context — including AppKit's own
+      // --w3m-z-index: 99999. Without closing first, the AppKit modal opens
+      // behind the fee-gate backdrop and is invisible to the user.
+      // Show the reconnect overlay first so there's no blank-screen flash.
+      showWalletOverlay();
+      modal.close();
+      const connection = await connectWallet();
+      hideWalletOverlay();
+      const address = connection.address;
+      markStep("wallet", "done");
 
-      let address: `0x${string}`;
-      if (isConnected()) {
-        // Already connected — skip reconnection entirely
-        const {address: connAddr} = await connectWallet();
-        address = connAddr;
-        markStep("wallet", "done");
-      } else {
-        showStatus("Reconnecting wallet...");
-        const connection = await connectWallet();
-        address = connection.address;
-        markStep("wallet", "done");
-      }
-
-      // Reopen the modal if it was closed by a wallet interaction
-      if (!modal.open) modal.showModal();
+      // Re-open fee-gate after wallet connected so the rest of the flow
+      // (balance check, approve, pay) is visible to the user.
+      modal.showModal();
 
       // Step 2: Check balance
       markStep("balance", "active");
@@ -262,9 +316,12 @@
       // Brief pause so user sees the success state
       await new Promise((r) => setTimeout(r, 800));
 
+      clearPaymentTimeout();
       modal.close();
       resolveFeeGate();
     } catch (error: unknown) {
+      clearPaymentTimeout();
+      hideWalletOverlay();
       const message = error instanceof Error ? error.message : String(error);
       log.error(COMPONENT_NAME, "Fee payment failed:", error);
       trackError("fee_paid", message);

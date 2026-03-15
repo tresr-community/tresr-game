@@ -139,6 +139,21 @@ export function getAppKit(): AppKit {
 
   log.info(COMPONENT_NAME, "Initialized successfully");
 
+  // Invalidate the reconnect singleton when the wallet disconnects or the
+  // session expires (e.g. auto-lock). This ensures the next connectWallet()
+  // call starts a fresh handshake rather than trusting stale wagmi state.
+  appKitInstance.subscribeEvents((event) => {
+    const evt = event.data.event;
+    if (evt === "DISCONNECT_SUCCESS") {
+      // Lazy import avoids a circular-dependency between appkit ↔ connection.
+      import("./connection")
+        .then(({resetReconnect}) => resetReconnect())
+        .catch(() => {
+          /* non-critical */
+        });
+    }
+  });
+
   // Remove unused font preload links injected by Reown SDK (suppresses
   // "preloaded but not used" console warnings for KHTeka-Medium.woff2) // cspell:disable-line
   if (typeof document !== "undefined") {
