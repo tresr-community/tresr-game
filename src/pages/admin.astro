@@ -354,13 +354,15 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
                   <th>Principal</th>
                   <th>Nickname</th>
                   <th>Offences</th>
+                  <th>Reason</th>
                   <th>Banned Until</th>
                   <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="anticheat-table-body">
                 <tr>
-                  <td colspan="5" class="py-8 text-center opacity-50"
+                  <td colspan="7" class="py-8 text-center opacity-50"
                     >Click Refresh to load ban data</td
                   >
                 </tr>
@@ -438,6 +440,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
       getErrors,
       deleteErrors,
       resolveError,
+      liftBan,
     } from "@/lib/satellite/satellite-api";
 
     import type {ErrorRecord} from "@/declarations/satellite/satellite.did";
@@ -825,7 +828,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         if (banned.length === 0) {
           acLoading.classList.add("hidden");
           acBody.innerHTML =
-            '<tr><td colspan="5" class="py-8 text-center opacity-50">No banned users 🎉</td></tr>';
+            '<tr><td colspan="7" class="py-8 text-center opacity-50">No banned users 🎉</td></tr>';
           return;
         }
 
@@ -835,6 +838,12 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
           const nickname = escHtml(profile.nickname ?? "—");
           const offences = profile.offence_count ?? 0;
           const bannedUntil = profile.banned_until ?? 0;
+          const rawReason = (profile as any).ban_reason as string | undefined;
+          const reason = rawReason
+            ? escHtml(
+                rawReason.length > 60 ? rawReason.slice(0, 57) + "…" : rawReason
+              )
+            : '<span class="opacity-40">—</span>';
 
           let banUntilLabel: string;
           let statusBadge: string;
@@ -852,12 +861,19 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
               : '<span class="badge badge-ghost badge-sm">Expired</span>';
           }
 
-          return `<tr>
+          return `<tr id="ban-row-${escHtml(principal)}">
             <td class="text-xs font-mono truncate max-w-[120px]" title="${escHtml(principal)}">${escHtml(principal.slice(0, 14))}…</td>
             <td>${nickname}</td>
             <td><span class="badge badge-outline badge-sm">${offences}</span></td>
+            <td class="text-xs max-w-[200px]" title="${rawReason ? escHtml(rawReason) : ""}"><span class="line-clamp-2">${reason}</span></td>
             <td class="text-xs whitespace-nowrap">${banUntilLabel}</td>
             <td>${statusBadge}</td>
+            <td>
+              <button
+                class="btn btn-error btn-xs"
+                onclick="liftBanUser('${escHtml(principal)}')"
+              >Lift Ban</button>
+            </td>
           </tr>`;
         });
 
@@ -865,13 +881,52 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
         acBody.innerHTML = rows.join("");
       } catch (e) {
         acLoading.classList.add("hidden");
-        acBody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-error">Failed to load ban data: ${escHtml(String(e))}</td></tr>`;
+        acBody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-error">Failed to load ban data: ${escHtml(String(e))}</td></tr>`;
       }
     }
 
     document
       .getElementById("refresh-anticheat-btn")!
       .addEventListener("click", loadBans);
+
+    // Lift Ban — called from table row buttons (global so onclick= can reach it)
+    (window as any).liftBanUser = async (principal: string) => {
+      const row = document.getElementById(`ban-row-${principal}`);
+      const btn = row?.querySelector("button") as HTMLButtonElement | null;
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Lifting…";
+      }
+      try {
+        const result = await liftBan(principal);
+        if ("Err" in result) {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Lift Ban";
+          }
+          alert(`Failed to lift ban: ${result.Err}`);
+          return;
+        }
+        // Success — remove row and decrement count
+        row?.remove();
+        const countEl = document.getElementById("banned-count");
+        if (countEl) {
+          const n = parseInt(countEl.textContent ?? "0", 10);
+          countEl.textContent = String(Math.max(0, n - 1));
+          if (n - 1 <= 0) {
+            const acBody = document.getElementById("anticheat-table-body")!;
+            acBody.innerHTML =
+              '<tr><td colspan="7" class="py-8 text-center opacity-50">No banned users 🎉</td></tr>';
+          }
+        }
+      } catch (e) {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Lift Ban";
+        }
+        alert(`Failed to lift ban: ${String(e)}`);
+      }
+    };
 
     // ─── Init ─────────────────────────────────────────────────────────────
 

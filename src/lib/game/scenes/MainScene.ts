@@ -1298,6 +1298,18 @@ export class MainScene extends Phaser.Scene {
    * Delegates to SpawnManager; chest reference set via callback.
    */
   private spawnChest() {
+    // Freeze the recorder NOW — post-victory wandering/chest-open time is
+    // unbounded and must not be included in the replay timestamp window.
+    this.recorder.freeze();
+
+    // Stop bomb and key spawning — nothing new should fall after boss death.
+    this.spawnManager.removeBombSpawnTimer();
+
+    // Flash-explode remaining enemies, bombs and fade out keys (visual self-destruct).
+    this.spawnManager.killAllEnemies(true);
+    this.spawnManager.killAllBombs(true);
+    this.spawnManager.killAllKeys();
+
     const timer = this.spawnManager.spawnChest(
       this.chest,
       this.score,

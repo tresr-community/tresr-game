@@ -71,3 +71,8 @@ export const resolveError = async (
   const {resolve_error} = await actor();
   return await resolve_error(id, resolved);
 };
+
+export const liftBan = async (principal: string): Promise<Result_1> => {
+  const {lift_ban} = await actor();
+  return await lift_ban(principal);
+};

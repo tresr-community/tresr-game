@@ -2429,6 +2429,54 @@ fn resolve_error(error_id: String, resolved: bool) -> Result<(), String> {
 }
 
 // =============================================================================
+// Ban Management
+// =============================================================================
+
+/// Lift a ban on a user. Admin-only.
+///
+/// Clears `banned_until` and `ban_reason` on the user's profile so they can
+/// play again. Does NOT reset `offence_count` — ban tiers still escalate on
+/// future offences.
+#[update]
+fn lift_ban(principal: String) -> Result<(), String> {
+    let caller = ic_cdk::api::msg_caller().to_text();
+    if !config::ADMIN_PRINCIPALS.contains(&caller.as_str()) {
+        return Err("Unauthorized: admin access required".to_string());
+    }
+
+    let admin = admin_caller();
+
+    // Fetch existing doc to get its current version (required for optimistic concurrency)
+    let existing = get_doc_store(admin, "users".to_string(), principal.clone())
+        .map_err(|e| format!("Failed to fetch user {}: {}", principal, e))?
+        .ok_or_else(|| format!("User not found: {}", principal))?;
+
+    let mut profile: UserProfile = decode_doc_data(&existing.data)
+        .map_err(|e| format!("Failed to decode user profile: {}", e))?;
+
+    profile.banned_until = None;
+    profile.ban_reason = None;
+
+    let doc = SetDoc {
+        data: encode_doc_data(&profile)?,
+        description: existing.description,
+        version: existing.version,
+    };
+
+    set_doc_store(admin, "users".to_string(), principal.clone(), doc)?;
+
+    logging::log_info(
+        "BanSystem",
+        &format!(
+            "Admin lifted ban for principal={}",
+            principal.chars().take(16).collect::<String>()
+        ),
+    );
+
+    Ok(())
+}
+
+// =============================================================================
 // Replay verification tests (#171)
 // =============================================================================
 

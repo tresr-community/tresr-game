@@ -57,6 +57,7 @@ export const idlFactory = ({ IDL }) => {
     'get_oracle_address' : IDL.Func([], [Result_3], []),
     'report_error' : IDL.Func([ErrorPayload], [Result_3], []),
     'resolve_error' : IDL.Func([IDL.Text, IDL.Bool], [Result_1], []),
+    'lift_ban' : IDL.Func([IDL.Text], [Result_1], []),
     'strip_http_headers' : IDL.Func(
         [TransformArgs],
         [HttpRequestResult],

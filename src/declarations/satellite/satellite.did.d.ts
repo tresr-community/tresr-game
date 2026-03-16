@@ -90,6 +90,11 @@ export interface _SERVICE {
    */
   'resolve_error' : ActorMethod<[string, boolean], Result_1>,
   /**
+   * Lift a ban on a user. Admin-only.
+   * Clears banned_until and ban_reason; does NOT reset offence_count.
+   */
+  'lift_ban' : ActorMethod<[string], Result_1>,
+  /**
    * Transform function for IC management canister HTTP outcalls.
    * 
    * Strips all response headers (Date, Content-Length, server-specific metadata)

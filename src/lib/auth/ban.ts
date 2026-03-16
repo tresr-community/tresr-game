@@ -74,6 +74,7 @@ export async function recordOffense(
         ...profile,
         offence_count: newCount,
         banned_until: bannedUntil,
+        ban_reason: reason,
       };
     });
   } catch (err) {
