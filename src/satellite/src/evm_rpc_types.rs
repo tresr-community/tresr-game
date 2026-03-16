@@ -371,7 +371,7 @@ impl EvmRpcCanister {
             .with_cycles(cycles)
             .await
             .map_err(|e| format!("{e:?}"))?
-            .candid::<(MultiCallResult,)>()
+            .candid_tuple::<(MultiCallResult,)>()
             .map_err(|e| format!("{e:?}"))
     }
 
@@ -387,7 +387,7 @@ impl EvmRpcCanister {
             .with_cycles(cycles)
             .await
             .map_err(|e| format!("{e:?}"))?
-            .candid::<(MultiGetTransactionCountResult,)>()
+            .candid_tuple::<(MultiGetTransactionCountResult,)>()
             .map_err(|e| format!("{e:?}"))
     }
 
@@ -403,7 +403,7 @@ impl EvmRpcCanister {
             .with_cycles(cycles)
             .await
             .map_err(|e| format!("{e:?}"))?
-            .candid::<(MultiGetTransactionReceiptResult,)>()
+            .candid_tuple::<(MultiGetTransactionReceiptResult,)>()
             .map_err(|e| format!("{e:?}"))
     }
 
@@ -419,7 +419,7 @@ impl EvmRpcCanister {
             .with_cycles(cycles)
             .await
             .map_err(|e| format!("{e:?}"))?
-            .candid::<(MultiSendRawTransactionResult,)>()
+            .candid_tuple::<(MultiSendRawTransactionResult,)>()
             .map_err(|e| format!("{e:?}"))
     }
 
@@ -440,7 +440,7 @@ impl EvmRpcCanister {
             .with_cycles(cycles)
             .await
             .map_err(|e| format!("{e:?}"))?
-            .candid::<(MultiJsonRequestResult,)>()
+            .candid_tuple::<(MultiJsonRequestResult,)>()
             .map_err(|e| format!("{e:?}"))
     }
 
@@ -461,7 +461,7 @@ impl EvmRpcCanister {
             .with_cycles(cycles)
             .await
             .map_err(|e| format!("{e:?}"))?
-            .candid::<(RequestResult,)>()
+            .candid_tuple::<(RequestResult,)>()
             .map_err(|e| format!("{e:?}"))
     }
 }

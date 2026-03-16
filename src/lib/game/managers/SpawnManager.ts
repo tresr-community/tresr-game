@@ -489,21 +489,79 @@ export class SpawnManager {
     });
   }
 
-  /** Kill all active enemies (used at boss phase transition and chest spawn) */
-  killAllEnemies() {
+  /**
+   * Kill all active enemies.
+   * @param flash When true, plays a rapid red-flash tween before killing
+   *              (used at boss defeat for a dramatic self-destruct effect).
+   *              When false (default), kills instantly for phase transitions.
+   */
+  killAllEnemies(flash = false) {
     if (!this.enemies) return;
     this.enemies.getChildren().forEach((child) => {
       const enemy = child as Enemy;
-      if (enemy.active) enemy.kill();
+      if (!enemy.active) return;
+      if (flash) {
+        const delay = Math.random() * 200;
+        this.scene.tweens.add({
+          targets: enemy,
+          alpha: {from: 1, to: 0},
+          duration: 80,
+          yoyo: true,
+          repeat: 3,
+          delay,
+          onStart: () => enemy.setTint(0xff2200),
+          onComplete: () => enemy.kill(),
+        });
+      } else {
+        enemy.kill();
+      }
     });
   }
 
-  /** Kill all active bombs (used at boss phase transition) */
-  killAllBombs() {
+  /**
+   * Kill all active bombs.
+   * @param flash When true, plays a rapid orange-flash tween before killing
+   *              (used at boss defeat). When false (default), kills instantly.
+   */
+  killAllBombs(flash = false) {
     if (!this.bombs) return;
     this.bombs.getChildren().forEach((child) => {
       const bomb = child as Bomb;
-      if (bomb.active) bomb.kill();
+      if (!bomb.active) return;
+      if (flash) {
+        const delay = Math.random() * 150;
+        this.scene.tweens.add({
+          targets: bomb,
+          alpha: {from: 1, to: 0.1},
+          duration: 60,
+          yoyo: true,
+          repeat: 4,
+          delay,
+          onStart: () => bomb.setTint(0xff4400),
+          onComplete: () => bomb.kill(),
+        });
+      } else {
+        bomb.kill();
+      }
+    });
+  }
+
+  /**
+   * Fade out all active keys after boss defeat.
+   */
+  killAllKeys() {
+    if (!this.keys) return;
+    this.keys.getChildren().forEach((child) => {
+      const key = child as Key;
+      if (!key.active) return;
+      const delay = Math.random() * 300;
+      this.scene.tweens.add({
+        targets: key,
+        alpha: 0,
+        duration: 400,
+        delay,
+        onComplete: () => key.kill(),
+      });
     });
   }
 
@@ -516,6 +574,14 @@ export class SpawnManager {
   removeSurvivalSpawnTimers() {
     if (this.spawnTimer) this.spawnTimer.remove();
     if (this.keySpawnTimer) this.keySpawnTimer.remove();
+  }
+
+  /** Remove the bomb spawn timer (used at boss defeat — victory cleanup). */
+  removeBombSpawnTimer() {
+    if (this.bombSpawnTimer) {
+      this.bombSpawnTimer.remove();
+      this.bombSpawnTimer = undefined;
+    }
   }
 
   pauseTimers() {

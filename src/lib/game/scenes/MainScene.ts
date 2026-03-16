@@ -346,11 +346,18 @@ export class MainScene extends Phaser.Scene {
   public phase: "survival" | "boss" | "victory" | "lost" = "survival";
   public sessionId: string = "";
   public userAddr: string = "";
+  public feeTxHash: string = "";
   public configHash: string = "";
   private configTampered: boolean = false;
   private configVerification: Promise<boolean> | null = null;
+  /** Wall-clock ms at the moment startGameplay() is called — the same epoch as
+   *  the Recorder's startTime, so that `ended_at - started_at` on the server
+   *  matches `last action timestamp (t)` from the replay within the grace window. */
+  private sessionStartMs: number = 0;
 
   private escKey?: Phaser.Input.Keyboard.Key;
+  /** Track previous-frame state of gamepad START button for edge detection */
+  private padStartWasPressed: boolean = false;
 
   // Ad-hoc timer tracking for cleanup on shutdown (ticket #195)
   private adHocTimers: Phaser.Time.TimerEvent[] = [];
@@ -367,18 +374,24 @@ export class MainScene extends Phaser.Scene {
     this.spriteManager = new SpriteManager(this);
   }
 
-  init(data: {sessionId?: string; userAddr?: string; seed?: number}) {
+  init(data: {
+    sessionId?: string;
+    userAddr?: string;
+    feeTxHash?: string;
+    seed?: number;
+  }) {
     // Use fee-gate session ID passed from Preloader; guests get a non-claimable placeholder (ticket #244)
     this.sessionId = data.sessionId || `guest-${Date.now()}`;
     this.userAddr =
       data.userAddr || "0x0000000000000000000000000000000000000000";
+    // Fee tx hash — required by claim_authorize to verify on-chain payment
+    this.feeTxHash = data.feeTxHash || "";
 
     // Initialize seeded RNG for reproducible gameplay
     this.seed = data.seed || Date.now();
     this.rng = new Phaser.Math.RandomDataGenerator([this.seed.toString()]);
     // Physics FPS is set in create() after gameplayConfig is loaded from registry
 
-    this.recorder.reset();
     this.configTampered = false;
     TouchInput.getInstance().reset();
     gameActions.setPaused(false);
@@ -464,11 +477,21 @@ export class MainScene extends Phaser.Scene {
       this.physics.world.pause();
       this.anims.pauseAll();
       this.time.paused = true;
+      // Clear all held-key state so no key remains "stuck" as isDown after
+      // the browser absorbs the keyup event while the game was paused.
+      this.input.keyboard?.resetKeys();
+      // Restore cursor so the player can interact with the pause menu UI
+      this.game.canvas.style.cursor = "";
     } else {
       trackGameResume();
       this.physics.world.resume();
       this.anims.resumeAll();
       this.time.paused = false;
+      // Re-focus the canvas so the very next keypress fires immediately
+      // rather than incurring the OS key-repeat delay (~250-500 ms).
+      this.game.canvas.focus();
+      // Hide cursor again now that gameplay has resumed
+      this.game.canvas.style.cursor = "none";
     }
   }
 
@@ -553,23 +576,32 @@ export class MainScene extends Phaser.Scene {
         Phaser.Input.Keyboard.KeyCodes.ESC
       );
 
-      // Prevent browser shortcuts from stealing focus when canvas is active
-      // e.g., Alt+D or Ctrl+L (address bar), Tab, WASD, Space, Arrows, etc.
+      // Belt-and-suspenders capture for any browser that doesn't honour the
+      // global keyboard.capture list set in game.ts. Covers all game keys so
+      // their events don't bubble to browser search, address bar, or DevTools.
+      // NOTE: actual preventDefault() is handled by the global capture config
+      // in game.ts — this call only prevents events reaching other Phaser
+      // scenes / DOM handlers that listen below the canvas.
       this.input.keyboard.addCapture([
         Phaser.Input.Keyboard.KeyCodes.ALT,
         Phaser.Input.Keyboard.KeyCodes.CTRL,
         Phaser.Input.Keyboard.KeyCodes.SHIFT,
         Phaser.Input.Keyboard.KeyCodes.TAB,
-        Phaser.Input.Keyboard.KeyCodes.L,
-        Phaser.Input.Keyboard.KeyCodes.D,
+        Phaser.Input.Keyboard.KeyCodes.ESC,
+        Phaser.Input.Keyboard.KeyCodes.SPACE,
+        Phaser.Input.Keyboard.KeyCodes.ENTER,
         Phaser.Input.Keyboard.KeyCodes.W,
         Phaser.Input.Keyboard.KeyCodes.A,
         Phaser.Input.Keyboard.KeyCodes.S,
+        Phaser.Input.Keyboard.KeyCodes.D,
+        Phaser.Input.Keyboard.KeyCodes.J,
+        Phaser.Input.Keyboard.KeyCodes.K,
+        Phaser.Input.Keyboard.KeyCodes.Z,
+        Phaser.Input.Keyboard.KeyCodes.X,
         Phaser.Input.Keyboard.KeyCodes.UP,
         Phaser.Input.Keyboard.KeyCodes.DOWN,
         Phaser.Input.Keyboard.KeyCodes.LEFT,
         Phaser.Input.Keyboard.KeyCodes.RIGHT,
-        Phaser.Input.Keyboard.KeyCodes.SPACE,
       ]);
     }
 
@@ -721,11 +753,22 @@ export class MainScene extends Phaser.Scene {
       return;
     }
 
+    // Reset the recorder and capture the session start time at the same instant.
+    // This ensures the server's (ended_at - started_at) and the replay's last
+    // action timestamp share the same epoch, keeping them within the 5s grace window.
+    this.recorder.reset();
+    this.sessionStartMs = Date.now();
+
     // Signal music to start now that gameplay has begun
     window.dispatchEvent(new Event("tresr:gameplay-start"));
 
+    // Hide cursor during active gameplay — it's not needed and floats annoyingly
+    // over sprites. Restored in setPause() and onVictory/onPlayerDeath so UI is
+    // accessible again when the player needs it.
+    this.game.canvas.style.cursor = "none";
+
     // Ensure the game canvas has focus so keyboard input isn't trapped by HTML buttons
-    // (e.g., the 'Pay & Start Mission' button in FeeGate)
+    // (e.g., the 'APE IN' button in FeeGate)
     this.game.canvas.focus();
 
     // Survival Clock
@@ -1255,6 +1298,18 @@ export class MainScene extends Phaser.Scene {
    * Delegates to SpawnManager; chest reference set via callback.
    */
   private spawnChest() {
+    // Freeze the recorder NOW — post-victory wandering/chest-open time is
+    // unbounded and must not be included in the replay timestamp window.
+    this.recorder.freeze();
+
+    // Stop bomb and key spawning — nothing new should fall after boss death.
+    this.spawnManager.removeBombSpawnTimer();
+
+    // Flash-explode remaining enemies, bombs and fade out keys (visual self-destruct).
+    this.spawnManager.killAllEnemies(true);
+    this.spawnManager.killAllBombs(true);
+    this.spawnManager.killAllKeys();
+
     const timer = this.spawnManager.spawnChest(
       this.chest,
       this.score,
@@ -1272,6 +1327,9 @@ export class MainScene extends Phaser.Scene {
     this.phase = "victory";
     gameActions.setPhase("victory");
     log.info(COMPONENT_NAME, "VICTORY! Authorizing settlement...");
+
+    // Restore cursor so player can interact with the victory/claim overlay
+    this.game.canvas.style.cursor = "";
 
     // Freeze the simulation on victory — same as death, prevents stray
     // bomb/contact damage or timer callbacks from firing during claim flow.
@@ -1327,8 +1385,6 @@ export class MainScene extends Phaser.Scene {
       return;
     }
 
-    log.info(COMPONENT_NAME, "TRIGGERING DUMMY WALLET VERIFICATION...");
-
     try {
       // Build length-prefixed binary payload (ticket #164):
       // [4 bytes input length][inputs][configHash][4 bytes seed length][seed]
@@ -1370,8 +1426,8 @@ export class MainScene extends Phaser.Scene {
       //   On cheat detection: calls apply_ban() and saves ban to "users" collection.
       const result = await claimAuthorize(
         this.sessionId,
-        BigInt(this.score),
-        this.userAddr,
+        BigInt(this.collectedKeys),
+        this.feeTxHash,
         payload
       );
 
@@ -1434,10 +1490,10 @@ export class MainScene extends Phaser.Scene {
           doc: {
             key: `session_${this.sessionId}`,
             data: {
-              started_at:
-                Date.now() -
-                (this.gameplayConfig.time_limit_seconds - this.survivalTimer) *
-                  1000,
+              // Use the recorder's epoch (set at startGameplay) so that
+              // ended_at - started_at matches the replay's last action
+              // timestamp within the Rust-side REPLAY_GRACE_MS window.
+              started_at: this.sessionStartMs,
               ended_at: Date.now(),
               keys_collected: this.collectedKeys,
               boss_defeated: bossDefeated,
@@ -1486,6 +1542,9 @@ export class MainScene extends Phaser.Scene {
     this.phase = "lost";
     gameActions.setPhase("lost");
     log.info(COMPONENT_NAME, "PLAYER DIED. Rug pulled.");
+
+    // Restore cursor so player can interact with the game-over/retry overlay
+    this.game.canvas.style.cursor = "";
 
     // Completely freeze the scene to save CPU cycles on mobile.
     // The death overlay renders over the frozen game world via DOM.
@@ -1554,9 +1613,19 @@ export class MainScene extends Phaser.Scene {
     // Game over — simulation is frozen, nothing to update
     if (this.phase === "lost" || this.phase === "victory") return;
 
-    // Handle Pause via ESC
+    // Handle Pause via ESC (keyboard) or START/Options (gamepad button 9)
     if (this.escKey && Phaser.Input.Keyboard.JustDown(this.escKey)) {
       gameActions.togglePause();
+    } else {
+      // Standard gamepad layout: button 9 = START (Xbox) / Options (PlayStation).
+      // Phaser's Button type only has `pressed` (current state), so we do
+      // manual rising-edge detection using padStartWasPressed.
+      const pausePad = this.input.gamepad?.getPad(0);
+      const startPressed = pausePad?.buttons[9]?.pressed ?? false;
+      if (startPressed && !this.padStartWasPressed) {
+        gameActions.togglePause();
+      }
+      this.padStartWasPressed = startPressed;
     }
 
     if (gameState.get().isPaused) return;

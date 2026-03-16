@@ -3238,19 +3238,13 @@ In general, the following endpoints are recommended: - Text and image input and 
 ===/developers/model-capabilities/audio/text-to-speech===
 #### Model Capabilities
 
-# Text to Speech (Beta)
+# Text to Speech
 
-Convert text into spoken audio with a single API call. The xAI Text to Speech API produces natural, expressive speech with support for multiple voices, inline speech tags for fine-grained control over delivery, and a range of output formats - from high-fidelity MP3 to telephony-optimized μ-law.
-
-**Endpoint:** `POST https://api.x.ai/v1/tts`
-
-**Beta:** The Text to Speech API is currently in beta. Pricing and rate limits are subject to change when the API becomes generally available. See [current pricing](/developers/models#text-to-speech-api).
-
-**No API key needed to get started.** [Try the playground](https://console.x.ai/team/default/voice/text-to-speech?campaign=voice-docs-tts) to hear every voice, experiment with speech tags, and generate audio right in your browser.
+Convert text into spoken audio with a single API call. The API supports 5 expressive voices, inline speech tags for fine-grained delivery control, and output formats from high-fidelity MP3 to telephony-optimized μ-law.
 
 ## Quick Start
 
-Generate speech from text in three lines:
+Generate speech with a single API call:
 
 ```bash
 curl -X POST https://api.x.ai/v1/tts \
@@ -3335,7 +3329,11 @@ print("Saved \(data.count) bytes to hello.mp3")
 
 The response body contains raw audio bytes. Save directly to a file or pipe to an audio player.
 
-Don't have an API key yet? [Create one in the console](https://console.x.ai/team/default/api-keys?campaign=voice-docs-tts) - it only takes a few seconds.
+[Try the Playground →](https://console.x.ai/team/default/voice/text-to-speech?campaign=voice-docs-tts)
+
+[Live Voice Demos](https://x.ai/api/voice)
+
+[Get API Key](https://console.x.ai/team/default/api-keys?campaign=voice-docs-tts)
 
 ## Request Body
 
@@ -4162,24 +4160,95 @@ task.cancel(with: .normalClosure, reason: nil)
 
 # Voice Agent API
 
-Build interactive voice conversations with Grok models using WebSocket. The Grok Voice Agent API accepts audio and text inputs and creates text and audio responses in real-time.
+Build real-time voice applications powered by Grok. Stream audio and text bidirectionally via WebSocket for voice assistants, phone agents, and interactive voice systems.
 
-**WebSocket Endpoint:** `wss://api.x.ai/v1/realtime`
+## Quick Start
 
-The Voice Agent API is billed at a flat per-minute rate. See [Voice Agent API Pricing](/developers/models#voice-agent-api-pricing) for details.
+Connect to the Voice Agent API and start a conversation:
+
+```python customLanguage="pythonWithoutSDK"
+import asyncio
+import json
+import os
+import websockets
+
+async def voice_agent():
+    async with websockets.connect(
+        "wss://api.x.ai/v1/realtime",
+        additional_headers={"Authorization": f"Bearer {os.environ['XAI_API_KEY']}"}
+    ) as ws:
+        # Configure session
+        await ws.send(json.dumps({
+            "type": "session.update",
+            "session": {
+                "voice": "Eve",
+                "instructions": "You are a helpful assistant.",
+                "turn_detection": {"type": "server_vad"}
+            }
+        }))
+        
+        # Send a text message
+        await ws.send(json.dumps({
+            "type": "conversation.item.create",
+            "item": {"type": "message", "role": "user", 
+                     "content": [{"type": "input_text", "text": "Hello!"}]}
+        }))
+        await ws.send(json.dumps({"type": "response.create"}))
+        
+        # Receive audio/text responses
+        async for msg in ws:
+            event = json.loads(msg)
+            print(f"Event: {event['type']}")
+
+asyncio.run(voice_agent())
+```
+
+```javascript customLanguage="javascriptWithoutSDK"
+import WebSocket from "ws";
+
+const ws = new WebSocket("wss://api.x.ai/v1/realtime", {
+  headers: { Authorization: `Bearer ${process.env.XAI_API_KEY}` },
+});
+
+ws.on("open", () => {
+  // Configure session
+  ws.send(JSON.stringify({
+    type: "session.update",
+    session: {
+      voice: "Eve",
+      instructions: "You are a helpful assistant.",
+      turn_detection: { type: "server_vad" }
+    }
+  }));
+
+  // Send a text message
+  ws.send(JSON.stringify({
+    type: "conversation.item.create",
+    item: { type: "message", role: "user",
+            content: [{ type: "input_text", text: "Hello!" }] }
+  }));
+  ws.send(JSON.stringify({ type: "response.create" }));
+});
+
+ws.on("message", (data) => {
+  const event = JSON.parse(data);
+  console.log("Event:", event.type);
+});
+```
+
+[Get API Key →](https://console.x.ai/team/default/api-keys?campaign=voice-docs-agent)
+
+[Live Voice Demos](https://x.ai/api/voice)
+
+[Pricing](/developers/models#voice-agent-api-pricing)
 
 ## Authentication
 
-You can authenticate [WebSocket](#connect-via-websocket) connections using the xAI API key or an ephemeral token.
-
-**IMPORTANT:** It is **recommended to use an ephemeral token** when authenticating from the client side (e.g. browser).
-If you use the xAI API key to authenticate from the client side, **the client may see the API key and make unauthorized API requests with it.**
+You can authenticate [WebSocket](#connect-via-websocket) connections using the xAI API key or an ephemeral token. Use an ephemeral token when authenticating from client-side code (e.g. browser) to avoid exposing your API key.
 
 ### Using API Key Directly - Server Only
 
 For server-side applications where the API key is not exposed to clients, you can authenticate directly with your xAI API key.
-
-**Server-side only:** Only use API key authentication from secure server environments. Never expose your API key in client-side code.
 
 ```pythonWithoutSDK
 import os
@@ -4227,8 +4296,8 @@ curl --url https://api.x.ai/v1/realtime/client_secrets \\
   -H "Content-Type: application/json" \\
   -H "Authorization: Bearer $XAI_API_KEY" \\
   --data '{
-    "expires_after": { 
-      "seconds": 300 
+    "expires_after": {
+      "seconds": 300
     }
   }'
 
@@ -4258,7 +4327,7 @@ async def get_ephemeral_token():
             },
             json={"expires_after": {"seconds": 300}},
         )
-    
+
     # Return the response body from xAI with ephemeral token
     return response.json()
 ```
@@ -4284,7 +4353,7 @@ app.post("/session", async (req, res) => {
       expires_after: { seconds: 300 }
     }),
   });
-  
+
   const data = await r.json();
   res.json(data);
 });
@@ -4683,8 +4752,9 @@ There are a few message types used in interacting with the models. [Client event
   | `instructions` | string | System prompt |
   | `voice` | string | Voice selection: `Eve`, `Ara`, `Rex`, `Sal`, `Leo` (see [Voice Options](#voice-options)) |
   | `turn_detection.type` | string | null | `"server_vad"` for automatic detection, `null` for manual text turns |
-  | `turn_detection.threshold` | number | optional | VAD activation threshold (0.0–1.0). Higher values require louder audio to trigger. Default: `0.85`. |
-  | `turn_detection.silence_duration_ms` | number | optional | Duration of silence (in ms) to detect speech stop (100–5000). Shorter values respond faster but may interrupt pauses. |
+  | `turn_detection.threshold` | number | optional | VAD activation threshold (0.1–0.9). Higher values require louder audio to trigger. Default: `0.85`. |
+  | `turn_detection.silence_duration_ms` | number | optional | How long the user must be silent (in ms) before the server ends the turn (0–10000). Higher values let users pause longer without being cut off. |
+  | `turn_detection.prefix_padding_ms` | number | optional | Amount of audio (in ms) to include before the detected start of speech (0–10000). Helps capture the beginning of words that might otherwise be clipped by the VAD. Default: `333`. |
   | `audio.input.format.type` | string | Input format: `"audio/pcm"`, `"audio/pcmu"`, or `"audio/pcma"` |
   | `audio.input.format.rate` | number | Input sample rate (PCM only): 8000, 16000, 22050, 24000, 32000, 44100, 48000 |
   | `audio.output.format.type` | string | Output format: `"audio/pcm"`, `"audio/pcmu"`, or `"audio/pcma"` |
@@ -5112,13 +5182,13 @@ async def handle_function_call(ws, event):
     function_name = event["name"]
     call_id = event["call_id"]
     arguments = json.loads(event["arguments"])
-    
+
     print(f"Function called: {function_name} with args: {arguments}")
-    
+
     # Execute the function
     if function_name in FUNCTION_HANDLERS:
         result = FUNCTION_HANDLERS[function_name](**arguments)
-        
+
         # Send result back to agent
         await ws.send(json.dumps({
             "type": "conversation.item.create",
@@ -5128,7 +5198,7 @@ async def handle_function_call(ws, event):
                 "output": json.dumps(result)
             }
         }))
-        
+
         # Request agent to continue with the result
         await ws.send(json.dumps({
             "type": "response.create"
@@ -5139,7 +5209,7 @@ async def handle_function_call(ws, event):
 # In your WebSocket message handler
 async def on_message(ws, message):
     event = json.loads(message)
-    
+
     # Listen for function calls
     if event["type"] == "response.function_call_arguments.done":
         await handle_function_call(ws, event)
@@ -5161,7 +5231,7 @@ const functionHandlers = {
       humidity: 45
     };
   },
-  
+
   book_appointment: async (args) => {
     // In production, interact with your booking system
     const confirmation = \`CONF\${Math.floor(Math.random() * 9000) + 1000}\`;
@@ -5180,14 +5250,14 @@ async function handleFunctionCall(ws, event) {
   const functionName = event.name;
   const callId = event.call_id;
   const args = JSON.parse(event.arguments);
-  
+
   console.log(\`Function called: \${functionName\} with args:\`, args);
-  
+
   // Execute the function
   const handler = functionHandlers[functionName];
   if (handler) {
     const result = await handler(args);
-    
+
     // Send result back to agent
     ws.send(JSON.stringify({
       type: "conversation.item.create",
@@ -5197,7 +5267,7 @@ async function handleFunctionCall(ws, event) {
         output: JSON.stringify(result)
       }
     }));
-    
+
     // Request agent to continue with the result
     ws.send(JSON.stringify({
       type: "response.create"
@@ -5210,7 +5280,7 @@ async function handleFunctionCall(ws, event) {
 // In your WebSocket message handler
 ws.on("message", (message) => {
   const event = JSON.parse(message);
-  
+
   // Listen for function calls
   if (event.type === "response.function_call_arguments.done") {
     handleFunctionCall(ws, event);
@@ -5241,6 +5311,19 @@ When a user asks "What's the weather in San Francisco?", here's the complete flo
 | 5 | Server → Client | `response.output_audio.delta` | Agent responds: "The weather in San Francisco is currently 68°F and sunny." |
 
 Function calls happen automatically during conversation flow. The agent decides when to call functions based on the function descriptions and conversation context.
+
+### Parallel Tool Calling
+
+When the model determines that multiple function calls are needed to fulfill a request, it will emit multiple `response.function_call_arguments.done` events before any audio response. In this case, you must resolve **all** function calls and send their results back before emitting `response.create`.
+
+**Expected behavior:**
+
+1. Receive multiple `response.function_call_arguments.done` events (one per function call)
+2. Execute all functions (can be done in parallel for performance)
+3. Send a `conversation.item.create` with `function_call_output` for **each** function call
+4. Only after all function outputs have been sent, emit a single `response.create` to continue
+
+**Important:** Do not send `response.create` until all function call outputs have been submitted. Sending `response.create` prematurely will cause the model to respond without the complete context from all tool results.
 
 ## MCP Tool Events
 
@@ -5728,71 +5811,170 @@ If the tool call is slow (e.g., external API), the audio will likely finish befo
 ===/developers/model-capabilities/audio/voice===
 #### Model Capabilities
 
-# Voice Overview
+# Voice APIs
 
-xAI offers two voice APIs: the **Text to Speech API** for converting text into spoken audio, and the **Voice Agent API** for real-time, interactive voice conversations with Grok.
+[Get API Key →](https://console.x.ai/team/default/api-keys?campaign=voice-docs)
 
-## Text to Speech API
+[Try Live Demos](https://x.ai/api/voice)
 
-Convert text into spoken audio with a single API call. Choose from multiple voices, add inline speech tags for expressive delivery, and output in formats ranging from high-fidelity MP3 to telephony-optimized μ-law.
+## Voice APIs
 
-**Endpoint:** `POST https://api.x.ai/v1/tts`
+**[Voice Agent API](/developers/model-capabilities/audio/voice-agent)** (Real-Time)
 
-**Use Cases:**
+Interactive voice conversations via WebSocket.
 
-* Narration for audiobooks, articles, and documentation
-* Dynamic audio content for apps and games
-* Voiceovers for videos and presentations
-* Accessibility - read content aloud for users with visual impairments
+Endpoint: `wss://api.x.ai/v1/realtime`
 
-[Documentation →](/developers/model-capabilities/audio/text-to-speech)
+**[Text to Speech API](/developers/model-capabilities/audio/text-to-speech)** (Batch & Streaming)
 
-## Voice Agent API
+Convert text to speech with expressive tags and telephony-ready formats.
 
-Build real-time voice applications with the Grok Voice Agent API. Create interactive voice conversations with Grok models via WebSocket for voice assistants, phone agents, and interactive voice applications.
+Endpoint: `POST https://api.x.ai/v1/tts`
 
-**WebSocket Endpoint:** `wss://api.x.ai/v1/realtime`
+### Enterprise Compliance & Security
 
-The Voice Agent API is only available in `us-east-1` region.
+* **SOC 2 Type II** — Audited controls for security, availability, and confidentiality
 
-**Use Cases:**
+* **HIPAA Eligible** — BAA available for healthcare applications handling PHI
 
-* Voice assistants for web and mobile
-* AI-powered phone systems with Twilio
-* Real-time customer support
-* Interactive Voice Response (IVR) systems
+* **GDPR Compliant** — Data processing agreements and EU data residency options
 
-[Documentation →](/developers/model-capabilities/audio/voice-agent)
+* **Data Residency** — Regional processing for compliance requirements
 
-### Enterprise Ready
+* **High Availability** — Multi-region infrastructure with custom SLAs for enterprise workloads
 
-Optimized for enterprise use cases across Customer Support, Medical, Legal, Finance, Insurance, and more.
+* **SSO & RBAC** — SAML SSO, role-based access, and audit logging
 
-* **Telephony** - Connect to platforms like Twilio, Vonage, and other SIP providers
-* **Tool Calling** - CRMs, calendars, ticketing systems, databases, and custom APIs
-* **Multilingual** - Serve global customers in their native language with natural accents
-* **Low Latency** - Real-time responses for natural, human-like conversations
-* **Accuracy** - Precise transcription and understanding of critical information:
-  * Industry-specific terminology including medical, legal, and financial vocabulary
-  * Email addresses, dates, and alphanumeric codes
-  * Names, addresses, and phone numbers
+## Quick Start: Voice Agent
 
-### Tool Calling
+Build a real-time voice assistant in minutes:
 
-Extend your voice agent's capabilities with powerful built-in tools that execute during conversations:
+```python customLanguage="pythonWithoutSDK"
+import asyncio
+import json
+import os
+import websockets
 
-* **Web Search** - Real-time internet search for current information, news, and facts
-* **X Search** - Search posts, trends, and discussions from X
-* **Collections** - RAG-powered search over your uploaded documents and knowledge bases
-* **Custom Functions** - Define your own tools with JSON schemas for booking, lookups, calculations, and more
+async def voice_agent():
+    async with websockets.connect(
+        "wss://api.x.ai/v1/realtime",
+        additional_headers={"Authorization": f"Bearer {os.environ['XAI_API_KEY']}"}
+    ) as ws:
+        # Configure voice and enable tools
+        await ws.send(json.dumps({
+            "type": "session.update",
+            "session": {
+                "voice": "Eve",
+                "instructions": "You are a helpful customer support agent.",
+                "turn_detection": {"type": "server_vad"},
+                "tools": [{"type": "web_search"}]
+            }
+        }))
+        
+        # Stream audio and receive responses
+        async for message in ws:
+            event = json.loads(message)
+            if event["type"] == "response.output_audio.delta":
+                # Play audio: base64.b64decode(event["delta"])
+                pass
 
-Tools are called automatically based on conversation context. Your voice agent can search the web, query your documents, and execute custom business logic - all while maintaining a natural conversation flow.
+asyncio.run(voice_agent())
+```
 
-## Shared Capabilities
+```javascript customLanguage="javascriptWithoutSDK"
+import WebSocket from "ws";
 
-The following capabilities apply to both the Text to Speech API and the Voice Agent API.
+const ws = new WebSocket("wss://api.x.ai/v1/realtime", {
+  headers: { Authorization: `Bearer ${process.env.XAI_API_KEY}` },
+});
 
-### Voices
+ws.on("open", () => {
+  // Configure voice and enable tools
+  ws.send(JSON.stringify({
+    type: "session.update",
+    session: {
+      voice: "Eve",
+      instructions: "You are a helpful customer support agent.",
+      turn_detection: { type: "server_vad" },
+      tools: [{ type: "web_search" }]
+    }
+  }));
+});
+
+ws.on("message", (data) => {
+  const event = JSON.parse(data);
+  if (event.type === "response.output_audio.delta") {
+    // Play audio: Buffer.from(event.delta, "base64")
+  }
+});
+```
+
+## Quick Start: Text to Speech
+
+Generate speech from text with a single API call:
+
+```bash
+curl -X POST https://api.x.ai/v1/tts \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Welcome to xAI. How can I help you today?",
+    "voice_id": "eve",
+    "language": "en"
+  }' \
+  --output welcome.mp3
+```
+
+```python customLanguage="pythonWithoutSDK"
+import os
+import requests
+
+response = requests.post(
+    "https://api.x.ai/v1/tts",
+    headers={
+        "Authorization": f"Bearer {os.environ['XAI_API_KEY']}",
+        "Content-Type": "application/json",
+    },
+    json={
+        "text": "Welcome to xAI. How can I help you today?",
+        "voice_id": "eve",
+        "language": "en",
+    },
+)
+
+with open("welcome.mp3", "wb") as f:
+    f.write(response.content)
+```
+
+```javascript customLanguage="javascriptWithoutSDK"
+const response = await fetch("https://api.x.ai/v1/tts", {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${process.env.XAI_API_KEY}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    text: "Welcome to xAI. How can I help you today?",
+    voice_id: "eve",
+    language: "en",
+  }),
+});
+
+const buffer = Buffer.from(await response.arrayBuffer());
+fs.writeFileSync("welcome.mp3", buffer);
+```
+
+## Built for Enterprise Voice
+
+* **Telephony Integration** — Connect via SIP, WebSocket, or LiveKit. Native G.711 μ-law/A-law codec support — no transcoding overhead.
+
+* **Tool Calling** — CRMs, calendars, databases, and any REST or GraphQL endpoint via function calling during live conversations.
+
+* **20+ Languages** — Natural pronunciation, accent handling, and seamless code-switching between languages in the same conversation.
+
+* **Domain Expertise** — Precise transcription of medical, legal, financial, and technical terminology — names, codes, and addresses.
+
+## Voices
 
 Choose from 5 distinct voices, each with unique characteristics suited to different applications:
 
@@ -5804,129 +5986,27 @@ Choose from 5 distinct voices, each with unique characteristics suited to differ
 | **`Sal`** | Neutral | Smooth, balanced | Versatile voice suitable for various contexts |  |
 | **`Leo`** | Male | Authoritative, strong | Decisive and commanding, suitable for instructional content |  |
 
-### Multilingual
+## Expressive Speech Tags
 
-Both APIs support 20 languages with natural pronunciation and culturally-aware speech rhythms. The model automatically detects the input language, or you can specify a BCP-47 language code explicitly (e.g. `en`, `zh`, `pt-BR`) for consistent results.
+Go beyond flat text — add laughter, whispers, pauses, and more with inline tags. Works in both the Voice Agent API and Text to Speech API.
 
-| Language | Language Code |
-|----------|---------------|
-| English | `en` |
-| Arabic (Egypt) | `ar-EG` |
-| Arabic (Saudi Arabia) | `ar-SA` |
-| Arabic (United Arab Emirates) | `ar-AE` |
-| Bengali | `bn` |
-| Chinese (Simplified) | `zh` |
-| French | `fr` |
-| German | `de` |
-| Hindi | `hi` |
-| Indonesian | `id` |
-| Italian | `it` |
-| Japanese | `ja` |
-| Korean | `ko` |
-| Portuguese (Brazil) | `pt-BR` |
-| Portuguese (Portugal) | `pt-PT` |
-| Russian | `ru` |
-| Spanish (Mexico) | `es-MX` |
-| Spanish (Spain) | `es-ES` |
-| Turkish | `tr` |
-| Vietnamese | `vi` |
+*Example:* So I walked in and \[pause] there it was. \[laugh] I honestly could not believe it! \<whisper>It was a secret the whole time.\</whisper> Pretty cool, right?
 
-The model is also capable of generating speech in additional languages beyond those listed above, with varying degrees of accuracy.
+## Example Applications & Integrations
 
-### Audio Formats
+Production-ready examples and third-party framework integrations:
 
-Support for multiple audio formats and sample rates to match your application's requirements:
+* [Web Voice Agent](https://github.com/xai-org/xai-cookbook/tree/main/voice-examples/agent/web) — React + Python/Node.js
 
-* **MP3** - Compressed audio, wide compatibility (TTS API)
-* **WAV** - Lossless audio for editing and post-production (TTS API)
-* **PCM (Linear16)** - High-quality audio with configurable sample rates (8kHz-48kHz)
-* **G.711 μ-law** - Optimized for telephony applications
-* **G.711 A-law** - Standard for international telephony
+* [Twilio Phone Agent](https://github.com/xai-org/xai-cookbook/tree/main/voice-examples/agent/telephony) — Inbound & outbound calls
 
-### Example Applications
+* [WebRTC Voice Agent](https://github.com/xai-org/xai-cookbook/tree/main/voice-examples/agent/webrtc) — Browser-native audio
 
-Complete working examples are available demonstrating various voice integration patterns:
+* [LiveKit](https://docs.livekit.io/agents/integrations/xai/) — WebRTC infrastructure
 
-#### Web Voice Agent
+* [Voximplant](https://voximplant.com/products/grok-client) — SIP & contact centers
 
-Real-time voice chat in the browser with React frontend and Python/Node.js backends.
-
-**Architecture:**
-
-```
-Browser (React) ←WebSocket→ Backend (FastAPI/Express) ←WebSocket→ xAI API
-```
-
-**Features:**
-
-* Real-time audio streaming
-* Visual transcript display
-* Debug console for development
-* Interchangeable backends
-
-[GitHub →](https://github.com/xai-org/xai-cookbook/tree/main/voice-examples/agent/web)
-
-#### Phone Voice Agent (Twilio)
-
-AI-powered phone system using Twilio integration.
-
-**Architecture:**
-
-```
-Phone Call ←SIP→ Twilio ←WebSocket→ Node.js Server ←WebSocket→ xAI API
-```
-
-**Features:**
-
-* Phone call integration
-* Real-time voice processing
-* Function/tool calling support
-* Production-ready architecture
-
-[GitHub →](https://github.com/xai-org/xai-cookbook/tree/main/voice-examples/agent/telephony)
-
-#### WebRTC Voice Agent
-
-The Grok Voice Agent API uses WebSocket connections. Direct WebRTC connections are not available currently.
-
-You can use a WebRTC server to connect the client to a server that then connects to the Grok Voice Agent API.
-
-**Architecture:**
-
-```
-Browser (React) ←WebRTC→ Backend (Express) ←WebSocket→ xAI API
-```
-
-**Features:**
-
-* Real-time audio streaming
-* Visual transcript display
-* Debug console for development
-* WebRTC backend handles all WebSocket connections to xAI API
-
-[GitHub →](https://github.com/xai-org/xai-cookbook/tree/main/voice-examples/agent/webrtc)
-
-### Third Party Integrations
-
-Build voice agents using popular third-party frameworks and platforms that integrate with the Grok Voice Agent API.
-
-**LiveKit**
-
-Build real-time voice agents using LiveKit's open-source framework with native Grok Voice Agent API integration and WebRTC Support.
-
-[Docs →](https://docs.livekit.io/agents/integrations/xai/) | [GitHub →](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-xai)
-
-**Voximplant**
-
-Build real-time voice agents using Voximplant's open-source framework with native Grok Voice Agent API integration and SIP Support.
-
-[Docs →](https://voximplant.com/products/grok-client) | [GitHub →](https://github.com/voximplant/grok-voice-agent-example)
-
-**Pipecat**
-
-Build real-time voice agents using Pipecat's open-source framework with native Grok Voice Agent API integration and advanced conversation management.
-
-[Docs →](https://docs.pipecat.ai/server/services/s2s/grok) | [GitHub →](https://github.com/pipecat-ai/pipecat/blob/main/examples/foundational/51-grok-realtime.py)
+* [Pipecat](https://docs.pipecat.ai/server/services/s2s/grok) — Conversation pipelines
 
 
 ===/developers/model-capabilities/files/chat-with-files===
@@ -13563,58 +13643,6 @@ API endpoint for GET requests to /v1/videos/\{request\_id}.
   },
   "model": "grok-imagine-video"
 }
-```
-
-
-===/developers/rest-api-reference/inference/voice===
-#### Inference API
-
-# Voice
-
-## POST /v1/realtime/client\_secrets
-
-API endpoint for POST requests to /v1/realtime/client\_secrets.
-
-```
-Method: POST
-Path: /v1/realtime/client_secrets
-```
-
-***
-
-***
-
-## POST /v1/tts
-
-API endpoint for POST requests to /v1/tts.
-
-```
-Method: POST
-Path: /v1/tts
-```
-
-***
-
-***
-
-## GET /v1/tts/voices
-
-API endpoint for GET requests to /v1/tts/voices.
-
-```
-Method: GET
-Path: /v1/tts/voices
-```
-
-***
-
-## GET /v1/tts/voices/\{voice\_id}
-
-API endpoint for GET requests to /v1/tts/voices/\{voice\_id}.
-
-```
-Method: GET
-Path: /v1/tts/voices/{voice_id}
 ```
 
 

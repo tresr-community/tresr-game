@@ -595,7 +595,7 @@ const degenEnabled: boolean = iidEnabled || avalancheEnabled || webauthnEnabled;
         // Only reapply normal state when not in maintenance.
         if (loginButton.dataset.maintenance !== "true") {
           const name = state.isGuest ? "NORMIE" : getDisplayName();
-          loginButton.innerText = `START (${name})`;
+          loginButton.innerHTML = `<span class="flex flex-col items-center leading-tight"><span>START</span><span style="font-size:0.55em;font-weight:500;opacity:0.85;letter-spacing:0.05em">(${name})</span></span>`;
           loginButton.classList.add("btn-success", "animate-pulse");
           loginButton.classList.remove(
             "btn-primary",
@@ -676,7 +676,9 @@ const degenEnabled: boolean = iidEnabled || avalancheEnabled || webauthnEnabled;
           maintenanceState.deactivate();
 
           loginButton.dataset.maintenance = "false";
-          loginButton.innerText = "START";
+          // Re-use updateButtonState so the two-line START/(name) markup is
+          // applied consistently — no duplicate logic here.
+          updateButtonState();
           loginButton.classList.remove("btn-warning", "opacity-60");
           loginButton.classList.add("btn-success", "animate-pulse");
           log.info(

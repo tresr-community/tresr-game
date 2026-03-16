@@ -26,7 +26,7 @@ mod config {
 }
 
 use ic_cdk::api::time;
-use ic_cdk::update;
+use ic_cdk::{query, update};
 use junobuild_macros::{
     assert_delete_doc, assert_set_doc, on_delete_asset, on_delete_doc, on_delete_many_assets,
     on_delete_many_docs, on_set_doc, on_set_many_docs, on_upload_asset,
@@ -604,20 +604,8 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
         return Ok(());
     }
 
-    // Verify the transaction on Avalanche
-    // Pass the caller's wallet so the ANVIL mock can echo it back and pass the from-check.
-    let caller_wallet_for_mock = if crate::config::NETWORK_NAME == "anvil" {
-        // Pre-fetch caller wallet only for the mock path to avoid an extra read on mainnet.
-        let user_key = context.caller.to_text();
-        get_doc_store(context.caller, "users".to_string(), user_key)
-            .ok()
-            .flatten()
-            .and_then(|doc| decode_doc_data::<UserProfile>(&doc.data).ok())
-            .and_then(|p| p.evm_wallet)
-    } else {
-        None
-    };
-    match evm_rpc::verify_avalanche_fee(&fee.tx_hash, caller_wallet_for_mock.as_deref()).await {
+    // Verify the transaction on Avalanche via the local EVM RPC canister.
+    match evm_rpc::verify_avalanche_fee(&fee.tx_hash).await {
         Ok(parsed) => {
             // Validate tx.from matches the caller's linked EVM wallet (ticket #285)
             let user_key = context.caller.to_text();
@@ -749,9 +737,9 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
 /// Used to bypass `managed` collection permissions when the canister needs to write.
 fn admin_caller() -> candid::Principal {
     if let Some(admin) = crate::config::ADMIN_PRINCIPALS.first() {
-        candid::Principal::from_text(admin).unwrap_or(ic_cdk::id())
+        candid::Principal::from_text(admin).unwrap_or(ic_cdk::api::canister_self())
     } else {
-        ic_cdk::id()
+        ic_cdk::api::canister_self()
     }
 }
 
@@ -1561,7 +1549,7 @@ fn clear_persisted_top_scorer_cache() {
         score: 0,
         scored_at: 0,
         expires_at: 0,
-        owner_principal: ic_cdk::id().to_text(),
+        owner_principal: ic_cdk::api::canister_self().to_text(),
     };
 
     let doc = SetDoc {
@@ -1726,7 +1714,7 @@ async fn claim_authorize(
     replay_inputs: Vec<u8>,
 ) -> Result<(u128, Vec<u8>), String> {
     let ic_start = ic_cdk::api::instruction_counter();
-    let caller = ic_cdk::caller();
+    let caller = ic_cdk::api::msg_caller();
     let caller_text = caller.to_text();
 
     // 0. Fetch user profile and check ban status
@@ -1806,8 +1794,7 @@ async fn claim_authorize(
     }
 
     // 2. Verify fee transaction on-chain and get actual fee amount
-    // Pass wallet_addr to the mock so the from-address check passes in local dev.
-    let parsed_fee = evm_rpc::verify_avalanche_fee(&fee_tx_hash, Some(&wallet_addr)).await?;
+    let parsed_fee = evm_rpc::verify_avalanche_fee(&fee_tx_hash).await?;
 
     // Validate that the fee sender matches the caller's linked wallet
     if !parsed_fee.from.eq_ignore_ascii_case(&wallet_addr) {
@@ -2005,10 +1992,11 @@ fn replay_verify_plausibility(
     reported_keys: u64,
 ) -> Result<(), String> {
     // 0. Minimum input count
-    if actions.len() < 50 {
+    if (actions.len() as u64) < config::REPLAY_MIN_ACTIONS {
         return Err(format!(
-            "CHEAT_DETECTED: action count {} is implausibly low (min 50)",
-            actions.len()
+            "CHEAT_DETECTED: action count {} is implausibly low (min {})",
+            actions.len(),
+            config::REPLAY_MIN_ACTIONS
         ));
     }
 
@@ -2024,8 +2012,8 @@ fn replay_verify_plausibility(
     let last_t = actions.last().map(|a| a.t).unwrap_or(0);
     if let Some(ended_at) = session.ended_at {
         let server_duration_ms = ended_at.saturating_sub(session.started_at);
-        if server_duration_ms.saturating_sub(last_t) > 5000
-            || last_t.saturating_sub(server_duration_ms) > 5000
+        if server_duration_ms.saturating_sub(last_t) > config::REPLAY_GRACE_MS
+            || last_t.saturating_sub(server_duration_ms) > config::REPLAY_GRACE_MS
         {
             return Err(format!(
                 "CHEAT_DETECTED: session duration mismatch (server: {}ms, replay: {}ms)",
@@ -2046,13 +2034,14 @@ fn replay_verify_plausibility(
     for i in 0..actions.len() {
         let action = &actions[i];
 
-        // Burst check
+        // Burst check — sliding 100ms window
         while window_start <= i && action.t.saturating_sub(actions[window_start].t) > 100 {
             window_start += 1;
         }
-        if i - window_start + 1 > 15 {
+        if i - window_start + 1 > config::REPLAY_BURST_LIMIT_PER_100MS as usize {
             return Err(format!(
-                "CHEAT_DETECTED: burst of >15 actions in 100ms window ending at {}ms",
+                "CHEAT_DETECTED: burst of >{} actions in 100ms window ending at {}ms",
+                config::REPLAY_BURST_LIMIT_PER_100MS,
                 action.t
             ));
         }
@@ -2129,7 +2118,10 @@ fn replay_verify_plausibility(
         ));
     }
 
-    if reported_keys > 0 && attack_count < (reported_keys / 20) {
+    if config::REPLAY_ATTACK_PER_KEY_DIVISOR > 0
+        && reported_keys > 0
+        && attack_count < (reported_keys / config::REPLAY_ATTACK_PER_KEY_DIVISOR)
+    {
         return Err(format!(
             "CHEAT_DETECTED: implausible attack-to-key ratio (keys: {}, attacks: {})",
             reported_keys, attack_count
@@ -2192,6 +2184,28 @@ fn juno_on_init_random_seed() {
 }
 
 // =============================================================================
+// IC HTTP Outcall Transform
+// =============================================================================
+
+/// Transform function for IC management canister HTTP outcalls.
+///
+/// Strips all response headers (Date, Content-Length, server-specific metadata)
+/// so that all IC replicas see the same deterministic response body, which is
+/// required for HTTP outcall consensus.
+///
+/// Referenced by `fetch_transaction_json` in `evm_rpc.rs` via `TransformContext`.
+#[query]
+fn strip_http_headers(
+    args: ic_cdk_management_canister::TransformArgs,
+) -> ic_cdk_management_canister::HttpRequestResult {
+    ic_cdk_management_canister::HttpRequestResult {
+        status: args.response.status,
+        body: args.response.body,
+        headers: vec![], // Strip all headers for cross-replica determinism
+    }
+}
+
+// =============================================================================
 // Oracle Address Endpoint
 // =============================================================================
 
@@ -2239,7 +2253,7 @@ fn report_error(payload: ErrorPayload) -> Result<String, String> {
     // IC time() returns the same value for all calls in the same consensus round,
     // so two concurrent report_error calls can collide on the same key.
     // We append a 4-char caller-derived suffix to reduce (but not eliminate) that risk.
-    let principal_text = ic_cdk::caller().to_text();
+    let principal_text = ic_cdk::api::msg_caller().to_text();
     let caller_suffix: String = principal_text.chars().rev().take(4).collect();
     let error_id = format!("err_{}_{}", now_ns, caller_suffix);
 
@@ -2302,7 +2316,7 @@ fn report_error(payload: ErrorPayload) -> Result<String, String> {
 /// Only callable by principals listed in `config::ADMIN_PRINCIPALS`.
 #[update]
 fn get_errors() -> Result<Vec<ErrorRecord>, String> {
-    let caller = ic_cdk::caller().to_text();
+    let caller = ic_cdk::api::msg_caller().to_text();
     if !config::ADMIN_PRINCIPALS.contains(&caller.as_str()) {
         return Err("Unauthorized: admin access required".to_string());
     }
@@ -2334,7 +2348,7 @@ fn get_errors() -> Result<Vec<ErrorRecord>, String> {
 /// Accepts a list of `error_id` strings matching the Juno document keys.
 #[update]
 fn delete_errors(keys: Vec<String>) -> Result<(), String> {
-    let caller = ic_cdk::caller().to_text();
+    let caller = ic_cdk::api::msg_caller().to_text();
     if !config::ADMIN_PRINCIPALS.contains(&caller.as_str()) {
         return Err("Unauthorized: admin access required".to_string());
     }
@@ -2373,7 +2387,7 @@ fn delete_errors(keys: Vec<String>) -> Result<(), String> {
 /// Fetches the current document version for optimistic concurrency before writing.
 #[update]
 fn resolve_error(error_id: String, resolved: bool) -> Result<(), String> {
-    let caller = ic_cdk::caller().to_text();
+    let caller = ic_cdk::api::msg_caller().to_text();
     if !config::ADMIN_PRINCIPALS.contains(&caller.as_str()) {
         return Err("Unauthorized: admin access required".to_string());
     }
@@ -2408,6 +2422,54 @@ fn resolve_error(error_id: String, resolved: bool) -> Result<(), String> {
         &format!(
             "Error {} marked as resolved={} by admin",
             error_id, resolved
+        ),
+    );
+
+    Ok(())
+}
+
+// =============================================================================
+// Ban Management
+// =============================================================================
+
+/// Lift a ban on a user. Admin-only.
+///
+/// Clears `banned_until` and `ban_reason` on the user's profile so they can
+/// play again. Does NOT reset `offence_count` — ban tiers still escalate on
+/// future offences.
+#[update]
+fn lift_ban(principal: String) -> Result<(), String> {
+    let caller = ic_cdk::api::msg_caller().to_text();
+    if !config::ADMIN_PRINCIPALS.contains(&caller.as_str()) {
+        return Err("Unauthorized: admin access required".to_string());
+    }
+
+    let admin = admin_caller();
+
+    // Fetch existing doc to get its current version (required for optimistic concurrency)
+    let existing = get_doc_store(admin, "users".to_string(), principal.clone())
+        .map_err(|e| format!("Failed to fetch user {}: {}", principal, e))?
+        .ok_or_else(|| format!("User not found: {}", principal))?;
+
+    let mut profile: UserProfile = decode_doc_data(&existing.data)
+        .map_err(|e| format!("Failed to decode user profile: {}", e))?;
+
+    profile.banned_until = None;
+    profile.ban_reason = None;
+
+    let doc = SetDoc {
+        data: encode_doc_data(&profile)?,
+        description: existing.description,
+        version: existing.version,
+    };
+
+    set_doc_store(admin, "users".to_string(), principal.clone(), doc)?;
+
+    logging::log_info(
+        "BanSystem",
+        &format!(
+            "Admin lifted ban for principal={}",
+            principal.chars().take(16).collect::<String>()
         ),
     );
 

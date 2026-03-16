@@ -80,6 +80,18 @@ server:
       min_action_gap_ms: 0
       min_attack_gap_ms: 200
       grace_ms: 5000
+      # Max actions allowed in any 100ms sliding window.
+      # At 60fps, 100ms ≈ 6 frames; a player can legitimately generate ~5 actions/frame
+      # (move + jump + attack + bot events), so a real burst ceiling is ~30.
+      # Set to 40 to give headroom for frame-rate jitter while still blocking bot scripts.
+      burst_limit_per_100ms: 40
+      # Minimum total actions in a replay — protects against empty/trivial submissions.
+      # A real 3-minute game generates thousands; anything under this is a scripted stub.
+      min_actions: 50
+      # Attack-to-key ratio check: attacks must be >= keys_collected / this_divisor.
+      # A player collecting a key every N attacks is the expected pattern.
+      # Set high (100) to be permissive — the check mainly catches zero-attack key farmers.
+      attack_per_key_divisor: 100
   highscore:
     score_ttl_hours: 24
     consolation_prize_percent: 1
@@ -226,6 +238,8 @@ client:
         burn_rate: 1000 # 10% in basis points — must match Vault.sol burnRate
         chain_id: 31337 # Standalone Anvil (no fork)
         rpc_urls:
+          # Browser (wagmi/viem) — localhost is correct for the browser.
+          # The satellite uses a separate Docker-accessible URL under icp.evm_rpc.
           - http://localhost:8545
         allowed_origins:
           - http://localhost:5173
@@ -282,7 +296,29 @@ client:
         vault_contract: "0x0000000000000000000000000000000000000000"
         explorer_url: "https://snowtrace.io/tx/"
     icp:
-      evm_rpc_canister_id: 7hfb6-caaaa-aaaar-qadga-cai
+      evm_rpc:
+        # Local Anvil via ICP EVM RPC canister running in the Juno SkyLab emulator.
+        # The satellite is compiled inside Docker so it uses host.docker.internal
+        # (injected via --add-host in juno.config.mjs extraHosts).
+        # Anvil must be started with --host 0.0.0.0.
+        anvil:
+          canister_id: lm4fb-uh777-77777-aaacq-cai
+          rpc_url: "http://host.docker.internal:8545"
+        # Fuji testnet — uses the shared ICP EVM RPC canister with custom providers.
+        # These URLs are satellite-only; the browser uses blockchain.avalanche.testnet.rpc_urls.
+        testnet:
+          canister_id: 7hfb6-caaaa-aaaar-qadga-cai
+          rpc_urls:
+            - https://api.avax-test.network/ext/bc/C/rpc
+            - https://rpc.ankr.com/avalanche_fuji
+            - https://avalanche-fuji.drpc.org
+        # C-Chain mainnet — uses the shared ICP EVM RPC canister with custom providers.
+        # These URLs are satellite-only; the browser uses blockchain.avalanche.mainnet.rpc_urls.
+        mainnet:
+          canister_id: 7hfb6-caaaa-aaaar-qadga-cai
+          rpc_urls:
+            - https://api.avax.network/ext/bc/C/rpc
+            - https://avalanche-c-chain-rpc.publicnode.com
   wallet:
     faucet_cooldown_hours: 24
     balance_refresh_cooldown_ms: 30000
@@ -591,7 +627,7 @@ client:
           bob_duration: 600 # Duration of bob cycle (ms)
           despawn_ms: 8000 # Auto-despawn time (ms)
       boss:
-        health: 500
+        health: 50 # TODO: Revert after testing.
         damage: 25
         speed: 150
         knockback:

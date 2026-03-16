@@ -7,10 +7,12 @@ use crate::evm_rpc_types::{
     RpcApi, RpcConfig, RpcServices, TransactionRequest,
 };
 use candid::Principal;
-use ic_cdk::management_canister::{
-    EcdsaCurve, EcdsaKeyId, EcdsaPublicKeyArgs, SignWithEcdsaArgs, ecdsa_public_key,
-    sign_with_ecdsa as mgmt_sign_with_ecdsa,
+use ic_cdk_management_canister::{
+    EcdsaCurve, EcdsaKeyId, EcdsaPublicKeyArgs, HttpHeader, HttpMethod, HttpRequestArgs,
+    SignWithEcdsaArgs, TransformContext, TransformFunc, ecdsa_public_key,
+    http_request as ic_http_request, sign_with_ecdsa as mgmt_sign_with_ecdsa,
 };
+use junobuild_shared::ic::api::id as canister_id;
 use libsecp256k1::{Message, RecoveryId, Signature, recover};
 use num_bigint::BigUint;
 use num_traits::ToPrimitive;
@@ -54,6 +56,13 @@ const PAY_FEE_SELECTOR: &str = "c6bbdafb";
 const CLAIM_SELECTOR: &str = "95ace4b3";
 /// ERC-20 transfer(address,uint256) function selector
 const TRANSFER_SELECTOR: [u8; 4] = [0xa9, 0x05, 0x9c, 0xbb];
+/// keccak256("Transfer(address,address,uint256)") — ERC-20 Transfer event topic.
+/// Used to locate the fee amount in receipt logs.
+const ERC20_TRANSFER_TOPIC: &str =
+    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+/// Cycle budget for a direct IC HTTP outcall to an EVM RPC provider.
+/// Covers a 13-node subnet with a generous safety margin.
+const CYCLES_DIRECT_HTTP: u128 = 5_000_000_000; // 5B
 
 // ---------------------------------------------------------------------------
 // Helpers: EvmRpcCanister construction & RPC service configuration
@@ -157,40 +166,72 @@ fn parse_json_rpc_result(body: &str) -> Result<serde_json::Value, String> {
 
 /// Verify a fee transaction on Avalanche.
 /// Returns the parsed fee data including amount and sender address.
-/// `caller_wallet` is used by the ANVIL mock to return the correct `from` address
-/// so the wallet-match check in `on_fee_created` passes in local dev.
-pub async fn verify_avalanche_fee(
-    tx_hash: &str,
-    caller_wallet: Option<&str>,
-) -> Result<ParsedFee, String> {
-    // Anvil mock: skip real RPC verification in local dev
-    if crate::config::NETWORK_NAME == "anvil" {
-        crate::logging::log_debug(
-            "EvmRpc",
-            &format!("ANVIL_MOCK: verify_avalanche_fee for {}", tx_hash),
-        );
-        // Echo back the caller's wallet so the from-address check passes.
-        let from = caller_wallet
-            .unwrap_or("0x0000000000000000000000000000000000000000")
-            .to_string();
-        return Ok(ParsedFee { amount: 10, from });
+///
+/// Uses `eth_getTransactionReceipt` (typed binding) + ERC-20 Transfer event log
+/// parsing instead of `eth_getTransactionByHash` because the EVM RPC canister’s
+/// `multi_request` endpoint deserialises the result field as `String`, which
+/// fails for methods that return a JSON object.
+pub async fn verify_avalanche_fee(tx_hash: &str) -> Result<ParsedFee, String> {
+    let canister = evm_rpc_canister()?;
+
+    let result = canister
+        .eth_get_transaction_receipt(
+            avalanche_rpc_services(),
+            default_rpc_config(),
+            tx_hash.to_string(),
+            cycles_for_call(4096),
+        )
+        .await?;
+
+    let receipt = match result.0 {
+        MultiGetTransactionReceiptResult::Consistent(r) => match r {
+            GetTransactionReceiptResult::Ok(Some(r)) => r,
+            GetTransactionReceiptResult::Ok(None) => {
+                return Err(format!("Receipt not found for tx {}", tx_hash));
+            }
+            GetTransactionReceiptResult::Err(e) => {
+                return Err(format!("RPC error fetching receipt: {:?}", e));
+            }
+        },
+        MultiGetTransactionReceiptResult::Inconsistent(results) => {
+            return Err(format!(
+                "Inconsistent receipt results from {} providers",
+                results.len()
+            ));
+        }
+    };
+
+    // Verify tx succeeded (EIP-658 status = 1)
+    let status: u64 = receipt
+        .status
+        .ok_or_else(|| "Receipt has no status field".to_string())?
+        .0
+        .try_into()
+        .map_err(|_| "Receipt status value out of range".to_string())?;
+    if status != 1 {
+        return Err("Fee transaction reverted on-chain (status != 0x1)".to_string());
     }
 
-    // eth_getTransactionByHash — no typed binding, use raw JSON-RPC
-    let params = format!("[\"{}\"]", tx_hash);
-    let body = json_rpc_request("eth_getTransactionByHash", &params).await?;
-    let result_json = parse_json_rpc_result(&body)?;
-
-    if result_json.is_null() {
-        return Err("No transaction found".to_string());
+    // Verify the transaction was sent to the Vault contract
+    let to_addr = receipt.to.as_deref().unwrap_or("");
+    if !to_addr.eq_ignore_ascii_case(crate::config::VAULT_CONTRACT_ADDRESS) {
+        return Err(format!(
+            "Fee tx 'to' {} does not match vault {}",
+            to_addr,
+            crate::config::VAULT_CONTRACT_ADDRESS
+        ));
     }
 
-    let parsed = parse_fee_input(&result_json)?;
+    // Derive fee amount from the ERC-20 Transfer event emitted inside payFee.
+    // Vault.payFee calls TRESR.transferFrom(msg.sender, vault, amount), which
+    // makes the token contract emit Transfer(from, to=vault, amount).
+    let amount =
+        extract_transfer_amount_to_vault(&receipt.logs, crate::config::VAULT_CONTRACT_ADDRESS)?;
 
-    // Verify the transaction actually succeeded on-chain
-    verify_transaction_receipt(tx_hash).await?;
-
-    Ok(parsed)
+    Ok(ParsedFee {
+        amount,
+        from: receipt.from,
+    })
 }
 
 // ---------------------------------------------------------------------------
@@ -206,26 +247,19 @@ pub async fn verify_avalanche_claim_tx(
     expected_amount: u64,
     expected_keys: u64,
 ) -> Result<(), String> {
-    // Anvil mock: skip real RPC verification in local dev
-    if crate::config::NETWORK_NAME == "anvil" {
-        crate::logging::log_debug(
-            "EvmRpc",
-            &format!("ANVIL_MOCK: verify_avalanche_claim_tx for {}", tx_hash),
-        );
-        return Ok(());
-    }
+    // Use a direct IC HTTP outcall to fetch the full transaction JSON.
+    // We cannot use multi_request("eth_getTransactionByHash") here because the
+    // EVM RPC canister’s multi_request endpoint parses the result field as a
+    // String — which fails when the result is a JSON object (as returned by
+    // eth_getTransactionByHash and other object-result methods).
+    let tx_json = fetch_transaction_json(tx_hash).await?;
 
-    // eth_getTransactionByHash — no typed binding, use raw JSON-RPC
-    let params = format!("[\"{}\"]", tx_hash);
-    let body = json_rpc_request("eth_getTransactionByHash", &params).await?;
-    let result_json = parse_json_rpc_result(&body)?;
-
-    if result_json.is_null() {
+    if tx_json.is_null() {
         return Err("Transaction not found".to_string());
     }
 
     verify_claim_transaction(
-        &result_json,
+        &tx_json,
         expected_session_id,
         expected_amount,
         expected_keys,
@@ -235,6 +269,130 @@ pub async fn verify_avalanche_claim_tx(
     verify_transaction_receipt(tx_hash).await?;
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Internal: Direct IC HTTP outcall for object-result JSON-RPC methods
+// ---------------------------------------------------------------------------
+
+/// Fetch a transaction by hash using a direct IC management canister HTTP outcall.
+///
+/// The EVM RPC canister’s `multi_request` endpoint cannot be used here because it
+/// internally deserialises the JSON-RPC `result` field as `String`. Methods that
+/// return a JSON object (such as `eth_getTransactionByHash`) cause a serde error:
+/// “invalid type: map, expected a string”.
+///
+/// This function bypasses the EVM RPC canister and speaks JSON-RPC directly to
+/// the first configured RPC URL via `ic_cdk_management_canister::http_request`.
+/// A `TransformContext` pointing to the satellite’s `strip_http_headers` query
+/// ensures all IC replicas see the same normalised response body.
+async fn fetch_transaction_json(tx_hash: &str) -> Result<serde_json::Value, String> {
+    let rpc_url = crate::config::AVALANCHE_RPC_URLS
+        .first()
+        .ok_or_else(|| "No RPC URLs configured".to_string())?;
+
+    let body = format!(
+        r#"{{"jsonrpc":"2.0","method":"eth_getTransactionByHash","params":["{}"],"id":1}}"#,
+        tx_hash
+    );
+
+    let request = HttpRequestArgs {
+        url: rpc_url.to_string(),
+        method: HttpMethod::POST,
+        headers: vec![HttpHeader {
+            name: "Content-Type".to_string(),
+            value: "application/json".to_string(),
+        }],
+        body: Some(body.into_bytes()),
+        max_response_bytes: Some(12_288), // 12 KB -- generous for a transaction response
+        // is_replicated: None uses the IC default (replicated/consensus mode,
+        // all nodes call the same URL and must agree on the response body).
+        is_replicated: None,
+        transform: Some(TransformContext {
+            function: TransformFunc(candid::Func {
+                principal: canister_id(),
+                method: "strip_http_headers".to_string(),
+            }),
+            context: vec![],
+        }),
+    };
+
+    let http_result = ic_http_request(&request)
+        .await
+        .map_err(|e| format!("IC HTTP outcall failed: {:?}", e))?;
+
+    let body_str = String::from_utf8(http_result.body)
+        .map_err(|e| format!("Response body is not valid UTF-8: {}", e))?;
+
+    let parsed: serde_json::Value = serde_json::from_str(&body_str)
+        .map_err(|e| format!("Failed to parse HTTP response as JSON: {}", e))?;
+
+    if let Some(err) = parsed.get("error") {
+        let msg = err
+            .get("message")
+            .and_then(|m| m.as_str())
+            .unwrap_or("unknown error");
+        return Err(format!("JSON-RPC error: {}", msg));
+    }
+
+    parsed
+        .get("result")
+        .cloned()
+        .ok_or_else(|| "No 'result' field in JSON-RPC response".to_string())
+}
+
+/// Extract fee amount from ERC-20 Transfer event logs emitted during a payFee call.
+///
+/// Looks for a `Transfer(from, to=vault, amount)` log and returns the amount in tokens.
+/// Called by `verify_avalanche_fee` in lieu of parsing raw calldata.
+fn extract_transfer_amount_to_vault(
+    logs: &[crate::evm_rpc_types::LogEntry],
+    vault_addr: &str,
+) -> Result<u64, String> {
+    let vault_clean = vault_addr
+        .strip_prefix("0x")
+        .unwrap_or(vault_addr)
+        .to_lowercase();
+
+    for log in logs {
+        // Must be an ERC-20 Transfer event
+        let Some(topic0) = log.topics.first() else {
+            continue;
+        };
+        if !topic0.eq_ignore_ascii_case(ERC20_TRANSFER_TOPIC) {
+            continue;
+        }
+
+        // topics[2] = `to` address ABI-padded to 32 bytes (12-byte zero prefix + 20-byte address)
+        let Some(to_topic) = log.topics.get(2) else {
+            continue;
+        };
+        let to_hex = to_topic.strip_prefix("0x").unwrap_or(to_topic);
+        if to_hex.len() < 40 {
+            continue;
+        }
+        let to_addr_part = &to_hex[to_hex.len() - 40..];
+        if !to_addr_part.eq_ignore_ascii_case(&vault_clean) {
+            continue;
+        }
+
+        // log.data contains the ABI-encoded uint256 amount (hex, with or without 0x prefix)
+        let data = log.data.strip_prefix("0x").unwrap_or(&log.data);
+        if data.is_empty() {
+            continue;
+        }
+        let wei_amount = BigUint::parse_bytes(data.as_bytes(), 16)
+            .ok_or_else(|| format!("Failed to parse Transfer log data as hex: {}", data))?;
+
+        let one_token = BigUint::from(10u64).pow(18);
+        let tokens = (&wei_amount / &one_token)
+            .to_u64()
+            .ok_or_else(|| format!("Transfer amount overflows u64: {}", wei_amount))?;
+
+        return Ok(tokens);
+    }
+
+    Err("No ERC-20 Transfer event to the vault found in receipt logs".to_string())
 }
 
 // ---------------------------------------------------------------------------
@@ -268,15 +426,16 @@ fn verify_claim_transaction(
     // Parse and verify the ABI-encoded claim parameters
     let parsed = parse_claim_input(tx_data)?;
 
-    // Verify sessionId
+    // Verify sessionId — normalize both sides to bare 64-char hex (bytes32)
+    // so that a session stored as "0xdeadbeef" matches the ABI-padded
+    // "00000000000000000000000000000000000000000000000000000000deadbeef".
     let expected_hex = expected_session_id
         .strip_prefix("0x")
         .unwrap_or(expected_session_id);
-    if !parsed.session_id.eq_ignore_ascii_case(expected_hex) {
-        return Err(format!(
-            "Claim sessionId mismatch: tx has {}, expected {}",
-            parsed.session_id, expected_hex
-        ));
+    let expected_padded = format!("{:0>64}", expected_hex);
+    if !parsed.session_id.eq_ignore_ascii_case(&expected_padded) {
+        // Do not include raw session IDs in the error to avoid logging sensitive data.
+        return Err("Claim sessionId mismatch".to_string());
     }
 
     // Verify amount (compare in wei: expected_amount tokens * 10^18)
@@ -301,6 +460,7 @@ fn verify_claim_transaction(
 }
 
 /// Parsed claim transaction data returned by `parse_claim_input`.
+#[derive(Debug)]
 pub struct ParsedClaim {
     /// sessionId (bytes32) as hex string without 0x prefix
     pub session_id: String,
@@ -370,6 +530,7 @@ fn parse_claim_input(tx_data: &serde_json::Value) -> Result<ParsedClaim, String>
 }
 
 /// Parsed fee transaction data returned by `parse_fee_input`.
+#[derive(Debug)]
 pub struct ParsedFee {
     pub amount: u64,
     pub from: String,
@@ -806,15 +967,6 @@ async fn extract_signature_components(
 /// Get the ERC-20 token balance for a wallet address.
 /// Uses the typed `eth_call` method.
 pub async fn get_token_balance(wallet_address: &str) -> Result<u64, String> {
-    // Anvil mock: return fake balance in local dev
-    if crate::config::NETWORK_NAME == "anvil" {
-        crate::logging::log_debug(
-            "EvmRpc",
-            &format!("ANVIL_MOCK: get_token_balance for {}", wallet_address),
-        );
-        return Ok(1000);
-    }
-
     let canister = evm_rpc_canister()?;
 
     // ABI encode balanceOf(address): selector 0x70a08231 + 32-byte padded address
@@ -943,4 +1095,375 @@ pub fn keccak256(data: &[u8]) -> Vec<u8> {
     hasher.update(data);
     hasher.finalize(&mut output);
     output.to_vec()
+}
+
+// ---------------------------------------------------------------------------
+// Unit tests — pure Rust, no IC runtime required
+// Run with: cargo test --target x86_64-unknown-linux-gnu
+// ---------------------------------------------------------------------------
+
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use num_bigint::BigUint;
+    use serde_json::json;
+
+    // ── Test data helpers ────────────────────────────────────────────────────
+
+    /// Zero-pad a BigUint to a 32-byte (64-char) lowercase hex string.
+    fn to_u256_hex(n: &BigUint) -> String {
+        format!("{:0>64}", format!("{:x}", n))
+    }
+
+    fn tokens_to_wei(tokens: u64) -> BigUint {
+        BigUint::from(tokens) * BigUint::from(10u64).pow(18)
+    }
+
+    /// Build ABI-encoded `payFee(uint256 amount, bytes32 sessionId)` calldata.
+    fn pay_fee_calldata(amount_tokens: u64, session_hex: &str) -> String {
+        let amount_hex = to_u256_hex(&tokens_to_wei(amount_tokens));
+        let session_clean = session_hex.strip_prefix("0x").unwrap_or(session_hex);
+        let session_padded = format!("{:0>64}", session_clean);
+        format!("0x{}{}{}", PAY_FEE_SELECTOR, amount_hex, session_padded)
+    }
+
+    /// Build ABI-encoded `claim(bytes32 sessionId, uint256 amount, uint256 keys, bytes sig)`.
+    ///
+    /// ABI layout:
+    ///   selector (4 B) | session (32 B) | amount (32 B) | keys (32 B)
+    ///   offset (32 B)  | sig_len (32 B) | sig_data (padded to 32-B boundary)
+    fn claim_calldata(session_hex: &str, amount_tokens: u64, keys: u64) -> String {
+        let session_clean = session_hex.strip_prefix("0x").unwrap_or(session_hex);
+        let session_padded = format!("{:0>64}", session_clean);
+        let amount_hex = to_u256_hex(&tokens_to_wei(amount_tokens));
+        let keys_hex = format!("{:0>64x}", keys);
+        // Dynamic bytes offset — static area is 4 * 32 = 128 = 0x80
+        let offset = format!("{:0>64x}", 0x80u64);
+        // Minimal 65-byte dummy signature (padded to 96 bytes / 3 slots)
+        let sig_len = format!("{:0>64x}", 65u64);
+        let sig_data = format!("{:0>192}", "ff");
+        format!(
+            "0x{}{}{}{}{}{}{}",
+            CLAIM_SELECTOR, session_padded, amount_hex, keys_hex, offset, sig_len, sig_data
+        )
+    }
+
+    fn payf_tx(amount_tokens: u64, session_hex: &str) -> serde_json::Value {
+        json!({
+            "from": "0xb81749C72DB5B5209098f2bd45A7a0293925DA13",
+            "to": crate::config::VAULT_CONTRACT_ADDRESS,
+            "input": pay_fee_calldata(amount_tokens, session_hex),
+        })
+    }
+
+    fn claim_tx(session_hex: &str, amount_tokens: u64, keys: u64) -> serde_json::Value {
+        json!({
+            "from": "0xb81749C72DB5B5209098f2bd45A7a0293925DA13",
+            "to": crate::config::VAULT_CONTRACT_ADDRESS,
+            "input": claim_calldata(session_hex, amount_tokens, keys),
+        })
+    }
+
+    // ── parse_fee_input ──────────────────────────────────────────────────────
+
+    #[test]
+    fn fee_parse_valid_10_tokens() {
+        let fee = parse_fee_input(&payf_tx(10, "0x1234")).unwrap();
+        assert_eq!(fee.amount, 10);
+        assert_eq!(
+            fee.from.to_lowercase(),
+            "0xb81749c72db5b5209098f2bd45a7a0293925da13"
+        );
+    }
+
+    #[test]
+    fn fee_parse_valid_100_tokens() {
+        let fee = parse_fee_input(&payf_tx(100, "0xdeadbeef")).unwrap();
+        assert_eq!(fee.amount, 100);
+    }
+
+    #[test]
+    fn fee_parse_wrong_vault_address() {
+        let tx = json!({
+            "from": "0xabc",
+            "to": "0x0000000000000000000000000000000000000001",
+            "input": pay_fee_calldata(10, "0x1234"),
+        });
+        let err = parse_fee_input(&tx).unwrap_err();
+        assert!(err.contains("does not match vault"), "got: {err}");
+    }
+
+    #[test]
+    fn fee_parse_wrong_selector() {
+        let tx = json!({
+            "from": "0xabc",
+            "to": crate::config::VAULT_CONTRACT_ADDRESS,
+            "input": format!("0xdeadbeef{:0>128}", "0"),
+        });
+        let err = parse_fee_input(&tx).unwrap_err();
+        assert!(err.contains("Wrong function selector"), "got: {err}");
+    }
+
+    #[test]
+    fn fee_parse_input_too_short() {
+        let tx = json!({
+            "from": "0xabc",
+            "to": crate::config::VAULT_CONTRACT_ADDRESS,
+            "input": "0xc6bbdafb1234",
+        });
+        let err = parse_fee_input(&tx).unwrap_err();
+        assert!(err.contains("too short"), "got: {err}");
+    }
+
+    #[test]
+    fn fee_parse_missing_from_field() {
+        let tx = json!({
+            "to": crate::config::VAULT_CONTRACT_ADDRESS,
+            "input": pay_fee_calldata(10, "0x1234"),
+        });
+        let err = parse_fee_input(&tx).unwrap_err();
+        assert!(err.contains("missing 'from'"), "got: {err}");
+    }
+
+    #[test]
+    fn fee_parse_missing_to_field() {
+        let tx = json!({
+            "from": "0xabc",
+            "input": pay_fee_calldata(10, "0x1234"),
+        });
+        let err = parse_fee_input(&tx).unwrap_err();
+        assert!(err.contains("missing 'to'"), "got: {err}");
+    }
+
+    #[test]
+    fn fee_parse_missing_input_field() {
+        let tx = json!({ "from": "0xabc", "to": crate::config::VAULT_CONTRACT_ADDRESS });
+        let err = parse_fee_input(&tx).unwrap_err();
+        assert!(err.contains("missing 'input'"), "got: {err}");
+    }
+
+    // ── parse_claim_input ────────────────────────────────────────────────────
+
+    #[test]
+    fn claim_parse_valid_fields() {
+        let session = "0xaabbccdd";
+        let parsed =
+            parse_claim_input(&json!({ "input": claim_calldata(session, 100, 5) })).unwrap();
+        // sessionId is stored without 0x, zero-padded to 32 bytes (64 chars)
+        assert_eq!(parsed.session_id, format!("{:0>64}", "aabbccdd"));
+        assert_eq!(parsed.amount_wei, tokens_to_wei(100));
+        assert_eq!(parsed.keys, BigUint::from(5u64));
+    }
+
+    #[test]
+    fn claim_parse_wrong_selector() {
+        let tx = json!({ "input": format!("0xdeadbeef{:0>320}", "0") });
+        let err = parse_claim_input(&tx).unwrap_err();
+        assert!(err.contains("Wrong function selector"), "got: {err}");
+    }
+
+    #[test]
+    fn claim_parse_input_too_short() {
+        let tx = json!({ "input": "0x95ace4b300112233" });
+        let err = parse_claim_input(&tx).unwrap_err();
+        assert!(err.contains("too short"), "got: {err}");
+    }
+
+    #[test]
+    fn claim_parse_missing_input_field() {
+        let tx = json!({ "to": "0xabc" });
+        let err = parse_claim_input(&tx).unwrap_err();
+        assert!(err.contains("missing 'input'"), "got: {err}");
+    }
+
+    #[test]
+    fn claim_parse_zero_keys() {
+        let parsed =
+            parse_claim_input(&json!({ "input": claim_calldata("0x1234", 10, 0) })).unwrap();
+        assert_eq!(parsed.keys, BigUint::from(0u64));
+    }
+
+    // ── parse_balance_hex ────────────────────────────────────────────────────
+
+    #[test]
+    fn balance_hex_zero_literal() {
+        assert_eq!(parse_balance_hex("0x0").unwrap(), 0);
+    }
+
+    #[test]
+    fn balance_hex_all_zeros_padded() {
+        assert_eq!(parse_balance_hex(&format!("0x{:0>64}", "0")).unwrap(), 0);
+    }
+
+    #[test]
+    fn balance_hex_empty_after_prefix() {
+        assert_eq!(parse_balance_hex("0x").unwrap(), 0);
+    }
+
+    #[test]
+    fn balance_hex_one_token() {
+        // 1 * 10^18 = 0xde0b6b3a7640000
+        assert_eq!(parse_balance_hex("0xde0b6b3a7640000").unwrap(), 1);
+    }
+
+    #[test]
+    fn balance_hex_ten_tokens() {
+        let hex = format!("0x{:x}", tokens_to_wei(10));
+        assert_eq!(parse_balance_hex(&hex).unwrap(), 10);
+    }
+
+    #[test]
+    fn balance_hex_with_leading_zero_padding() {
+        // Same value but padded to full 32-byte ABI encoding
+        let hex = format!("0x{}", to_u256_hex(&tokens_to_wei(5)));
+        assert_eq!(parse_balance_hex(&hex).unwrap(), 5);
+    }
+
+    #[test]
+    fn balance_hex_quoted_result() {
+        // eth_call sometimes returns quoted hex strings
+        let hex = format!("\"0x{:x}\"", tokens_to_wei(7));
+        assert_eq!(parse_balance_hex(&hex).unwrap(), 7);
+    }
+
+    #[test]
+    fn balance_hex_invalid_chars() {
+        assert!(parse_balance_hex("0xGGGGGGGG").is_err());
+    }
+
+    // ── parse_json_rpc_result ────────────────────────────────────────────────
+
+    #[test]
+    fn json_rpc_ok_string_result() {
+        let body = r#"{"jsonrpc":"2.0","id":1,"result":"0x1"}"#;
+        let v = parse_json_rpc_result(body).unwrap();
+        assert_eq!(v.as_str(), Some("0x1"));
+    }
+
+    #[test]
+    fn json_rpc_ok_null_result() {
+        // Null result is valid (e.g., pending tx not yet mined)
+        let body = r#"{"jsonrpc":"2.0","id":1,"result":null}"#;
+        assert!(parse_json_rpc_result(body).unwrap().is_null());
+    }
+
+    #[test]
+    fn json_rpc_ok_object_result() {
+        let body = r#"{"jsonrpc":"2.0","id":1,"result":{"blockNumber":"0x5"}}"#;
+        let v = parse_json_rpc_result(body).unwrap();
+        assert_eq!(v["blockNumber"].as_str(), Some("0x5"));
+    }
+
+    #[test]
+    fn json_rpc_error_message_in_result() {
+        let body = r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"nonce too low"}}"#;
+        let err = parse_json_rpc_result(body).unwrap_err();
+        assert!(err.contains("nonce too low"), "got: {err}");
+    }
+
+    #[test]
+    fn json_rpc_error_code_in_result() {
+        let body =
+            r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"method not found"}}"#;
+        let err = parse_json_rpc_result(body).unwrap_err();
+        assert!(err.contains("-32601"), "got: {err}");
+    }
+
+    #[test]
+    fn json_rpc_no_result_field() {
+        let body = r#"{"jsonrpc":"2.0","id":1}"#;
+        assert!(parse_json_rpc_result(body).is_err());
+    }
+
+    #[test]
+    fn json_rpc_malformed_json() {
+        assert!(parse_json_rpc_result("not json at all").is_err());
+    }
+
+    // ── verify_claim_transaction ─────────────────────────────────────────────
+
+    #[test]
+    fn verify_claim_happy_path() {
+        let tx = claim_tx("0xdeadbeef", 100, 5);
+        verify_claim_transaction(&tx, "0xdeadbeef", 100, 5).unwrap();
+    }
+
+    #[test]
+    fn verify_claim_wrong_vault_address() {
+        let tx = json!({
+            "from": "0xabc",
+            "to": "0x0000000000000000000000000000000000000001",
+            "input": claim_calldata("0xdeadbeef", 100, 5),
+        });
+        let err = verify_claim_transaction(&tx, "0xdeadbeef", 100, 5).unwrap_err();
+        assert!(err.contains("does not match vault"));
+    }
+
+    #[test]
+    fn verify_claim_session_id_mismatch() {
+        let tx = claim_tx("0x11111111", 100, 5);
+        let err = verify_claim_transaction(&tx, "0x22222222", 100, 5).unwrap_err();
+        assert!(err.contains("sessionId mismatch"));
+    }
+
+    #[test]
+    fn verify_claim_amount_mismatch() {
+        let tx = claim_tx("0x1234", 50, 5);
+        let err = verify_claim_transaction(&tx, "0x1234", 999, 5).unwrap_err();
+        assert!(err.contains("amount mismatch"), "got: {err}");
+    }
+
+    #[test]
+    fn verify_claim_keys_mismatch() {
+        let tx = claim_tx("0x1234", 100, 3);
+        let err = verify_claim_transaction(&tx, "0x1234", 100, 9).unwrap_err();
+        assert!(err.contains("keys mismatch"), "got: {err}");
+    }
+
+    #[test]
+    fn verify_claim_session_with_0x_prefix_matches() {
+        // Verify that 0x-prefixed session IDs are compared correctly
+        let tx = claim_tx("0xabcd1234", 10, 1);
+        verify_claim_transaction(&tx, "0xabcd1234", 10, 1).unwrap();
+    }
+
+    // ── keccak256 ────────────────────────────────────────────────────────────
+
+    #[test]
+    fn keccak256_empty_input_known_value() {
+        // keccak256("") == c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470
+        let hash = keccak256(b"");
+        assert_eq!(
+            hex::encode(&hash),
+            "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+        );
+    }
+
+    #[test]
+    fn keccak256_hello_known_value() {
+        let hash = keccak256(b"hello");
+        assert_eq!(
+            hex::encode(&hash),
+            "1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8"
+        );
+    }
+
+    #[test]
+    fn keccak256_output_always_32_bytes() {
+        assert_eq!(keccak256(b"").len(), 32);
+        assert_eq!(keccak256(b"abc").len(), 32);
+        assert_eq!(keccak256(&vec![0u8; 1000]).len(), 32);
+    }
+
+    #[test]
+    fn keccak256_deterministic() {
+        // Same input always produces the same output
+        assert_eq!(keccak256(b"tresr"), keccak256(b"tresr"));
+    }
+
+    #[test]
+    fn keccak256_different_inputs_produce_different_outputs() {
+        assert_ne!(keccak256(b"a"), keccak256(b"b"));
+    }
 }

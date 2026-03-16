@@ -104,9 +104,9 @@ export const config: ConfigTypes = {
         "token_ticker": "tRON",
         "tresr_token_contract": "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+        "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
         "vault_contract": "0x9E545E3C0baAB3E08CdfD552C960A1050f373042",
         "faucet_contract": "0x67d269191c92Caf3cD7723F116c85e6E9bf55933",
-        "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
         "explorer_url": "http://localhost:8545/tx/"
       },
       "testnet": {
@@ -152,7 +152,27 @@ export const config: ConfigTypes = {
       }
     },
     "icp": {
-      "evm_rpc_canister_id": "7hfb6-caaaa-aaaar-qadga-cai"
+      "evm_rpc": {
+        "anvil": {
+          "canister_id": "lm4fb-uh777-77777-aaacq-cai",
+          "rpc_url": "http://host.docker.internal:8545"
+        },
+        "testnet": {
+          "canister_id": "7hfb6-caaaa-aaaar-qadga-cai",
+          "rpc_urls": [
+            "https://api.avax-test.network/ext/bc/C/rpc",
+            "https://rpc.ankr.com/avalanche_fuji",
+            "https://avalanche-fuji.drpc.org"
+          ]
+        },
+        "mainnet": {
+          "canister_id": "7hfb6-caaaa-aaaar-qadga-cai",
+          "rpc_urls": [
+            "https://api.avax.network/ext/bc/C/rpc",
+            "https://avalanche-c-chain-rpc.publicnode.com"
+          ]
+        }
+      }
     }
   },
   "wallet": {
@@ -453,12 +473,6 @@ export const config: ConfigTypes = {
       "super_hit": 25
     },
     "health_bar": {
-      "thresholds": {
-        "high": 0.75,
-        "medium": 0.5,
-        "low": 0.25,
-        "critical": 0.1
-      },
       "width": 60,
       "height": 6,
       "offset_y": -15,
@@ -468,6 +482,12 @@ export const config: ConfigTypes = {
         "medium": 16776960,
         "low": 16746496,
         "critical": 16711680
+      },
+      "thresholds": {
+        "high": 0.75,
+        "medium": 0.5,
+        "low": 0.25,
+        "critical": 0.1
       }
     },
     "walkable_area": {
@@ -571,6 +591,15 @@ export const config: ConfigTypes = {
           "attack_check_ms": 500
         },
         "ai": {
+          "weights": {
+            "cautious": 10,
+            "direct": 20,
+            "erratic": 20,
+            "flanker": 20,
+            "passive": 10,
+            "retardio": 10,
+            "swarm": 10
+          },
           "cautious": {
             "speed_mult": 0.7,
             "preferred_distance": 250,
@@ -619,15 +648,6 @@ export const config: ConfigTypes = {
             "rush_threshold": 3,
             "rush_tint": 65416,
             "check_frame_interval": 10
-          },
-          "weights": {
-            "cautious": 10,
-            "direct": 20,
-            "erratic": 20,
-            "flanker": 20,
-            "passive": 10,
-            "retardio": 10,
-            "swarm": 10
           }
         },
         "health_bar": {
@@ -674,12 +694,11 @@ export const config: ConfigTypes = {
         }
       },
       "boss": {
-        "health": 500,
+        "health": 50,
         "damage": 25,
         "speed": 150,
         "knockback": {
           "force": 50,
-          "force_mult": 0.5,
           "stun_ms": 100
         },
         "hitbox": {
@@ -935,54 +954,54 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 6,
           "repeat": -1,
-          "path": "/assets/images/sprites/hero/idle.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "path": "/assets/images/sprites/hero/idle.webp"
         },
         {
           "name": "walk",
           "frames": 6,
           "frameRate": 8,
           "repeat": -1,
-          "path": "/assets/images/sprites/hero/walk.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "path": "/assets/images/sprites/hero/walk.webp"
         },
         {
           "name": "jump",
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "path": "/assets/images/sprites/hero/jump.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "path": "/assets/images/sprites/hero/jump.webp"
         },
         {
           "name": "attack",
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "path": "/assets/images/sprites/hero/attack.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "path": "/assets/images/sprites/hero/attack.webp"
         },
         {
           "name": "hurt",
           "frames": 4,
           "frameRate": 8,
           "repeat": 0,
-          "path": "/assets/images/sprites/hero/hurt.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "path": "/assets/images/sprites/hero/hurt.webp"
         },
         {
           "name": "super",
           "frames": 6,
           "frameRate": 12,
           "repeat": 0,
-          "path": "/assets/images/sprites/hero/super.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "path": "/assets/images/sprites/hero/super.webp"
         }
       ]
     },
@@ -994,9 +1013,9 @@ export const config: ConfigTypes = {
           "frames": 5,
           "frameRate": 15,
           "repeat": -1,
-          "path": "/assets/images/sprites/super/spin.webp",
           "frameWidth": 256,
-          "frameHeight": 256
+          "frameHeight": 256,
+          "path": "/assets/images/sprites/super/spin.webp"
         }
       ]
     },
@@ -1008,98 +1027,98 @@ export const config: ConfigTypes = {
           "frames": 8,
           "frameRate": 6,
           "repeat": -1,
-          "path": "/assets/images/sprites/boss/idle.webp",
           "frameWidth": 400,
-          "frameHeight": 500
+          "frameHeight": 500,
+          "path": "/assets/images/sprites/boss/idle.webp"
         },
         {
           "name": "walk",
           "frames": 8,
           "frameRate": 8,
           "repeat": -1,
-          "path": "/assets/images/sprites/boss/walk.webp",
           "frameWidth": 400,
-          "frameHeight": 516
+          "frameHeight": 516,
+          "path": "/assets/images/sprites/boss/walk.webp"
         },
         {
           "name": "jump",
           "frames": 8,
           "frameRate": 10,
           "repeat": 0,
-          "path": "/assets/images/sprites/boss/jump.webp",
           "frameWidth": 400,
-          "frameHeight": 700
+          "frameHeight": 700,
+          "path": "/assets/images/sprites/boss/jump.webp"
         },
         {
           "name": "attack",
           "frames": 8,
           "frameRate": 10,
           "repeat": 0,
-          "path": "/assets/images/sprites/boss/attack.webp",
           "frameWidth": 400,
-          "frameHeight": 500
+          "frameHeight": 500,
+          "path": "/assets/images/sprites/boss/attack.webp"
         },
         {
           "name": "hurt",
           "frames": 8,
           "frameRate": 8,
           "repeat": 0,
-          "path": "/assets/images/sprites/boss/hurt.webp",
           "frameWidth": 400,
-          "frameHeight": 500
+          "frameHeight": 500,
+          "path": "/assets/images/sprites/boss/hurt.webp"
         }
       ]
     },
     "enemies": {
       "scaleFactor": 0.8,
-      "count": 5,
       "anims": [
         {
           "name": "idle",
           "frames": 6,
           "frameRate": 6,
           "repeat": -1,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}/idle.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/idle.webp"
         },
         {
           "name": "walk",
           "frames": 6,
           "frameRate": 8,
           "repeat": -1,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}/walk.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/walk.webp"
         },
         {
           "name": "jump",
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}/jump.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/jump.webp"
         },
         {
           "name": "attack",
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}/attack.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/attack.webp"
         },
         {
           "name": "hurt",
           "frames": 4,
           "frameRate": 8,
           "repeat": 0,
-          "pathTemplate": "/assets/images/sprites/enemy_{i}/hurt.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "pathTemplate": "/assets/images/sprites/enemy_{i}/hurt.webp"
         }
-      ]
+      ],
+      "count": 5
     },
     "tresr_bot": {
       "scaleFactor": 1,
@@ -1109,36 +1128,36 @@ export const config: ConfigTypes = {
           "frames": 6,
           "frameRate": 6,
           "repeat": -1,
-          "path": "/assets/images/sprites/tresr_bot/idle.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "path": "/assets/images/sprites/tresr_bot/idle.webp"
         },
         {
           "name": "walk",
           "frames": 6,
           "frameRate": 8,
           "repeat": -1,
-          "path": "/assets/images/sprites/tresr_bot/walk.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "path": "/assets/images/sprites/tresr_bot/walk.webp"
         },
         {
           "name": "attack",
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "path": "/assets/images/sprites/tresr_bot/attack.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "path": "/assets/images/sprites/tresr_bot/attack.webp"
         },
         {
           "name": "special",
           "frames": 6,
           "frameRate": 10,
           "repeat": 0,
-          "path": "/assets/images/sprites/tresr_bot/special.webp",
           "frameWidth": 512,
-          "frameHeight": 512
+          "frameHeight": 512,
+          "path": "/assets/images/sprites/tresr_bot/special.webp"
         }
       ]
     },
@@ -1151,9 +1170,9 @@ export const config: ConfigTypes = {
             "frames": 5,
             "frameRate": 4,
             "repeat": -1,
-            "path": "/assets/images/sprites/key/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 256
+            "frameHeight": 256,
+            "path": "/assets/images/sprites/key/idle.webp"
           }
         ]
       },
@@ -1165,9 +1184,9 @@ export const config: ConfigTypes = {
             "frames": 5,
             "frameRate": 10,
             "repeat": -1,
-            "path": "/assets/images/sprites/bomb/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 256
+            "frameHeight": 256,
+            "path": "/assets/images/sprites/bomb/idle.webp"
           }
         ]
       },
@@ -1179,9 +1198,9 @@ export const config: ConfigTypes = {
             "frames": 5,
             "frameRate": 8,
             "repeat": -1,
-            "path": "/assets/images/sprites/loader/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 256
+            "frameHeight": 256,
+            "path": "/assets/images/sprites/loader/idle.webp"
           }
         ]
       },
@@ -1193,27 +1212,27 @@ export const config: ConfigTypes = {
             "frames": 5,
             "frameRate": 8,
             "repeat": -1,
-            "path": "/assets/images/sprites/chest/idle.webp",
             "frameWidth": 512,
-            "frameHeight": 512
+            "frameHeight": 512,
+            "path": "/assets/images/sprites/chest/idle.webp"
           },
           {
             "name": "open",
             "frames": 5,
             "frameRate": 8,
             "repeat": 0,
-            "path": "/assets/images/sprites/chest/open.webp",
             "frameWidth": 512,
-            "frameHeight": 512
+            "frameHeight": 512,
+            "path": "/assets/images/sprites/chest/open.webp"
           },
           {
             "name": "close",
             "frames": 5,
             "frameRate": 8,
             "repeat": 0,
-            "path": "/assets/images/sprites/chest/close.webp",
             "frameWidth": 512,
-            "frameHeight": 512
+            "frameHeight": 512,
+            "path": "/assets/images/sprites/chest/close.webp"
           }
         ]
       },
@@ -1225,9 +1244,9 @@ export const config: ConfigTypes = {
             "frames": 4,
             "frameRate": 6,
             "repeat": -1,
-            "path": "/assets/images/sprites/health_1/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 256
+            "frameHeight": 256,
+            "path": "/assets/images/sprites/health_1/idle.webp"
           }
         ]
       },
@@ -1239,9 +1258,9 @@ export const config: ConfigTypes = {
             "frames": 4,
             "frameRate": 6,
             "repeat": -1,
-            "path": "/assets/images/sprites/health_2/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 256
+            "frameHeight": 256,
+            "path": "/assets/images/sprites/health_2/idle.webp"
           }
         ]
       },
@@ -1253,9 +1272,9 @@ export const config: ConfigTypes = {
             "frames": 4,
             "frameRate": 6,
             "repeat": -1,
-            "path": "/assets/images/sprites/health_3/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 256
+            "frameHeight": 256,
+            "path": "/assets/images/sprites/health_3/idle.webp"
           }
         ]
       },
@@ -1267,9 +1286,9 @@ export const config: ConfigTypes = {
             "frames": 4,
             "frameRate": 6,
             "repeat": -1,
-            "path": "/assets/images/sprites/health_4/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 256
+            "frameHeight": 256,
+            "path": "/assets/images/sprites/health_4/idle.webp"
           }
         ]
       },
@@ -1281,9 +1300,9 @@ export const config: ConfigTypes = {
             "frames": 4,
             "frameRate": 6,
             "repeat": -1,
-            "path": "/assets/images/sprites/health_5/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 256
+            "frameHeight": 256,
+            "path": "/assets/images/sprites/health_5/idle.webp"
           }
         ]
       },
@@ -1295,9 +1314,9 @@ export const config: ConfigTypes = {
             "frames": 4,
             "frameRate": 6,
             "repeat": -1,
-            "path": "/assets/images/sprites/powerup_1/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 256
+            "frameHeight": 256,
+            "path": "/assets/images/sprites/powerup_1/idle.webp"
           }
         ]
       },
@@ -1309,9 +1328,9 @@ export const config: ConfigTypes = {
             "frames": 4,
             "frameRate": 6,
             "repeat": -1,
-            "path": "/assets/images/sprites/powerup_2/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 256
+            "frameHeight": 256,
+            "path": "/assets/images/sprites/powerup_2/idle.webp"
           }
         ]
       },
@@ -1323,9 +1342,9 @@ export const config: ConfigTypes = {
             "frames": 4,
             "frameRate": 6,
             "repeat": -1,
-            "path": "/assets/images/sprites/powerup_3/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 256
+            "frameHeight": 256,
+            "path": "/assets/images/sprites/powerup_3/idle.webp"
           }
         ]
       },
@@ -1337,9 +1356,9 @@ export const config: ConfigTypes = {
             "frames": 4,
             "frameRate": 6,
             "repeat": -1,
-            "path": "/assets/images/sprites/powerup_4/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 256
+            "frameHeight": 256,
+            "path": "/assets/images/sprites/powerup_4/idle.webp"
           }
         ]
       },
@@ -1351,9 +1370,9 @@ export const config: ConfigTypes = {
             "frames": 4,
             "frameRate": 6,
             "repeat": -1,
-            "path": "/assets/images/sprites/powerup_5/idle.webp",
             "frameWidth": 256,
-            "frameHeight": 256
+            "frameHeight": 256,
+            "path": "/assets/images/sprites/powerup_5/idle.webp"
           }
         ]
       }
@@ -1378,7 +1397,10 @@ export const config: ConfigTypes = {
       "max_actions": 50000,
       "min_action_gap_ms": 0,
       "min_attack_gap_ms": 200,
-      "grace_ms": 5000
+      "grace_ms": 5000,
+      "burst_limit_per_100ms": 40,
+      "min_actions": 50,
+      "attack_per_key_divisor": 100
     }
   },
   "credits": {
@@ -1521,5 +1543,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "d288a9b7b4e52f4206b7253765efc5e7844f930905b9efb98aa75f6e3ff0bb8a"
+  "configHash": "7cbb74b557fed28e0d0b305403f73cc269aa0c31a73c6f1cca78eee7af4c928b"
 };

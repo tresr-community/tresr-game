@@ -5,7 +5,7 @@ import {config as clientConfig} from "@/lib/config/client";
 import {log} from "@/lib/utils/log";
 import {getAuthState} from "@/lib/auth";
 import {getUserProfile} from "@/lib/user";
-import {getSessionId} from "@/lib/game/fee-gate";
+import {getSessionId, getFeeTxHash} from "@/lib/game/fee-gate";
 
 // Loading screen config interface
 interface LoadingScreenConfig {
@@ -979,8 +979,11 @@ export class Preloader extends Phaser.Scene {
         clearTimeout(this.domTypewriterTimeoutId);
         this.domTypewriterTimeoutId = undefined;
       }
-      // Pass fee-gate session ID to MainScene (ticket #244)
-      this.scene.start(SCENE_KEYS.MAIN, {sessionId: getSessionId()});
+      // Pass fee-gate session ID and tx hash to MainScene (ticket #244)
+      this.scene.start(SCENE_KEYS.MAIN, {
+        sessionId: getSessionId(),
+        feeTxHash: getFeeTxHash(),
+      });
     });
   }
 }

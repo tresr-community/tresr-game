@@ -205,6 +205,10 @@ pub struct UserProfile {
     /// Cumulative cheat detection count. Escalates ban duration.
     #[serde(default, deserialize_with = "deserialize_flexible_u64")]
     pub offence_count: u64,
+
+    /// Human-readable reason for the most recent ban (e.g. "CHEAT_DETECTED: attack rate exceeded").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ban_reason: Option<String>,
 }
 
 /// Nested stats object matching TypeScript `stats` field

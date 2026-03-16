@@ -25,6 +25,7 @@ export class Recorder {
   private startTime: number = 0;
   private actions: GameAction[] = [];
   private capped: boolean = false;
+  private frozen: boolean = false;
 
   constructor() {
     this.reset();
@@ -34,6 +35,18 @@ export class Recorder {
     this.startTime = Date.now();
     this.actions = [];
     this.capped = false;
+    this.frozen = false;
+  }
+
+  /**
+   * Permanently freeze the recorder.
+   * Called when the boss dies so post-victory wandering/chest-open time is
+   * excluded from the replay — the satellite's max-duration check only covers
+   * actions recorded up to this point.
+   */
+  freeze() {
+    this.frozen = true;
+    appLog.debug(Recorder.COMPONENT_NAME, "Recorder frozen at boss defeat.");
   }
 
   /** Clear the action buffer without resetting the start time. */
@@ -43,7 +56,7 @@ export class Recorder {
   }
 
   log(action: string) {
-    if (this.capped) return;
+    if (this.frozen || this.capped) return;
 
     if (!VALID_ACTIONS.has(action)) {
       appLog.warn(Recorder.COMPONENT_NAME, `Unknown action type: ${action}`);

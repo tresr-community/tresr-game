@@ -25,6 +25,12 @@ export interface ErrorRecord {
   'environment' : string,
   'error_id' : string,
 }
+export interface HttpHeader { 'value' : string, 'name' : string }
+export interface HttpRequestResult {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<HttpHeader>,
+}
 export type Result = { 'Ok' : [bigint, Uint8Array] } |
   { 'Err' : string };
 export type Result_1 = { 'Ok' : null } |
@@ -33,6 +39,10 @@ export type Result_2 = { 'Ok' : Array<ErrorRecord> } |
   { 'Err' : string };
 export type Result_3 = { 'Ok' : string } |
   { 'Err' : string };
+export interface TransformArgs {
+  'context' : Uint8Array,
+  'response' : HttpRequestResult,
+}
 export interface _SERVICE {
   /**
    * Authorize a claim with replay verification
@@ -66,6 +76,14 @@ export interface _SERVICE {
    */
   'get_oracle_address' : ActorMethod<[], Result_3>,
   /**
+   * Lift a ban on a user. Admin-only.
+   * 
+   * Clears `banned_until` and `ban_reason` on the user's profile so they can
+   * play again. Does NOT reset `offence_count` — ban tiers still escalate on
+   * future offences.
+   */
+  'lift_ban' : ActorMethod<[string], Result_1>,
+  /**
    * Report a client-side error. Anyone (including unauthenticated callers) can
    * report errors. The satellite generates the `error_id` server-side so the
    * client cannot forge it.
@@ -79,6 +97,16 @@ export interface _SERVICE {
    * Fetches the current document version for optimistic concurrency before writing.
    */
   'resolve_error' : ActorMethod<[string, boolean], Result_1>,
+  /**
+   * Transform function for IC management canister HTTP outcalls.
+   * 
+   * Strips all response headers (Date, Content-Length, server-specific metadata)
+   * so that all IC replicas see the same deterministic response body, which is
+   * required for HTTP outcall consensus.
+   * 
+   * Referenced by `fetch_transaction_json` in `evm_rpc.rs` via `TransformContext`.
+   */
+  'strip_http_headers' : ActorMethod<[TransformArgs], HttpRequestResult>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

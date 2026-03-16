@@ -42,6 +42,9 @@ struct Replay {
     min_action_gap_ms: u64,
     min_attack_gap_ms: u64,
     grace_ms: u64,
+    burst_limit_per_100ms: u64,
+    min_actions: u64,
+    attack_per_key_divisor: u64,
 }
 
 #[derive(Deserialize)]
@@ -109,7 +112,8 @@ struct AvalancheNetwork {
     fee: u64,
     burn_rate: u64,
     chain_id: u64,
-    rpc_urls: Vec<String>,
+    // rpc_urls removed: satellite now reads from blockchain.icp.evm_rpc.*.rpc_url(s)
+    // The browser still uses blockchain.avalanche.*.rpc_urls via bin/client-config.ts.
     #[serde(default)]
     allowed_origins: Vec<String>,
     vault_contract: String,
@@ -117,9 +121,27 @@ struct AvalancheNetwork {
     token_ticker: String,
 }
 
+/// Per-network EVM RPC canister configuration (satellite-only).
+#[derive(Deserialize)]
+struct EvmRpcNetwork {
+    canister_id: String,
+    /// Anvil only — single custom RPC URL for the local Docker-accessible endpoint.
+    rpc_url: Option<String>,
+    /// Testnet / mainnet — multiple custom provider URLs for multi-provider consensus.
+    #[serde(default)]
+    rpc_urls: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct EvmRpc {
+    anvil: EvmRpcNetwork,
+    testnet: EvmRpcNetwork,
+    mainnet: EvmRpcNetwork,
+}
+
 #[derive(Deserialize)]
 struct Icp {
-    evm_rpc_canister_id: String,
+    evm_rpc: EvmRpc,
 }
 
 fn main() {
@@ -192,13 +214,27 @@ fn main() {
         .collect::<Vec<_>>()
         .join(", ");
 
-    // Format RPC URLs as Rust array literal
-    let rpc_urls = chain
-        .rpc_urls
-        .iter()
-        .map(|u| format!(r#""{}""#, u))
-        .collect::<Vec<_>>()
-        .join(", ");
+    // Select EVM RPC config for this network (satellite-only, from blockchain.icp.evm_rpc)
+    let evm_rpc_net = match network.as_str() {
+        "anvil" => &config.client.blockchain.icp.evm_rpc.anvil,
+        "testnet" => &config.client.blockchain.icp.evm_rpc.testnet,
+        "mainnet" => &config.client.blockchain.icp.evm_rpc.mainnet,
+        other => panic!("Unknown SATELLITE_NETWORK for icp.evm_rpc: '{}'", other),
+    };
+
+    // Build satellite RPC URL list:
+    //   anvil   — singular rpc_url (Docker host via host.docker.internal)
+    //   others  — rpc_urls list  (Ankr, DRPC, PublicNode, … for multi-provider consensus)
+    let satellite_rpc_urls: Vec<String> = if let Some(url) = &evm_rpc_net.rpc_url {
+        vec![format!(r#""{}""#, url)]
+    } else {
+        evm_rpc_net
+            .rpc_urls
+            .iter()
+            .map(|u| format!(r#""{}""#, u))
+            .collect()
+    };
+    let satellite_rpc_urls_str = satellite_rpc_urls.join(", ");
 
     // Format allowed origins as Rust array literal
     let allowed_origins = chain
@@ -240,7 +276,7 @@ pub const MAX_KEYS_COLLECTED: u64 = {max_keys};
 /// Maximum score a player can realistically achieve (from client.gameplay.vault.max_score)
 pub const MAX_SCORE: u64 = {max_score};
 
-/// EVM RPC canister ID on the Internet Computer (from client.blockchain.icp.evm_rpc_canister_id)
+/// EVM RPC canister ID on the Internet Computer (from client.blockchain.icp.evm_rpc.{network}.canister_id)
 pub const EVM_RPC_CANISTER_ID: &str = "{evm_rpc_canister_id}";
 
 /// Avalanche chain ID for the selected network (from client.blockchain.avalanche.{network}.chain_id)
@@ -261,7 +297,8 @@ pub const FEE: u64 = {fee};
 /// Burn rate in basis points, 1000 = 10% (from client.blockchain.avalanche.{network}.burn_rate)
 pub const BURN_RATE_BPS: u64 = {burn_rate};
 
-/// Avalanche RPC URLs for multi-provider consensus (from client.blockchain.avalanche.{network}.rpc_urls)
+/// Avalanche RPC URLs for multi-provider consensus (from client.blockchain.icp.evm_rpc.{network}.rpc_url(s))
+/// Satellite-only: the browser uses client.blockchain.avalanche.{network}.rpc_urls instead.
 pub const AVALANCHE_RPC_URLS: &[&str] = &[{rpc_urls}];
 
 /// Allowed browser origins for wallet-link domain binding (from client.blockchain.avalanche.{network}.allowed_origins)
@@ -323,20 +360,29 @@ pub const REPLAY_MIN_ATTACK_GAP_MS: u64 = {replay_min_attack_gap_ms};
 
 /// Grace period added to TIME_LIMIT_MS for replay timestamp validation (#171)
 pub const REPLAY_GRACE_MS: u64 = {replay_grace_ms};
+
+/// Max actions in any 100ms sliding window — tuned for legit 60fps button mashing (#171)
+pub const REPLAY_BURST_LIMIT_PER_100MS: u64 = {replay_burst_limit_per_100ms};
+
+/// Minimum total replay actions to accept a session as non-trivial (#171)
+pub const REPLAY_MIN_ACTIONS: u64 = {replay_min_actions};
+
+/// Divisor for attack-to-key ratio check: attacks >= keys / divisor (#171)
+pub const REPLAY_ATTACK_PER_KEY_DIVISOR: u64 = {replay_attack_per_key_divisor};
 "#,
         network = network,
         ban_durations = ban_durations,
         permanent = config.server.anti_cheat.permanent_after_offence,
         max_keys = config.client.gameplay.max_keys,
         max_score = config.client.gameplay.vault.max_score,
-        evm_rpc_canister_id = config.client.blockchain.icp.evm_rpc_canister_id,
+        evm_rpc_canister_id = &evm_rpc_net.canister_id,
         chain_id = chain.chain_id,
         vault_contract = chain.vault_contract,
         token_contract = chain.tresr_token_contract,
         token_ticker = chain.token_ticker,
         fee = chain.fee,
         burn_rate = chain.burn_rate,
-        rpc_urls = rpc_urls,
+        rpc_urls = satellite_rpc_urls_str,
         allowed_origins = allowed_origins,
         ecdsa_key_name = ecdsa_key_name,
         score_ttl_hours = config.server.highscore.score_ttl_hours,
@@ -356,6 +402,9 @@ pub const REPLAY_GRACE_MS: u64 = {replay_grace_ms};
         replay_min_action_gap_ms = config.server.anti_cheat.replay.min_action_gap_ms,
         replay_min_attack_gap_ms = config.server.anti_cheat.replay.min_attack_gap_ms,
         replay_grace_ms = config.server.anti_cheat.replay.grace_ms,
+        replay_burst_limit_per_100ms = config.server.anti_cheat.replay.burst_limit_per_100ms,
+        replay_min_actions = config.server.anti_cheat.replay.min_actions,
+        replay_attack_per_key_divisor = config.server.anti_cheat.replay.attack_per_key_divisor,
     );
 
     // Write to OUT_DIR

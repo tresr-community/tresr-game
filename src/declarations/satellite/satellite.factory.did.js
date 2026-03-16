@@ -34,6 +34,16 @@ export const idlFactory = ({ IDL }) => {
     'raw_error' : IDL.Text,
     'message' : IDL.Text,
   });
+  const HttpHeader = IDL.Record({ 'value' : IDL.Text, 'name' : IDL.Text });
+  const HttpRequestResult = IDL.Record({
+    'status' : IDL.Nat,
+    'body' : IDL.Vec(IDL.Nat8),
+    'headers' : IDL.Vec(HttpHeader),
+  });
+  const TransformArgs = IDL.Record({
+    'context' : IDL.Vec(IDL.Nat8),
+    'response' : HttpRequestResult,
+  });
   
   return IDL.Service({
     'claim_authorize' : IDL.Func(
@@ -45,8 +55,14 @@ export const idlFactory = ({ IDL }) => {
     'get_config_hash' : IDL.Func([], [IDL.Text], ['query']),
     'get_errors' : IDL.Func([], [Result_2], []),
     'get_oracle_address' : IDL.Func([], [Result_3], []),
+    'lift_ban' : IDL.Func([IDL.Text], [Result_1], []),
     'report_error' : IDL.Func([ErrorPayload], [Result_3], []),
     'resolve_error' : IDL.Func([IDL.Text, IDL.Bool], [Result_1], []),
+    'strip_http_headers' : IDL.Func(
+        [TransformArgs],
+        [HttpRequestResult],
+        ['query'],
+      ),
   });
 };
 

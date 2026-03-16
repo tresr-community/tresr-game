@@ -243,13 +243,13 @@ async function doInitAuth(): Promise<void> {
     }
   }
 
-  await initSatellite();
-
-  // Warm the wagmi connection in the background so the wallet modal opens
-  // instantly when the user clicks "Sign in with Avalanche".  This fires the
-  // connector handshake (injected wallets + WalletConnect relay) while the
-  // user is still reading the login screen.
+  // Warm the wagmi connection NOW — before initSatellite() — so the
+  // connector handshake runs in parallel with the Juno satellite init.
+  // This means the wallet modal opens instantly when the user clicks
+  // "Sign in with Avalanche" instead of blocking on the handshake.
   initWalletReconnect();
+
+  await initSatellite();
 
   // Listen for auth state changes from Juno
   onAuthStateChange((user: User | null) => {

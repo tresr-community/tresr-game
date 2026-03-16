@@ -5,6 +5,7 @@ import {execSync} from "node:child_process";
 import yaml from "yaml";
 import {log} from "../src/lib/utils/log";
 import {canonicalStringify} from "../src/lib/utils/canonical-stringify";
+import {TresrConfigSchema} from "./config-schema.ts";
 
 const COMPONENT_NAME = "ConfigGen";
 
@@ -207,7 +208,23 @@ interface PendingWrite {
     }
 
     const configContent: string = fs.readFileSync(configPath, "utf8");
-    const config = yaml.parse(configContent) as Record<string, unknown>;
+    const rawParsed = yaml.parse(configContent);
+    const schemaResult = TresrConfigSchema.safeParse(rawParsed);
+    if (!schemaResult.success) {
+      for (const issue of schemaResult.error.issues) {
+        const fieldPath = issue.path.join(".") || "(root)";
+        log.error(
+          COMPONENT_NAME,
+          `config/tresr.yaml validation error at '${fieldPath}': ${issue.message}`
+        );
+      }
+      log.error(
+        COMPONENT_NAME,
+        `Schema validation failed with ${schemaResult.error.issues.length} error(s). Fix config/tresr.yaml and retry.`
+      );
+      process.exit(1);
+    }
+    const config = schemaResult.data as unknown as Record<string, unknown>;
     const clientConfig = (config.client as Record<string, unknown>) || {};
 
     // Inject server.anti_cheat into client config so ban.ts can read

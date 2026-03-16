@@ -26,12 +26,17 @@ const actor = () => getSatelliteExtendedActor<SatelliteActor>({idlFactory});
 
 export const claimAuthorize = async (
   sessionId: string,
-  amount: bigint,
-  recipient: string,
-  signature: Uint8Array
+  reportedKeys: bigint,
+  feeTxHash: string,
+  replayInputs: Uint8Array
 ): Promise<Result> => {
   const {claim_authorize} = await actor();
-  return await claim_authorize(sessionId, amount, recipient, signature);
+  return await claim_authorize(
+    sessionId,
+    reportedKeys,
+    feeTxHash,
+    replayInputs
+  );
 };
 
 export const deleteErrors = async (ids: Array<string>): Promise<Result_1> => {
@@ -65,4 +70,9 @@ export const resolveError = async (
 ): Promise<Result_1> => {
   const {resolve_error} = await actor();
   return await resolve_error(id, resolved);
+};
+
+export const liftBan = async (principal: string): Promise<Result_1> => {
+  const {lift_ban} = await actor();
+  return await lift_ban(principal);
 };

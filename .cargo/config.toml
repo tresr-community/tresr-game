@@ -1,0 +1,9 @@
+# getrandom 0.3+ on wasm32-unknown-unknown has no default backend.
+# On the IC, junobuild-satellite provides a custom getrandom backend via its
+# `on_init_random_seed` feature, which seeds rand from IC raw_rand.
+# Selecting it requires --cfg getrandom_backend="custom" at compile time.
+# No Cargo feature flag is needed — backend selection is RUSTFLAGS-only.
+# See: https://docs.rs/getrandom/0.3/getrandom/#custom-backends
+
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg", "getrandom_backend=\"custom\""]

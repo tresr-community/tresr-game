@@ -4,8 +4,9 @@
 /* eslint-disable */
 /* prettier-ignore */
 
-import type {_SERVICE as SatelliteActor, ErrorPayload, ErrorRecord, Result, Result_1, Result_2, Result_3} from './satellite.did';
+import type {_SERVICE as SatelliteActor, ErrorPayload, ErrorRecord, HttpHeader, HttpRequestResult, TransformArgs, Result, Result_1, Result_2, Result_3} from './satellite.did';
 import type { Principal } from '@icp-sdk/core/principal';
+// @ts-expect-error - generated JS file without type declarations
 import {idlFactory} from './satellite.factory.did.js';
 import {getSatelliteExtendedActor} from '@junobuild/core';
 
@@ -49,6 +50,14 @@ const getOracleAddress = async (): Promise<Result_3> => {
 	return await get_oracle_address();
 }
 
+const liftBan = async (value0: string): Promise<Result_1> => {
+	const {lift_ban} = await getSatelliteExtendedActor<SatelliteActor>({
+		idlFactory
+	});
+
+	return await lift_ban(value0);
+}
+
 const reportError = async (value0: ErrorPayload): Promise<Result_3> => {
 	const {report_error} = await getSatelliteExtendedActor<SatelliteActor>({
 		idlFactory
@@ -65,12 +74,22 @@ const resolveError = async (value0: string, value1: boolean): Promise<Result_1> 
 	return await resolve_error(value0, value1);
 }
 
+const stripHttpHeaders = async (value0: TransformArgs): Promise<HttpRequestResult> => {
+	const {strip_http_headers} = await getSatelliteExtendedActor<SatelliteActor>({
+		idlFactory
+	});
+
+	return await strip_http_headers(value0);
+}
+
 export const functions = {
 	claimAuthorize,
 	deleteErrors,
 	getConfigHash,
 	getErrors,
 	getOracleAddress,
+	liftBan,
 	reportError,
-	resolveError
+	resolveError,
+	stripHttpHeaders
 };
