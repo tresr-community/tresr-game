@@ -25,6 +25,12 @@ export interface ErrorRecord {
   'environment' : string,
   'error_id' : string,
 }
+export interface HttpHeader { 'value' : string, 'name' : string }
+export interface HttpRequestResult {
+  'status' : bigint,
+  'body' : Uint8Array,
+  'headers' : Array<HttpHeader>,
+}
 export type Result = { 'Ok' : [bigint, Uint8Array] } |
   { 'Err' : string };
 export type Result_1 = { 'Ok' : null } |
@@ -33,6 +39,10 @@ export type Result_2 = { 'Ok' : Array<ErrorRecord> } |
   { 'Err' : string };
 export type Result_3 = { 'Ok' : string } |
   { 'Err' : string };
+export interface TransformArgs {
+  'context' : Uint8Array,
+  'response' : HttpRequestResult,
+}
 export interface _SERVICE {
   /**
    * Authorize a claim with replay verification
@@ -79,6 +89,16 @@ export interface _SERVICE {
    * Fetches the current document version for optimistic concurrency before writing.
    */
   'resolve_error' : ActorMethod<[string, boolean], Result_1>,
+  /**
+   * Transform function for IC management canister HTTP outcalls.
+   * 
+   * Strips all response headers (Date, Content-Length, server-specific metadata)
+   * so that all IC replicas see the same deterministic response body, which is
+   * required for HTTP outcall consensus.
+   * 
+   * Referenced by `fetch_transaction_json` in `evm_rpc.rs` via `TransformContext`.
+   */
+  'strip_http_headers' : ActorMethod<[TransformArgs], HttpRequestResult>,
 }
 export declare const idlFactory: IDL.InterfaceFactory;
 export declare const init: (args: { IDL: typeof IDL }) => IDL.Type[];

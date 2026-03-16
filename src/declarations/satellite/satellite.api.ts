@@ -4,7 +4,7 @@
 /* eslint-disable */
 /* prettier-ignore */
 
-import type {_SERVICE as SatelliteActor, ErrorPayload, ErrorRecord, Result, Result_1, Result_2, Result_3} from './satellite.did';
+import type {_SERVICE as SatelliteActor, ErrorPayload, ErrorRecord, HttpHeader, HttpRequestResult, TransformArgs, Result, Result_1, Result_2, Result_3} from './satellite.did';
 import type { Principal } from '@icp-sdk/core/principal';
 // @ts-expect-error - generated JS file without type declarations
 import {idlFactory} from './satellite.factory.did.js';
@@ -66,6 +66,14 @@ const resolveError = async (value0: string, value1: boolean): Promise<Result_1> 
 	return await resolve_error(value0, value1);
 }
 
+const stripHttpHeaders = async (value0: TransformArgs): Promise<HttpRequestResult> => {
+	const {strip_http_headers} = await getSatelliteExtendedActor<SatelliteActor>({
+		idlFactory
+	});
+
+	return await strip_http_headers(value0);
+}
+
 export const functions = {
 	claimAuthorize,
 	deleteErrors,
@@ -73,5 +81,6 @@ export const functions = {
 	getErrors,
 	getOracleAddress,
 	reportError,
-	resolveError
+	resolveError,
+	stripHttpHeaders
 };

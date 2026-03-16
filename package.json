@@ -33,7 +33,6 @@
     "@dfinity/identity": "3.4.3",
     "@dfinity/principal": "3.4.3",
     "@junobuild/analytics": "0.2.12",
-    "@junobuild/cli": "0.14.1",
     "@junobuild/core": "5.2.2",
     "@reown/appkit": "1.8.19",
     "@reown/appkit-adapter-wagmi": "1.8.19",
@@ -64,7 +63,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@icp-sdk/bindgen": "0.2.2",
-    "@junobuild/config": "2.14.2",
+    "@junobuild/config": "file:/home/mahdtech/Sync/Projects/Forks/juno-js/packages/config",
     "@junobuild/vite-plugin": "4.7.1",
     "@tailwindcss/postcss": "4.2.1",
     "@tailwindcss/typography": "0.5.19",
@@ -82,6 +81,7 @@
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.57.0",
-    "vite": "7.3.1"
+    "vite": "7.3.1",
+    "@junobuild/cli": "file:/home/mahdtech/Sync/Projects/Forks/cli"
   }
 }

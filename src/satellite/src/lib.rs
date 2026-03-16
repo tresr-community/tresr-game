@@ -26,7 +26,7 @@ mod config {
 }
 
 use ic_cdk::api::time;
-use ic_cdk::update;
+use ic_cdk::{query, update};
 use junobuild_macros::{
     assert_delete_doc, assert_set_doc, on_delete_asset, on_delete_doc, on_delete_many_assets,
     on_delete_many_docs, on_set_doc, on_set_many_docs, on_upload_asset,
@@ -2176,6 +2176,28 @@ fn extract_config_hash(payload: &[u8]) -> Result<String, String> {
 #[unsafe(no_mangle)]
 fn juno_on_init_random_seed() {
     logging::log_info("Satellite", "RNG seeded — custom loggers ready");
+}
+
+// =============================================================================
+// IC HTTP Outcall Transform
+// =============================================================================
+
+/// Transform function for IC management canister HTTP outcalls.
+///
+/// Strips all response headers (Date, Content-Length, server-specific metadata)
+/// so that all IC replicas see the same deterministic response body, which is
+/// required for HTTP outcall consensus.
+///
+/// Referenced by `fetch_transaction_json` in `evm_rpc.rs` via `TransformContext`.
+#[query]
+fn strip_http_headers(
+    args: ic_cdk_management_canister::TransformArgs,
+) -> ic_cdk_management_canister::HttpRequestResult {
+    ic_cdk_management_canister::HttpRequestResult {
+        status: args.response.status,
+        body: args.response.body,
+        headers: vec![], // Strip all headers for cross-replica determinism
+    }
 }
 
 // =============================================================================

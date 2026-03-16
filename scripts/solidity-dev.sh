@@ -396,7 +396,9 @@ function run_start() {
 	fi
 	state_flags+=(--dump-state .anvil-state.json --state-interval 1)
 
-	anvil --port "$ANVIL_PORT" --chain-id "$ANVIL_CHAIN_ID" "${state_flags[@]}" &
+	# Bind on all interfaces so the Juno SkyLab Docker container can reach Anvil
+	# via host.docker.internal (injected by --add-host in juno.config.mjs extraHosts).
+	anvil --host 0.0.0.0 --port "$ANVIL_PORT" --chain-id "$ANVIL_CHAIN_ID" "${state_flags[@]}" &
 	ANVIL_PID=$!
 
 	# Wait for RPC to be ready

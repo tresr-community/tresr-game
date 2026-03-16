@@ -226,6 +226,8 @@ client:
         burn_rate: 1000 # 10% in basis points — must match Vault.sol burnRate
         chain_id: 31337 # Standalone Anvil (no fork)
         rpc_urls:
+          # Browser (wagmi/viem) — localhost is correct for the browser.
+          # The satellite uses a separate Docker-accessible URL under icp.evm_rpc.
           - http://localhost:8545
         allowed_origins:
           - http://localhost:5173
@@ -282,11 +284,29 @@ client:
         vault_contract: "0x0000000000000000000000000000000000000000"
         explorer_url: "https://snowtrace.io/tx/"
     icp:
-      evm_rpc_canister_id:
-        # Get the canister ID with: dfx canister id evm_rpc --network juno
-        anvil: lm4fb-uh777-77777-aaacq-cai
-        testnet: 7hfb6-caaaa-aaaar-qadga-cai
-        mainnet: 7hfb6-caaaa-aaaar-qadga-cai
+      evm_rpc:
+        # Local Anvil via ICP EVM RPC canister running in the Juno SkyLab emulator.
+        # The satellite is compiled inside Docker so it uses host.docker.internal
+        # (injected via --add-host in juno.config.mjs extraHosts).
+        # Anvil must be started with --host 0.0.0.0.
+        anvil:
+          canister_id: lm4fb-uh777-77777-aaacq-cai
+          rpc_url: "http://host.docker.internal:8545"
+        # Fuji testnet — uses the shared ICP EVM RPC canister with custom providers.
+        # These URLs are satellite-only; the browser uses blockchain.avalanche.testnet.rpc_urls.
+        testnet:
+          canister_id: 7hfb6-caaaa-aaaar-qadga-cai
+          rpc_urls:
+            - https://api.avax-test.network/ext/bc/C/rpc
+            - https://rpc.ankr.com/avalanche_fuji
+            - https://avalanche-fuji.drpc.org
+        # C-Chain mainnet — uses the shared ICP EVM RPC canister with custom providers.
+        # These URLs are satellite-only; the browser uses blockchain.avalanche.mainnet.rpc_urls.
+        mainnet:
+          canister_id: 7hfb6-caaaa-aaaar-qadga-cai
+          rpc_urls:
+            - https://api.avax.network/ext/bc/C/rpc
+            - https://avalanche-c-chain-rpc.publicnode.com
   wallet:
     faucet_cooldown_hours: 24
     balance_refresh_cooldown_ms: 30000

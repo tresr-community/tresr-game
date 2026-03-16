@@ -148,10 +148,26 @@
       }
     },
     "icp": {
-      "evm_rpc_canister_id": {
-        "anvil": "lm4fb-uh777-77777-aaacq-cai",
-        "testnet": "7hfb6-caaaa-aaaar-qadga-cai",
-        "mainnet": "7hfb6-caaaa-aaaar-qadga-cai"
+      "evm_rpc": {
+        "anvil": {
+          "canister_id": "lm4fb-uh777-77777-aaacq-cai",
+          "rpc_url": "http://host.docker.internal:8545"
+        },
+        "testnet": {
+          "canister_id": "7hfb6-caaaa-aaaar-qadga-cai",
+          "rpc_urls": [
+            "https://api.avax-test.network/ext/bc/C/rpc",
+            "https://rpc.ankr.com/avalanche_fuji",
+            "https://avalanche-fuji.drpc.org"
+          ]
+        },
+        "mainnet": {
+          "canister_id": "7hfb6-caaaa-aaaar-qadga-cai",
+          "rpc_urls": [
+            "https://api.avax.network/ext/bc/C/rpc",
+            "https://avalanche-c-chain-rpc.publicnode.com"
+          ]
+        }
       }
     }
   },

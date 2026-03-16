@@ -16,10 +16,17 @@ type ErrorRecord = record {
   environment : text;
   error_id : text;
 };
+type HttpHeader = record { value : text; name : text };
+type HttpRequestResult = record {
+  status : nat;
+  body : blob;
+  headers : vec HttpHeader;
+};
 type Result = variant { Ok : record { nat; blob }; Err : text };
 type Result_1 = variant { Ok; Err : text };
 type Result_2 = variant { Ok : vec ErrorRecord; Err : text };
 type Result_3 = variant { Ok : text; Err : text };
+type TransformArgs = record { context : blob; response : HttpRequestResult };
 service : {
   // Authorize a claim with replay verification
   claim_authorize : (text, nat64, text, blob) -> (Result);
@@ -52,4 +59,12 @@ service : {
   // Toggle the resolved status of a single error record. Admin-only.
   // Fetches the current document version for optimistic concurrency before writing.
   resolve_error : (text, bool) -> (Result_1);
+  // Transform function for IC management canister HTTP outcalls.
+  //
+  // Strips all response headers (Date, Content-Length, server-specific metadata)
+  // so that all IC replicas see the same deterministic response body, which is
+  // required for HTTP outcall consensus.
+  //
+  // Referenced by `fetch_transaction_json` in `evm_rpc.rs` via `TransformContext`.
+  strip_http_headers : (TransformArgs) -> (HttpRequestResult) query;
 }

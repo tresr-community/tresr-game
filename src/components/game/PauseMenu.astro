@@ -4,7 +4,7 @@
 
 <dialog id="pause-modal" class="modal modal-middle">
   <div
-    class="modal-box border-primary/30 bg-base-300 flex h-full max-h-full w-full max-w-full flex-col overflow-y-auto border p-3 text-center sm:h-auto sm:max-h-[85vh] sm:w-auto sm:max-w-lg sm:rounded-2xl sm:p-6"
+    class="modal-box border-primary/30 bg-base-300 flex h-full max-h-full w-full max-w-full flex-col overflow-y-auto border p-3 text-center sm:h-auto sm:max-h-[90vh] sm:w-auto sm:max-w-lg sm:rounded-2xl sm:p-6"
   >
     <!-- Close button (top-right) -->
     <button
@@ -18,21 +18,221 @@
     >
       Mission Paused
     </h3>
-    <p class="py-1 text-xs italic opacity-70 sm:py-4 sm:text-base">
-      "Time is a flat circle, but the Bankers are still waiting for you."
-    </p>
 
-    <!-- Audio settings (ticket #188) -->
-    <div class="bg-base-200/50 mt-1 rounded-lg p-2 sm:mt-4 sm:p-4">
-      <div class="mb-2 flex items-center justify-between sm:mb-3">
-        <label class="text-xs font-bold uppercase opacity-60" for="slider-music"
-          >Music</label
+    <!-- Mini audio player (mirrors MusicPlayer controls, pause-scoped IDs) -->
+    <div class="bg-base-200/50 mt-3 rounded-lg p-3 sm:mt-5 sm:p-4">
+      <!-- Track name -->
+      <div class="mb-2 flex items-center justify-center gap-2">
+        <span
+          class="hidden text-[10px] font-bold uppercase opacity-50 sm:inline"
+          >Now Playing</span
         >
-        <span id="music-vol-text" class="font-mono text-xs opacity-50">75%</span
+        <span
+          id="pause-track-name"
+          class="text-primary truncate font-mono text-xs font-bold"
+          >Loading...</span
+        >
+      </div>
+
+      <!-- Playback controls: Prev / Play-Pause / Next / Mode -->
+      <div class="mb-3 flex items-center justify-center gap-3">
+        <button
+          id="pause-btn-prev"
+          class="btn btn-sm btn-circle btn-ghost"
+          aria-label="Previous track"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><polygon points="19 20 9 12 19 4 19 20"></polygon><line
+              x1="5"
+              y1="19"
+              x2="5"
+              y2="5"></line></svg
+          >
+        </button>
+
+        <button
+          id="pause-btn-toggle"
+          class="btn btn-md btn-circle btn-primary"
+          aria-label="Play or pause"
+        >
+          <svg
+            id="pause-svg-play"
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><polygon points="5 3 19 12 5 21 5 3"></polygon></svg
+          >
+          <svg
+            id="pause-svg-pause"
+            class="hidden"
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><rect x="6" y="4" width="4" height="16"></rect><rect
+              x="14"
+              y="4"
+              width="4"
+              height="16"></rect></svg
+          >
+        </button>
+
+        <button
+          id="pause-btn-next"
+          class="btn btn-sm btn-circle btn-ghost"
+          aria-label="Next track"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><polygon points="5 4 15 12 5 20 5 4"></polygon><line
+              x1="19"
+              y1="5"
+              x2="19"
+              y2="19"></line></svg
+          >
+        </button>
+
+        <!-- Playback mode cycle -->
+        <button
+          id="pause-btn-mode"
+          class="btn btn-sm btn-circle btn-ghost"
+          aria-label="Playback mode"
+          title="Shuffle"
+        >
+          <!-- Normal (sequential) -->
+          <svg
+            id="pause-svg-mode-normal"
+            class="hidden"
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><line x1="17" y1="10" x2="3" y2="10"></line><line
+              x1="21"
+              y1="6"
+              x2="3"
+              y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line
+              x1="17"
+              y1="18"
+              x2="3"
+              y2="18"></line></svg
+          >
+          <!-- Shuffle (default) -->
+          <svg
+            id="pause-svg-mode-shuffle"
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><polyline points="16 3 21 3 21 8"></polyline><line
+              x1="4"
+              y1="20"
+              x2="21"
+              y2="3"></line><polyline points="21 16 21 21 16 21"
+            ></polyline><line x1="15" y1="15" x2="21" y2="21"></line><line
+              x1="4"
+              y1="4"
+              x2="9"
+              y2="9"></line></svg
+          >
+          <!-- Repeat one -->
+          <svg
+            id="pause-svg-mode-repeat-one"
+            class="hidden"
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            ><polyline points="17 1 21 5 17 9"></polyline><path
+              d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline
+              points="7 23 3 19 7 15"></polyline><path
+              d="M21 13v2a4 4 0 0 1-4 4H3"></path><line
+              x1="11"
+              y1="10"
+              x2="11"
+              y2="18"></line><text
+              x="11"
+              y="16"
+              text-anchor="middle"
+              font-size="8"
+              fill="currentColor"
+              stroke="none">1</text
+            ></svg
+          >
+        </button>
+      </div>
+
+      <!-- Progress bar + timestamps -->
+      <div class="mb-3 flex flex-col gap-1">
+        <input
+          id="pause-seek"
+          type="range"
+          min="0"
+          max="100"
+          value="0"
+          class="range range-primary range-xs w-full"
+        />
+        <div class="flex justify-between font-mono text-[10px] opacity-50">
+          <span id="pause-time-curr">0:00</span>
+          <span id="pause-time-total">0:00</span>
+        </div>
+      </div>
+
+      <!-- Volume sliders -->
+      <div class="mb-2 flex items-center justify-between sm:mb-3">
+        <label
+          class="text-xs font-bold uppercase opacity-60"
+          for="pause-slider-music">Music</label
+        >
+        <span id="pause-music-vol-text" class="font-mono text-xs opacity-50"
+          >75%</span
         >
       </div>
       <input
-        id="slider-music"
+        id="pause-slider-music"
         type="range"
         min="0"
         max="100"
@@ -41,13 +241,16 @@
       />
 
       <div class="mt-2 mb-1 flex items-center justify-between sm:mt-3">
-        <label class="text-xs font-bold uppercase opacity-60" for="slider-sfx"
-          >SFX</label
+        <label
+          class="text-xs font-bold uppercase opacity-60"
+          for="pause-slider-sfx">SFX</label
         >
-        <span id="sfx-vol-text" class="font-mono text-xs opacity-50">50%</span>
+        <span id="pause-sfx-vol-text" class="font-mono text-xs opacity-50"
+          >50%</span
+        >
       </div>
       <input
-        id="slider-sfx"
+        id="pause-slider-sfx"
         type="range"
         min="0"
         max="100"
@@ -87,6 +290,7 @@
 <script>
   import {gameActions, gameState} from "@/lib/game/state";
   import MusicManager from "@/lib/game/MusicManager";
+  import type {PlaybackMode} from "@/lib/game/state";
 
   const modal = document.getElementById("pause-modal") as HTMLDialogElement;
   const btnResume = document.getElementById("btn-resume");
@@ -94,26 +298,72 @@
   const quitConfirm = document.getElementById("quit-confirm");
   const btnQuitYes = document.getElementById("btn-quit-yes");
   const btnQuitCancel = document.getElementById("btn-quit-cancel");
-
-  // Volume sliders (ticket #188)
-  const sliderMusic = document.getElementById(
-    "slider-music"
-  ) as HTMLInputElement;
-  const sliderSfx = document.getElementById("slider-sfx") as HTMLInputElement;
-  const musicVolText = document.getElementById("music-vol-text");
-  const sfxVolText = document.getElementById("sfx-vol-text");
-
   const btnPauseClose = document.getElementById("btn-pause-close");
 
-  // Named handlers for cleanup (ticket #241)
+  // Volume sliders
+  const sliderMusic = document.getElementById(
+    "pause-slider-music"
+  ) as HTMLInputElement;
+  const sliderSfx = document.getElementById(
+    "pause-slider-sfx"
+  ) as HTMLInputElement;
+  const musicVolText = document.getElementById("pause-music-vol-text");
+  const sfxVolText = document.getElementById("pause-sfx-vol-text");
+
+  // Playback controls
+  const manager = MusicManager.getInstance();
+  const elTrackName = document.getElementById("pause-track-name");
+  const btnToggle = document.getElementById("pause-btn-toggle");
+  const btnPrev = document.getElementById("pause-btn-prev");
+  const btnNext = document.getElementById("pause-btn-next");
+  const btnMode = document.getElementById("pause-btn-mode");
+  const elSeek = document.getElementById("pause-seek") as HTMLInputElement;
+  const elTimeCurr = document.getElementById("pause-time-curr");
+  const elTimeTotal = document.getElementById("pause-time-total");
+  const svgPlay = document.getElementById("pause-svg-play");
+  const svgPause = document.getElementById("pause-svg-pause");
+  const svgModeNormal = document.getElementById("pause-svg-mode-normal");
+  const svgModeShuffle = document.getElementById("pause-svg-mode-shuffle");
+  const svgModeRepeatOne = document.getElementById("pause-svg-mode-repeat-one");
+
+  function formatTime(seconds: number) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  function updateModeButton(mode: PlaybackMode) {
+    const icons: Record<PlaybackMode, HTMLElement | null> = {
+      normal: svgModeNormal,
+      shuffle: svgModeShuffle,
+      "repeat-one": svgModeRepeatOne,
+    };
+    const titles: Record<PlaybackMode, string> = {
+      normal: "Normal",
+      shuffle: "Shuffle",
+      "repeat-one": "Repeat One",
+    };
+    for (const icon of Object.values(icons)) icon?.classList.add("hidden");
+    icons[mode]?.classList.remove("hidden");
+    if (btnMode) {
+      btnMode.title = titles[mode];
+      if (mode !== "normal") {
+        btnMode.classList.add("btn-active", "text-primary");
+      } else {
+        btnMode.classList.remove("btn-active", "text-primary");
+      }
+    }
+  }
+
+  // Named handlers
   function handleMusicSlider() {
     const vol = parseInt(sliderMusic.value, 10) / 100;
-    MusicManager.getInstance().setVolume(vol);
+    manager.setVolume(vol);
     if (musicVolText) musicVolText.textContent = `${sliderMusic.value}%`;
   }
   function handleSfxSlider() {
     const vol = parseInt(sliderSfx.value, 10) / 100;
-    MusicManager.getInstance().setSfxVolume(vol);
+    manager.setSfxVolume(vol);
     if (sfxVolText) sfxVolText.textContent = `${sliderSfx.value}%`;
   }
   function handleResume() {
@@ -128,6 +378,24 @@
   function handleQuitCancel() {
     quitConfirm?.classList.add("hidden");
   }
+  function handleToggle() {
+    manager.toggle();
+  }
+  function handlePrev() {
+    manager.prev();
+  }
+  function handleNext() {
+    manager.next();
+  }
+  function handleModeClick() {
+    manager.cyclePlaybackMode();
+  }
+  function handleSeekInput(e: Event) {
+    const val =
+      (parseInt((e.target as HTMLInputElement).value) / 100) *
+      gameState.get().music.duration;
+    manager.seek(val);
+  }
 
   sliderMusic?.addEventListener("input", handleMusicSlider);
   sliderSfx?.addEventListener("input", handleSfxSlider);
@@ -136,11 +404,16 @@
   btnAbort?.addEventListener("click", handleAbort);
   btnQuitYes?.addEventListener("click", handleQuitYes);
   btnQuitCancel?.addEventListener("click", handleQuitCancel);
+  btnToggle?.addEventListener("click", handleToggle);
+  btnPrev?.addEventListener("click", handlePrev);
+  btnNext?.addEventListener("click", handleNext);
+  btnMode?.addEventListener("click", handleModeClick);
+  elSeek?.addEventListener("input", handleSeekInput);
 
   const unsub = gameState.subscribe((state) => {
     if (state.isPaused) {
       if (!modal.open) {
-        // Sync slider positions with current volume state
+        // Sync volume sliders
         if (sliderMusic) {
           sliderMusic.value = String(Math.round(state.music.musicVolume * 100));
           if (musicVolText) musicVolText.textContent = `${sliderMusic.value}%`;
@@ -154,14 +427,38 @@
     } else {
       if (modal.open) {
         modal.close();
-        // Remove focus so Spacebar (Jump) doesn't re-trigger the pause button
-        // after the browser automatically restores focus on dialog close.
         (document.activeElement as HTMLElement)?.blur();
         document.querySelector("canvas")?.focus();
       }
       quitConfirm?.classList.add("hidden");
     }
+
+    // Playback controls sync
+    if (elTrackName)
+      elTrackName.innerText = state.music.currentTrack || "No Track Selected";
+
+    if (state.music.isPlaying) {
+      svgPlay?.classList.add("hidden");
+      svgPause?.classList.remove("hidden");
+    } else {
+      svgPlay?.classList.remove("hidden");
+      svgPause?.classList.add("hidden");
+    }
+
+    if (elTimeCurr) elTimeCurr.innerText = formatTime(state.music.currentTime);
+    if (elTimeTotal) elTimeTotal.innerText = formatTime(state.music.duration);
+
+    if (elSeek && !elSeek.matches(":active")) {
+      const progress =
+        state.music.duration > 0
+          ? (state.music.currentTime / state.music.duration) * 100
+          : 0;
+      elSeek.value = progress.toString();
+    }
+
+    updateModeButton(state.music.playbackMode);
   });
+
   document.addEventListener(
     "astro:before-preparation",
     () => {
@@ -173,6 +470,11 @@
       btnAbort?.removeEventListener("click", handleAbort);
       btnQuitYes?.removeEventListener("click", handleQuitYes);
       btnQuitCancel?.removeEventListener("click", handleQuitCancel);
+      btnToggle?.removeEventListener("click", handleToggle);
+      btnPrev?.removeEventListener("click", handlePrev);
+      btnNext?.removeEventListener("click", handleNext);
+      btnMode?.removeEventListener("click", handleModeClick);
+      elSeek?.removeEventListener("input", handleSeekInput);
     },
     {once: true}
   );

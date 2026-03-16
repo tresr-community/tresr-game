@@ -103,6 +103,10 @@ export default defineConfig(({mode}) => ({
       image: "junobuild/skylab:latest",
       volume: "juno-skylab",
       platform: "linux/amd64",
+      // Allow the container to reach host-machine services (e.g. Anvil RPC)
+      // via the stable hostname host.docker.internal.
+      // Requires @junobuild/cli built from the local fork (packages/cli).
+      extraHosts: ["host.docker.internal:host-gateway"],
     },
     skylab: {
       ports: {
