@@ -146,18 +146,24 @@ runs:
         juno functions build
 
     - id: build_hosting
-      name: Build Hosting
+      name: Build Juno Hosting
       shell: devenv shell --quiet bash -- -e {0}
       run: bun run build -- --mode ${{ inputs.mode }}
 
     - id: deploy_hosting
-      name: Deploy Hosting
+      name: Deploy Juno Hosting
       uses: junobuild/juno-action@main
       with:
         args: hosting deploy --mode ${{ inputs.mode }}
 
+    - id: prune_hosting
+      name: Prune Juno Hosting
+      uses: junobuild/juno-action@main
+      with:
+        args: hosting prune --mode ${{ inputs.mode }}
+
     - id: publish_functions
-      name: Publish Functions
+      name: Publish Juno Functions
       if: >-
         inputs.skip-functions != 'true' &&
         steps.detect_function_changes.outputs.changed == 'true'

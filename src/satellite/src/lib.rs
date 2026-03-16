@@ -737,9 +737,9 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
 /// Used to bypass `managed` collection permissions when the canister needs to write.
 fn admin_caller() -> candid::Principal {
     if let Some(admin) = crate::config::ADMIN_PRINCIPALS.first() {
-        candid::Principal::from_text(admin).unwrap_or(ic_cdk::id())
+        candid::Principal::from_text(admin).unwrap_or(ic_cdk::api::canister_self())
     } else {
-        ic_cdk::id()
+        ic_cdk::api::canister_self()
     }
 }
 
@@ -1549,7 +1549,7 @@ fn clear_persisted_top_scorer_cache() {
         score: 0,
         scored_at: 0,
         expires_at: 0,
-        owner_principal: ic_cdk::id().to_text(),
+        owner_principal: ic_cdk::api::canister_self().to_text(),
     };
 
     let doc = SetDoc {
@@ -1714,7 +1714,7 @@ async fn claim_authorize(
     replay_inputs: Vec<u8>,
 ) -> Result<(u128, Vec<u8>), String> {
     let ic_start = ic_cdk::api::instruction_counter();
-    let caller = ic_cdk::caller();
+    let caller = ic_cdk::api::msg_caller();
     let caller_text = caller.to_text();
 
     // 0. Fetch user profile and check ban status
@@ -2226,7 +2226,7 @@ fn report_error(payload: ErrorPayload) -> Result<String, String> {
     // IC time() returns the same value for all calls in the same consensus round,
     // so two concurrent report_error calls can collide on the same key.
     // We append a 4-char caller-derived suffix to reduce (but not eliminate) that risk.
-    let principal_text = ic_cdk::caller().to_text();
+    let principal_text = ic_cdk::api::msg_caller().to_text();
     let caller_suffix: String = principal_text.chars().rev().take(4).collect();
     let error_id = format!("err_{}_{}", now_ns, caller_suffix);
 
@@ -2289,7 +2289,7 @@ fn report_error(payload: ErrorPayload) -> Result<String, String> {
 /// Only callable by principals listed in `config::ADMIN_PRINCIPALS`.
 #[update]
 fn get_errors() -> Result<Vec<ErrorRecord>, String> {
-    let caller = ic_cdk::caller().to_text();
+    let caller = ic_cdk::api::msg_caller().to_text();
     if !config::ADMIN_PRINCIPALS.contains(&caller.as_str()) {
         return Err("Unauthorized: admin access required".to_string());
     }
@@ -2321,7 +2321,7 @@ fn get_errors() -> Result<Vec<ErrorRecord>, String> {
 /// Accepts a list of `error_id` strings matching the Juno document keys.
 #[update]
 fn delete_errors(keys: Vec<String>) -> Result<(), String> {
-    let caller = ic_cdk::caller().to_text();
+    let caller = ic_cdk::api::msg_caller().to_text();
     if !config::ADMIN_PRINCIPALS.contains(&caller.as_str()) {
         return Err("Unauthorized: admin access required".to_string());
     }
@@ -2360,7 +2360,7 @@ fn delete_errors(keys: Vec<String>) -> Result<(), String> {
 /// Fetches the current document version for optimistic concurrency before writing.
 #[update]
 fn resolve_error(error_id: String, resolved: bool) -> Result<(), String> {
-    let caller = ic_cdk::caller().to_text();
+    let caller = ic_cdk::api::msg_caller().to_text();
     if !config::ADMIN_PRINCIPALS.contains(&caller.as_str()) {
         return Err("Unauthorized: admin access required".to_string());
     }

@@ -279,3 +279,5 @@ yoyo
 yzhang
 jetbrainsmono
 netcat
+RUSTFLAG
+RUSTFLAGS

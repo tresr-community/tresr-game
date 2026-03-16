@@ -16,8 +16,6 @@
 //!
 //! Uses `junobuild_satellite::{info,debug,warn,error}` exclusively so that
 //! log entries display with their correct level in the Juno Console.
-//! Falls back to `ic_cdk::print` only when the Juno logger fails
-//! (e.g. before the RNG is seeded after a fresh deploy/upgrade).
 //!
 //! ## Usage
 //! ```rust,ignore
@@ -45,31 +43,24 @@ pub fn log_debug(component: &str, message: &str) {
         return;
     }
     let formatted = format!("[{}] {}", component, message);
-    if junobuild_satellite::debug(formatted).is_err() {
-        ic_cdk::print(format!("[{}] {}", component, message));
-    }
+    // Silently swallow if Juno logger unavailable (e.g. before RNG seeded)
+    let _ = junobuild_satellite::debug(formatted);
 }
 
 /// Log at INFO level. Use for successful operations and state changes.
 pub fn log_info(component: &str, message: &str) {
     let formatted = format!("[{}] {}", component, message);
-    if junobuild_satellite::info(formatted).is_err() {
-        ic_cdk::print(format!("[{}] {}", component, message));
-    }
+    let _ = junobuild_satellite::info(formatted);
 }
 
 /// Log at WARN level. Use for skipped operations or unusual conditions.
 pub fn log_warn(component: &str, message: &str) {
     let formatted = format!("[{}] {}", component, message);
-    if junobuild_satellite::warn(formatted).is_err() {
-        ic_cdk::print(format!("[{}] {}", component, message));
-    }
+    let _ = junobuild_satellite::warn(formatted);
 }
 
 /// Log at ERROR level. Use for failed operations and error conditions.
 pub fn log_error(component: &str, message: &str) {
     let formatted = format!("[{}] {}", component, message);
-    if junobuild_satellite::error(formatted).is_err() {
-        ic_cdk::print(format!("[{}] {}", component, message));
-    }
+    let _ = junobuild_satellite::error(formatted);
 }

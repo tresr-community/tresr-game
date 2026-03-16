@@ -342,8 +342,8 @@
         // Satellite rejected or timed out — do NOT let the player in!
         const reason =
           feeStatus === "failed"
-            ? "Fee rejected by satellite — transaction did not pass verification."
-            : "Satellite verification timed out — please contact support.";
+            ? "satellite:verification_failed"
+            : "satellite:timeout";
         throw new Error(reason);
       }
 
@@ -367,12 +367,19 @@
       // Ensure modal is visible for error display
       if (!modal.open) modal.showModal();
 
-      if (
-        message.includes("rejected") ||
+      if (message === "satellite:verification_failed") {
+        // Satellite verified the tx but it failed the on-chain checks
+        showStatus("Failed to verify transaction — please try again.", true);
+      } else if (message === "satellite:timeout") {
+        // Satellite didn't respond in time
+        showStatus("Verification timed out — please try again.", true);
+      } else if (
+        message.includes("User rejected") ||
+        message.includes("user rejected") ||
         message.includes("cancelled") ||
         message.includes("denied")
       ) {
-        // User intentionally rejected — no need to file an error report
+        // User intentionally rejected in wallet — no error report needed
         showStatus("Transaction rejected by user.", true);
       } else {
         // Unexpected error — report to satellite and show clean reference code

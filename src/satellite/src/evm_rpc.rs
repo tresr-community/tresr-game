@@ -7,7 +7,7 @@ use crate::evm_rpc_types::{
     RpcApi, RpcConfig, RpcServices, TransactionRequest,
 };
 use candid::Principal;
-use ic_cdk::management_canister::{
+use ic_cdk_management_canister::{
     EcdsaCurve, EcdsaKeyId, EcdsaPublicKeyArgs, SignWithEcdsaArgs, ecdsa_public_key,
     sign_with_ecdsa as mgmt_sign_with_ecdsa,
 };

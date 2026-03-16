@@ -146,11 +146,11 @@ function cmd_juno_deploy() {
 		return 1
 	fi
 
-	#log_info "🗑️  Pruning stale assets (mode=$mode)..."
-	#if ! juno hosting prune --mode "$mode"; then
-	#	log_error "Hosting prune failed!"
-	#	return 1
-	#fi
+	log_info "🗑️  Pruning stale assets (mode=$mode)..."
+	if ! juno hosting prune --mode "$mode"; then
+		log_error "Hosting prune failed!"
+		return 1
+	fi
 
 	local url
 	url="http://${VITE_DEVELOPMENT_SATELLITE_ID}.localhost:5987/"
