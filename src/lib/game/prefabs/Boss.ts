@@ -401,7 +401,7 @@ export class Boss extends BaseEntity {
   }
 
   private onDefeated() {
-    log.info(COMPONENT_NAME, "The Bankers have regulated!");
+    log.info(COMPONENT_NAME, "The Bankers have been regulated!");
     if (this.anims) this.play(this.animKeys.hurt, true);
     this.setAlpha(this.config.gameplay.entities.boss.defeated_alpha);
 

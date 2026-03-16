@@ -353,15 +353,29 @@ export function connectWallet(): Promise<string> {
       log.debug(COMPONENT_NAME, "Connection event:", event);
 
       if (event.data.event === "CONNECT_SUCCESS") {
-        const address = appKit.getAddressByChainNamespace("eip155");
-        clearPendingConnect();
-        if (address) {
-          log.info(COMPONENT_NAME, `Connected: ${address}`);
-          trackWalletConnect(address);
-          resolve(address);
-        } else {
-          reject(new Error("Connected but no address available"));
-        }
+        // AppKit can fire CONNECT_SUCCESS before the address namespace is
+        // populated when auto-reconnecting from localStorage (< 300 ms).
+        // Poll briefly so wagmi/AppKit has time to finish hydrating.
+        const waitForAddress = (
+          retriesLeft: number
+        ): Promise<string | undefined> => {
+          const addr = appKit.getAddressByChainNamespace("eip155");
+          if (addr || retriesLeft <= 0) return Promise.resolve(addr);
+          return new Promise((res) =>
+            setTimeout(() => res(waitForAddress(retriesLeft - 1)), 100)
+          );
+        };
+
+        waitForAddress(10).then((address) => {
+          clearPendingConnect();
+          if (address) {
+            log.info(COMPONENT_NAME, `Connected: ${address}`);
+            trackWalletConnect(address);
+            resolve(address);
+          } else {
+            reject(new Error("Connected but no address available"));
+          }
+        });
       } else if (event.data.event === "MODAL_CLOSE") {
         // Check if we're connected after modal closes
         const address = appKit.getAddressByChainNamespace("eip155");

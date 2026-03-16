@@ -10,22 +10,23 @@ const COMPONENT_NAME = "Player";
 
 export class Player extends BaseEntity {
   private walkableArea!: WalkableArea;
-  private cursors: Phaser.Types.Input.Keyboard.CursorKeys;
+  // Optional: undefined when running in touch/gamepad-only mode (no keyboard plugin)
+  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private recorder?: Recorder;
 
   // WASD keys (movement — used alongside arrow keys)
-  private keyW: Phaser.Input.Keyboard.Key;
-  private keyA: Phaser.Input.Keyboard.Key;
-  private keyS: Phaser.Input.Keyboard.Key;
-  private keyD: Phaser.Input.Keyboard.Key;
+  private keyW?: Phaser.Input.Keyboard.Key;
+  private keyA?: Phaser.Input.Keyboard.Key;
+  private keyS?: Phaser.Input.Keyboard.Key;
+  private keyD?: Phaser.Input.Keyboard.Key;
 
   // Action keys
-  private keyAttack: Phaser.Input.Keyboard.Key; // J — attack (WASD scheme)
-  private keyAttackAlt: Phaser.Input.Keyboard.Key; // Z — attack (arrow scheme)
-  private keySuper: Phaser.Input.Keyboard.Key; // K — super (WASD scheme)
-  private keySuperAlt: Phaser.Input.Keyboard.Key; // X — super (arrow scheme)
-  private keySuperAlt2: Phaser.Input.Keyboard.Key; // Enter — super (universal)
-  private keyJump: Phaser.Input.Keyboard.Key; // Space — jump (universal)
+  private keyAttack?: Phaser.Input.Keyboard.Key; // J — attack (WASD scheme)
+  private keyAttackAlt?: Phaser.Input.Keyboard.Key; // Z — attack (arrow scheme)
+  private keySuper?: Phaser.Input.Keyboard.Key; // K — super (WASD scheme)
+  private keySuperAlt?: Phaser.Input.Keyboard.Key; // X — super (arrow scheme)
+  private keySuperAlt2?: Phaser.Input.Keyboard.Key; // Enter — super (universal)
+  private keyJump?: Phaser.Input.Keyboard.Key; // Space — jump (universal)
 
   private speed: number = 250;
   private jumpForce: number = 12;
@@ -89,7 +90,12 @@ export class Player extends BaseEntity {
         Phaser.Input.Keyboard.KeyCodes.SPACE
       );
     } else {
-      throw new Error("Keyboard input not available");
+      // Keyboard plugin not available (e.g., mobile/touch-only mode).
+      // Player will run via gamepad and touch input only.
+      log.warn(
+        COMPONENT_NAME,
+        "Keyboard input not available — running in touch/gamepad-only mode."
+      );
     }
 
     // Disable Arcade world bounds — Y is manually managed via groundY + Z-axis
@@ -162,8 +168,8 @@ export class Player extends BaseEntity {
     if (!isBlockingAction) {
       // Horizontal movement (use Arcade physics for X)
       if (
-        this.cursors.left.isDown ||
-        this.keyA.isDown ||
+        this.cursors?.left.isDown ||
+        this.keyA?.isDown ||
         padX < -deadzone ||
         touch.x < -touchDeadzone
       ) {
@@ -172,8 +178,8 @@ export class Player extends BaseEntity {
         this.recorder?.log("move_left");
         isMoving = true;
       } else if (
-        this.cursors.right.isDown ||
-        this.keyD.isDown ||
+        this.cursors?.right.isDown ||
+        this.keyD?.isDown ||
         padX > deadzone ||
         touch.x > touchDeadzone
       ) {
@@ -186,8 +192,8 @@ export class Player extends BaseEntity {
       // Vertical/Depth movement (manual - don't use Arcade for Y in 2.5D)
       // This directly modifies groundY to move on the depth plane
       if (
-        this.cursors.up.isDown ||
-        this.keyW.isDown ||
+        this.cursors?.up.isDown ||
+        this.keyW?.isDown ||
         padY < -deadzone ||
         touch.y < -touchDeadzone
       ) {
@@ -195,8 +201,8 @@ export class Player extends BaseEntity {
         this.recorder?.log("move_up");
         isMoving = true;
       } else if (
-        this.cursors.down.isDown ||
-        this.keyS.isDown ||
+        this.cursors?.down.isDown ||
+        this.keyS?.isDown ||
         padY > deadzone ||
         touch.y > touchDeadzone
       ) {
@@ -220,7 +226,7 @@ export class Player extends BaseEntity {
 
       // Jump Logic - can jump while moving
       if (
-        (Phaser.Input.Keyboard.JustDown(this.keyJump) ||
+        ((this.keyJump && Phaser.Input.Keyboard.JustDown(this.keyJump)) ||
           (pad && pad.buttons[0].pressed) ||
           touch.jump) &&
         !this.isJumping
@@ -230,8 +236,9 @@ export class Player extends BaseEntity {
 
       // Attack Logic — check BEFORE setting idle/walk animation
       if (
-        Phaser.Input.Keyboard.JustDown(this.keyAttack) ||
-        Phaser.Input.Keyboard.JustDown(this.keyAttackAlt) ||
+        (this.keyAttack && Phaser.Input.Keyboard.JustDown(this.keyAttack)) ||
+        (this.keyAttackAlt &&
+          Phaser.Input.Keyboard.JustDown(this.keyAttackAlt)) ||
         (pad && pad.buttons[2].pressed) ||
         touch.attack
       ) {
@@ -240,9 +247,11 @@ export class Player extends BaseEntity {
 
       // Super Logic (K/X/Enter or RB button, requires full charge)
       else if (
-        Phaser.Input.Keyboard.JustDown(this.keySuper) ||
-        Phaser.Input.Keyboard.JustDown(this.keySuperAlt) ||
-        Phaser.Input.Keyboard.JustDown(this.keySuperAlt2) ||
+        (this.keySuper && Phaser.Input.Keyboard.JustDown(this.keySuper)) ||
+        (this.keySuperAlt &&
+          Phaser.Input.Keyboard.JustDown(this.keySuperAlt)) ||
+        (this.keySuperAlt2 &&
+          Phaser.Input.Keyboard.JustDown(this.keySuperAlt2)) ||
         (pad && pad.buttons[5].pressed) ||
         touch.super
       ) {

@@ -694,7 +694,7 @@ export const config: ConfigTypes = {
         }
       },
       "boss": {
-        "health": 500,
+        "health": 50,
         "damage": 25,
         "speed": 150,
         "knockback": {
@@ -1541,5 +1541,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "d288a9b7b4e52f4206b7253765efc5e7844f930905b9efb98aa75f6e3ff0bb8a"
+  "configHash": "c6b8244506a791d325a4103404f8e3dbc60aa1d5d73407b55e120e77dabbfced"
 };
