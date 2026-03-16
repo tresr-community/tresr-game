@@ -67,6 +67,47 @@ export function resetReconnect(): void {
 export function initWalletReconnect(): void {
   const config = getWagmiConfig();
   void ensureReconnected(config);
+  setupLockDetection();
+}
+
+/**
+ * Returns the currently connected address using live wagmi state (not
+ * cached AppKit localStorage state). Returns undefined if no wallet is
+ * connected or if the connection is stale.
+ *
+ * Use this instead of isConnected() when you need the actual address and
+ * want to avoid the false-positive that AppKit's cached state can produce.
+ */
+export function getConnectedAddress(): `0x${string}` | undefined {
+  const config = getWagmiConfig();
+  const account = getConnection(config);
+  return account.isConnected ? (account.address as `0x${string}`) : undefined;
+}
+
+/**
+ * Set up a listener on the injected provider for the `accountsChanged`
+ * event. An empty accounts array means the wallet has auto-locked.
+ * When that happens we reset the reconnect singleton so the next
+ * connectWallet() call opens a fresh AppKit modal instead of returning
+ * stale cached state.
+ */
+function setupLockDetection(): void {
+  const provider = (
+    window as {
+      ethereum?: {
+        on?: (event: string, handler: (accounts: string[]) => void) => void;
+      };
+    }
+  ).ethereum;
+  if (!provider?.on) return;
+
+  provider.on("accountsChanged", (accounts: string[]) => {
+    if (accounts.length === 0) {
+      resetReconnect();
+      log.info(COMPONENT_NAME, "Wallet locked — reconnect state reset");
+      document.dispatchEvent(new CustomEvent("tresr:wallet-locked"));
+    }
+  });
 }
 
 /**
@@ -82,7 +123,7 @@ export function initWalletReconnect(): void {
  */
 async function probeConnectorLiveness(
   config: Config,
-  timeoutMs = 2_000
+  timeoutMs = 5_000
 ): Promise<boolean> {
   const account = getConnection(config);
   if (!account.isConnected || !account.connector) return false;
@@ -91,12 +132,11 @@ async function probeConnectorLiveness(
   // account.connector is a serialized snapshot from the wagmi store — calling
   // getChainId() on it throws even when the wallet is healthy, because the
   // unhydrated copy lacks the provider binding. If we can't find the live
-  // instance, assume the connector is alive (we can't distinguish "locked"
-  // from "not yet hydrated" at this point).
+  // instance, treat as NOT live (can't confirm the wallet is reachable).
   const liveConnector = config.connectors.find(
     (c) => c.uid === account.connector?.uid
   );
-  if (!liveConnector) return true;
+  if (!liveConnector) return false;
 
   try {
     await Promise.race([
@@ -374,15 +414,7 @@ export function isConnected(): boolean {
   return appKitIsConnected();
 }
 
-/**
- * Get the connected address without connecting.
- * Returns undefined if not connected.
- */
-export function getConnectedAddress(): `0x${string}` | undefined {
-  const config = getWagmiConfig();
-  const account = getConnection(config);
-  return account.isConnected ? (account.address as `0x${string}`) : undefined;
-}
+// getConnectedAddress is exported near the top of this module (uses live wagmi state)
 
 /**
  * Disconnect the current wallet session.

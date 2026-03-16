@@ -346,6 +346,7 @@ export class MainScene extends Phaser.Scene {
   public phase: "survival" | "boss" | "victory" | "lost" = "survival";
   public sessionId: string = "";
   public userAddr: string = "";
+  public feeTxHash: string = "";
   public configHash: string = "";
   private configTampered: boolean = false;
   private configVerification: Promise<boolean> | null = null;
@@ -367,11 +368,18 @@ export class MainScene extends Phaser.Scene {
     this.spriteManager = new SpriteManager(this);
   }
 
-  init(data: {sessionId?: string; userAddr?: string; seed?: number}) {
+  init(data: {
+    sessionId?: string;
+    userAddr?: string;
+    feeTxHash?: string;
+    seed?: number;
+  }) {
     // Use fee-gate session ID passed from Preloader; guests get a non-claimable placeholder (ticket #244)
     this.sessionId = data.sessionId || `guest-${Date.now()}`;
     this.userAddr =
       data.userAddr || "0x0000000000000000000000000000000000000000";
+    // Fee tx hash — required by claim_authorize to verify on-chain payment
+    this.feeTxHash = data.feeTxHash || "";
 
     // Initialize seeded RNG for reproducible gameplay
     this.seed = data.seed || Date.now();
@@ -725,7 +733,7 @@ export class MainScene extends Phaser.Scene {
     window.dispatchEvent(new Event("tresr:gameplay-start"));
 
     // Ensure the game canvas has focus so keyboard input isn't trapped by HTML buttons
-    // (e.g., the 'Pay & Start Mission' button in FeeGate)
+    // (e.g., the 'APE IN' button in FeeGate)
     this.game.canvas.focus();
 
     // Survival Clock
@@ -1370,8 +1378,8 @@ export class MainScene extends Phaser.Scene {
       //   On cheat detection: calls apply_ban() and saves ban to "users" collection.
       const result = await claimAuthorize(
         this.sessionId,
-        BigInt(this.score),
-        this.userAddr,
+        BigInt(this.collectedKeys),
+        this.feeTxHash,
         payload
       );
 

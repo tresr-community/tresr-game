@@ -14,6 +14,7 @@ const TX_KEY = "tresr_fee_tx";
 const SID_KEY = "tresr_fee_sid";
 
 let sessionId: string | null = null;
+let feeTxHash: string | null = null;
 
 // In-memory HMAC key — generated per payment, lost on page reload (intentional)
 let hmacKey: CryptoKey | null = null;
@@ -77,6 +78,7 @@ export function clearFeePaid(): void {
   sessionStorage.removeItem(TX_KEY);
   sessionStorage.removeItem(SID_KEY);
   sessionId = null;
+  feeTxHash = null;
   hmacKey = null;
 }
 
@@ -90,10 +92,15 @@ export async function markFeePaid(txHash: string, sid: string): Promise<void> {
   sessionStorage.setItem(SID_KEY, sid);
   sessionStorage.setItem(SIG_KEY, sig);
   sessionId = sid;
+  feeTxHash = txHash;
 }
 
 export function getSessionId(): string | null {
   return sessionId;
+}
+
+export function getFeeTxHash(): string | null {
+  return feeTxHash;
 }
 
 /**

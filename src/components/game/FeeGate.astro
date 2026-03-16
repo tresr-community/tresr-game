@@ -42,7 +42,7 @@
       <button id="btn-pay-fee" class="btn btn-primary btn-block gap-2">
         <span id="pay-spinner" class="loading loading-spinner loading-sm hidden"
         ></span>
-        <span id="pay-label">Pay & Start Mission</span>
+        <span id="pay-label">APE IN</span>
       </button>
       <button id="btn-fee-abort" class="btn btn-ghost btn-block">
         Abort
@@ -72,7 +72,7 @@
   import {getExplorerUrl} from "@/lib/blockchain/networks/display";
   import {payFeeForGame} from "@/lib/blockchain/contracts/vault";
   import {setDoc, getDoc} from "@junobuild/core";
-  import {connectWallet, isConnected} from "@/lib/wallet/connection";
+  import {connectWallet, getConnectedAddress} from "@/lib/wallet/connection";
   import {confirmReceipt} from "@/lib/blockchain/tx";
   import {getTresrBalance, formatBalance} from "@/lib/blockchain/balance";
   import {parseBalance} from "@/lib/blockchain/balance";
@@ -127,7 +127,7 @@
     hideProgress();
     btnPay.disabled = false;
     paySpinner.classList.add("hidden");
-    payLabel.textContent = "Pay & Start Mission";
+    payLabel.textContent = "APE IN";
     btnAbort.classList.remove("hidden");
     modal.showModal();
   }
@@ -221,7 +221,8 @@
       markStep("wallet", "active");
       let address: `0x${string}`;
 
-      if (isConnected()) {
+      const connectedAddress = getConnectedAddress();
+      if (connectedAddress) {
         address = (await connectWallet()).address;
         showStatus("Wallet connected ✓");
         log.info(COMPONENT_NAME, `Wallet already connected: ${address}`);
@@ -260,7 +261,7 @@
         paymentInProgress = false;
         btnPay.disabled = false;
         paySpinner.classList.add("hidden");
-        payLabel.textContent = "Pay & Start Mission";
+        payLabel.textContent = "APE IN";
         btnAbort.classList.remove("hidden");
         return;
       }
@@ -395,7 +396,7 @@
       paymentInProgress = false;
       btnPay.disabled = false;
       paySpinner.classList.add("hidden");
-      payLabel.textContent = "Pay & Start Mission";
+      payLabel.textContent = "APE IN";
       btnAbort.classList.remove("hidden");
     }
   };
