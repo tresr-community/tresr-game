@@ -49,6 +49,12 @@ service : {
   // Returns the satellite's Public Ethereum address derived from its threshold ECDSA key.
   // This is the oracle address used for on-chain signature verification.
   get_oracle_address : () -> (Result_3);
+  // Lift a ban on a user. Admin-only.
+  //
+  // Clears `banned_until` and `ban_reason` on the user's profile so they can
+  // play again. Does NOT reset `offence_count` — ban tiers still escalate on
+  // future offences.
+  lift_ban : (text) -> (Result_1);
   // Report a client-side error. Anyone (including unauthenticated callers) can
   // report errors. The satellite generates the `error_id` server-side so the
   // client cannot forge it.

@@ -50,6 +50,14 @@ const getOracleAddress = async (): Promise<Result_3> => {
 	return await get_oracle_address();
 }
 
+const liftBan = async (value0: string): Promise<Result_1> => {
+	const {lift_ban} = await getSatelliteExtendedActor<SatelliteActor>({
+		idlFactory
+	});
+
+	return await lift_ban(value0);
+}
+
 const reportError = async (value0: ErrorPayload): Promise<Result_3> => {
 	const {report_error} = await getSatelliteExtendedActor<SatelliteActor>({
 		idlFactory
@@ -80,6 +88,7 @@ export const functions = {
 	getConfigHash,
 	getErrors,
 	getOracleAddress,
+	liftBan,
 	reportError,
 	resolveError,
 	stripHttpHeaders

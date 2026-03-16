@@ -434,10 +434,8 @@ fn verify_claim_transaction(
         .unwrap_or(expected_session_id);
     let expected_padded = format!("{:0>64}", expected_hex);
     if !parsed.session_id.eq_ignore_ascii_case(&expected_padded) {
-        return Err(format!(
-            "Claim sessionId mismatch: tx has {}, expected {}",
-            parsed.session_id, expected_padded
-        ));
+        // Do not include raw session IDs in the error to avoid logging sensitive data.
+        return Err("Claim sessionId mismatch".to_string());
     }
 
     // Verify amount (compare in wei: expected_amount tokens * 10^18)
@@ -1399,14 +1397,14 @@ mod tests {
             "input": claim_calldata("0xdeadbeef", 100, 5),
         });
         let err = verify_claim_transaction(&tx, "0xdeadbeef", 100, 5).unwrap_err();
-        assert!(err.contains("does not match vault"), "got: {err}");
+        assert!(err.contains("does not match vault"));
     }
 
     #[test]
     fn verify_claim_session_id_mismatch() {
         let tx = claim_tx("0x11111111", 100, 5);
         let err = verify_claim_transaction(&tx, "0x22222222", 100, 5).unwrap_err();
-        assert!(err.contains("sessionId mismatch"), "got: {err}");
+        assert!(err.contains("sessionId mismatch"));
     }
 
     #[test]

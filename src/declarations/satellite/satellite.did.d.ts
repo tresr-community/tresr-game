@@ -76,6 +76,14 @@ export interface _SERVICE {
    */
   'get_oracle_address' : ActorMethod<[], Result_3>,
   /**
+   * Lift a ban on a user. Admin-only.
+   * 
+   * Clears `banned_until` and `ban_reason` on the user's profile so they can
+   * play again. Does NOT reset `offence_count` — ban tiers still escalate on
+   * future offences.
+   */
+  'lift_ban' : ActorMethod<[string], Result_1>,
+  /**
    * Report a client-side error. Anyone (including unauthenticated callers) can
    * report errors. The satellite generates the `error_id` server-side so the
    * client cannot forge it.
@@ -89,11 +97,6 @@ export interface _SERVICE {
    * Fetches the current document version for optimistic concurrency before writing.
    */
   'resolve_error' : ActorMethod<[string, boolean], Result_1>,
-  /**
-   * Lift a ban on a user. Admin-only.
-   * Clears banned_until and ban_reason; does NOT reset offence_count.
-   */
-  'lift_ban' : ActorMethod<[string], Result_1>,
   /**
    * Transform function for IC management canister HTTP outcalls.
    * 

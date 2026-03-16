@@ -55,9 +55,9 @@ export const idlFactory = ({ IDL }) => {
     'get_config_hash' : IDL.Func([], [IDL.Text], ['query']),
     'get_errors' : IDL.Func([], [Result_2], []),
     'get_oracle_address' : IDL.Func([], [Result_3], []),
+    'lift_ban' : IDL.Func([IDL.Text], [Result_1], []),
     'report_error' : IDL.Func([ErrorPayload], [Result_3], []),
     'resolve_error' : IDL.Func([IDL.Text, IDL.Bool], [Result_1], []),
-    'lift_ban' : IDL.Func([IDL.Text], [Result_1], []),
     'strip_http_headers' : IDL.Func(
         [TransformArgs],
         [HttpRequestResult],
