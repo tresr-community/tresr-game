@@ -1992,10 +1992,11 @@ fn replay_verify_plausibility(
     reported_keys: u64,
 ) -> Result<(), String> {
     // 0. Minimum input count
-    if actions.len() < 50 {
+    if (actions.len() as u64) < config::REPLAY_MIN_ACTIONS {
         return Err(format!(
-            "CHEAT_DETECTED: action count {} is implausibly low (min 50)",
-            actions.len()
+            "CHEAT_DETECTED: action count {} is implausibly low (min {})",
+            actions.len(),
+            config::REPLAY_MIN_ACTIONS
         ));
     }
 
@@ -2011,8 +2012,8 @@ fn replay_verify_plausibility(
     let last_t = actions.last().map(|a| a.t).unwrap_or(0);
     if let Some(ended_at) = session.ended_at {
         let server_duration_ms = ended_at.saturating_sub(session.started_at);
-        if server_duration_ms.saturating_sub(last_t) > 5000
-            || last_t.saturating_sub(server_duration_ms) > 5000
+        if server_duration_ms.saturating_sub(last_t) > config::REPLAY_GRACE_MS
+            || last_t.saturating_sub(server_duration_ms) > config::REPLAY_GRACE_MS
         {
             return Err(format!(
                 "CHEAT_DETECTED: session duration mismatch (server: {}ms, replay: {}ms)",
@@ -2033,13 +2034,14 @@ fn replay_verify_plausibility(
     for i in 0..actions.len() {
         let action = &actions[i];
 
-        // Burst check
+        // Burst check — sliding 100ms window
         while window_start <= i && action.t.saturating_sub(actions[window_start].t) > 100 {
             window_start += 1;
         }
-        if i - window_start + 1 > 15 {
+        if i - window_start + 1 > config::REPLAY_BURST_LIMIT_PER_100MS as usize {
             return Err(format!(
-                "CHEAT_DETECTED: burst of >15 actions in 100ms window ending at {}ms",
+                "CHEAT_DETECTED: burst of >{} actions in 100ms window ending at {}ms",
+                config::REPLAY_BURST_LIMIT_PER_100MS,
                 action.t
             ));
         }
@@ -2116,7 +2118,10 @@ fn replay_verify_plausibility(
         ));
     }
 
-    if reported_keys > 0 && attack_count < (reported_keys / 20) {
+    if config::REPLAY_ATTACK_PER_KEY_DIVISOR > 0
+        && reported_keys > 0
+        && attack_count < (reported_keys / config::REPLAY_ATTACK_PER_KEY_DIVISOR)
+    {
         return Err(format!(
             "CHEAT_DETECTED: implausible attack-to-key ratio (keys: {}, attacks: {})",
             reported_keys, attack_count

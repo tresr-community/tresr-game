@@ -537,7 +537,7 @@ AGENT_DOCS_DIR="docs/agents"
 AGENT_DOC_SOURCES=(
 	"avalanche|https://build.avax.network/llms-full.txt"
 	"astro|https://docs.astro.build/llms-full.txt"
-	"cloudflare|https://developers.cloudflare.com/llms-full.txt"
+	"cloudflare|https://developers.cloudflare.com/llms.txt"
 	"daisyui|https://daisyui.com/llms.txt"
 	"foundry|https://getfoundry.sh/llms-full.txt"
 	"juno|https://juno.build/llms-full.txt"
@@ -546,6 +546,7 @@ AGENT_DOC_SOURCES=(
 	"viem|https://viem.sh/llms-full.txt"
 	"wagmi|https://wagmi.sh/llms-full.txt"
 	"xai|https://docs.x.ai/llms.txt"
+	"zod|https://zod.dev/llms-full.txt"
 )
 
 function cmd_agent_docs() {

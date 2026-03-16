@@ -21,6 +21,8 @@
     "sprites": "bun run bin/sprites.ts",
     "wallpapers": "bun run bin/wallpapers.ts",
     "videos": "bun run bin/videos.ts",
+    "test": "bun test ./bin/config-schema.test.ts",
+    "test:config": "bun test ./bin/config-schema.test.ts",
     "postinstall:copy-auth": "bun -e \"require('node:fs').cpSync('node_modules/@junobuild/core/dist/workers/', './public/workers', {recursive: true});\"",
     "postinstall": "bun run postinstall:copy-auth"
   },
@@ -63,6 +65,7 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@icp-sdk/bindgen": "0.2.2",
+    "@junobuild/cli": "file:/home/mahdtech/Sync/Projects/Forks/cli",
     "@junobuild/config": "file:/home/mahdtech/Sync/Projects/Forks/juno-js/packages/config",
     "@junobuild/vite-plugin": "4.7.1",
     "@tailwindcss/postcss": "4.2.1",
@@ -82,6 +85,6 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.57.0",
     "vite": "7.3.1",
-    "@junobuild/cli": "file:/home/mahdtech/Sync/Projects/Forks/cli"
+    "zod": "^4.3.6"
   }
 }

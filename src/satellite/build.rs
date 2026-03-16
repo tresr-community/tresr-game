@@ -42,6 +42,9 @@ struct Replay {
     min_action_gap_ms: u64,
     min_attack_gap_ms: u64,
     grace_ms: u64,
+    burst_limit_per_100ms: u64,
+    min_actions: u64,
+    attack_per_key_divisor: u64,
 }
 
 #[derive(Deserialize)]
@@ -357,6 +360,15 @@ pub const REPLAY_MIN_ATTACK_GAP_MS: u64 = {replay_min_attack_gap_ms};
 
 /// Grace period added to TIME_LIMIT_MS for replay timestamp validation (#171)
 pub const REPLAY_GRACE_MS: u64 = {replay_grace_ms};
+
+/// Max actions in any 100ms sliding window — tuned for legit 60fps button mashing (#171)
+pub const REPLAY_BURST_LIMIT_PER_100MS: u64 = {replay_burst_limit_per_100ms};
+
+/// Minimum total replay actions to accept a session as non-trivial (#171)
+pub const REPLAY_MIN_ACTIONS: u64 = {replay_min_actions};
+
+/// Divisor for attack-to-key ratio check: attacks >= keys / divisor (#171)
+pub const REPLAY_ATTACK_PER_KEY_DIVISOR: u64 = {replay_attack_per_key_divisor};
 "#,
         network = network,
         ban_durations = ban_durations,
@@ -390,6 +402,9 @@ pub const REPLAY_GRACE_MS: u64 = {replay_grace_ms};
         replay_min_action_gap_ms = config.server.anti_cheat.replay.min_action_gap_ms,
         replay_min_attack_gap_ms = config.server.anti_cheat.replay.min_attack_gap_ms,
         replay_grace_ms = config.server.anti_cheat.replay.grace_ms,
+        replay_burst_limit_per_100ms = config.server.anti_cheat.replay.burst_limit_per_100ms,
+        replay_min_actions = config.server.anti_cheat.replay.min_actions,
+        replay_attack_per_key_divisor = config.server.anti_cheat.replay.attack_per_key_divisor,
     );
 
     // Write to OUT_DIR
