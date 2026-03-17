@@ -308,6 +308,7 @@ jobs:
           walletconnect-project-id: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
           version: ${{ needs.pre-release.outputs.tag }}
           version-mode: explicit
+          satellite-network: testnet
 
   ##################################################
   # Deploy Solidity contracts (Testnet)

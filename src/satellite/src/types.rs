@@ -333,6 +333,10 @@ pub struct FeeRequest {
 #[serde(rename_all = "lowercase")]
 pub enum FeeStatus {
     Pending,
+    /// Satellite is actively retrying on-chain verification.
+    /// Written back to the audit doc between retry attempts so the frontend
+    /// can display "Verifying on-chain (attempt N/3)…" instead of a static spinner.
+    Verifying,
     Verified,
     Failed,
 }
@@ -691,6 +695,15 @@ mod tests {
         let json = serde_json::to_string(&FeeStatus::Failed).unwrap();
         let back: FeeStatus = serde_json::from_str(&json).unwrap();
         assert_eq!(back, FeeStatus::Failed);
+    }
+
+    #[test]
+    fn fee_status_verifying_roundtrip() {
+        let json = serde_json::to_string(&FeeStatus::Verifying).unwrap();
+        // Must serialize as the lowercase string "verifying" so the frontend can poll it
+        assert_eq!(json, "\"verifying\"");
+        let back: FeeStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, FeeStatus::Verifying);
     }
 
     #[test]

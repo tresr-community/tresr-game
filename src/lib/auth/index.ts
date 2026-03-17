@@ -40,6 +40,7 @@ import {
 import {config} from "@/lib/config/client";
 import {loadProfile, clearProfile, profileStore} from "@/lib/user/store";
 import {getUserProfile, enqueueProfileWrite} from "@/lib/user";
+import {authStore} from "./store";
 
 const COMPONENT_NAME = "Auth";
 
@@ -143,6 +144,8 @@ let authChangeCallbacks: Array<(state: AuthState) => void> = [];
  */
 function notifyAuthChange(): void {
   const stateCopy = {...authState};
+  // Keep the nanostore in sync — components subscribe to this directly.
+  authStore.set(stateCopy);
   for (const callback of authChangeCallbacks) {
     try {
       callback(stateCopy);

@@ -143,8 +143,25 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
   }
 </style>
 
+<style>
+  /*
+   * Default the toolbar to EXPANDED on desktop without JS.
+   * This is progressive enhancement — the JS toggle overrides these values
+   * once the script runs. On mobile (<1024px) the HTML inline style (max-width:0)
+   * remains the collapsed default; JS will call expandToolbar() / collapseToolbar()
+   * based on the breakpoint once loaded.
+   */
+  @media (min-width: 1024px) {
+    #header-icons {
+      max-width: 500px !important;
+      opacity: 1 !important;
+    }
+  }
+</style>
+
 <script>
-  import {initAuth, getAuthState, subscribeToAuth} from "@/lib/auth";
+  import {initAuth, getAuthState} from "@/lib/auth";
+  import {authStore} from "@/lib/auth/store";
   import {notificationManager} from "@/lib/notifications";
   import {enqueueProfileWrite} from "@/lib/user";
   import {log} from "@/lib/utils/log";
@@ -259,7 +276,7 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
     await updateAdminButtonState();
 
     // Update profile button and admin icon state when auth changes
-    const unsubAuth = subscribeToAuth(() => {
+    const unsubAuth = authStore.subscribe(() => {
       updateProfileButtonState();
       void updateAdminButtonState();
     });
@@ -320,7 +337,7 @@ import MusicPlayer from "@/components/game/MusicPlayer.astro";
 
   // Fire-and-forget: ICP satellite round-trips (initAuth, initSatellite) must
   // never block DOMContentLoaded or script evaluation. Auth state starts as
-  // isAuthenticated=false and updates asynchronously via subscribeToAuth().
+  // isAuthenticated=false and updates asynchronously via authStore subscription.
   void startup();
 
   // Mutual-exclusion for all header dropdowns (details/summary pattern).

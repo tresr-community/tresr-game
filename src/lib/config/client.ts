@@ -33,11 +33,11 @@ export const config: ConfigTypes = {
   },
   "auth": {
     "iid": {
-      "enabled": false,
+      "enabled": true,
       "domain": "id.ai"
     },
     "webauthn": {
-      "enabled": false,
+      "enabled": true,
       "session_ttl_ms": 14400000
     },
     "avalanche": {

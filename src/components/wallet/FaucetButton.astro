@@ -17,11 +17,9 @@ const isProduction = JUNO_ENVIRONMENT === "production";
 }
 
 <script>
-  import {subscribeToAuth} from "@/lib/auth";
-  import {
-    subscribeToConnection,
-    getConnectedAddress,
-  } from "@/lib/wallet/connection";
+  import {authStore} from "@/lib/auth/store";
+  import {walletStore} from "@/lib/wallet/store";
+  import {getConnectedAddress} from "@/lib/wallet/connection";
   import {
     claimFaucet,
     getFaucetCooldownStatus,
@@ -38,8 +36,6 @@ const isProduction = JUNO_ENVIRONMENT === "production";
   const btn = document.getElementById("faucet-btn") as HTMLButtonElement | null;
   if (btn) {
     let disposed = false;
-    let walletConnected = false;
-    let isAuthenticatedNonGuest = false;
     let isProcessing = false;
     let cooldownRemaining = 0;
     let cooldownInterval: ReturnType<typeof setInterval> | null = null;
@@ -107,7 +103,17 @@ const isProduction = JUNO_ENVIRONMENT === "production";
 
     function evaluateVisibility() {
       if (!btn) return;
-      if (isAuthenticatedNonGuest && isFaucetDeployed(config)) {
+      // Require both ICP auth AND an EVM wallet connection — the faucet
+      // sends tokens to the connected wallet address, so showing the button
+      // when no wallet is linked would only lead to a confusing error.
+      const auth = authStore.get();
+      const {connected} = walletStore.get();
+      if (
+        auth.isAuthenticated &&
+        !auth.isGuest &&
+        connected &&
+        isFaucetDeployed(config)
+      ) {
         btn.classList.remove("hidden");
       } else {
         btn.classList.add("hidden");
@@ -117,7 +123,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
     async function handleClick() {
       if (isProcessing || disposed || btn!.disabled) return;
 
-      if (!walletConnected) {
+      if (!walletStore.get().connected) {
         window.showWarningToast?.("Connect your wallet first 🔗");
         return;
       }
@@ -271,7 +277,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
 
     // Check initial cooldown when wallet connects
     async function checkInitialCooldown() {
-      if (!walletConnected || disposed) return;
+      if (!walletStore.get().connected || disposed) return;
       const address = getConnectedAddress();
       if (!address) return;
       try {
@@ -285,30 +291,29 @@ const isProduction = JUNO_ENVIRONMENT === "production";
       }
     }
 
-    let unsubWallet: (() => void) | null = null;
-
-    const unsubAuth = subscribeToAuth((state) => {
-      isAuthenticatedNonGuest = state.isAuthenticated && !state.isGuest;
-
-      if (isAuthenticatedNonGuest && !unsubWallet) {
-        unsubWallet = subscribeToConnection((connected) => {
-          walletConnected = connected;
-          // Disable the button while the wallet store is still reconnecting
-          // so the user gets feedback instead of a silent "Connect wallet first" warn.
-          if (btn && cooldownRemaining <= 0 && !isProcessing) {
-            btn.disabled = !connected;
-            btn.title = connected ? "Claim test tokens" : "Connecting wallet…";
-          }
-          evaluateVisibility();
-          if (connected) checkInitialCooldown();
-        });
-      } else if (!isAuthenticatedNonGuest && unsubWallet) {
-        unsubWallet();
-        unsubWallet = null;
-        walletConnected = false;
-      }
-
+    const unsubAuth = authStore.subscribe((state) => {
+      const isAuthNonGuest = state.isAuthenticated && !state.isGuest;
       evaluateVisibility();
+      // When auth state changes, re-evaluate the wallet button state
+      // using the current wallet store value.
+      const {connected} = walletStore.get();
+      if (isAuthNonGuest && btn && cooldownRemaining <= 0 && !isProcessing) {
+        btn.disabled = !connected;
+        btn.title = connected ? "Claim test tokens" : "Connecting wallet…";
+      }
+    });
+
+    const unsubWallet = walletStore.subscribe(({connected}) => {
+      const isAuthNonGuest =
+        authStore.get().isAuthenticated && !authStore.get().isGuest;
+      if (!isAuthNonGuest) return;
+      // Update button disabled/title to reflect wallet connection state
+      if (btn && cooldownRemaining <= 0 && !isProcessing) {
+        btn.disabled = !connected;
+        btn.title = connected ? "Claim test tokens" : "Connecting wallet…";
+      }
+      evaluateVisibility();
+      if (connected) checkInitialCooldown();
     });
 
     // Cleanup on navigation
@@ -318,7 +323,7 @@ const isProduction = JUNO_ENVIRONMENT === "production";
         disposed = true;
         stopCooldownTick();
         unsubAuth();
-        if (unsubWallet) unsubWallet();
+        unsubWallet();
         btn.removeEventListener("click", handleClick);
       },
       {once: true}

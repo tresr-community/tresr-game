@@ -1187,11 +1187,590 @@ Advanced guides for scaling, optimizing, and integrating xAI APIs.
 ## In this section
 
 * [Batch API](/developers/advanced-api-usage/batch-api)
+* [Prompt Caching](/developers/advanced-api-usage/prompt-caching)
 * [Deferred Completions](/developers/advanced-api-usage/deferred-chat-completions)
 * [Fingerprint](/developers/advanced-api-usage/fingerprint)
 * [Async Requests](/developers/advanced-api-usage/async)
 * [Use with Code Editors](/developers/advanced-api-usage/use-with-code-editors)
 * [Prompt Engineering for Grok Code](/developers/advanced-api-usage/grok-code-prompt-engineering)
+
+
+===/developers/advanced-api-usage/prompt-caching/best-practices===
+#### Prompt Caching
+
+# Best Practices & FAQ
+
+## Best practices
+
+1. **Always set `x-grok-conv-id`** (or `prompt_cache_key` for Responses API) — Routes requests to the same server, maximizing cache hits.
+
+2. **Use a stable conversation ID** — A UUID or your application's session ID works well.
+
+3. **Never modify earlier messages** — Only append new ones. Any edit, removal, or reorder breaks the cache.
+
+4. **Front-load static content** — Place system prompts, few-shot examples, and reference documents at the beginning where they form a stable prefix.
+
+5. **Monitor `cached_tokens`** — If consistently 0, verify your conversation ID and message ordering.
+
+6. **Handle cache misses gracefully** — Eviction and routing mean cache hits aren't guaranteed. Your application should work without caching.
+
+## Supported models
+
+Prompt caching is available on all `grok` language models. Check the [Models and Pricing](/developers/models) page for details on which models support caching and their specific cached token pricing.
+
+## FAQ
+
+### Does caching affect output quality?
+
+No. Caching only accelerates the prompt processing phase. The model's output is identical whether the prompt is served from cache or computed from scratch.
+
+### How long do cache entries persist?
+
+Cache entries can be evicted at any time due to server load or restarts. Use `x-grok-conv-id` to maximize retention by routing to the same server.
+
+### Can I force a cache miss?
+
+Yes — use a different `x-grok-conv-id` or omit the header entirely. This will route your request to a potentially different server where no cache exists for your prompt.
+
+### Does caching work with streaming?
+
+Yes. Prompt caching works with both streaming and non-streaming requests. The first empty token in a stream corresponds to the cache lookup and prefill phase.
+
+### Does caching work with tool calls and function calling?
+
+Yes. The cacheable prefix includes all messages up to and including tool call results. As long as the prefix remains unchanged, subsequent requests will benefit from caching.
+
+
+===/developers/advanced-api-usage/prompt-caching/how-it-works===
+#### Prompt Caching
+
+# How It Works
+
+The cache works from the **start of your messages array**. When a request arrives, the system checks how many messages at the beginning match a previous request exactly — that matching portion is the "prefix" and gets served from cache:
+
+1. **First request** — The full prompt is processed and cached
+2. **Subsequent requests** — If the prompt prefix matches, the cached portion is reused (a cache *hit*)
+3. **Billing** — Cached tokens are billed at a reduced rate
+
+Prompt caching is not 100% guaranteed. Cache entries can be evicted due to memory pressure, and requests may be routed to different servers. Use `x-grok-conv-id` to maximize cache hit rates.
+
+## Example
+
+**Request 1:**
+
+```text
+[system] "You are a helpful assistant."
+[user] "What is the capital of France?"
+[assistant] "The capital of France is Paris."
+```
+
+**Request 2:**
+
+```text
+[system] "You are a helpful assistant."       ← cached
+[user] "What is the capital of France?"       ← cached
+[assistant] "The capital of France is Paris." ← cached
+[user] "What about Germany?"                  ← new
+```
+
+The first 3 messages match Request 1 exactly, so they're served from cache. Only the new message is computed.
+
+## Next
+
+* [Maximizing Cache Hits](/developers/advanced-api-usage/prompt-caching/maximizing-cache-hits)
+* [What Breaks Caching](/developers/advanced-api-usage/prompt-caching/multi-turn)
+* [Usage & Pricing](/developers/advanced-api-usage/prompt-caching/usage-and-pricing)
+* [Best Practices & FAQ](/developers/advanced-api-usage/prompt-caching/best-practices)
+
+
+===/developers/advanced-api-usage/prompt-caching/maximizing-cache-hits===
+#### Prompt Caching
+
+# Maximizing Cache Hits
+
+## Set `x-grok-conv-id` (Chat Completions API)
+
+The `x-grok-conv-id` HTTP header routes requests with the same conversation ID to the same server. Since cache entries are stored per-server, this maximizes your cache hit rate.
+
+```bash customLanguage="bash"
+curl https://api.x.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -H "x-grok-conv-id: conv_abc123" \
+  -d '{
+    "model": "grok-4.20-beta-latest-non-reasoning",
+    "messages": [
+      {"role": "system", "content": "You are Grok, a helpful and truthful AI assistant built by xAI."},
+      {"role": "user", "content": "What is prompt caching?"}
+    ]
+  }'
+```
+
+```python customLanguage="pythonOpenAISDK"
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="YOUR_XAI_API_KEY",
+    base_url="https://api.x.ai/v1",
+)
+
+response = client.chat.completions.create(
+    model="grok-4.20-beta-latest-non-reasoning",
+    messages=[
+        {"role": "system", "content": "You are Grok, a helpful and truthful AI assistant built by xAI."},
+        {"role": "user", "content": "What is prompt caching?"},
+    ],
+    extra_headers={
+        "x-grok-conv-id": "conv_abc123",
+    },
+)
+
+print(response.choices[0].message.content)
+print(f"Cached tokens: {response.usage.prompt_tokens_details.cached_tokens}")
+```
+
+```javascript customLanguage="javascriptOpenAISDK"
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: 'YOUR_XAI_API_KEY',
+  baseURL: 'https://api.x.ai/v1',
+});
+
+const response = await client.chat.completions.create(
+  {
+    model: 'grok-4.20-beta-latest-non-reasoning',
+    messages: [
+      {
+        role: 'system',
+        content:
+          'You are Grok, a helpful and truthful AI assistant built by xAI.',
+      },
+      { role: 'user', content: 'What is prompt caching?' },
+    ],
+  },
+  {
+    headers: {
+      'x-grok-conv-id': 'conv_abc123',
+    },
+  },
+);
+
+console.log(response.choices[0].message.content);
+console.log(
+  `Cached tokens: ${response.usage.prompt_tokens_details.cached_tokens}`,
+);
+```
+
+## Set `prompt_cache_key` (Responses API)
+
+For the Responses API, use the `prompt_cache_key` field directly in the request body. It functions identically to setting `x-grok-conv-id` — it routes requests to the same server for cache reuse.
+
+```bash customLanguage="bash"
+curl https://api.x.ai/v1/responses \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -d '{
+    "model": "grok-4.20-beta-latest-non-reasoning",
+    "input": "What is prompt caching?",
+    "prompt_cache_key": "b79ad29b-b3f9-463c-bca6-041d5058d366"
+  }'
+```
+
+```python customLanguage="pythonOpenAISDK"
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="YOUR_XAI_API_KEY",
+    base_url="https://api.x.ai/v1",
+)
+
+response = client.responses.create(
+    model="grok-4.20-beta-latest-non-reasoning",
+    input="What is prompt caching?",
+    extra_body={
+        "prompt_cache_key": "b79ad29b-b3f9-463c-bca6-041d5058d366",
+    },
+)
+
+print(response.output_text)
+print(f"Cached tokens: {response.usage.input_tokens_details.cached_tokens}")
+```
+
+```javascript customLanguage="javascriptOpenAISDK"
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: 'YOUR_XAI_API_KEY',
+  baseURL: 'https://api.x.ai/v1',
+});
+
+const response = await client.responses.create({
+  model: 'grok-4.20-beta-latest-non-reasoning',
+  input: 'What is prompt caching?',
+  // @ts-expect-error -- xAI-specific field
+  prompt_cache_key: 'b79ad29b-b3f9-463c-bca6-041d5058d366',
+});
+
+console.log(response.output_text);
+console.log(
+  `Cached tokens: ${response.usage.input_tokens_details.cached_tokens}`,
+);
+```
+
+```javascript customLanguage="javascriptAISDK"
+import { xai } from '@ai-sdk/xai';
+import { generateText } from 'ai';
+
+const { text, usage } = await generateText({
+  model: xai.responses('grok-4.20-beta-latest-non-reasoning'),
+  prompt: 'What is prompt caching?',
+  providerOptions: {
+    xai: {
+      promptCacheKey: 'b79ad29b-b3f9-463c-bca6-041d5058d366',
+    },
+  },
+});
+
+console.log(text);
+console.log(`Total tokens: ${usage.totalTokens}`);
+```
+
+## Set `x-grok-conv-id` metadata (gRPC API)
+
+For the gRPC API using the xAI SDK, pass `x-grok-conv-id` as gRPC metadata to enable sticky routing for cache reuse.
+
+```python customLanguage="pythonXAI"
+from xai_sdk import Client
+from xai_sdk.chat import system, user
+
+client = Client(
+    api_key="YOUR_API_KEY",
+    metadata=(("x-grok-conv-id", "conv_abc123"),),
+)
+
+chat = client.chat.create(model="grok-4.20-beta-latest-non-reasoning")
+chat.append(system("You are Grok, a helpful and truthful AI assistant built by xAI."))
+chat.append(user("What is prompt caching?"))
+
+response = chat.sample()
+print(f"Response: {response.content}")
+print(f"Cached tokens: {response.usage.cached_prompt_text_tokens}")
+```
+
+## Next
+
+* [What Breaks Caching](/developers/advanced-api-usage/prompt-caching/multi-turn)
+
+
+===/developers/advanced-api-usage/prompt-caching/multi-turn===
+#### Prompt Caching
+
+# What Breaks Caching
+
+Any change to earlier messages breaks the cache. Only append new messages at the end.
+
+**Keep messages unchanged.** For cache hits in multi-turn conversations, never edit, remove, or reorder earlier messages — only append new ones. For reasoning models, you **must** include `reasoning_content` from previous responses; omitting it is the top cause of cache misses.
+
+For reasoning models, you can maintain cache hits by either:
+
+* **Sending back the encrypted reasoning content** — Include the `reasoning_content` from the previous response. See [Encrypted Reasoning Content](/developers/model-capabilities/text/reasoning#encrypted-reasoning-content) for details.
+* **Using stateful responses** — Use `previous_response_id` to automatically continue the conversation. See [Chaining the Conversation](/developers/model-capabilities/text/generate-text#chaining-the-conversation) for details.
+
+## &#x20;Cache hit — appending a new message
+
+The prompt prefix is identical to the previous request, with only a new user message appended:
+
+```bash customLanguage="bash" addedLines="26"
+# Turn 1: Initial request (establishes the cache)
+curl https://api.x.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -H "x-grok-conv-id: conv_abc123" \
+  -d '{
+    "model": "grok-4.20-beta-latest-non-reasoning",
+    "messages": [
+      {"role": "system", "content": "You are Grok, a helpful and truthful AI assistant built by xAI."},
+      {"role": "user", "content": "What is prompt caching?"},
+      {"role": "assistant", "content": "Prompt caching stores KV pairs from unchanged prompt prefixes so they can be reused on subsequent requests. This makes responses faster and cheaper."}
+    ]
+  }'
+
+# Turn 2: Cache HIT — exact prefix preserved, new message appended
+curl https://api.x.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -H "x-grok-conv-id: conv_abc123" \
+  -d '{
+    "model": "grok-4.20-beta-latest-non-reasoning",
+    "messages": [
+      {"role": "system", "content": "You are Grok, a helpful and truthful AI assistant built by xAI."},
+      {"role": "user", "content": "What is prompt caching?"},
+      {"role": "assistant", "content": "Prompt caching stores KV pairs from unchanged prompt prefixes so they can be reused on subsequent requests. This makes responses faster and cheaper."},
+      {"role": "user", "content": "Show me a code example."}
+    ]
+  }'
+```
+
+```python customLanguage="pythonOpenAISDK"
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="YOUR_XAI_API_KEY",
+    base_url="https://api.x.ai/v1",
+)
+
+conversation_id = "conv_abc123"
+messages = [
+    {"role": "system", "content": "You are Grok, a helpful and truthful AI assistant built by xAI."},
+    {"role": "user", "content": "What is prompt caching?"},
+]
+
+# Turn 1: Initial request (establishes the cache)
+response = client.chat.completions.create(
+    model="grok-4.20-beta-latest-non-reasoning",
+    messages=messages,
+    extra_headers={"x-grok-conv-id": conversation_id},
+)
+print(f"Turn 1 — Cached tokens: {response.usage.prompt_tokens_details.cached_tokens}")
+
+# Append the assistant's reply and the next user message
+messages.append({"role": "assistant", "content": response.choices[0].message.content})
+messages.append({"role": "user", "content": "Show me a code example."})
+
+# Turn 2: Cache HIT — prefix is unchanged, only new messages appended
+response = client.chat.completions.create(
+    model="grok-4.20-beta-latest-non-reasoning",
+    messages=messages,
+    extra_headers={"x-grok-conv-id": conversation_id},
+)
+print(f"Turn 2 — Cached tokens: {response.usage.prompt_tokens_details.cached_tokens}")
+```
+
+```javascript customLanguage="javascriptOpenAISDK"
+import OpenAI from 'openai';
+
+const client = new OpenAI({
+  apiKey: 'YOUR_XAI_API_KEY',
+  baseURL: 'https://api.x.ai/v1',
+});
+
+const conversationId = 'conv_abc123';
+const messages = [
+  {
+    role: 'system',
+    content:
+      'You are Grok, a helpful and truthful AI assistant built by xAI.',
+  },
+  { role: 'user', content: 'What is prompt caching?' },
+];
+
+// Turn 1: Initial request (establishes the cache)
+const turn1 = await client.chat.completions.create(
+  { model: 'grok-4.20-beta-latest-non-reasoning', messages },
+  { headers: { 'x-grok-conv-id': conversationId } },
+);
+console.log(
+  `Turn 1 — Cached tokens: ${turn1.usage.prompt_tokens_details.cached_tokens}`,
+);
+
+// Append the assistant reply and next user message
+messages.push({ role: 'assistant', content: turn1.choices[0].message.content });
+messages.push({ role: 'user', content: 'Show me a code example.' });
+
+// Turn 2: Cache HIT — prefix unchanged, new message appended
+const turn2 = await client.chat.completions.create(
+  { model: 'grok-4.20-beta-latest-non-reasoning', messages },
+  { headers: { 'x-grok-conv-id': conversationId } },
+);
+console.log(
+  `Turn 2 — Cached tokens: ${turn2.usage.prompt_tokens_details.cached_tokens}`,
+);
+```
+
+## &#x20;Cache miss — editing an earlier message
+
+Changing the content of any earlier message breaks the prefix match:
+
+```bash customLanguage="bash" deletedLines="11" addedLines="12"
+# Cache MISS — editing the assistant message content
+curl https://api.x.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -H "x-grok-conv-id: conv_abc123" \
+  -d '{
+    "model": "grok-4.20-beta-latest-non-reasoning",
+    "messages": [
+      {"role": "system", "content": "You are Grok, a helpful and truthful AI assistant built by xAI."},
+      {"role": "user", "content": "What is prompt caching?"},
+      {"role": "assistant", "content": "Prompt caching stores KV pairs from unchanged prompt prefixes so they can be reused on subsequent requests. This makes responses faster and cheaper."},
+      {"role": "assistant", "content": "It stores KV pairs."},
+      {"role": "user", "content": "Show me a code example."}
+    ]
+  }'
+```
+
+**What changed:** The assistant response on line 11 was shortened to `"It stores KV pairs."` (line 12).
+
+## &#x20;Cache miss — removing a message
+
+Removing any message from the conversation breaks the prefix:
+
+```bash customLanguage="bash" deletedLines="11"
+# Cache MISS — the assistant message was removed
+curl https://api.x.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -H "x-grok-conv-id: conv_abc123" \
+  -d '{
+    "model": "grok-4.20-beta-latest-non-reasoning",
+    "messages": [
+      {"role": "system", "content": "You are Grok, a helpful and truthful AI assistant built by xAI."},
+      {"role": "user", "content": "What is prompt caching?"},
+      {"role": "assistant", "content": "Prompt caching stores KV pairs from unchanged prompt prefixes so they can be reused on subsequent requests. This makes responses faster and cheaper."},
+      {"role": "user", "content": "Show me a code example."}
+    ]
+  }'
+```
+
+**What changed:** The assistant message on line 11 was removed entirely.
+
+## &#x20;Cache miss — reordering messages
+
+Changing the order of messages also breaks the prefix:
+
+```bash customLanguage="bash" deletedLines="9,10" addedLines="9,10"
+# Cache MISS — user and system messages are swapped
+curl https://api.x.ai/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $XAI_API_KEY" \
+  -H "x-grok-conv-id: conv_abc123" \
+  -d '{
+    "model": "grok-4.20-beta-latest-non-reasoning",
+    "messages": [
+      {"role": "user", "content": "What is prompt caching?"},
+      {"role": "system", "content": "You are Grok, a helpful and truthful AI assistant built by xAI."},
+      {"role": "assistant", "content": "Prompt caching stores KV pairs from unchanged prompt prefixes so they can be reused on subsequent requests. This makes responses faster and cheaper."},
+      {"role": "user", "content": "Show me a code example."}
+    ]
+  }'
+```
+
+**What changed:** Lines 9 and 10 were swapped — the user message now comes before the system message.
+
+## Next
+
+* [Usage & Pricing](/developers/advanced-api-usage/prompt-caching/usage-and-pricing)
+
+
+===/developers/advanced-api-usage/prompt-caching===
+#### Advanced API Usage
+
+# Prompt Caching
+
+When consecutive requests share the same starting messages, the xAI API automatically caches them. On the next request, messages at the beginning that match exactly are served from cache:
+
+* **Faster time-to-first-token** — the model skips re-computing cached messages
+* **Lower cost** — cached tokens are billed at a reduced rate
+
+The xAI API performs prompt caching **automatically**. However, we recommend setting the `x-grok-conv-id` HTTP header to maximize your cache hit rate.
+
+## In this section
+
+* [How It Works](/developers/advanced-api-usage/prompt-caching/how-it-works) — Understand how caching works from the start of your messages array
+* [Maximizing Cache Hits](/developers/advanced-api-usage/prompt-caching/maximizing-cache-hits) — Set up `x-grok-conv-id` and `prompt_cache_key` for optimal caching
+* [What Breaks Caching](/developers/advanced-api-usage/prompt-caching/multi-turn) — Common mistakes that cause cache misses
+* [Usage & Pricing](/developers/advanced-api-usage/prompt-caching/usage-and-pricing) — Read cached token counts and understand billing
+* [Best Practices & FAQ](/developers/advanced-api-usage/prompt-caching/best-practices) — Tips, supported models, and common questions
+
+
+===/developers/advanced-api-usage/prompt-caching/usage-and-pricing===
+#### Prompt Caching
+
+# Usage & Pricing
+
+## Chat Completions API
+
+Cached tokens appear in `usage.prompt_tokens_details.cached_tokens`:
+
+```json customLanguage="json"
+{
+  "usage": {
+    "prompt_tokens": 125,
+    "completion_tokens": 48,
+    "total_tokens": 173,
+    "prompt_tokens_details": {
+      "text_tokens": 125,
+      "audio_tokens": 0,
+      "image_tokens": 0,
+      "cached_tokens": 98
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0
+    }
+  }
+}
+```
+
+## Responses API
+
+Cached tokens appear in `usage.input_tokens_details.cached_tokens`:
+
+```json customLanguage="json"
+{
+  "usage": {
+    "input_tokens": 125,
+    "output_tokens": 48,
+    "total_tokens": 173,
+    "input_tokens_details": {
+      "cached_tokens": 98
+    },
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    }
+  }
+}
+```
+
+## Verifying cache hits
+
+To determine whether your request benefitted from prompt caching, check the `cached_tokens` value in the response:
+
+| `cached_tokens` value | What it means |
+|---|---|
+| `0` | **Cache miss** — the entire prompt was computed from scratch. This is expected on the first request or after cache eviction. |
+| `> 0` | **Cache hit** — some or all of your prompt prefix was served from cache. The number indicates how many tokens were reused. |
+| Equal to `prompt_tokens` | **Full cache hit** — your entire prompt was served from cache (rare, typically happens when resending the exact same request). |
+
+A typical multi-turn conversation shows increasing `cached_tokens` over time:
+
+```text
+Turn 1: prompt_tokens=50,  cached_tokens=0    # First request, cache established
+Turn 2: prompt_tokens=120, cached_tokens=50   # Previous 50 tokens cached
+Turn 3: prompt_tokens=200, cached_tokens=120  # Previous 120 tokens cached
+```
+
+If `cached_tokens` is consistently 0 across multiple requests in the same conversation, verify that you're setting `x-grok-conv-id` (or `prompt_cache_key`) and that you're not modifying earlier messages between requests.
+
+## Pricing
+
+Cached tokens are billed at the **cached prompt token price**, which is substantially lower than the regular prompt token price. The exact rates vary by model — check the [Models and Pricing](/developers/models) page for current prices.
+
+| Token type | Billing rate |
+|---|---|
+| Prompt tokens (non-cached) | Full prompt token price |
+| Cached prompt tokens | Reduced cached prompt token price |
+| Completion tokens | Full completion token price |
+| Reasoning tokens | Full completion token price |
+
+Long context pricing applies when total prompt tokens (including cached tokens) exceed the model's long context threshold. Both cached and non-cached tokens use their respective long-context rates in this case.
+
+## Next
+
+* [Best Practices & FAQ](/developers/advanced-api-usage/prompt-caching/best-practices)
 
 
 ===/developers/advanced-api-usage/use-with-code-editors===
@@ -3465,24 +4044,24 @@ Add inline speech tags to your text for expressive delivery. There are two types
 
 ### Inline Tags
 
-Insert these where the expression should occur:
+Insert these where the expression should occur. Click any tag to hear an example:
 
 | Category | Tags |
 |----------|------|
-| **Pauses** | `[pause]` `[long-pause]` `[hum-tune]` |
-| **Laughter & crying** | `[laugh]` `[chuckle]` `[giggle]` `[cry]` |
-| **Mouth sounds** | `[tsk]` `[tongue-click]` `[lip-smack]` |
-| **Breathing** | `[breath]` `[inhale]` `[exhale]` `[sigh]` |
+| **Pauses** |    |
+| **Laughter & crying** |     |
+| **Mouth sounds** |    |
+| **Breathing** |     |
 
 ### Wrapping Tags
 
-Wrap text to change delivery style. Use an opening tag and a matching closing tag:
+Wrap text to change delivery style. Use an opening tag and a matching closing tag. Click any tag to hear an example:
 
 | Category | Tags |
 |----------|------|
-| **Volume & intensity** | `<soft>` `<whisper>` `<loud>` `<build-intensity>` `<decrease-intensity>` |
-| **Pitch & speed** | `<higher-pitch>` `<lower-pitch>` `<slow>` `<fast>` |
-| **Vocal style** | `<sing-song>` `<singing>` `<laugh-speak>` `<emphasis>` |
+| **Volume & intensity** |      |
+| **Pitch & speed** |     |
+| **Vocal style** |     |
 
 ### Examples
 
@@ -11252,12 +11831,12 @@ An overview of our models' capabilities and their associated pricing.
 | grok-3 | text → text | functions, structured | 131,072 | 4M TPM, 900 RPM | $3.00 ($0.75) / $15.00 |
 | grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 4M TPM, 1,450 RPM | $0.30 ($0.07) / $0.50 |
 | grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 4M TPM, 1,450 RPM | $0.30 ($0.07) / $0.50 |
-| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 10M TPM, 620 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 10M TPM, 620 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
-| grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
+| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 10M TPM, 620 RPM | $0.20 ($0.05) / $0.50 |
 | grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
+| grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
 | grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
 | grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
 | grok-imagine-video | text, image, video → video | - | - | 60 RPM | $0.050/sec |
@@ -11265,6 +11844,9 @@ An overview of our models' capabilities and their associated pricing.
 
 
 When moving from `grok-3`/`grok-3-mini` to `grok-4`, please note the following differences:
+
+
+Grok 4.20 models do not support the `logprobs` field. If you specify `logprobs` in your request, it will be ignored.
 
 ## Tools Pricing
 
@@ -11453,6 +12035,98 @@ Trying to run the same prompt multiple times? You can now use cached prompt toke
 The caching is automatically enabled for all requests without user input. You can view the cached prompt token consumption in [the `"usage"` object](/developers/rate-limits#checking-token-consumption).
 
 For details on the pricing, please refer to the pricing table above, or on [xAI Console](https://console.x.ai).
+
+
+===/developers/provisioned-throughput===
+#### Enterprise
+
+# Provisioned Throughput
+
+Provisioned Throughput allows enterprise customers to purchase dedicated input and output token capacity for specific models. Buy units with a minimum 30-day commitment for predictable, high-performance API access.
+
+Contact [support@x.ai](mailto:support@x.ai) to get started with Provisioned Throughput.
+
+## Key Benefits
+
+* **Predictable latency** — Faster, more consistent response times compared to pay-as-you-go, even during peak usage
+* **Uncapped scale** — Your purchased capacity adds directly to your rate limits; overages use standard pay-as-you-go rates
+* **High reliability** — 99.9% uptime SLA with enterprise-grade availability guarantees
+
+## Pricing
+
+Each unit costs **$10.00 per day** and provides a fixed amount of tokens per minute (TPM):
+
+| Model | Input TPM per Unit | Output TPM per Unit |
+| --- | --- | --- |
+| grok-3 | 2,000 | 400 |
+| grok-3 | 2,000 | 400 |
+| grok-3-mini | 21,000 | 12,500 |
+| grok-3-mini | 21,000 | 12,500 |
+| grok-4-0709 | 2,000 | 400 |
+| grok-4-0709 | 2,000 | 400 |
+| grok-4-1-fast-non-reasoning | 31,500 | 12,500 |
+| grok-4-1-fast-non-reasoning | 31,500 | 12,500 |
+| grok-4-1-fast-reasoning | 31,500 | 12,500 |
+| grok-4-1-fast-reasoning | 31,500 | 12,500 |
+| grok-4-fast-non-reasoning | 31,500 | 12,500 |
+| grok-4-fast-non-reasoning | 31,500 | 12,500 |
+| grok-4-fast-reasoning | 31,500 | 12,500 |
+| grok-4-fast-reasoning | 31,500 | 12,500 |
+| grok-4.20-beta-0309-non-reasoning | 3,000 | 700 |
+| grok-4.20-beta-0309-non-reasoning | 3,000 | 700 |
+| grok-4.20-beta-0309-reasoning | 3,000 | 700 |
+| grok-4.20-beta-0309-reasoning | 3,000 | 700 |
+| grok-4.20-multi-agent-beta-0309 | 3,000 | 700 |
+| grok-4.20-multi-agent-beta-0309 | 3,000 | 700 |
+| grok-code-fast-1 | 31,500 | 4,000 |
+| grok-code-fast-1 | 31,500 | 4,000 |
+
+## How to Calculate Units
+
+```text
+Input Units  = Required Input TPM  ÷ TPM per Unit (Input)
+Output Units = Required Output TPM ÷ TPM per Unit (Output)
+Daily Cost   = (Input Units + Output Units) × $10
+```
+
+**Example**: You need 100,000 input TPM and 50,000 output TPM with **grok-4-1-fast-reasoning**:
+
+* Input units: 100,000 ÷ 31,500 = **4 units**
+* Output units: 50,000 ÷ 12,500 = **4 units**
+* Daily cost: 8 × $10 = **$80/day** ($2,400 for 30 days)
+
+## Getting Started
+
+1. Contact [support@x.ai](mailto:support@x.ai) with your expected TPM and preferred models
+2. Receive a custom quote based on your requirements
+3. Sign the order form and your capacity will be activated
+
+## How It Works
+
+Once activated, your provisioned capacity is automatically applied to all API requests from your team.
+
+### Optional Headers
+
+You can control provisioned throughput behavior with these headers:
+
+| Header | Description |
+|--------|-------------|
+| `x-pt-disable: true` | Skip provisioned capacity and use pay-as-you-go for this request |
+| `x-pt-id: <id>` | Route the request to a specific capacity pool (if you have multiple allocations) |
+
+## FAQ
+
+### What happens if I exceed my provisioned capacity?
+
+Requests exceeding your allocation fall back to standard rate limits at pay-as-you-go pricing.
+
+### Can I adjust my allocation?
+
+Yes. You can add units at any time. Contact support to modify your allocation.
+
+### What's the minimum commitment?
+
+30 days per unit.
 
 
 ===/developers/quickstart===
@@ -12043,6 +12717,10 @@ for the available models to your team in each region, or [Models and Pricing](..
 Stay up to date with the latest changes to the xAI API.
 
 # March 2026
+
+### Provisioned Throughput is available
+
+Enterprise customers can now purchase dedicated API capacity with guaranteed tokens per minute. [Learn more](/developers/provisioned-throughput).
 
 ### Grok 4.20 Beta and Grok 4.20 Multi-agent Beta are available
 
@@ -15942,8 +16620,6 @@ Define custom tools that the model can invoke during a conversation. The model r
 
 With streaming, the function call is returned in whole in a single chunk, not streamed across chunks.
 
-## How It Works
-
 1. Define tools with a name, description, and JSON schema for parameters
 2. Include tools in your request
 3. Model returns a `tool_call` when it needs external data
@@ -16019,7 +16695,7 @@ if response.tool_calls:
         # Execute your function
         result = {"location": args["location"], "temperature": 59, "unit": args.get("unit", "fahrenheit")}
         chat.append(tool_result(json.dumps(result)))
-    
+
     response = chat.sample()
 
 print(response.content)
@@ -16062,7 +16738,7 @@ for item in response.output:
     if item.type == "function_call":
         args = json.loads(item.arguments)
         result = {"location": args["location"], "temperature": 59, "unit": args.get("unit", "fahrenheit")}
-        
+
         response = client.responses.create(
             model="grok-4.20-beta-latest-non-reasoning",
             input=[{"type": "function_call_output", "call_id": item.call_id, "output": json.dumps(result)}],
@@ -16190,14 +16866,14 @@ response = chat.sample()
 # Process tool calls
 if response.tool_calls:
     chat.append(response)
-    
+
     for tool_call in response.tool_calls:
         name = tool_call.function.name
         args = json.loads(tool_call.function.arguments)
-        
+
         result = tools_map[name](**args)
         chat.append(tool_result(json.dumps(result)))
-    
+
     response = chat.sample()
 
 print(response.content)
@@ -16217,12 +16893,12 @@ for item in response.output:
     if item.type == "function_call":
         name = item.name
         args = json.loads(item.arguments)
-        
+
         if name not in tools_map:
             output = json.dumps({"error": f"Unknown function: {name}"})
         else:
             output = json.dumps(tools_map[name](**args))
-        
+
         response = client.responses.create(
             model="grok-4.20-beta-latest-non-reasoning",
             input=[{"type": "function_call_output", "call_id": item.call_id, "output": output}],
@@ -16245,7 +16921,7 @@ from xai_sdk.tools import web_search, x_search
 
 tools = [
     web_search(),                    # Built-in: runs on xAI servers
-    x_search(),                      # Built-in: runs on xAI servers  
+    x_search(),                      # Built-in: runs on xAI servers
     tool(                            # Custom: runs on your side
         name="save_to_database",
         description="Save research results to the database",

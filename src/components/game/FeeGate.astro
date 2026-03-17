@@ -329,7 +329,7 @@
       showStatus("Verifying transaction on satellite...");
 
       const POLL_INTERVAL_MS = 1500;
-      const POLL_TIMEOUT_MS = 30_000;
+      const POLL_TIMEOUT_MS = 90_000; // 3 retries × ~15 s each (5 s sleep + RPC latency) + margin
       const deadline = Date.now() + POLL_TIMEOUT_MS;
 
       let feeStatus = "pending";
@@ -339,9 +339,22 @@
           collection: "audit",
           key: `fee_${txHash}`,
         });
-        const docData = feeDoc?.data as {status?: string} | undefined;
+        const docData = feeDoc?.data as
+          | {status?: string; error?: string}
+          | undefined;
         feeStatus = docData?.status ?? "pending";
         if (feeStatus === "verified" || feeStatus === "failed") break;
+        if (feeStatus === "verifying") {
+          // Satellite is retrying — parse "Attempt N/M" from the error field
+          // and show a live progress message so the user isn't left with a
+          // static spinner during a potentially 30+ second retry window.
+          const match = (docData?.error ?? "").match(/Attempt (\d+)\/(\d+)/);
+          if (match) {
+            showStatus(`Verifying on-chain (attempt ${match[1]}/${match[2]})…`);
+          } else {
+            showStatus("Verifying on-chain…");
+          }
+        }
       }
 
       if (feeStatus !== "verified") {

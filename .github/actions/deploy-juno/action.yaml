@@ -33,6 +33,9 @@ inputs:
     description: "How to determine the version: bump, current, or explicit"
     required: false
     default: "bump"
+  satellite-network:
+    description: "Network the satellite is compiled for: anvil, testnet, or mainnet"
+    required: true
   skip-functions:
     description: "Skip function build/publish (e.g. for bootstrap Pass 2 re-deploy)"
     required: false
@@ -141,6 +144,12 @@ runs:
         inputs.skip-functions != 'true' &&
         steps.detect_function_changes.outputs.changed == 'true'
       shell: devenv shell --quiet bash -- -e {0}
+      env:
+        # Controls which chain ID, RPC URLs, and vault address are compiled
+        # into the satellite WASM at build time (see src/satellite/build.rs).
+        # Must match the chain the satellite is deployed to, or fee/claim
+        # verification will query the wrong network and return "Receipt not found".
+        SATELLITE_NETWORK: ${{ inputs.satellite-network }}
       run: |
         cargo generate-lockfile
         juno functions build

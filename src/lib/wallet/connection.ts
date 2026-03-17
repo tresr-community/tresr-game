@@ -27,6 +27,7 @@ export {cancelConnectWallet};
 import {config as appConfig} from "../config/client";
 import {getEnvironmentKey} from "../config/constants";
 import {log} from "../utils/log";
+import {walletStore} from "./store";
 
 const COMPONENT_NAME = "Connection";
 
@@ -62,12 +63,21 @@ export function resetReconnect(): void {
  * user clicks "Sign in" the reconnect handshake is already complete and
  * the wallet modal opens instantly.
  *
+ * Also wires a single subscribeToConnection() listener to keep walletStore
+ * in sync for the lifetime of the page. Components should subscribe to
+ * walletStore instead of calling subscribeToConnection() directly.
+ *
  * Call this once from the auth module during page load.
  */
 export function initWalletReconnect(): void {
   const config = getWagmiConfig();
   void ensureReconnected(config);
   setupLockDetection();
+
+  // One listener for the whole app — keeps walletStore in sync.
+  subscribeToConnection((connected, address) => {
+    walletStore.set({connected, address});
+  });
 }
 
 /**
@@ -105,6 +115,9 @@ function setupLockDetection(): void {
     if (accounts.length === 0) {
       resetReconnect();
       log.info(COMPONENT_NAME, "Wallet locked — reconnect state reset");
+      // Clear the store immediately so components react without waiting
+      // for the next wagmi status transition.
+      walletStore.set({connected: false, address: undefined});
       document.dispatchEvent(new CustomEvent("tresr:wallet-locked"));
     }
   });

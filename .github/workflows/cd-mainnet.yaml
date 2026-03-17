@@ -277,6 +277,7 @@ jobs:
           walletconnect-project-id: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
           version: ${{ needs.release.outputs.tag }}
           version-mode: current
+          satellite-network: mainnet
 
   ##################################################
   # Deploy Solidity contracts (Mainnet)

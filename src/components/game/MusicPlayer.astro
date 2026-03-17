@@ -315,7 +315,8 @@
   import {gameState} from "@/lib/game/state";
   import type {PlaybackMode} from "@/lib/game/state";
   import {config} from "@/lib/config/client";
-  import {getAuthState, subscribeToAuth} from "@/lib/auth";
+  import {getAuthState} from "@/lib/auth";
+  import {authStore} from "@/lib/auth/store";
   import {getUserProfile} from "@/lib/user";
   import {enqueueProfileWrite} from "@/lib/user";
 
@@ -507,7 +508,7 @@
   ) as HTMLInputElement;
 
   let narrationGeneration = 0;
-  const unsubNarration = subscribeToAuth(async (state) => {
+  const unsubNarration = authStore.subscribe(async (state) => {
     const gen = ++narrationGeneration;
     if (state.isAuthenticated && !state.isGuest && state.user) {
       if (elNarrationRow) elNarrationRow.classList.remove("hidden");

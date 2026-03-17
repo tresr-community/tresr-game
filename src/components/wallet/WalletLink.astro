@@ -138,7 +138,8 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
 </details>
 
 <script>
-  import {getAuthState, subscribeToAuth, type AuthState} from "@/lib/auth";
+  import {getAuthState, type AuthState} from "@/lib/auth";
+  import {authStore} from "@/lib/auth/store";
   import {profileStore} from "@/lib/user/store";
   import {
     getUserProfile,
@@ -489,7 +490,7 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
   linkBtn.addEventListener("click", handleLink);
 
   // Subscribe to auth changes (ticket #199: store cleanup on navigation)
-  const unsubAuth = subscribeToAuth((state) => {
+  const unsubAuth = authStore.subscribe((state) => {
     updateUI(state);
   });
 

@@ -131,10 +131,10 @@ client:
       - winter
   auth:
     iid:
-      enabled: false
+      enabled: true
       domain: id.ai
     webauthn:
-      enabled: false
+      enabled: true
       session_ttl_ms: 14400000 # 4 hours in milliseconds
     avalanche:
       enabled: true

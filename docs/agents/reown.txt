@@ -7593,6 +7593,8 @@ Source: https://docs.reown.com/advanced/providers/solana-adapter
 
 The WalletConnect Solana Adapter allows you to integrate the WalletConnect protocol into the Wallet Adapter library.
 
+This adapter is compatible with **Solana and SVM-based chains**, including [Solayer Chain](https://solayer.org). Applications built on SVM-compatible networks can use the same Solana adapter for wallet authentication and transaction signing.
+
 <Info>
   If you are not familiar with the Wallet Adapter library it is recommended to use [AppKit
   instead](../../appkit//overview). AppKit now supports multichain, which means you can choose and
@@ -9915,6 +9917,16 @@ This FAQ section covers common questions and solutions for using AppKit. The que
 
   <Accordion title="How do I increase my project's RPC limits?">
     Reown currently provides 2.5 million requests per 30 days. If you wish to increase this limit, you need to upgrade to AppKit Pro.
+  </Accordion>
+
+  <Accordion title="Is there a limit on self-custodial wallet connections?">
+    There is no fixed number for what counts as "excessive" self-custodial connections. Our Terms of Service reserve the right to limit usage that is clearly abusive or disruptive, such as traffic spikes or automated spamming, and this is assessed case by case. See our [Community Licence](ttps://github.com/reown-com/appkit-react-native?tab=License-1-ov-file#readme) for clearest thresholds before paid plans are needed:
+
+    * **500 MAUs/month:** only authenticated users count toward this, not self-custodial connections
+    * **2.5M RPC calls/month:** only applies if you use Reown's built-in RPC
+
+    **Using your own RPC provider?** The RPC threshold above does not apply to you.
+    The only limit that could apply is the general fair-use clause in our ToS. This is aimed at clearly abusive patterns — such as traffic flooding or automated spam — and does not affect normal application usage.
   </Accordion>
 </AccordionGroup>
 
@@ -13157,7 +13169,7 @@ _appKitModal.openModalView(ReownAppKitModalAllWalletsPage());
 ```
 
 
-# null
+# Deposit with exchange
 Source: https://docs.reown.com/appkit/flutter/payments/deposit-with-exchange
 
 
@@ -19073,7 +19085,7 @@ The following list shows the theme variables you can override:
 | `--apkt-z-index`              | The z-index of the modal.                                     | `number` |
 
 
-# null
+# Deposit with exchange
 Source: https://docs.reown.com/appkit/javascript/payments/deposit-with-exchange
 
 
@@ -19194,12 +19206,12 @@ const paymentAssetDetails = {
 ```
 
 
-# AppKit Pay with Exchange - Javascript
+# Pay with Exchange - Javascript
 Source: https://docs.reown.com/appkit/javascript/payments/pay-with-exchange
 
 
 
-**AppKit Pay with Exchange** unlocks a powerful new flow: users can pay in crypto directly from their Centralized Exchange (CEXs) accounts like Binance or Coinbase, with no new wallets, no app switching, and no lost conversions.
+**Pay with Exchange** unlocks a powerful new flow: users can pay in crypto directly from their Centralized Exchange (CEXs) accounts like Binance, with no new wallets, no app switching, and no lost conversions.
 
 ## Quick Start
 
@@ -19282,7 +19294,7 @@ Add the following to your package.json file in order to run the development serv
 
 ## Supported Networks and Assets
 
-For a complete list of supported networks and assets across different exchanges (Coinbase, Binance), please refer to the [Networks and Assets Supported](/appkit/payments/pay-with-exchange#networks-and-assets-supported) section in our Pay with Exchange documentation.
+For a complete list of supported networks and assets, please refer to the [Networks and Assets Supported](/appkit/payments/pay-with-exchange#networks-and-assets-supported) section in our Pay with Exchange documentation.
 
 ## Assets Configuration
 
@@ -20250,7 +20262,7 @@ Source: https://docs.reown.com/appkit/networks/solana
 
 
 
-The AppKit SDK supports Solana, allowing users to connect their Solana wallets to applications.
+The AppKit SDK supports Solana and SVM-based chains, allowing users to connect their wallets to applications built on Solana and compatible networks such as [Solayer Chain](https://solayer.org).
 
 <Frame>
   <video />
@@ -20304,6 +20316,7 @@ Reown AppKit provides native SDK support for a specific set of blockchain networ
 | **Solana**                                                  | React, Next.js, Vue, JavaScript, React Native                                             |
 | **Bitcoin**                                                 | React, Next.js, Vue, JavaScript, React Native                                             |
 | **TON**                                                     | React, Next.js, Vue, JavaScript, Svelte, Nuxt                                             |
+| **TRON**                                                    | React, Vue, JavaScript                                                                    |
 | **Polkadot**                                                | Flutter                                                                                   |
 
 ### EVM Chains
@@ -20334,15 +20347,95 @@ AppKit supports Bitcoin wallet connections through WBIPs and the Bitcoin Wallet 
 
 AppKit supports TON on web frameworks. You can connect TON wallets and interact with the TON network directly through the SDK.
 
+<Card title="TON Setup Guide" icon="circle-nodes" href="/appkit/networks/ton">
+  Get started with TON in AppKit.
+</Card>
+
+### TRON
+
+AppKit supports TRON on web frameworks. You can connect TRON wallets and interact with the TRON network directly through the SDK.
+
+<Card title="TRON Setup Guide" icon="circle-nodes" href="/appkit/networks/tron">
+  Get started with TRON in AppKit.
+</Card>
+
 ### Polkadot
 
 AppKit supports Polkadot on Flutter. For Polkadot integration details on other platforms, refer to the [Polkadot integration guide](/advanced/multichain/polkadot/dapp-integration-guide).
 
 ## Other Chains via WalletConnect Protocol
 
-Chains not listed above can still work with WalletConnect at the protocol level for dApp-wallet communication. The [WalletConnect Cloud Supported Chains](/cloud/chains/chain-list) page lists all chains available through the protocol, including Cosmos, Sui, Stacks, Tron, Near, Stellar, and more.
+Chains not listed above can still work with WalletConnect at the protocol level for dApp-wallet communication. The [WalletConnect Cloud Supported Chains](/cloud/chains/chain-list) page lists all chains available through the protocol, including Cosmos, Sui, Stacks, Near, Stellar, and more.
 
 For RPC method references on these chains, see the [Multi-Chain RPC Reference](/advanced/multichain/rpc-reference/ethereum-rpc).
+
+
+# TON
+Source: https://docs.reown.com/appkit/networks/ton
+
+
+
+The AppKit SDK supports TON (The Open Network), allowing users to connect their TON wallets to applications.
+
+**AppKit provides a simple, secure, and seamless in-app experience for users looking to transact within web3.**
+
+<Card title="Try Demo" href="https://lab.reown.com/appkit/?name=ton" />
+
+## Get Started
+
+<CardGroup>
+  <Card title="React" icon="react" href="/appkit/react/core/installation#ton">
+    Get started with AppKit in React.
+  </Card>
+
+  <Card title="Next.js" icon="square-n" href="/appkit/next/core/installation#ton">
+    Get started with AppKit in Next.js.
+  </Card>
+
+  <Card title="Vue" icon="vuejs" href="/appkit/vue/core/installation#ton">
+    Get started with AppKit in Vue.
+  </Card>
+
+  <Card title="JavaScript" icon="js" href="/appkit/javascript/core/installation#ton">
+    Get started with AppKit in JavaScript.
+  </Card>
+
+  <Card title="Svelte" icon="code" href="/appkit/svelte/core/installation#ton">
+    Get started with AppKit in Svelte.
+  </Card>
+
+  <Card title="Nuxt" icon="code" href="/appkit/nuxt/core/installation#ton">
+    Get started with AppKit in Nuxt.
+  </Card>
+</CardGroup>
+
+
+# TRON
+Source: https://docs.reown.com/appkit/networks/tron
+
+
+
+The AppKit SDK supports TRON, allowing users to connect their TRON wallets to applications.
+
+**AppKit provides a simple, secure, and seamless in-app experience for users looking to transact within web3.**
+
+<Card title="Try Demo" href="https://lab.reown.com/appkit/?name=tron" />
+
+## Get Started
+
+<CardGroup>
+  <Card title="React" icon="react" href="/appkit/react/core/installation#tron">
+    Get started with AppKit in React.
+  </Card>
+
+  <Card title="Vue" icon="vuejs" href="/appkit/vue/core/installation#tron">
+    Get started with AppKit in Vue.
+  </Card>
+
+  <Card title="JavaScript" icon="js" href="/appkit/javascript/core/installation#tron">
+    Get started with AppKit in JavaScript.
+  </Card>
+</CardGroup>
 
 
 # Analytics
@@ -25782,12 +25875,12 @@ const paymentAssetDetails = {
 ```
 
 
-# AppKit Pay with Exchange - Next.js
+# Pay with Exchange - Next.js
 Source: https://docs.reown.com/appkit/next/payments/pay-with-exchange
 
 
 
-**AppKit Pay with Exchange** unlocks a powerful new flow: users can pay in crypto directly from their Centralized Exchange (CEXs) accounts like Binance or Coinbase, with no new wallets, no app switching, and no lost conversions.
+**Pay with Exchange** unlocks a powerful new flow: users can pay in crypto directly from their Centralized Exchange (CEXs) accounts like Binance, with no new wallets, no app switching, and no lost conversions.
 
 ## Quickstart
 
@@ -25914,7 +26007,7 @@ Or handle the payment result in the UI by displaying the payment status:
 
 ## Supported Networks and Assets
 
-For a complete list of supported networks and assets across different exchanges (Coinbase, Binance), please refer to the [Networks and Assets Supported](/appkit/payments/pay-with-exchange#networks-and-assets-supported) section in our Pay with Exchange documentation.
+For a complete list of supported networks and assets, please refer to the [Networks and Assets Supported](/appkit/payments/pay-with-exchange#networks-and-assets-supported) section in our Pay with Exchange documentation.
 
 ## Assets Configuration
 
@@ -29213,7 +29306,6 @@ Source: https://docs.reown.com/appkit/overview
 * [In-platform Onramps](/appkit/features/onramp)
 * [Pay with Exchange](/appkit/payments/pay-with-exchange)
 * [Deposit with Exchange](/appkit/payments/deposit-with-exchange)
-* [One-click checkout](/appkit/payments/one-click-checkout)
 
 **Multichain Tools**
 
@@ -29249,7 +29341,7 @@ Source: https://docs.reown.com/appkit/overview
     Get started with AppKit in Vue.
   </Card>
 
-  <Card title="Svelte" icon="https://mintcdn.com/reown-5552f0bb/7xDtSpu26KOVrErl/images/icons/svelte.svg?fit=max&auto=format&n=7xDtSpu26KOVrErl&q=85&s=998e9d556c29499fcdacd1abe55315bf" href="./svelte/core/installation">
+  <Card title="Svelte" icon="https://mintcdn.com/reown-5552f0bb/y6FfJGDgiHdFLuuy/images/icons/svelte.svg?fit=max&auto=format&n=y6FfJGDgiHdFLuuy&q=85&s=ac80fcae3436e349d376fa7598bd4d32" href="./svelte/core/installation">
     Get started with AppKit in Svelte.
   </Card>
 
@@ -29566,34 +29658,6 @@ For access to additional networks or assets, contact us [via our form here](http
 </CardGroup>
 
 
-# One-Click Checkout
-Source: https://docs.reown.com/appkit/payments/one-click-checkout
-
-
-
-**AppKit Pay One-Click Checkout** enables lightning-fast crypto payments with just **one tap**; no manual wallet connections, no network switching, and no guesswork.
-
-<Frame>
-  <video />
-</Frame>
-
-Designed for mobile-first commerce, this feature uses Reown's vast ecosystem of wallets and onchain UX infrastructure to deliver:
-
-* **Instant wallet recognition**: Automatically detects the user’s preferred wallet.
-* **Pre-filled transaction details**: No need to copy/paste, scan QR codes, or toggle apps.
-* **Conversion-optimized UX**: Fewer steps = more completed payments.
-
-Perfect for merchants and payment providers who want to **maximize conversions** and offer a **modern checkout experience** that rivals Web2.
-
-***One click. One user journey. Zero friction.***
-
-<Note>
-  This feature is currently in early access and is about to launch soon.     Wallets will need to support `wallet_checkout` method for this feature to work as expected.
-
-  We recommend checking with us to ensure that target wallet providers support the necessary functionality. If you are interested in getting early access or learning more, contact us [via our form here](https://share.hsforms.com/1_oWa8QkwRXi6oR0nZ_SIxQnxw6s).
-</Note>
-
-
 # Payments
 Source: https://docs.reown.com/appkit/payments/overview
 
@@ -29627,7 +29691,7 @@ Reown powers modern payment experiences like:
 
 1. **Pay with Self Custodial Wallet**: Let users pay with their self custodial wallets like MetaMask, Trust, Ledger, and more. This flow is bundled together with the **Pay with Exchange** flow.
 
-2. **Pay with Exchange**: Let users pay directly from Centralized Exchanges (CEXs) like Binance, Coinbase, and more.
+2. **Pay with Exchange**: Let users pay directly from Centralized Exchanges (CEXs) like Binance.
 
 3. **1-Click Checkout**: Fast, mobile-optimized, self-custodial and crypto native checkout flows (coming soon).
 
@@ -29643,7 +29707,7 @@ With **multi-platform SDKs**, **battle-tested infrastructure**, and **exclusive 
 
 <CardGroup>
   <Card title="Pay with Exchange and Self Custodial Wallets" icon="money-check-dollar" href="/appkit/payments/pay-with-exchange">
-    Get started with AppKit Pay with Exchange and self-custodial wallets.
+    Get started with Pay with Exchange and self-custodial wallets.
   </Card>
 
   <Card title="One-Click Checkout" icon="cart-shopping" href="/appkit/payments/one-click-checkout">
@@ -29657,10 +29721,10 @@ Source: https://docs.reown.com/appkit/payments/pay-with-exchange
 
 
 
-**AppKit Pay with Exchange** unlocks a powerful new flow: users can pay in crypto directly from their **Centralized Exchange (CEX) accounts** like Binance or Coinbase, **with no new wallets, no app switching, and no lost conversions.** This flow is bundled together with the **Pay with Self-Custodial Wallets** flow.
+**Pay with Exchange** unlocks a powerful new flow: users can pay in crypto directly from their **Centralized Exchange (CEX) accounts** like Binance, **with no new wallets, no app switching, and no lost conversions.** This flow is bundled together with the **Pay with Self-Custodial Wallets** flow.
 
 <Warning>
-  Coinbase is currently not available in the AppKit Pay with Exchange flow. Further information will be available soon.
+  Currently, Binance is the only exchange compatible with the Pay with Exchange flow, but we will be adding more centralized exchanges in the future.
 </Warning>
 
 <Frame>
@@ -29683,7 +29747,7 @@ With **72% of crypto users holding funds on exchanges**, **Pay with Exchange** h
 
 ## Demo
 
-Want to see AppKit Pay with Exchange in action? Try out the live demo to experience Reown AppKit's AppKit Pay with Exchange flow firsthand.
+Want to see Pay with Exchange in action? Try out the live demo to experience Reown's Pay with Exchange flow firsthand.
 
 <CardGroup>
   <Card icon="flask" title="Try Demo" href="https://appkit-pay-ecommerce-demo.reown.com" />
@@ -29691,18 +29755,9 @@ Want to see AppKit Pay with Exchange in action? Try out the live demo to experie
 
 ## Networks and Assets Supported
 
-Currently, AppKit Pay with Exchange and Self-Custodial Wallets supports the following assets on the following networks:
+Currently, Pay with Exchange and Self-Custodial Wallets supports the following assets on the following networks:
 
 **Asset -> Network**
-
-<Warning>
-  Coinbase is currently not available in the AppKit Pay with Exchange flow. Further information will be available soon.
-</Warning>
-
-**Coinbase**
-
-* USDC -> Ethereum, Optimism, Arbitrum, Base, Polygon, Solana
-* USDT -> Ethereum
 
 **Binance**
 
@@ -29714,27 +29769,27 @@ Currently, AppKit Pay with Exchange and Self-Custodial Wallets supports the foll
 
 For access to additional networks or assets, contact us [via our form here](https://share.hsforms.com/1_oWa8QkwRXi6oR0nZ_SIxQnxw6s).
 
-## Interested in getting early access?
+## Interested in Pay with Exchange?
 
-This feature is currently in early access. If you are **interested in getting early access** or learning more, **contact us [via our form here](https://share.hsforms.com/1_oWa8QkwRXi6oR0nZ_SIxQnxw6s).**
+This feature is for Enterprise clients only. If you're interested in joining our Enterprise tier, please fill out our [contact form here](https://share.hsforms.com/1_oWa8QkwRXi6oR0nZ_SIxQnxw6s).
 
 ## Get Started
 
 <CardGroup>
   <Card title="React" icon="react" href="/appkit/react/payments/pay-with-exchange">
-    Get started with AppKit Pay with Exchange and self-custodial wallets in React.
+    Get started with Pay with Exchange and self-custodial wallets in React.
   </Card>
 
   <Card title="Next.js" icon="square-n" href="/appkit/next/payments/pay-with-exchange">
-    Get started with AppKit Pay with Exchange and self-custodial wallets in Next.js.
+    Get started with Pay with Exchange and self-custodial wallets in Next.js.
   </Card>
 
   <Card title="Vue" icon="vuejs" href="/appkit/vue/payments/pay-with-exchange">
-    Get started with AppKit Pay with Exchange and self-custodial wallets in Vue.
+    Get started with Pay with Exchange and self-custodial wallets in Vue.
   </Card>
 
   <Card title="JavaScript" icon="js" href="/appkit/javascript/payments/pay-with-exchange">
-    Get started with AppKit Pay with Exchange and self-custodial wallets in JavaScript.
+    Get started with Pay with Exchange and self-custodial wallets in JavaScript.
   </Card>
 </CardGroup>
 
@@ -29742,7 +29797,7 @@ This feature is currently in early access. If you are **interested in getting ea
 
 <AccordionGroup>
   <Accordion title="What is 'Pay with Exchange'?">
-    Pay with Exchange is a flow that allows users to pay in crypto directly from their Centralized Exchange (CEX) accounts; starting with **Binance** and **Coinbase**.
+    Pay with Exchange is a flow that allows users to pay in crypto directly from their Centralized Exchange (CEX) accounts, starting with **Binance**.
 
     It allows users to complete payments without needing to move funds into a wallet first.
   </Accordion>
@@ -29754,11 +29809,7 @@ This feature is currently in early access. If you are **interested in getting ea
   </Accordion>
 
   <Accordion title="Which exchanges are supported?">
-    Coinbase and Binance. More exchanges will be added, so contact us [via our form here](https://share.hsforms.com/1_oWa8QkwRXi6oR0nZ_SIxQnxw6s) to inquire.
-
-    <Warning>
-      Coinbase is currently not available in the AppKit Pay with Exchange flow. Further information will be available soon.
-    </Warning>
+    Currently, Binance is the only exchange compatible with the Pay with Exchange flow, but we will be adding more centralized exchanges in the future. Contact us [via our form here](https://share.hsforms.com/1_oWa8QkwRXi6oR0nZ_SIxQnxw6s) to inquire.
   </Accordion>
 
   <Accordion title="What crypto assets and networks are supported?">
@@ -39527,12 +39578,12 @@ const paymentAssetDetails = {
 ```
 
 
-# AppKit Pay with Exchange - React
+# Pay with Exchange - React
 Source: https://docs.reown.com/appkit/react/payments/pay-with-exchange
 
 
 
-**AppKit Pay with Exchange** unlocks a powerful new flow: users can pay in crypto directly from their Centralized Exchange (CEXs) accounts like Binance or Coinbase, with no new wallets, no app switching, and no lost conversions.
+**Pay with Exchange** unlocks a powerful new flow: users can pay in crypto directly from their Centralized Exchange (CEXs) accounts like Binance, with no new wallets, no app switching, and no lost conversions.
 
 ## Quickstart
 
@@ -39659,7 +39710,7 @@ Or handle the payment result in the UI by displaying the payment status:
 
 ## Supported Networks and Assets
 
-For a complete list of supported networks and assets across different exchanges (Coinbase, Binance), please refer to the [Networks and Assets Supported](/appkit/payments/pay-with-exchange#networks-and-assets-supported) section in our Pay with Exchange documentation.
+For a complete list of supported networks and assets, please refer to the [Networks and Assets Supported](/appkit/payments/pay-with-exchange#networks-and-assets-supported) section in our Pay with Exchange documentation.
 
 ## Assets Configuration
 
@@ -56340,12 +56391,12 @@ const paymentAssetDetails = {
 ```
 
 
-# AppKit Pay with Exchange - Vue
+# Pay with Exchange - Vue
 Source: https://docs.reown.com/appkit/vue/payments/pay-with-exchange
 
 
 
-**AppKit Pay with Exchange** unlocks a powerful new flow: users can pay in crypto directly from their Centralized Exchange (CEXs) accounts like Binance or Coinbase, with no new wallets, no app switching, and no lost conversions.
+**Pay with Exchange** unlocks a powerful new flow: users can pay in crypto directly from their Centralized Exchange (CEXs) accounts like Binance, with no new wallets, no app switching, and no lost conversions.
 
 ## Quickstart
 
@@ -56472,7 +56523,7 @@ Or handle the payment result in the UI by displaying the payment status:
 
 ## Supported Networks and Assets
 
-For a complete list of supported networks and assets across different exchanges (Coinbase, Binance), please refer to the [Networks and Assets Supported](/appkit/payments/pay-with-exchange#networks-and-assets-supported) section in our Pay with Exchange documentation.
+For a complete list of supported networks and assets, please refer to the [Networks and Assets Supported](/appkit/payments/pay-with-exchange#networks-and-assets-supported) section in our Pay with Exchange documentation.
 
 ## Assets Configuration
 

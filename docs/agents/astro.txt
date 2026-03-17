@@ -2254,7 +2254,6 @@ These docs are brought to you by all these helpful people. [Join us on GitHub!](
 * [![JuanM04](https://avatars.githubusercontent.com/u/16712703?s=64 "JuanM04")](https://github.com/JuanM04)
 * [![bandantonio](https://avatars.githubusercontent.com/u/16765690?s=64 "bandantonio")](https://github.com/bandantonio)
 * [![thepassle](https://avatars.githubusercontent.com/u/17054057?s=64 "thepassle")](https://github.com/thepassle)
-* [![AlexNodex](https://avatars.githubusercontent.com/u/17162626?s=64 "AlexNodex")](https://github.com/AlexNodex)
 * [![tinymachine](https://avatars.githubusercontent.com/u/171986?s=64 "tinymachine")](https://github.com/tinymachine)
 * [![okikio](https://avatars.githubusercontent.com/u/17222836?s=64 "okikio")](https://github.com/okikio)
 * [![dsomel21](https://avatars.githubusercontent.com/u/17516559?s=64 "dsomel21")](https://github.com/dsomel21)
@@ -2349,7 +2348,6 @@ These docs are brought to you by all these helpful people. [Join us on GitHub!](
 * [![staticWagomU](https://avatars.githubusercontent.com/u/34824645?s=64 "staticWagomU")](https://github.com/staticWagomU)
 * [![AdamGEmerson](https://avatars.githubusercontent.com/u/35545129?s=64 "AdamGEmerson")](https://github.com/AdamGEmerson)
 * [![ADRlANO](https://avatars.githubusercontent.com/u/35582648?s=64 "ADRlANO")](https://github.com/ADRlANO)
-* [![amaimus](https://avatars.githubusercontent.com/u/35699916?s=64 "amaimus")](https://github.com/amaimus)
 * [![delucis](https://avatars.githubusercontent.com/u/357379?s=64 "delucis")](https://github.com/delucis)
 * [![melon95](https://avatars.githubusercontent.com/u/35761035?s=64 "melon95")](https://github.com/melon95)
 * [![Ekwuno](https://avatars.githubusercontent.com/u/35943047?s=64 "Ekwuno")](https://github.com/Ekwuno)
@@ -2376,6 +2374,7 @@ These docs are brought to you by all these helpful people. [Join us on GitHub!](
 * [![evadecker](https://avatars.githubusercontent.com/u/4117920?s=64 "evadecker")](https://github.com/evadecker)
 * [![conradagramont](https://avatars.githubusercontent.com/u/41589731?s=64 "conradagramont")](https://github.com/conradagramont)
 * [![asgoshawk](https://avatars.githubusercontent.com/u/42184309?s=64 "asgoshawk")](https://github.com/asgoshawk)
+* [![hank00111](https://avatars.githubusercontent.com/u/42414986?s=64 "hank00111")](https://github.com/hank00111)
 * [![abhikjain360](https://avatars.githubusercontent.com/u/43034252?s=64 "abhikjain360")](https://github.com/abhikjain360)
 * [![yuto343](https://avatars.githubusercontent.com/u/43196286?s=64 "yuto343")](https://github.com/yuto343)
 * [![Erik-McKelvey](https://avatars.githubusercontent.com/u/43917961?s=64 "Erik-McKelvey")](https://github.com/Erik-McKelvey)
@@ -2462,7 +2461,6 @@ These docs are brought to you by all these helpful people. [Join us on GitHub!](
 * [![RafidMuhymin](https://avatars.githubusercontent.com/u/63650415?s=64 "RafidMuhymin")](https://github.com/RafidMuhymin)
 * [![Yusaku01](https://avatars.githubusercontent.com/u/64152685?s=64 "Yusaku01")](https://github.com/Yusaku01)
 * [![TheOtterlord](https://avatars.githubusercontent.com/u/64310361?s=64 "TheOtterlord")](https://github.com/TheOtterlord)
-* [![alexpdraper](https://avatars.githubusercontent.com/u/6441503?s=64 "alexpdraper")](https://github.com/alexpdraper)
 * [![abrahamjimenez](https://avatars.githubusercontent.com/u/64721034?s=64 "abrahamjimenez")](https://github.com/abrahamjimenez)
 * [![BlackdestinyXX](https://avatars.githubusercontent.com/u/65021823?s=64 "BlackdestinyXX")](https://github.com/BlackdestinyXX)
 * [![manchan4869](https://avatars.githubusercontent.com/u/65327974?s=64 "manchan4869")](https://github.com/manchan4869)
@@ -17438,7 +17436,7 @@ src/data/dogs.json
 
 [Section titled “Parsing other data formats”](#parsing-other-data-formats)
 
-Support for parsing single JSON, YAML, and TOML files into collection entries withe the `file()` loader is built-in (unless you have a [nested JSON document](#nested-json-documents)). To load your collection from unsupported file types, such as `.csv`, you will need to create a [parser function](/en/reference/content-loader-reference/#parser). This function can be made async if required (e.g. to fetch files from the web, or if your parser is asyncronous).
+Support for parsing single JSON, YAML, and TOML files into collection entries with the `file()` loader is built-in (unless you have a [nested JSON document](#nested-json-documents)). To load your collection from unsupported file types, such as `.csv`, you will need to create a [parser function](/en/reference/content-loader-reference/#parser). This function can be made async if required (e.g. to fetch files from the web, or if your parser is asyncronous).
 
 The following example shows importing a third-party CSV parser then passing a custom `parser` function to the `file()` loader:
 
@@ -23412,7 +23410,7 @@ This example will demonstrate adding a custom font using the font file `DistantG
 
 Astro supports [several font providers](/en/reference/font-provider-reference/#built-in-providers) out of the box, including support for [Fontsource](https://fontsource.org/) that simplifies using Google Fonts and other open-source fonts.
 
-The following example will use Fontsource to add custom font support, but the process is similar for any of Astro’s built-in font providers (e.g. [Adobe](https://fonts.adobe.com/), [Bunny](https://fonts.bunny)).
+The following example will use Fontsource to add custom font support, but the process is similar for any of Astro’s built-in font providers (e.g. [Adobe](https://fonts.adobe.com/), [Bunny](https://fonts.bunny.net/)).
 
 1. Find the font you want to use in [Fontsource’s catalog](https://fontsource.org/). This example will use [Roboto](https://fontsource.org/fonts/roboto).
 
@@ -23453,7 +23451,7 @@ After [a font is configured](#configuring-custom-fonts), it must be added to you
 
    <html>
      <head>
-       +<Font cssVariable="--font-distant-galaxy" preload />
+       +<Font cssVariable="--font-distant-galaxy" />
      </head>
      <body>
        <slot />
@@ -23503,7 +23501,7 @@ Instead, after [configuring your custom font](#configuring-custom-fonts) and [ad
 
 
   @theme inline {
-      +--font-sans: var(--font-roboto);
+    +--font-sans: var(--font-roboto);
   }
   ```
 
@@ -23514,18 +23512,18 @@ Instead, after [configuring your custom font](#configuring-custom-fonts) and [ad
   ```diff
   /** @type {import("tailwindcss").Config} */
   export default {
-  content: ["./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}"],
-  theme: {
+    content: ["./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}"],
+    theme: {
       extend: {},
   +    fontFamily: {
-  +        sans: ["var(--font-roboto)"]
+  +      sans: ["var(--font-roboto)"]
   +    }
-  },
-  plugins: []
+    },
+    plugins: []
   };
   ```
 
-See [Tailwind’s docs on adding custom font families](https://tailwindcss.com/docs/font-family#using-custom-values) for more information.
+See [Tailwind’s docs on adding custom font families](https://tailwindcss.com/docs/font-family#using-a-custom-value) for more information.
 
 ## Accessing font data programmatically
 
@@ -26408,14 +26406,14 @@ See [`prerenderEnvironment`](#prerenderenvironment) for configuration details.
 
 The new workerd environment does not support CommonJS syntax, including Node.js specific syntax such as `require` and `module.exports`. This means that some of your project dependencies may throw errors in the development server or during the build.
 
-If you have control over the dependency, you can create a Vite plugin and pre-compile the dependency using the `optimiseDeps.include` option.
+If you have control over the dependency, you can create a Vite plugin and pre-compile the dependency using the `optimizeDeps.include` option.
 
 For example, you can create a Vite plugin to pre-compile the dependency `postcss` in order to use the Expressive Code syntax highlighter:
 
 ```diff
 function noExternalPlugin() {
   return {
-    name: "optimise-dependencies",
+    name: "optimize-dependencies",
     configEnvironment(environment) {
       // We're only interested in server environments
       if (environment !== 'client') {
@@ -46987,7 +46985,7 @@ Replace both methods with [`getEntry()`](/en/reference/modules/astro-content/#ge
 
 legacy collection querying and rendering methods that depend on a `slug` property / ([`ContentSchemaContainsSlugError`](/en/reference/errors/content-schema-contains-slug-error/))
 
-Previously, the `id` was based on the filename, and there was a `slug` property that could be used in a URL. Now the [CollectionEntry](/en/reference/modules/astro-content/#collectionentry) `id` is a slug. If you need access to the filename (previously available as the `id`), use the `filePath` property. Replace instances of `slug` with `id`:
+Previously, the `id` was based on the filename, and there was a `slug` property that could be used in a URL. Now the [`CollectionEntry`](/en/reference/modules/astro-content/#collectionentry) `id` is a slug. If you need access to the filename (previously available as the `id`), use the `filePath` property. Replace instances of `slug` with `id`:
 
 src/pages/\[slug].astro
 
@@ -60205,7 +60203,7 @@ import { loadFeedData } from "./feed.js";
 
 
 // 2. Define any options that your loader needs
-export function myLoader(options: { url: string, apiKey: string }) {
+export function feedLoader(options: { url: string, apiKey: string }) {
   const feedUrl = new URL(options.url);
   // 3. Return a loader object
   return {
@@ -72269,7 +72267,7 @@ import { Font } from "astro:assets";
 ---
 
 
-<Font cssVariable="--font-roboto" preload />
+<Font cssVariable="--font-roboto" />
 ```
 
 The `<Font />` component accepts the following properties:
@@ -72314,7 +72312,7 @@ import { Font } from "astro:assets";
 <Font cssVariable="--font-roboto" preload />
 ```
 
-You may not always want to preload every font link, as this can block loading other important resources or may download fonts that are not needed for the current page.
+Be very intentional about which fonts you preload. Preloading too many fonts can impact performance, as this can block loading other important resources or may download fonts that are not needed for the current page.
 
 To selectively control which font files are preloaded, you can provide an array of objects describing any combination of font `weight`, `style`, or `subset` to preload:
 
@@ -82810,7 +82808,7 @@ This guide covers how to update your version of Astro and related dependencies, 
 
 [Section titled “What has changed?”](#what-has-changed)
 
-The latest release of Astro is v6.0.4.
+The latest release of Astro is v6.0.5.
 
 You can find an exhaustive list of all changes in [Astro’s changelog](https://github.com/withastro/astro/blob/main/packages/astro/CHANGELOG.md), and important instructions for upgrading to each new [major version](#major-changes) in our [upgrade guides](#upgrade-guides).
 

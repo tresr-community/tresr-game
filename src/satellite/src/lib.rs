@@ -598,24 +598,37 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
 /// How many times to retry `verify_avalanche_fee` before giving up.
 ///
 /// Fuji testnet RPC providers can lag 5–15 s in indexing new blocks.
-/// The EVM RPC canister requires *all* configured providers to agree, so
-/// a single lagging node returns `null` → "Receipt not found".  We retry
-/// with a 5-second delay between each attempt to let propagation settle.
+/// With `quorum_rpc_config` (2-of-3 threshold) any single downed/lagging
+/// provider is tolerated. Retries here cover the rare case where 2+ providers
+/// simultaneously haven't indexed the block yet.
+///
+/// Each call to `verify_avalanche_fee` involves an inter-canister round-trip
+/// to the EVM RPC canister plus outbound HTTP calls — naturally 2–10 s per
+/// attempt, giving ~10–50 s of implicit delay across 5 retries without
+/// any artificial sleep.
+///
+/// Each attempt also writes `FeeStatus::Verifying` back to the Juno `audit`
+/// doc so the frontend can display live retry-progress messages.
 ///
 /// Only transient "not found" / "inconsistent" errors are retried.
 /// Hard errors (wrong vault, tx reverted, wrong sender) fail immediately.
-const FEE_VERIFY_MAX_RETRIES: u32 = 3;
+const FEE_VERIFY_MAX_RETRIES: u32 = 5;
 
 /// Returns true for errors that are worth retrying (receipt hasn't propagated yet).
 fn is_retryable_fee_error(e: &str) -> bool {
     e.contains("Receipt not found") || e.contains("Inconsistent receipt results")
 }
 
-/// Process fee requests - verify on EVM chain with retry logic.
+/// Process fee requests — verify on EVM chain with retry logic.
 ///
-/// Retries transient "Receipt not found" / "Inconsistent" errors up to
-/// `FEE_VERIFY_MAX_RETRIES` times with a `FEE_VERIFY_RETRY_DELAY_NS` delay
-/// between each attempt.  Hard validation failures are never retried.
+/// On each transient "Receipt not found" or "Inconsistent" error the function
+/// writes `FeeStatus::Verifying` (+ attempt info in `error`) back to the
+/// Juno `audit` doc so the frontend can poll progress in real-time, then
+/// continues to the next attempt. The natural latency of each ICP outcall
+/// (~2–10 s per attempt) provides implicit backoff without explicit sleeps.
+///
+/// Hard validation failures (tx reverted, wrong vault, wrong sender) are
+/// never retried — they fail immediately with `FeeStatus::Failed`.
 async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
     let mut fee: FeeRequest = decode_doc_data(&context.data.data.after.data)?;
 
@@ -624,14 +637,7 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
         return Ok(());
     }
 
-    // --- Retry loop: verify_avalanche_fee with natural delay ---------------
-    // Each call to verify_avalanche_fee involves an inter-canister round-trip
-    // to the EVM RPC canister plus 3 outbound HTTP calls to Fuji RPC providers.
-    // This naturally costs ~2–5 seconds per attempt — no explicit sleep needed.
-    //
-    // With quorum_rpc_config (2-of-3 threshold) any single downed/lagging
-    // provider is tolerated. Retries here cover the rare case where 2+ providers
-    // simultaneously haven't indexed the block yet.
+    // --- Retry loop: verify_avalanche_fee with Verifying status updates ------
     let mut last_error = String::new();
     let mut parsed_fee_opt: Option<evm_rpc::ParsedFee> = None;
 
@@ -651,7 +657,7 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                 parsed_fee_opt = Some(parsed);
                 break;
             }
-            Err(ref e) if is_retryable_fee_error(e) => {
+            Err(ref e) if is_retryable_fee_error(e) && attempt < FEE_VERIFY_MAX_RETRIES => {
                 last_error = e.clone();
                 logging::log_info(
                     "Fees",
@@ -660,7 +666,45 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                         attempt, FEE_VERIFY_MAX_RETRIES, e
                     ),
                 );
-                // Continue to next retry
+
+                // Write Verifying status so the frontend can show retry progress.
+                // Include the attempt info in the `error` field so the UI can
+                // parse "Attempt N/M" and display a user-friendly message.
+                // This is best-effort — a write failure does not abort the retry.
+                fee.status = FeeStatus::Verifying;
+                fee.error = Some(format!(
+                    "Attempt {}/{}: {}",
+                    attempt, FEE_VERIFY_MAX_RETRIES, e
+                ));
+                let verifying_doc = SetDoc {
+                    data: encode_doc_data(&fee).unwrap_or_default(),
+                    description: context.data.data.after.description.clone(),
+                    version: context.data.data.after.version,
+                };
+                set_doc_store(
+                    context.caller,
+                    context.data.collection.clone(),
+                    context.data.key.clone(),
+                    verifying_doc,
+                )
+                .ok(); // best-effort — a write failure must not abort the retry
+
+                // Reset to Pending so subsequent writes don't early-return above
+                fee.status = FeeStatus::Pending;
+                // No explicit sleep — the next verify_avalanche_fee call
+                // naturally takes 2–10 s (ICP inter-canister + HTTP outcalls),
+                // providing implicit backoff.
+            }
+            Err(ref e) if is_retryable_fee_error(e) => {
+                // Final attempt — record error and fall through to Failed
+                last_error = e.clone();
+                logging::log_info(
+                    "Fees",
+                    &format!(
+                        "Fee verification attempt {}/{} returned transient error: {}",
+                        attempt, FEE_VERIFY_MAX_RETRIES, e
+                    ),
+                );
             }
             Err(e) => {
                 // Hard error (reverted, wrong vault, wrong sender) — don't retry
