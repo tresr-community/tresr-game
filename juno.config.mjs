@@ -106,8 +106,7 @@ export default defineConfig(({mode}) => ({
       // Allow the container to reach host-machine services (e.g. Anvil RPC)
       // via the stable hostname host.docker.internal.
       // Requires @junobuild/cli built from the local fork (packages/cli).
-      // TODO: Enable when PR is merged -> https://github.com/junobuild/cli/pull/485
-      //extraHosts: [["host.docker.internal", "host-gateway"]],
+      extraHosts: [["host.docker.internal", "host-gateway"]],
     },
     skylab: {
       ports: {
