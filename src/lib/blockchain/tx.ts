@@ -73,9 +73,24 @@ function buildDirectClient(): PublicClient {
  * @param options.component - Component name for log messages
  * @returns The on-chain transaction receipt
  */
+/**
+ * Confirm a transaction receipt with per-confirmation progress reporting.
+ *
+ * On testnet (Fuji) we wait for 3 confirmations so all 3 EVM RPC providers
+ * used by the satellite (DFINITY EVM RPC canister) have time to index the
+ * block before we submit to Juno. One confirmation is often enough for the
+ * browser's single RPC but other providers can lag 5–15 s.
+ *
+ * @param onConfirmation - Optional callback invoked after each new confirmation.
+ *   Receives (current, total) e.g. (1, 3).
+ */
 export async function confirmReceipt(
   hash: `0x${string}`,
-  options?: {timeout?: number; component?: string}
+  options?: {
+    timeout?: number;
+    component?: string;
+    onConfirmation?: (current: number, total: number) => void;
+  }
 ): Promise<TransactionReceipt> {
   if (!config.wallet.tx_timeout_ms) {
     throw new Error("Missing required config value: wallet.tx_timeout_ms");
@@ -84,32 +99,82 @@ export async function confirmReceipt(
   const component = options?.component ?? COMPONENT_NAME;
 
   const env = getEnvironmentKey();
-  let confirmations = 0; // default for development/anvil
-  if (env === "testnet") {
-    confirmations = 1;
-  } else if (env === "mainnet") {
-    confirmations = 2;
-  }
+  // For Anvil, we wait for 0 confirmations (auto-mine).
+  // For Testnet/Mainnet, we wait   for 2 confirmations.
+  const totalConfirmations = env === "anvil" ? 0 : 2;
 
   log.info(
     component,
-    `Waiting for receipt (${confirmations} confirmations):`,
+    `Waiting for receipt (${totalConfirmations} confirmations):`,
     hash
   );
 
-  // pollingInterval of 100ms catches Anvil auto-mined receipts on the first
-  // poll and is fast enough for testnet/mainnet — no env-specific branches.
   const client = buildDirectClient();
+
+  // Anvil is auto-mine, so we can skip the confirmation wait.
+  if (totalConfirmations <= 1) {
+    // Fast path for local/single-confirmation environments
+    const receipt = await client.waitForTransactionReceipt({
+      hash,
+      timeout,
+      pollingInterval: 100,
+      confirmations: totalConfirmations,
+    });
+    if (receipt.status !== "success") {
+      throw new Error("Transaction reverted on-chain");
+    }
+    log.info(component, "Confirmed in block", receipt.blockNumber);
+    return receipt;
+  }
+
+  // Multi-confirmation path: poll block-by-block so we can fire progress callbacks.
+  // We first get the initial receipt (1 confirmation), then wait for each
+  // subsequent block to arrive.
   const receipt = await client.waitForTransactionReceipt({
     hash,
     timeout,
-    pollingInterval: 100,
-    confirmations,
+    pollingInterval: 500,
+    confirmations: 1,
   });
 
   if (receipt.status !== "success") {
     throw new Error("Transaction reverted on-chain");
   }
+
+  options?.onConfirmation?.(1, totalConfirmations);
+  log.info(
+    component,
+    `Confirmation 1/${totalConfirmations} (block ${receipt.blockNumber})`
+  );
+
+  const confirmedBlock = receipt.blockNumber;
+
+  // Poll block number until we've seen each subsequent confirmation.
+  // Using getBlockNumber() avoids the `waitForBlock` API that isn't
+  // available on the cast PublicClient type.
+  for (let c = 2; c <= totalConfirmations; c++) {
+    const targetBlock = confirmedBlock + BigInt(c - 1);
+    // Busy-ish poll: check every 2 s until the required block has been mined.
+    while (true) {
+      const currentBlock = await client.getBlockNumber();
+      if (currentBlock >= targetBlock) break;
+      await new Promise((r) => setTimeout(r, 2_000));
+    }
+    options?.onConfirmation?.(c, totalConfirmations);
+    log.info(
+      component,
+      `Confirmation ${c}/${totalConfirmations} (block ${targetBlock})`
+    );
+  }
+
+  // Extra propagation buffer: give lagging RPC nodes time to index the block
+  // before the satellite queries them via the EVM RPC canister.
+  const propagationDelayMs = 5_000;
+  log.info(
+    component,
+    `Waiting ${propagationDelayMs}ms for RPC propagation before satellite query…`
+  );
+  await new Promise((r) => setTimeout(r, propagationDelayMs));
 
   log.info(component, "Confirmed in block", receipt.blockNumber);
   return receipt;

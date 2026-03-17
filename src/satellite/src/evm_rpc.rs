@@ -1,10 +1,11 @@
 #![allow(dead_code)]
 
 use crate::evm_rpc_types::{
-    BlockTag, CallArgs, CallResult as EvmCallResult, EvmRpcCanister, GetTransactionCountArgs,
-    GetTransactionCountResult, GetTransactionReceiptResult, JsonRequestResult, MultiCallResult,
-    MultiGetTransactionCountResult, MultiGetTransactionReceiptResult, MultiJsonRequestResult,
-    RpcApi, RpcConfig, RpcServices, TransactionRequest,
+    BlockTag, CallArgs, CallResult as EvmCallResult, ConsensusStrategy, EvmRpcCanister,
+    GetTransactionCountArgs, GetTransactionCountResult, GetTransactionReceiptResult,
+    JsonRequestResult, MultiCallResult, MultiGetTransactionCountResult,
+    MultiGetTransactionReceiptResult, MultiJsonRequestResult, RpcApi, RpcConfig, RpcServices,
+    TransactionRequest,
 };
 use candid::Principal;
 use ic_cdk_management_canister::{
@@ -98,6 +99,32 @@ fn default_rpc_config() -> Option<RpcConfig> {
     None
 }
 
+/// RpcConfig for fee and claim verification: require a **quorum** (majority)
+/// of RPC providers to agree rather than unanimity.
+///
+/// This prevents a single lagging or offline provider from blocking
+/// verification. With N providers configured we require `ceil(N/2)` to agree.
+///
+/// - 3 providers → min 2  (2/3 majority)
+/// - 2 providers → min 2  (both must agree — same as Equality, safe minimum)
+/// - 1 provider  → min 1  (no choice)
+///
+/// The `total` field tells the canister how many providers to query in total.
+/// Setting it to Some(N) ensures all N are always queried, maximising the
+/// sample from which the majority is drawn.
+fn quorum_rpc_config() -> Option<RpcConfig> {
+    let total = crate::config::AVALANCHE_RPC_URLS.len() as u8;
+    // ceil(total / 2) — at least half must agree
+    let min = total.div_ceil(2);
+    Some(RpcConfig {
+        responseConsensus: Some(ConsensusStrategy::Threshold {
+            min,
+            total: Some(total),
+        }),
+        responseSizeEstimate: None,
+    })
+}
+
 // ---------------------------------------------------------------------------
 // Helper: raw JSON-RPC via multi_request (for methods without typed bindings)
 // ---------------------------------------------------------------------------
@@ -177,7 +204,7 @@ pub async fn verify_avalanche_fee(tx_hash: &str) -> Result<ParsedFee, String> {
     let result = canister
         .eth_get_transaction_receipt(
             avalanche_rpc_services(),
-            default_rpc_config(),
+            quorum_rpc_config(), // 2-of-N majority — tolerates one downed/lagging provider
             tx_hash.to_string(),
             cycles_for_call(4096),
         )
@@ -617,7 +644,7 @@ async fn verify_transaction_receipt(tx_hash: &str) -> Result<(), String> {
     let result = canister
         .eth_get_transaction_receipt(
             avalanche_rpc_services(),
-            default_rpc_config(),
+            quorum_rpc_config(), // 2-of-N majority — tolerates one downed/lagging provider
             tx_hash.to_string(),
             cycles_for_call(4096), // receipts are larger
         )

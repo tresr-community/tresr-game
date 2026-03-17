@@ -290,10 +290,18 @@
       markStep("approve", "done");
       markStep("fee", "done");
 
-      // Step 5: Wait for on-chain confirmation (ticket #198)
+      // Step 5: Wait for on-chain confirmation with live block progress (ticket #198)
       markStep("confirm", "active");
-      showStatus("Confirming transaction on-chain...");
-      await confirmReceipt(txHash, {component: "FeeGate"});
+
+      // Show live confirmation count as each block lands.
+      // onConfirmation fires per block so the user sees "Confirming 1/3…" etc.
+      // On local (Anvil) this callback never fires (0 confirmations, fast path).
+      await confirmReceipt(txHash, {
+        component: "FeeGate",
+        onConfirmation: (current, total) => {
+          showStatus(`Confirming ${current}/${total} on-chain…`);
+        },
+      });
       markStep("confirm", "done");
 
       // Store session info in the fee-gate module (async — generates HMAC signature)

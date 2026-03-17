@@ -117,7 +117,6 @@ export const config: ConfigTypes = {
         "rpc_urls": [
           "https://api.avax-test.network/ext/bc/C/rpc",
           "https://avalanche-fuji-c-chain-rpc.publicnode.com",
-          "https://rpc.ankr.com/avalanche_fuji",
           "https://avalanche-fuji.drpc.org"
         ],
         "allowed_origins": [
@@ -138,7 +137,8 @@ export const config: ConfigTypes = {
         "chain_id": 43114,
         "rpc_urls": [
           "https://api.avax.network/ext/bc/C/rpc",
-          "https://avalanche-c-chain-rpc.publicnode.com"
+          "https://avalanche-c-chain-rpc.publicnode.com",
+          "https://avalanche.drpc.org"
         ],
         "allowed_origins": [
           "https://game.tresr.community"
@@ -169,7 +169,8 @@ export const config: ConfigTypes = {
           "canister_id": "7hfb6-caaaa-aaaar-qadga-cai",
           "rpc_urls": [
             "https://api.avax.network/ext/bc/C/rpc",
-            "https://avalanche-c-chain-rpc.publicnode.com"
+            "https://avalanche-c-chain-rpc.publicnode.com",
+            "https://avalanche.drpc.org"
           ]
         }
       }
