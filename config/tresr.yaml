@@ -261,7 +261,6 @@ client:
         rpc_urls:
           - https://api.avax-test.network/ext/bc/C/rpc
           - https://avalanche-fuji-c-chain-rpc.publicnode.com
-          - https://rpc.ankr.com/avalanche_fuji
           - https://avalanche-fuji.drpc.org
         allowed_origins:
           - https://game-testnet.tresr.community
@@ -284,6 +283,7 @@ client:
         rpc_urls:
           - https://api.avax.network/ext/bc/C/rpc
           - https://avalanche-c-chain-rpc.publicnode.com
+          - https://avalanche.drpc.org
         allowed_origins:
           - https://game.tresr.community
         token_ticker: TRESR # The Real deal $TRESR token
@@ -319,6 +319,7 @@ client:
           rpc_urls:
             - https://api.avax.network/ext/bc/C/rpc
             - https://avalanche-c-chain-rpc.publicnode.com
+            - https://avalanche.drpc.org
   wallet:
     faucet_cooldown_hours: 24
     balance_refresh_cooldown_ms: 30000

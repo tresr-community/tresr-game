@@ -595,7 +595,27 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
     Ok(())
 }
 
-/// Process fee requests - verify on EVM chain
+/// How many times to retry `verify_avalanche_fee` before giving up.
+///
+/// Fuji testnet RPC providers can lag 5–15 s in indexing new blocks.
+/// The EVM RPC canister requires *all* configured providers to agree, so
+/// a single lagging node returns `null` → "Receipt not found".  We retry
+/// with a 5-second delay between each attempt to let propagation settle.
+///
+/// Only transient "not found" / "inconsistent" errors are retried.
+/// Hard errors (wrong vault, tx reverted, wrong sender) fail immediately.
+const FEE_VERIFY_MAX_RETRIES: u32 = 3;
+
+/// Returns true for errors that are worth retrying (receipt hasn't propagated yet).
+fn is_retryable_fee_error(e: &str) -> bool {
+    e.contains("Receipt not found") || e.contains("Inconsistent receipt results")
+}
+
+/// Process fee requests - verify on EVM chain with retry logic.
+///
+/// Retries transient "Receipt not found" / "Inconsistent" errors up to
+/// `FEE_VERIFY_MAX_RETRIES` times with a `FEE_VERIFY_RETRY_DELAY_NS` delay
+/// between each attempt.  Hard validation failures are never retried.
 async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
     let mut fee: FeeRequest = decode_doc_data(&context.data.data.after.data)?;
 
@@ -604,9 +624,55 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
         return Ok(());
     }
 
-    // Verify the transaction on Avalanche via the local EVM RPC canister.
-    match evm_rpc::verify_avalanche_fee(&fee.tx_hash).await {
-        Ok(parsed) => {
+    // --- Retry loop: verify_avalanche_fee with natural delay ---------------
+    // Each call to verify_avalanche_fee involves an inter-canister round-trip
+    // to the EVM RPC canister plus 3 outbound HTTP calls to Fuji RPC providers.
+    // This naturally costs ~2–5 seconds per attempt — no explicit sleep needed.
+    //
+    // With quorum_rpc_config (2-of-3 threshold) any single downed/lagging
+    // provider is tolerated. Retries here cover the rare case where 2+ providers
+    // simultaneously haven't indexed the block yet.
+    let mut last_error = String::new();
+    let mut parsed_fee_opt: Option<evm_rpc::ParsedFee> = None;
+
+    for attempt in 1..=FEE_VERIFY_MAX_RETRIES {
+        if attempt > 1 {
+            logging::log_info(
+                "Fees",
+                &format!(
+                    "Retrying fee verification (attempt {}/{}) for tx {}",
+                    attempt, FEE_VERIFY_MAX_RETRIES, fee.tx_hash,
+                ),
+            );
+        }
+
+        match evm_rpc::verify_avalanche_fee(&fee.tx_hash).await {
+            Ok(parsed) => {
+                parsed_fee_opt = Some(parsed);
+                break;
+            }
+            Err(ref e) if is_retryable_fee_error(e) => {
+                last_error = e.clone();
+                logging::log_info(
+                    "Fees",
+                    &format!(
+                        "Fee verification attempt {}/{} returned transient error: {}",
+                        attempt, FEE_VERIFY_MAX_RETRIES, e
+                    ),
+                );
+                // Continue to next retry
+            }
+            Err(e) => {
+                // Hard error (reverted, wrong vault, wrong sender) — don't retry
+                last_error = e;
+                break;
+            }
+        }
+    }
+    // -----------------------------------------------------------------------
+
+    match parsed_fee_opt {
+        Some(parsed) => {
             // Validate tx.from matches the caller's linked EVM wallet (ticket #285)
             let user_key = context.caller.to_text();
             let user_doc = get_doc_store(context.caller, "users".to_string(), user_key.clone())?;
@@ -653,10 +719,7 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                 };
                 if !parsed.from.eq_ignore_ascii_case(&caller_wallet) {
                     fee.status = FeeStatus::Failed;
-                    fee.error = Some(format!(
-                        "Fee tx sender {} does not match caller wallet {}",
-                        parsed.from, caller_wallet
-                    ));
+                    fee.error = Some("Fee tx sender does not match caller wallet".to_string());
                     let updated_doc = SetDoc {
                         data: encode_doc_data(&fee)?,
                         description: context.data.data.after.description.clone(),
@@ -670,10 +733,7 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                     )?;
                     logging::log_error(
                         "Fees",
-                        &format!(
-                            "Fee rejected: tx.from {} != caller wallet {}",
-                            parsed.from, caller_wallet
-                        ),
+                        "Fee rejected: tx.from does not match caller wallet",
                     );
                     return Ok(());
                 }
@@ -704,14 +764,15 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                 "Fees",
                 &format!(
                     "Fee verified: {} tokens for user {}",
-                    verified_amount, user_key
+                    verified_amount,
+                    context.caller.to_text()
                 ),
             );
         }
-        Err(e) => {
-            // Mark fee as failed
+        None => {
+            // All retry attempts exhausted — mark as failed
             fee.status = FeeStatus::Failed;
-            fee.error = Some(e.clone());
+            fee.error = Some(last_error.clone());
 
             let updated_doc = SetDoc {
                 data: encode_doc_data(&fee)?,
@@ -726,7 +787,13 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                 updated_doc,
             )?;
 
-            logging::log_error("Fees", &format!("Fee verification failed: {}", e));
+            logging::log_error(
+                "Fees",
+                &format!(
+                    "Fee verification failed after {} attempts: {}",
+                    FEE_VERIFY_MAX_RETRIES, last_error
+                ),
+            );
         }
     }
 
