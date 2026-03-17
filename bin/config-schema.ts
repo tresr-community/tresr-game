@@ -31,7 +31,7 @@ const ratio = z.number().min(0).max(1);
 const ms = z.number().nonnegative();
 
 /** A URL string (http/https or localhost) — permissive, validated via z.url(). */
-const urlStr = z.string().url();
+const urlStr = z.url();
 
 // ---------------------------------------------------------------------------
 // Server section
@@ -132,7 +132,7 @@ const AppSchema = z.object({
 // ---------------------------------------------------------------------------
 
 const AvalancheEnvSchema = z.object({
-  url: z.string().url({message: "Avalanche env URL must be a valid URL"}),
+  url: z.url({message: "Avalanche env URL must be a valid URL"}),
   fee: z.number().nonnegative(),
   burn_rate: z.number().nonnegative(),
   chain_id: z.number().int().positive(),
@@ -148,7 +148,7 @@ const AvalancheEnvSchema = z.object({
   safe_address: evmAddress.optional(),
   vault_contract: evmAddress,
   faucet_contract: evmAddress.optional(),
-  explorer_url: z.string().url(),
+  explorer_url: z.url(),
 });
 
 const IcpEvmRpcEnvSchema = z.object({
@@ -339,7 +339,7 @@ const EnemySchema = z.object({
     .object({
       weights: EnemyAiWeightsSchema,
     })
-    .passthrough(), // AI profiles have varying shapes — allow additional keys
+    .loose(), // AI profiles have varying shapes — allow additional keys
   health_bar: HealthBarSchema,
   animations: z.object({death_delay: ms}).optional(),
   spawner: z

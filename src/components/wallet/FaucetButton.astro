@@ -210,10 +210,13 @@ const isProduction = JUNO_ENVIRONMENT === "production";
           "unavailable while reconnecting"
         );
 
-        if (!isUserRejection) {
+        // Expected contract revert — not a real error, just a warning toast.
+        const isBalanceTooHigh = message.includes("Balance too high");
+
+        if (!isUserRejection && !isBalanceTooHigh) {
           log.error(COMPONENT_NAME, "Faucet claim failed", err);
         }
-        if (!isUserRejection && !isReconnecting) {
+        if (!isUserRejection && !isReconnecting && !isBalanceTooHigh) {
           trackError("faucet_claim", message);
         }
 
