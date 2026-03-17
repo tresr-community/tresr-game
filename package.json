@@ -27,7 +27,7 @@
     "postinstall": "bun run postinstall:copy-auth"
   },
   "dependencies": {
-    "@astrojs/check": "0.9.7",
+    "@astrojs/check": "0.9.8",
     "@astrojs/sitemap": "3.7.1",
     "@dfinity/agent": "3.4.3",
     "@dfinity/auth-client": "3.4.3",
@@ -64,8 +64,8 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
-    "@icp-sdk/bindgen": "0.2.2",
-    "@junobuild/cli": "0.14.1",
+    "@icp-sdk/bindgen": "0.2.3",
+    "@junobuild/cli": "0.14.2",
     "@junobuild/config": "2.15.0",
     "@junobuild/vite-plugin": "4.7.1",
     "@tailwindcss/postcss": "4.2.1",
@@ -83,7 +83,7 @@
     "prettier-plugin-tailwindcss": "0.7.2",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.57.0",
+    "typescript-eslint": "8.57.1",
     "vite": "7.3.1",
     "zod": "4.3.6"
   }
