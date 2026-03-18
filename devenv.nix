@@ -302,6 +302,9 @@ in
       nixfmt.enable = true;
       prettier = {
         enable = true;
+        excludes = [
+          "^static/workers/.*\\.js$"
+        ];
         settings = {
           configPath = ".prettierrc.yaml";
         };
@@ -354,7 +357,7 @@ in
       solidity-check = {
         enable = true;
         name = "solidity-check";
-        entry = "solidity-dev check";
+        entry = "./scripts/solidity-dev.sh check";
         pass_filenames = false;
       };
       version-reset = {

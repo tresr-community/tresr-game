@@ -3,6 +3,7 @@ config/config-server.json
 public/config-client.json
 public/precache-manifest.json
 public/workers/
+static/workers/
 src/declarations/
 src/env.d.ts
 src/lib/config/client.ts

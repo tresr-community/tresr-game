@@ -11,7 +11,7 @@
     "version-get": "bun run bin/version.ts --get",
     "version-reset": "bun run bin/version.ts --reset",
     "client-config": "bun run bin/client-config.ts",
-    "prebuild": "bun run client-config",
+    "prebuild": "svelte-kit sync && bun run client-config",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "svelte-kit sync && svelte-check && eslint .",

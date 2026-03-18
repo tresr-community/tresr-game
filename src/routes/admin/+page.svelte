@@ -712,6 +712,7 @@
     </div>
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
     <div
+      role="presentation"
       class="modal-backdrop"
       on:click={() => (detailModalOpen = false)}
     ></div>

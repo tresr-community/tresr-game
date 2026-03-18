@@ -138,7 +138,7 @@ export interface _SERVICE {
    * Returns the build-time config hash so the client can verify that the deployed
    * satellite was built from the same config as the running frontend.
    * 
-   * Called by the game pre-flight check in `/game` before the fee gate opens.
+   * Called by the game pre-flight check in `game` before the fee gate opens.
    * A mismatch means the satellite and frontend are out of sync (e.g. during a
    * rolling deploy) and the player should see an "Under Maintenance" notice.
    * 

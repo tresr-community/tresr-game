@@ -47,5 +47,34 @@ export default defineConfig({
   },
   build: {
     target: "esnext",
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            if (id.includes("phaser")) return "vendor-phaser";
+            if (
+              id.includes("@reown") ||
+              id.includes("@wagmi") ||
+              id.includes("viem") ||
+              id.includes("tanstack")
+            )
+              return "vendor-wallet";
+            if (
+              id.includes("@junobuild") ||
+              id.includes("@dfinity") ||
+              id.includes("ic-siwa")
+            )
+              return "vendor-juno";
+            if (id.includes("svelte") || id.includes("nanostores"))
+              return "vendor-svelte";
+            return "vendor";
+          }
+        },
+      },
+      onwarn(warning, warn) {
+        if (warning.code === "CIRCULAR_DEPENDENCY") return;
+        warn(warning);
+      },
+    },
   },
 });
