@@ -1,11 +1,10 @@
-import {atom} from "nanostores";
 import type {UserProfile} from "../../types/backend";
 import {log} from "../utils/log";
 import {getUserProfile, enqueueProfileWrite} from "./index";
 
 const COMPONENT_NAME = "ProfileStore";
 
-export const profileStore = atom<UserProfile | null>(null);
+export const profileStore = $state<{value: UserProfile | null}>({value: null});
 
 /** In-flight load promise — coalesces concurrent loadProfile() calls. */
 let loadInFlight: Promise<void> | null = null;
@@ -24,14 +23,14 @@ export async function loadProfile(principal: string): Promise<void> {
   // Check the in-memory store first. The SIWA auth path writes the profile
   // and populates the store before calling notifyAuthChange, so loadProfile
   // may be called when the store is already populated (avoids an extra write).
-  if (profileStore.get()) {
+  if (profileStore.value) {
     log.debug(COMPONENT_NAME, "Profile already in store, skipping Juno read");
     return;
   }
 
   // Coalesce concurrent calls for the same principal onto one shared promise.
   // Juno can fire onAuthStateChange twice during SIWA recovery (once when IDB
-  // is bridged, once after initSatellite), causing two loadProfile() calls
+  // is bridged, once after initializeJunoSatellite), causing two loadProfile() calls
   // before the first one completes — which triggers duplicate writes and
   // version_outdated_or_future conflicts in the write queue.
   if (loadInFlight && loadInFlightPrincipal === principal) {
@@ -57,7 +56,7 @@ async function doLoadProfile(principal: string): Promise<void> {
     const doc = await getUserProfile(principal);
     if (doc) {
       // Load existing user profile.
-      profileStore.set(doc.data);
+      profileStore.value = doc.data;
     } else {
       // No profile yet — create a default via the write queue.
       // The queue's doWrite handles createDefaultProfile internally.
@@ -65,7 +64,7 @@ async function doLoadProfile(principal: string): Promise<void> {
       // Read back the saved profile
       const savedDoc = await getUserProfile(principal);
       if (savedDoc) {
-        profileStore.set(savedDoc.data);
+        profileStore.value = savedDoc.data;
       }
     }
   } catch (error) {
@@ -77,5 +76,5 @@ async function doLoadProfile(principal: string): Promise<void> {
  * Clear the profile store.
  */
 export function clearProfile(): void {
-  profileStore.set(null);
+  profileStore.value = null;
 }

@@ -1,20 +1,32 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import { initSatellite } from "@junobuild/core";
+  import {onMount} from "svelte";
+  import type {Snippet} from "svelte";
+  import {initSatellite} from "@junobuild/core";
 
   import Header from "@/components/user/Header.svelte";
   import ProfileModal from "@/components/user/ProfileModal.svelte";
   import UpdatePrompt from "@/components/pwa/UpdatePrompt.svelte";
   import NotificationToast from "@/components/notifications/NotificationToast.svelte";
   import Confetti from "@/components/effects/Confetti.svelte";
+  import {isPortrait} from "@/lib/stores/ui.svelte";
 
   import "../styles/global.css";
 
-  let isPortraitMode = false;
+  let {children}: {children: Snippet} = $props();
+
+  let isPortraitMode = $state(false);
 
   onMount(() => {
     // 1. Initialize Juno satellite container
-    initSatellite();
+    const isLocalEmulator =
+      typeof window !== "undefined" &&
+      (window.location.hostname.endsWith("localhost") ||
+        window.location.hostname === "127.0.0.1");
+
+    initSatellite({
+      satelliteId: import.meta.env.VITE_SATELLITE_ID,
+      container: isLocalEmulator ? "http://127.0.0.1:5987" : undefined,
+    });
 
     // 2. Register PWA and Analytics
     import("@/lib/pwa").then((m) => m.default.getInstance().register());
@@ -31,10 +43,14 @@
       return "ontouchstart" in window || navigator.maxTouchPoints > 0;
     }
 
-    function isPortrait() {
+    function checkIsPortrait() {
       if (!isTouchDevice()) return false;
       if (window.innerHeight > window.innerWidth) return true;
-      if (window.matchMedia && window.matchMedia("(orientation: portrait)").matches) return true;
+      if (
+        window.matchMedia &&
+        window.matchMedia("(orientation: portrait)").matches
+      )
+        return true;
       return false;
     }
 
@@ -42,13 +58,12 @@
       if (portrait === lastPortrait) return;
       lastPortrait = portrait;
       isPortraitMode = portrait;
-      document.dispatchEvent(
-        new CustomEvent("tresr:portrait-change", { detail: { portrait } })
-      );
+      // Signal via store — game/+page.svelte reacts via $effect
+      isPortrait.set(portrait);
     }
 
     function check() {
-      applyPortrait(isPortrait());
+      applyPortrait(checkIsPortrait());
     }
 
     function debouncedCheck() {
@@ -58,11 +73,12 @@
 
     check();
     window.addEventListener("resize", debouncedCheck);
-    window.addEventListener("orientationchange", () => setTimeout(check, 100));
+    const orientationHandler = () => setTimeout(check, 100);
+    window.addEventListener("orientationchange", orientationHandler);
 
     return () => {
       window.removeEventListener("resize", debouncedCheck);
-      window.removeEventListener("orientationchange", () => setTimeout(check, 100)); // Will not exactly match but anon func is fine to leak on layout destruction since Layout lives forever in SPA.
+      window.removeEventListener("orientationchange", orientationHandler);
 
       import("@/lib/pwa").then((m) => m.default.getInstance().destroy());
     };
@@ -71,7 +87,7 @@
 
 <Header />
 <main>
-  <slot />
+  {@render children()}
 </main>
 
 {#if isPortraitMode}

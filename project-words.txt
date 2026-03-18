@@ -1,3 +1,6 @@
+scure
+nums
+janky
 aabbccdd
 abcxyz
 adist

@@ -1,27 +1,36 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import { listDocs, setDoc } from "@junobuild/core";
-  import type { Doc } from "@junobuild/core";
-  import { initAuth, subscribeToAuth } from "@/lib/auth";
-  import { getConnectedAddress, getWalletClient } from "@/lib/wallet/connection";
-  import { VaultAbi } from "@/lib/blockchain/abi/vault";
-  import { config } from "@/lib/config/client";
-  import { getEnvironmentKey } from "@/lib/blockchain/networks/chain";
-  import { log } from "@/lib/utils/log";
+  import {onMount, onDestroy} from "svelte";
+  import {listDocs, setDoc} from "@junobuild/core";
+  import type {Doc} from "@junobuild/core";
+  import {initAuth, subscribeToAuth} from "@/lib/auth";
+  import {getConnectedAddress, getWalletClient} from "@/lib/wallet/connection";
+  import {VaultAbi} from "@/lib/blockchain/abi/vault";
+  import {config} from "@/lib/config/client";
+  import {getEnvironmentKey} from "@/lib/blockchain/networks/chain";
+  import {log} from "@/lib/utils/log";
+  import Card from "@/components/ui/Card.svelte";
+  import Button from "@/components/ui/Button.svelte";
+  import Badge from "@/components/ui/Badge.svelte";
 
   const COMPONENT_NAME = "ClaimsList";
 
-  let currentTab: "pending" | "history" = "pending";
-  let isLoading = true;
-  let currentUser: any = null;
-  let allClaims: Doc<any>[] = [];
+  let currentTab: "pending" | "history" = $state("pending");
+  let isLoading = $state(true);
+  let currentUser: any = $state(null);
+  let allClaims: Doc<any>[] = $state([]);
 
   const env = getEnvironmentKey();
   const explorerUrl = config.blockchain.avalanche[env].explorer_url;
   const vaultAddress = config.blockchain.avalanche[env].vault_contract;
 
-  $: pendingClaims = allClaims.filter((c) => c.data.status === "readyforchain");
-  $: historicClaims = allClaims.filter((c) => c.data.status === "completed" || c.data.status === "failed");
+  let pendingClaims = $derived(
+    allClaims.filter((c) => c.data.status === "readyforchain")
+  );
+  let historicClaims = $derived(
+    allClaims.filter(
+      (c) => c.data.status === "completed" || c.data.status === "failed"
+    )
+  );
 
   let unsubAuth: (() => void) | null = null;
   let disposed = false;
@@ -49,12 +58,14 @@
     if (!currentUser) return;
     try {
       isLoading = true;
-      const { items } = await listDocs({
+      const {items} = await listDocs({
         collection: "claims",
-        filter: { owner: currentUser.key },
+        filter: {owner: currentUser.key},
       });
 
-      allClaims = items.sort((a, b) => Number(b.updated_at) - Number(a.updated_at));
+      allClaims = items.sort(
+        (a, b) => Number(b.updated_at) - Number(a.updated_at)
+      );
     } catch (err) {
       log.warn(COMPONENT_NAME, "Failed to fetch claims", err);
       allClaims = [];
@@ -63,7 +74,7 @@
     }
   }
 
-  let processingClaims: Record<string, boolean> = {};
+  let processingClaims: Record<string, boolean> = $state({});
 
   async function handleClaim(claimId: string) {
     const claimDoc = allClaims.find((c) => c.key === claimId);
@@ -82,10 +93,12 @@
 
     try {
       processingClaims[claimId] = true;
-      processingClaims = { ...processingClaims };
+      processingClaims = {...processingClaims};
 
       const client = await getWalletClient();
-      const formattedSessionId = claimDoc.data.game_session_id.padEnd(66, "0").slice(0, 66);
+      const formattedSessionId = claimDoc.data.game_session_id
+        .padEnd(66, "0")
+        .slice(0, 66);
 
       log.info(COMPONENT_NAME, "Sending claim tx...");
       const txHash = await client.writeContract({
@@ -106,41 +119,79 @@
 
       claimDoc.data.status = "processing";
       claimDoc.data.tx_hash = txHash;
-      await setDoc({ collection: "claims", doc: claimDoc });
+      await setDoc({collection: "claims", doc: claimDoc});
 
       document.dispatchEvent(
         new CustomEvent("tresr:confetti", {
-          detail: { count: 120, colors: ["#facc15", "#f59e0b", "#fbbf24"] },
+          detail: {count: 120, colors: ["#facc15", "#f59e0b", "#fbbf24"]},
         })
       );
 
       setTimeout(() => {
         if (!disposed) fetchClaims();
       }, 3000);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errMsg =
+        err instanceof Error
+          ? (err as any).shortMessage || err.message
+          : String(err);
       log.error(COMPONENT_NAME, "Claim tx failed", err);
-      alert(`Claim failed: ${err.shortMessage || err.message}`);
+      alert(`Claim failed: ${errMsg}`);
     } finally {
       processingClaims[claimId] = false;
-      processingClaims = { ...processingClaims };
+      processingClaims = {...processingClaims};
     }
   }
 </script>
 
 <div class="space-y-6">
   <!-- Tabs -->
-  <div class="tabs tabs-boxed bg-base-300 mx-auto mb-8 w-fit p-1">
-    <button on:click={() => currentTab = "pending"} class="tab px-8 font-bold" class:tab-active={currentTab === "pending"}>
+  <div
+    class="mx-auto mb-8 flex w-fit items-center gap-2 rounded-lg bg-black/40 p-1"
+  >
+    <button
+      onclick={() => (currentTab = "pending")}
+      class="rounded-md px-8 py-2 font-bold transition-colors {currentTab ===
+      'pending'
+        ? 'bg-primary text-black'
+        : 'text-white/60 hover:text-white'}"
+    >
       Pending Claims (<span>{pendingClaims.length}</span>)
     </button>
-    <button on:click={() => currentTab = "history"} class="tab px-8 font-bold" class:tab-active={currentTab === "history"}>
+    <button
+      onclick={() => (currentTab = "history")}
+      class="rounded-md px-8 py-2 font-bold transition-colors {currentTab ===
+      'history'
+        ? 'bg-primary text-black'
+        : 'text-white/60 hover:text-white'}"
+    >
       History
     </button>
   </div>
 
   {#if isLoading}
     <div class="flex justify-center p-12">
-      <span class="loading loading-spinner text-warning loading-lg"></span>
+      <svg
+        class="text-warning h-10 w-10 animate-spin"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle
+          class="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          stroke-width="4"
+        />
+        <path
+          class="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+        />
+      </svg>
     </div>
   {:else}
     <!-- Pending -->
@@ -148,30 +199,49 @@
       {#if pendingClaims.length === 0}
         <div class="py-12 text-center">
           <div class="mb-4 text-5xl">🌪️</div>
-          <h3 class="text-base-content/70 text-xl font-bold">No pending claims</h3>
-          <p class="text-base-content/50">Play games to earn on-chain rewards.</p>
+          <h3 class="text-xl font-bold text-white/70">No pending claims</h3>
+          <p class="text-white/50">Play games to earn on-chain rewards.</p>
         </div>
       {:else}
         <div class="grid gap-4 md:grid-cols-2">
           {#each pendingClaims as claim}
-            <div class="card bg-base-100 shadow-lg border border-warning/30 hover:border-warning/60 transition-colors">
-              <div class="card-body p-5">
-                <h2 class="card-title text-warning">{claim.data.claim_type === "consolation" ? "Consolation Prize" : "Boss Defeated!"}</h2>
-                <div class="flex justify-between items-end mt-2">
-                  <div>
-                    <p class="text-sm text-base-content/60">Reward amount:</p>
-                    <p class="text-3xl font-mono font-bold">{(claim.data.amount / 1e18).toFixed(2)} <span class="text-sm">$TRESR</span></p>
-                  </div>
-                  <button on:click={() => handleClaim(claim.key)} disabled={processingClaims[claim.key]} class="btn btn-warning btn-sm">
-                    {#if processingClaims[claim.key]}
-                      <span class="loading loading-spinner"></span> Claiming...
-                    {:else}
-                      Claim Now
-                    {/if}
-                  </button>
+            <Card
+              variant="bordered"
+              class="hover:border-warning/60 transition-colors"
+            >
+              <h2
+                class="text-warning mb-4 font-mono text-xl font-bold tracking-wide"
+              >
+                {claim.data.claim_type === "consolation"
+                  ? "Consolation Prize"
+                  : "Boss Defeated!"}
+              </h2>
+              <div class="mt-2 flex items-end justify-between">
+                <div>
+                  <p
+                    class="mb-1 font-mono text-sm tracking-widest text-white/60 uppercase"
+                  >
+                    Reward amount
+                  </p>
+                  <p class="font-mono text-3xl font-bold">
+                    {(claim.data.amount / 1e18).toFixed(2)}
+                    <span class="text-primary text-sm">$TRESR</span>
+                  </p>
                 </div>
+                <Button
+                  variant="warning"
+                  size="sm"
+                  onclick={() => handleClaim(claim.key)}
+                  disabled={processingClaims[claim.key]}
+                >
+                  {#if processingClaims[claim.key]}
+                    Claiming...
+                  {:else}
+                    Claim Now
+                  {/if}
+                </Button>
               </div>
-            </div>
+            </Card>
           {/each}
         </div>
       {/if}
@@ -182,37 +252,56 @@
       {#if historicClaims.length === 0}
         <div class="py-12 text-center">
           <div class="mb-4 text-5xl">📜</div>
-          <h3 class="text-base-content/70 text-xl font-bold">No history yet</h3>
-          <p class="text-base-content/50">Your claimed rewards will appear here.</p>
+          <h3 class="text-xl font-bold text-white/70">No history yet</h3>
+          <p class="text-white/50">Your claimed rewards will appear here.</p>
         </div>
       {:else}
-        <div class="bg-base-100 rounded-box border-base-300 overflow-x-auto border shadow-sm">
-          <table class="table-zebra table-sm md:table-md table w-full">
+        <Card variant="default" padding="none" class="overflow-x-auto">
+          <table
+            class="w-full table-auto border-collapse text-left font-mono text-sm"
+          >
             <thead>
-              <tr class="bg-base-200">
-                <th>Date</th>
-                <th>Type</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Tx</th>
+              <tr class="border-b border-white/10 bg-white/5">
+                <th class="p-4 font-bold opacity-70">Date</th>
+                <th class="p-4 font-bold opacity-70">Type</th>
+                <th class="p-4 font-bold opacity-70">Amount</th>
+                <th class="p-4 font-bold opacity-70">Status</th>
+                <th class="p-4 font-bold opacity-70">Tx</th>
               </tr>
             </thead>
             <tbody>
               {#each historicClaims as claim}
-                <tr>
-                  <td class="whitespace-nowrap">{new Date(Number(claim.updated_at) / 1000000).toLocaleDateString()}</td>
-                  <td>{claim.data.claim_type === "consolation" ? "Consolation" : "Boss Win"}</td>
-                  <td class="font-mono">{(claim.data.amount / 1e18).toFixed(2)}</td>
-                  <td>
+                <tr
+                  class="border-b border-white/5 transition-colors hover:bg-white/5"
+                >
+                  <td class="p-4 whitespace-nowrap"
+                    >{new Date(
+                      Number(claim.updated_at) / 1000000
+                    ).toLocaleDateString()}</td
+                  >
+                  <td class="p-4 text-white/90"
+                    >{claim.data.claim_type === "consolation"
+                      ? "Consolation"
+                      : "Boss Win"}</td
+                  >
+                  <td class="p-4 font-bold"
+                    >{(claim.data.amount / 1e18).toFixed(2)}</td
+                  >
+                  <td class="p-4">
                     {#if claim.data.status === "completed"}
-                      <span class="badge badge-success badge-sm">Success</span>
+                      <Badge variant="success" size="sm">Success</Badge>
                     {:else}
-                      <span class="badge badge-error badge-sm">Failed</span>
+                      <Badge variant="error" size="sm">Failed</Badge>
                     {/if}
                   </td>
-                  <td>
+                  <td class="p-4">
                     {#if claim.data.tx_hash}
-                      <a href="{explorerUrl}{claim.data.tx_hash}" target="_blank" class="link link-primary font-mono text-xs">View</a>
+                      <a
+                        href="{explorerUrl}{claim.data.tx_hash}"
+                        target="_blank"
+                        class="text-primary decoration-primary/30 underline underline-offset-4 transition-colors hover:text-white"
+                        >View</a
+                      >
                     {:else}
                       -
                     {/if}
@@ -221,7 +310,7 @@
               {/each}
             </tbody>
           </table>
-        </div>
+        </Card>
       {/if}
     </div>
   {/if}

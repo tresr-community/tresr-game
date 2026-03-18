@@ -357,29 +357,6 @@ interface PendingWrite {
       log.info(COMPONENT_NAME, "Loaded changelog from config/changelog.yaml");
     }
 
-    // Generate DaisyUI themes in global.css
-    const daisyui = (clientConfig.daisyui as Record<string, unknown>) || {};
-    const themes = (daisyui.themes as string[]) || [];
-    if (themes.length > 0) {
-      const cssPath = path.join(projectRoot, "src", "styles", "global.css");
-      let css = fs.readFileSync(cssPath, "utf8");
-      const themesStr = "themes:\n    " + themes.join(",\n    ") + ";";
-      const regex = /themes:\s*([\s\S]*?);/; // Replace multiline themes block
-      css = css.replace(regex, themesStr);
-      writeOrCollect(cssPath, css);
-      if (!CHECK_MODE) {
-        log.info(
-          COMPONENT_NAME,
-          "Updated src/styles/global.css with DaisyUI themes"
-        );
-      }
-    } else {
-      log.warn(
-        COMPONENT_NAME,
-        "No DaisyUI themes defined in client.daisyui.themes"
-      );
-    }
-
     if (Object.keys(clientConfig).length === 0) {
       log.warn(
         COMPONENT_NAME,

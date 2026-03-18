@@ -170,7 +170,26 @@ export async function getVaultCurrentBalance(): Promise<bigint> {
     getValidVaultAddress();
     return await getVaultTresrBalance(false);
   } catch (err) {
-    log.error(COMPONENT_NAME, "Failed to fetch currentBalance", String(err));
+    const msg = String(err);
+    // Expected non-error states — vault not yet deployed, or RPC unavailable.
+    // These are handled silently/at warn level; log.error is reserved for
+    // unexpected failures.
+    if (
+      msg.includes("not deployed") ||
+      msg.includes("invalid address") ||
+      msg.includes("returned no data") ||
+      msg.includes("ContractFunctionExecutionError") ||
+      msg.includes("ECONNREFUSED") ||
+      msg.includes("fetch failed") ||
+      msg.includes("Failed to fetch")
+    ) {
+      log.warn(
+        COMPONENT_NAME,
+        "Vault balance unavailable (not deployed or RPC unreachable)"
+      );
+    } else {
+      log.error(COMPONENT_NAME, "Failed to fetch currentBalance", msg);
+    }
     return 0n;
   }
 }

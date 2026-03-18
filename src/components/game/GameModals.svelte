@@ -1,27 +1,32 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import { gameState, type GameState } from "@/lib/game/state";
-  import { clearFeePaid, getSessionId } from "@/lib/game/fee-gate";
-  import { claimWin, getClaimCooldownStatus } from "@/lib/blockchain/contracts/vault";
-  import { getConnectedAddress } from "@/lib/wallet/connection";
-  import { getAuthState } from "@/lib/auth";
-  import { checkBanStatus } from "@/lib/auth/ban";
-  import { getUserProfile } from "@/lib/user";
-  import { log } from "@/lib/utils/log";
+  import {onMount, onDestroy} from "svelte";
+  import {gameState, type GameState} from "@/lib/game/state";
+  import {clearFeePaid, getSessionId} from "@/lib/game/fee-gate";
+  import {
+    claimWin,
+    getClaimCooldownStatus,
+  } from "@/lib/blockchain/contracts/vault";
+  import {getConnectedAddress} from "@/lib/wallet/connection";
+  import {getAuthState} from "@/lib/auth";
+  import {checkBanStatus} from "@/lib/auth/ban";
+  import {getUserProfile} from "@/lib/user";
+  import {log} from "@/lib/utils/log";
+  import Modal from "@/components/ui/Modal.svelte";
+  import {banModal} from "@/lib/stores/ui.svelte";
 
-  let modalVictory: HTMLDialogElement;
-  let modalLost: HTMLDialogElement;
+  let openVictory = $state(false);
+  let openLost = $state(false);
 
-  let victoryRewardText = "$0 TRESR";
-  let score = "0";
-  let keys = "0";
-  let enemies = "0";
-  let _time = "0:00";
+  let victoryRewardText = $state("$0 TRESR");
+  let score = $state("0");
+  let keys = $state("0");
+  let enemies = $state("0");
+  let _time = $state("0:00");
 
-  let showVictoryHighScore = false;
-  let showLostHighScore = false;
+  let showVictoryHighScore = $state(false);
+  let showLostHighScore = $state(false);
 
-  let isClaimInProgress = false;
+  let isClaimInProgress = $state(false);
 
   let lastClaimAuth: [bigint, Uint8Array | number[]] | null = null;
   let unsubState: () => void;
@@ -78,14 +83,10 @@
     if (auth.isAuthenticated && auth.user) {
       const banInfo = await checkBanStatus(auth.user.key);
       if (banInfo) {
-        document.dispatchEvent(
-          new CustomEvent("tresr:ban-modal-open", {
-            detail: {
-              banned_until: banInfo.bannedUntil,
-              offence_count: banInfo.offenceCount,
-            },
-          })
-        );
+        banModal.set({
+          banned_until: banInfo.bannedUntil,
+          offence_count: banInfo.offenceCount,
+        });
         return;
       }
     }
@@ -97,7 +98,9 @@
         if (!cooldown.canClaim) {
           const hours = Math.floor(cooldown.remainingSeconds / 3600);
           const mins = Math.floor((cooldown.remainingSeconds % 3600) / 60);
-          window.showWarningToast?.(`Cooldown active: ${hours}h ${mins}m remaining. 1 claim per 24 hours.`);
+          window.showWarningToast?.(
+            `Cooldown active: ${hours}h ${mins}m remaining. 1 claim per 24 hours.`
+          );
           return;
         }
       } catch {
@@ -106,7 +109,9 @@
     }
 
     if (!lastClaimAuth) {
-      window.showWarningToast?.("No claim authorization found. Are you trying to cheat Degen?");
+      window.showWarningToast?.(
+        "No claim authorization found. Are you trying to cheat Degen?"
+      );
       return;
     }
 
@@ -121,8 +126,11 @@
         return;
       }
 
-      const sigArray = sigBytes instanceof Uint8Array ? sigBytes : new Uint8Array(sigBytes);
-      const sigHex = `0x${Array.from(sigArray).map((b) => b.toString(16).padStart(2, "0")).join("")}` as `0x${string}`;
+      const sigArray =
+        sigBytes instanceof Uint8Array ? sigBytes : new Uint8Array(sigBytes);
+      const sigHex = `0x${Array.from(sigArray)
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("")}` as `0x${string}`;
 
       const hash = await claimWin(sessionId, amount, state.keys, sigHex);
       window.showInfoToast?.(`Claim successful! Tx: ${hash}`);
@@ -150,7 +158,7 @@
 
     unsubState = gameState.subscribe((state) => {
       if (state.phase === "victory") {
-        if (modalVictory && !modalVictory.open) {
+        if (!openVictory) {
           const auth = getAuthState();
           if (auth.isGuest) {
             victoryRewardText = "No rewards for normies.";
@@ -160,16 +168,16 @@
             victoryRewardText = "Calculating...";
           }
           populateStats("victory", state);
-          modalVictory.showModal();
+          openVictory = true;
         }
       } else if (state.phase === "lost") {
-        if (modalLost && !modalLost.open) {
+        if (!openLost) {
           populateStats("lost", state);
-          modalLost.showModal();
+          openLost = true;
         }
       } else {
-        if (modalVictory && modalVictory.open) modalVictory.close();
-        if (modalLost && modalLost.open) modalLost.close();
+        if (openVictory) openVictory = false;
+        if (openLost) openLost = false;
       }
     });
   });
@@ -180,95 +188,185 @@
   });
 </script>
 
-<dialog bind:this={modalVictory} class="modal modal-middle">
-  <div class="modal-box border-success/30 bg-base-300 h-full max-h-full w-full max-w-full border text-center sm:h-auto sm:max-h-[85vh] sm:w-auto sm:max-w-lg sm:rounded-2xl">
-    <h3 class="text-success font-display text-2xl font-black tracking-widest uppercase sm:text-4xl">
-      Mission Complete
-    </h3>
-    <p class="py-2 text-sm opacity-70 sm:py-4 sm:text-base">
-      The Banker has been regulated. The vault is yours.
-    </p>
+<Modal
+  bind:open={openVictory}
+  title="Mission Complete"
+  closeOnEscape={false}
+  closeOnOutsideClick={false}
+>
+  <p class="py-2 text-sm opacity-70 sm:py-4 sm:text-base">
+    The Banker has been regulated. The vault is yours.
+  </p>
 
-    <div class="stats stats-vertical bg-base-200/50 my-2 w-full shadow sm:my-4">
-      <div class="stat">
-        <div class="stat-title text-xs uppercase">Reward</div>
-        <div class="stat-value text-primary font-mono">{victoryRewardText}</div>
+  <div
+    class="my-4 flex w-full flex-col gap-px overflow-hidden rounded-md border border-white/10 bg-white/10 shadow-inner"
+  >
+    <div class="flex flex-col bg-black/40 p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-[#10b981] uppercase"
+      >
+        Reward
+      </div>
+      <div class="text-primary font-mono text-sm font-bold sm:text-2xl">
+        {victoryRewardText}
       </div>
     </div>
+  </div>
 
-    <div class="stats stats-horizontal bg-base-200/50 my-1 w-full shadow sm:my-2">
-      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
-        <div class="stat-title text-xs uppercase">Score</div>
-        <div class="stat-value text-primary font-mono text-sm sm:text-lg">{score}</div>
+  <div
+    class="mb-4 grid w-full grid-cols-4 gap-px overflow-hidden rounded-md border border-white/10 bg-white/10 shadow-inner"
+  >
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Score
       </div>
-      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
-        <div class="stat-title text-xs uppercase">Keys</div>
-        <div class="stat-value text-info font-mono text-sm sm:text-lg">{keys}</div>
-      </div>
-      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
-        <div class="stat-title text-xs uppercase">Enemies</div>
-        <div class="stat-value text-error font-mono text-sm sm:text-lg">{enemies}</div>
-      </div>
-      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
-        <div class="stat-title text-xs uppercase">Time</div>
-        <div class="stat-value text-warning font-mono text-sm sm:text-lg">{_time}</div>
+      <div class="text-primary font-mono text-sm font-bold sm:text-lg">
+        {score}
       </div>
     </div>
-
-    <div class="text-accent font-display my-1 text-lg font-bold" class:hidden={!showVictoryHighScore}>
-      New High Score!
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Keys
+      </div>
+      <div class="font-mono text-sm font-bold text-[#38bdf8] sm:text-lg">
+        {keys}
+      </div>
     </div>
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Enemies
+      </div>
+      <div class="font-mono text-sm font-bold text-[#f87171] sm:text-lg">
+        {enemies}
+      </div>
+    </div>
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Time
+      </div>
+      <div class="font-mono text-sm font-bold text-[#facc15] sm:text-lg">
+        {_time}
+      </div>
+    </div>
+  </div>
 
-    <div class="modal-action flex-col gap-1 sm:gap-2">
-      <button on:click={handleClaimClick} class="btn btn-primary btn-block" class:loading={isClaimInProgress} disabled={isClaimInProgress}>
+  <div
+    class="font-display my-2 text-center text-lg font-bold text-[#a78bfa] {showVictoryHighScore
+      ? ''
+      : 'hidden'}"
+  >
+    New High Score!
+  </div>
+
+  {#snippet footer()}
+    <div class="flex w-full flex-col gap-2">
+      <button
+        onclick={handleClaimClick}
+        disabled={isClaimInProgress}
+        class="bg-primary hover:bg-primary/90 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 font-bold tracking-widest text-black uppercase shadow-[0_0_15px_var(--color-primary)] transition-all hover:scale-[1.02] active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+      >
+        {#if isClaimInProgress}
+          <div
+            class="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent"
+          ></div>
+        {/if}
         Claim $TRESR
       </button>
-      <button on:click={handleHome} class="btn btn-ghost btn-block">
+      <button
+        onclick={handleHome}
+        class="w-full rounded-md border border-white/10 bg-white/5 px-4 py-2 font-bold tracking-widest text-white/70 uppercase transition-colors hover:bg-white/10 hover:text-white"
+      >
         Return Home
       </button>
     </div>
+  {/snippet}
+</Modal>
+
+<Modal
+  bind:open={openLost}
+  title="YOU HAVE BEEN RUGGED"
+  closeOnEscape={false}
+  closeOnOutsideClick={false}
+>
+  <p class="py-2 text-sm opacity-70 sm:py-4 sm:text-base">
+    Sorry Degen, the Bankers have won this round.
+  </p>
+
+  <div
+    class="mt-2 mb-4 grid w-full grid-cols-4 gap-px overflow-hidden rounded-md border border-white/10 bg-white/10 shadow-inner"
+  >
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Score
+      </div>
+      <div class="text-primary font-mono text-sm font-bold sm:text-lg">
+        {score}
+      </div>
+    </div>
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Keys
+      </div>
+      <div class="font-mono text-sm font-bold text-[#38bdf8] sm:text-lg">
+        {keys}
+      </div>
+    </div>
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Enemies
+      </div>
+      <div class="font-mono text-sm font-bold text-[#f87171] sm:text-lg">
+        {enemies}
+      </div>
+    </div>
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Time
+      </div>
+      <div class="font-mono text-sm font-bold text-[#facc15] sm:text-lg">
+        {_time}
+      </div>
+    </div>
   </div>
-</dialog>
 
-<dialog bind:this={modalLost} class="modal modal-middle">
-  <div class="modal-box border-error/30 bg-base-300 h-full max-h-full w-full max-w-full border text-center sm:h-auto sm:max-h-[85vh] sm:w-auto sm:max-w-lg sm:rounded-2xl">
-    <h3 class="text-error font-display text-2xl font-black tracking-widest uppercase sm:text-4xl">
-      YOU HAVE BEEN RUGGED
-    </h3>
-    <p class="py-2 text-sm opacity-70 sm:py-4 sm:text-base">
-      Sorry Degen, the Bankers have won this round.
-    </p>
+  <div
+    class="font-display my-2 text-center text-lg font-bold text-[#a78bfa] {showLostHighScore
+      ? ''
+      : 'hidden'}"
+  >
+    New High Score!
+  </div>
 
-    <div class="stats stats-horizontal bg-base-200/50 my-1 w-full shadow sm:my-2">
-      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
-        <div class="stat-title text-xs uppercase">Score</div>
-        <div class="stat-value text-primary font-mono text-sm sm:text-lg">{score}</div>
-      </div>
-      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
-        <div class="stat-title text-xs uppercase">Keys</div>
-        <div class="stat-value text-info font-mono text-sm sm:text-lg">{keys}</div>
-      </div>
-      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
-        <div class="stat-title text-xs uppercase">Enemies</div>
-        <div class="stat-value text-error font-mono text-sm sm:text-lg">{enemies}</div>
-      </div>
-      <div class="stat place-items-center px-2 py-1 sm:px-4 sm:py-2">
-        <div class="stat-title text-xs uppercase">Time</div>
-        <div class="stat-value text-warning font-mono text-sm sm:text-lg">{_time}</div>
-      </div>
-    </div>
-
-    <div class="text-accent font-display my-1 text-lg font-bold" class:hidden={!showLostHighScore}>
-      New High Score!
-    </div>
-
-    <div class="modal-action flex-col gap-1 sm:gap-2">
-      <button on:click={handleRetry} class="btn btn-error btn-block">
+  {#snippet footer()}
+    <div class="flex w-full flex-col gap-2">
+      <button
+        onclick={handleRetry}
+        class="flex w-full items-center justify-center gap-2 rounded-md bg-[#ef4444] px-4 py-2 font-bold tracking-widest text-white uppercase shadow-[0_0_15px_rgba(239,68,68,0.4)] transition-all hover:scale-[1.02] hover:bg-[#dc2626] active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+      >
         Retry Mission
       </button>
-      <button on:click={handleHome} class="btn btn-ghost btn-block text-error">
+      <button
+        onclick={handleHome}
+        class="w-full rounded-md border border-[#ef4444]/30 bg-[#ef4444]/10 px-4 py-2 font-bold tracking-widest text-[#fca5a5] uppercase transition-colors hover:bg-[#ef4444]/20"
+      >
         Abort
       </button>
     </div>
-  </div>
-</dialog>
+  {/snippet}
+</Modal>

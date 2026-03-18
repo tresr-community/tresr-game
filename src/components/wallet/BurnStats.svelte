@@ -1,16 +1,22 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import { getEnvironmentKey, isVaultDeployed } from "@/lib/blockchain/networks/chain";
-  import { getTotalFees, getTotalRewards, getVaultTotalBurned } from "@/lib/blockchain/contracts/vault";
-  import { formatBalance } from "@/lib/blockchain/balance";
-  import { config } from "@/lib/config/client";
-  import { log } from "@/lib/utils/log";
+  import {onMount} from "svelte";
+  import {
+    getEnvironmentKey,
+    isVaultDeployed,
+  } from "@/lib/blockchain/networks/chain";
+  import {
+    getTotalFees,
+    getTotalRewards,
+    getVaultTotalBurned,
+  } from "@/lib/blockchain/contracts/vault";
+  import {formatBalance} from "@/lib/blockchain/balance";
+  import {config} from "@/lib/config/client";
+  import {log} from "@/lib/utils/log";
 
   const COMPONENT_NAME = "BurnStats";
   const env = getEnvironmentKey();
   const ticker = config.blockchain.avalanche[env].token_ticker;
 
-  let isSyncing = false;
   let isDeployed = isVaultDeployed(config);
 
   let fees = "0";
@@ -51,50 +57,37 @@
     }
   }
 
-  function handleBlockchainSynced() {
-    loadStats();
-  }
-
-  function handleBlockchainSyncing(e: Event) {
-    const detail = (e as CustomEvent).detail;
-    if (detail) isSyncing = detail.syncing;
-  }
-
   onMount(() => {
-    window.addEventListener("loader-ready", loadStats, { once: true });
+    window.addEventListener("loader-ready", loadStats, {once: true});
     // In case loader-ready already fired before component mounted
     if (!isLoaded) loadStats();
-
-    document.addEventListener("tresr:blockchain-synced", handleBlockchainSynced);
-    document.addEventListener("tresr:blockchain-syncing", handleBlockchainSyncing);
-  });
-
-  onDestroy(() => {
-    document.removeEventListener("loader-ready", loadStats);
-    document.removeEventListener("tresr:blockchain-synced", handleBlockchainSynced);
-    document.removeEventListener("tresr:blockchain-syncing", handleBlockchainSyncing);
   });
 </script>
 
 {#if isLoaded && isDeployed}
-<div class="stats stats-horizontal bg-base-200/50 border-error/20 mt-6 w-full max-w-4xl border shadow relative">
-  {#if isSyncing}
-    <span class="loading loading-xs loading-spinner absolute top-2 right-2 opacity-40"></span>
-  {/if}
-  <div class="stat place-items-center">
-    <div class="stat-title font-mono text-xs">FEES</div>
-    <div class="stat-value text-info text-2xl">{fees}</div>
-    <div class="stat-desc font-mono">${ticker}</div>
+  <div class="relative mt-6 grid w-full max-w-4xl grid-cols-3 gap-2">
+    <div
+      class="border-info/20 flex flex-col items-center rounded-xl border bg-black/40 px-5 py-4 shadow backdrop-blur"
+    >
+      <div class="font-mono text-xs uppercase opacity-50">FEES</div>
+      <div class="text-info mt-1 font-mono text-2xl font-bold">{fees}</div>
+      <div class="mt-1 font-mono text-xs opacity-40">${ticker}</div>
+    </div>
+    <div
+      class="flex flex-col items-center rounded-xl border border-green-500/20 bg-black/40 px-5 py-4 shadow backdrop-blur"
+    >
+      <div class="font-mono text-xs uppercase opacity-50">REWARDED</div>
+      <div class="mt-1 font-mono text-2xl font-bold text-green-400">
+        {rewarded}
+      </div>
+      <div class="mt-1 font-mono text-xs opacity-40">${ticker}</div>
+    </div>
+    <div
+      class="flex flex-col items-center rounded-xl border border-red-500/20 bg-black/40 px-5 py-4 shadow backdrop-blur"
+    >
+      <div class="font-mono text-xs uppercase opacity-50">BURNED</div>
+      <div class="mt-1 font-mono text-2xl font-bold text-red-400">{burned}</div>
+      <div class="mt-1 font-mono text-xs opacity-40">${ticker}</div>
+    </div>
   </div>
-  <div class="stat place-items-center">
-    <div class="stat-title font-mono text-xs">REWARDED</div>
-    <div class="stat-value text-success text-2xl">{rewarded}</div>
-    <div class="stat-desc font-mono">${ticker}</div>
-  </div>
-  <div class="stat place-items-center">
-    <div class="stat-title font-mono text-xs">BURNED</div>
-    <div class="stat-value text-error text-2xl">{burned}</div>
-    <div class="stat-desc font-mono">${ticker}</div>
-  </div>
-</div>
 {/if}

@@ -142,88 +142,78 @@
     </h1>
 
     <div class="mb-12 w-full text-left">
-      <div class="card bg-base-200/50 border-primary/20 border shadow-xl">
-        <div class="card-body p-6 sm:p-8">
+      <div class="border-primary/20 rounded-xl border bg-white/5 shadow-xl">
+        <div class="p-6 sm:p-8">
           <h2
-            class="text-secondary mb-4 font-mono text-xl tracking-widest uppercase"
+            class="text-secondary mb-4 text-center font-mono text-xl tracking-widest uppercase"
           >
             Simulation Inputs
           </h2>
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div class="form-control">
-              <label class="label py-1" for="vault_balance"
-                ><span class="label-text font-mono text-xs opacity-70"
-                  >Vault Balance (TRESR)</span
-                ></label
+            <div class="flex flex-col gap-1">
+              <label for="vault_balance" class="font-mono text-xs opacity-70"
+                >Vault Balance (TRESR)</label
               >
               <input
                 type="number"
                 id="vault_balance"
                 bind:value={inputValues.vaultBalance}
-                class="input input-bordered bg-base-300 focus:border-primary w-full font-mono"
+                class="focus:border-primary w-full rounded border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none"
                 min="0"
                 step="1000"
               />
             </div>
-            <div class="form-control">
-              <label class="label py-1" for="keys"
-                ><span class="label-text font-mono text-xs opacity-70"
-                  >Keys Collected</span
-                ></label
+            <div class="flex flex-col gap-1">
+              <label for="keys" class="font-mono text-xs opacity-70"
+                >Keys Collected</label
               >
               <input
                 type="number"
                 id="keys"
                 bind:value={inputValues.keys}
-                class="input input-bordered bg-base-300 focus:border-primary w-full font-mono"
+                class="focus:border-primary w-full rounded border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none"
                 min="0"
               />
             </div>
-            <div class="form-control">
-              <label class="label py-1" for="kills"
-                ><span class="label-text font-mono text-xs opacity-70"
-                  >Enemy Kills</span
-                ></label
+            <div class="flex flex-col gap-1">
+              <label for="kills" class="font-mono text-xs opacity-70"
+                >Enemy Kills</label
               >
               <input
                 type="number"
                 id="kills"
                 bind:value={inputValues.kills}
-                class="input input-bordered bg-base-300 focus:border-primary w-full font-mono"
+                class="focus:border-primary w-full rounded border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none"
                 min="0"
               />
             </div>
-            <div class="form-control">
-              <label class="label py-1" for="boss_hits"
-                ><span class="label-text font-mono text-xs opacity-70"
-                  >Boss Hits</span
-                ></label
+            <div class="flex flex-col gap-1">
+              <label for="boss_hits" class="font-mono text-xs opacity-70"
+                >Boss Hits</label
               >
               <input
                 type="number"
                 id="boss_hits"
                 bind:value={inputValues.bossHits}
-                class="input input-bordered bg-base-300 focus:border-primary w-full font-mono"
+                class="focus:border-primary w-full rounded border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none"
                 min="0"
               />
             </div>
-            <div class="form-control sm:col-span-2">
-              <label class="label py-1" for="super_hits"
-                ><span class="label-text font-mono text-xs opacity-70"
-                  >Super Hits</span
-                ></label
+            <div class="flex flex-col gap-1 sm:col-span-2">
+              <label for="super_hits" class="font-mono text-xs opacity-70"
+                >Super Hits</label
               >
               <input
                 type="number"
                 id="super_hits"
                 bind:value={inputValues.superHits}
-                class="input input-bordered bg-base-300 focus:border-primary w-full font-mono"
+                class="focus:border-primary w-full rounded border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none"
                 min="0"
               />
             </div>
           </div>
 
-          <div class="divider border-primary/20 my-8"></div>
+          <div class="border-primary/20 my-8 border-t"></div>
 
           <div class="text-center font-mono">
             <div
@@ -245,7 +235,10 @@
     </div>
 
     <div class="mt-4">
-      <a href="/" class="btn btn-outline btn-primary font-mono tracking-widest">
+      <a
+        href="/"
+        class="border-primary text-primary hover:bg-primary inline-block rounded-md border px-8 py-3 font-mono text-sm tracking-widest uppercase transition-all hover:text-black hover:shadow-[0_0_15px_var(--color-primary)]"
+      >
         RETURN HOME
       </a>
     </div>

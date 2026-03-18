@@ -1,16 +1,16 @@
 {
   "juno": {
     "development": {
-      "satellite_id": "${VITE_DEVELOPMENT_SATELLITE_ID}",
-      "orbiter_id": "${VITE_DEVELOPMENT_ORBITER_ID}"
+      "satellite_id": "${VITE_SATELLITE_ID}",
+      "orbiter_id": "${VITE_ORBITER_ID}"
     },
     "staging": {
-      "satellite_id": "${VITE_STAGING_SATELLITE_ID}",
-      "orbiter_id": "${VITE_STAGING_ORBITER_ID}"
+      "satellite_id": "${VITE_SATELLITE_ID}",
+      "orbiter_id": "${VITE_ORBITER_ID}"
     },
     "production": {
-      "satellite_id": "${VITE_PRODUCTION_SATELLITE_ID}",
-      "orbiter_id": "${VITE_PRODUCTION_ORBITER_ID}"
+      "satellite_id": "${VITE_SATELLITE_ID}",
+      "orbiter_id": "${VITE_ORBITER_ID}"
     },
     "admins": [
       "pegnp-gazih-6vb6n-cze6g-gei4h-y3dlc-i77bm-7ityv-rmome-rshwy-wqe",

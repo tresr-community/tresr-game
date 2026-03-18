@@ -4,27 +4,26 @@
   import {gameState, type PlaybackMode} from "@/lib/game/state";
   import {config} from "@/lib/config/client";
   import {getAuthState} from "@/lib/auth";
-  import {authStore} from "@/lib/auth/store";
+  import {authStore} from "@/lib/auth/store.svelte";
   import {getUserProfile, enqueueProfileWrite} from "@/lib/user";
 
   const manager = MusicManager.getInstance();
   const tracks = config.assets.music;
 
-  let currentTrackName = "Loading...";
-  let isPlaying = false;
-  let playbackMode: PlaybackMode = "shuffle";
-  let currentTime = 0;
-  let totalTime = 0;
-  let progress = 0;
-  let musicVolume = 75;
-  let sfxVolume = 50;
-  let favoriteTrack = "";
+  let currentTrackName = $state("Loading...");
+  let isPlaying = $state(false);
+  let playbackMode: PlaybackMode = $state("shuffle");
+  let currentTime = $state(0);
+  let totalTime = $state(0);
+  let progress = $state(0);
+  let musicVolume = $state(75);
+  let sfxVolume = $state(50);
+  let favoriteTrack = $state("");
 
-  let showNarration = false;
-  let isNarrationEnabled = true;
+  let showNarration = $state(false);
+  let isNarrationEnabled = $state(true);
 
   let unsubState: () => void;
-  let unsubAuth: () => void;
 
   let narrationGeneration = 0;
   let narrationSaveGen = 0;
@@ -48,16 +47,18 @@
       favoriteTrack = state.music.favoriteTrack;
     });
 
-    unsubAuth = authStore.subscribe(async (state) => {
+    $effect(() => {
+      const state = authStore.value;
       const gen = ++narrationGeneration;
       if (state.isAuthenticated && !state.isGuest && state.user) {
         showNarration = true;
-        try {
-          const doc = await getUserProfile(state.user.key);
-          if (gen === narrationGeneration && doc) {
-            isNarrationEnabled = doc.data.preferences.narration !== false;
-          }
-        } catch {}
+        getUserProfile(state.user.key)
+          .then((doc) => {
+            if (gen === narrationGeneration && doc) {
+              isNarrationEnabled = doc.data.preferences.narration !== false;
+            }
+          })
+          .catch(() => {});
       } else {
         showNarration = false;
       }
@@ -76,7 +77,6 @@
 
   onDestroy(() => {
     if (unsubState) unsubState();
-    if (unsubAuth) unsubAuth();
   });
 
   function formatTime(seconds: number) {
@@ -139,7 +139,7 @@
 </script>
 
 <div
-  class="bg-base-300/90 border-primary/20 flex w-48 flex-col gap-1 rounded-lg border p-2 shadow-xl backdrop-blur select-none sm:w-64 sm:gap-2 sm:p-3"
+  class="border-primary/20 flex w-48 flex-col gap-1 rounded-lg border bg-black/80 p-2 shadow-xl backdrop-blur select-none sm:w-64 sm:gap-2 sm:p-3"
 >
   <!-- Track Info & Controls -->
   <div class="flex items-center justify-between gap-2">
@@ -155,8 +155,8 @@
 
     <div class="flex items-center gap-1">
       <button
-        on:click={handlePrev}
-        class="btn btn-xs btn-circle btn-ghost"
+        onclick={handlePrev}
+        class="flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:bg-white/10"
         aria-label="Previous track"
       >
         <svg
@@ -178,8 +178,8 @@
         >
       </button>
       <button
-        on:click={handleToggle}
-        class="btn btn-xs btn-circle btn-primary"
+        onclick={handleToggle}
+        class="bg-primary hover:bg-primary/80 flex h-6 w-6 items-center justify-center rounded-full text-black transition-colors"
         aria-label="Play or pause"
       >
         {#if isPlaying}
@@ -216,8 +216,8 @@
         {/if}
       </button>
       <button
-        on:click={handleNext}
-        class="btn btn-xs btn-circle btn-ghost"
+        onclick={handleNext}
+        class="flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:bg-white/10"
         aria-label="Next track"
       >
         <svg
@@ -239,8 +239,8 @@
         >
       </button>
       <button
-        on:click={handleModeClick}
-        class={`btn btn-xs btn-circle btn-ghost ${playbackMode !== "normal" ? "btn-active text-primary" : ""}`}
+        onclick={handleModeClick}
+        class={`flex h-6 w-6 items-center justify-center rounded-full transition-colors hover:bg-white/10 ${playbackMode !== "normal" ? "text-primary" : "text-white/60"}`}
         aria-label="Playback mode"
         title={playbackMode === "normal"
           ? "Normal"
@@ -329,13 +329,13 @@
       type="range"
       min="0"
       max="100"
-      class="range range-primary range-xs h-1"
+      class="accent-primary h-1 w-full cursor-pointer"
       bind:value={progress}
-      on:input={handleSeekUpdate}
-      on:mousedown={() => (seekActive = true)}
-      on:mouseup={() => (seekActive = false)}
-      on:touchstart={() => (seekActive = true)}
-      on:touchend={() => (seekActive = false)}
+      oninput={handleSeekUpdate}
+      onmousedown={() => (seekActive = true)}
+      onmouseup={() => (seekActive = false)}
+      ontouchstart={() => (seekActive = true)}
+      ontouchend={() => (seekActive = false)}
     />
     <div class="flex justify-between font-mono text-[10px] opacity-50">
       <span>{formatTime(currentTime)}</span>
@@ -345,11 +345,17 @@
 
   <!-- Bottom: Track Selector -->
   <div class="hidden items-center gap-3 sm:flex">
-    <div class="dropdown dropdown-bottom dropdown-start flex-1">
-      <div
-        tabindex="0"
-        role="button"
-        class="btn btn-xs btn-outline btn-primary w-full justify-between truncate px-2 font-mono text-[10px]"
+    <div class="relative flex-1">
+      <button
+        class="border-primary/40 text-primary hover:bg-primary/10 flex w-full items-center justify-between truncate rounded border px-2 py-0.5 font-mono text-[10px] transition-colors"
+        onclick={(e) => {
+          e.stopPropagation();
+          const el = e.currentTarget.nextElementSibling as HTMLElement;
+          el &&
+            (el.style.display =
+              el.style.display === "block" ? "none" : "block");
+        }}
+        type="button"
       >
         <span>Tracks</span>
         <svg
@@ -363,20 +369,25 @@
           stroke-linecap="round"
           stroke-linejoin="round"><path d="m18 15-6-6-6 6"></path></svg
         >
-      </div>
+      </button>
       <ul
-        tabindex="-1"
-        class="dropdown-content menu bg-base-200 rounded-box border-primary/20 z-[1] mt-2 max-h-64 w-52 flex-col flex-nowrap overflow-x-hidden overflow-y-auto border p-2 shadow"
+        class="border-primary/20 absolute bottom-full left-0 z-[1] mb-2 hidden max-h-64 w-52 flex-col flex-nowrap overflow-x-hidden overflow-y-auto rounded-lg border bg-black/90 p-2 shadow"
+        style="display:none"
       >
         {#each tracks as track}
-          <!-- svelte-ignore a11y-missing-attribute -->
           <li>
+            <!-- svelte-ignore a11y_missing_attribute -->
             <a
               role="button"
               tabindex="0"
-              class={`text-[10px] py-1 font-mono truncate ${favoriteTrack === track ? "bg-primary/20 font-bold" : ""}`}
-              on:click|preventDefault={() => selectTrack(track)}
-              on:keydown={(e) => e.key === "Enter" && selectTrack(track)}
+              class={`block cursor-pointer truncate rounded px-2 py-1 font-mono text-[10px] hover:bg-white/10 ${favoriteTrack === track ? "bg-primary/20 text-primary font-bold" : ""}`}
+              onclick={(e) => {
+                e.preventDefault();
+                selectTrack(track);
+                (e.currentTarget.closest("ul") as HTMLElement).style.display =
+                  "none";
+              }}
+              onkeydown={(e) => e.key === "Enter" && selectTrack(track)}
               >{track}</a
             >
           </li>
@@ -388,14 +399,14 @@
   <!-- Narration Toggle -->
   {#if showNarration}
     <div class="hidden items-center gap-2 max-sm:!hidden">
-      <!-- svelte-ignore a11y-label-has-associated-control -->
-      <label class="label cursor-pointer gap-2 p-0">
+      <!-- svelte-ignore a11y_label_has_associated_control -->
+      <label class="flex cursor-pointer items-center gap-2 p-0">
         <span class="font-mono text-[10px] opacity-50">Narration</span>
         <input
           type="checkbox"
           checked={isNarrationEnabled}
-          on:change={handleNarrationToggle}
-          class="checkbox checkbox-primary checkbox-xs"
+          onchange={handleNarrationToggle}
+          class="accent-primary h-3 w-3 cursor-pointer"
         />
       </label>
     </div>
@@ -425,9 +436,9 @@
         type="range"
         min="0"
         max="100"
-        class="range range-primary range-xs h-1 flex-1"
+        class="accent-primary h-1 flex-1 cursor-pointer"
         bind:value={musicVolume}
-        on:input={handleMusicVolume}
+        oninput={handleMusicVolume}
         title="Music Volume"
       />
     </div>
@@ -454,9 +465,9 @@
         type="range"
         min="0"
         max="100"
-        class="range range-secondary range-xs h-1 flex-1"
+        class="accent-secondary h-1 flex-1 cursor-pointer"
         bind:value={sfxVolume}
-        on:input={handleSfxVolume}
+        oninput={handleSfxVolume}
         title="SFX Volume"
       />
     </div>

@@ -11831,14 +11831,14 @@ An overview of our models' capabilities and their associated pricing.
 | grok-3 | text → text | functions, structured | 131,072 | 4M TPM, 900 RPM | $3.00 ($0.75) / $15.00 |
 | grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 4M TPM, 1,450 RPM | $0.30 ($0.07) / $0.50 |
 | grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 4M TPM, 1,450 RPM | $0.30 ($0.07) / $0.50 |
-| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 10M TPM, 620 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
+| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 10M TPM, 620 RPM | $0.20 ($0.05) / $0.50 |
-| grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
 | grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
 | grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
 | grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
+| grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
 | grok-imagine-video | text, image, video → video | - | - | 60 RPM | $0.050/sec |
 | grok-imagine-video | text, image, video → video | - | - | 60 RPM | $0.050/sec |
 

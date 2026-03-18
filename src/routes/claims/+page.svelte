@@ -28,7 +28,7 @@
         🎉 CLAIM YOUR PRIZES 🎉
       </h1>
       <p
-        class="text-base-content/80 mx-auto max-w-2xl font-mono text-lg tracking-wide md:text-xl"
+        class="mx-auto max-w-2xl font-mono text-lg tracking-wide text-white/80 md:text-xl"
       >
         🤑 Let's get that $TRESR! 🤑
       </p>
@@ -36,7 +36,7 @@
 
     <!-- Main Content Area -->
     <div
-      class="bg-base-200/80 border-warning/20 rounded-3xl border p-4 shadow-2xl backdrop-blur md:p-8"
+      class="border-warning/20 rounded-3xl border bg-black/60 p-4 shadow-2xl backdrop-blur md:p-8"
     >
       <ClaimsList />
     </div>
@@ -44,7 +44,10 @@
 
   <div class="mt-auto pt-10 text-center">
     <div class="mb-8">
-      <a href="/" class="btn btn-outline btn-primary font-mono tracking-widest">
+      <a
+        href="/"
+        class="border-primary text-primary hover:bg-primary inline-block rounded-md border px-8 py-3 font-mono text-sm tracking-widest uppercase transition-all hover:text-black hover:shadow-[0_0_15px_var(--color-primary)]"
+      >
         RETURN HOME
       </a>
     </div>

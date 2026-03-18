@@ -3,6 +3,7 @@
   import {onMount} from "svelte";
   import {getVaultCurrentBalance} from "@/lib/blockchain/contracts/vault";
   import {log} from "@/lib/utils/log";
+  import SpeechBubble from "@/components/ui/SpeechBubble.svelte";
 
   const {credits} = config;
   const currentDate = new Date().toLocaleDateString();
@@ -20,47 +21,39 @@
       CREDITS
     </h1>
 
-    <!-- Ron Jay Briefing -->
-    <div class="mb-12 w-full">
-      <div class="chat chat-start w-full">
-        <div class="chat-image avatar translate-y-3 items-end sm:translate-y-4">
-          <div
-            class="mask mask-squircle w-16 shadow-lg drop-shadow-[0_0_5px_rgba(var(--primary),0.3)] sm:w-20"
-          >
-            <img
-              src="/assets/images/ron_jay_speech_bubble.webp"
-              alt="Ron Jay"
-            />
-          </div>
-        </div>
-        <div class="chat-header mb-1 font-bold opacity-80">
-          Ron Jay
-          <span class="text-xs font-normal opacity-50">Credits</span>
-        </div>
-        <div
-          class="chat-bubble chat-bubble-primary text-left text-sm whitespace-pre-line sm:text-base"
-        >
-          {credits?.description}
-        </div>
-      </div>
-    </div>
+    <SpeechBubble
+      avatarSrc="/assets/images/ron_jay_speech_bubble.webp"
+      avatarAlt="Ron Jay"
+      name="Ron Jay"
+      role="Credits"
+    >
+      {credits?.description}
+    </SpeechBubble>
 
     <div class="flex flex-col gap-16 text-left">
       <!-- Team Section -->
       <section>
         <h2
-          class="text-secondary mb-6 font-mono text-2xl tracking-widest uppercase text-center"
+          class="text-secondary mb-6 text-center font-mono text-2xl tracking-widest uppercase"
         >
           The Crew
         </h2>
-        <div class="grid gap-4">
+        <div class="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
           {#each credits?.coders || [] as c}
-            <div class="card bg-base-200/50 border-primary/20 border">
-              <div class="card-body gap-1 p-4">
-                <div class="card-title text-base">{c.name}</div>
-                <div class="text-sm opacity-70">{c.role}</div>
+            <div
+              class="border-primary/20 transition-hover hover:border-primary/50 rounded-xl border bg-white/5 text-left shadow-sm hover:bg-white/10"
+            >
+              <div class="flex flex-col gap-1 p-5">
+                <div class="text-lg font-bold text-white">{c.name}</div>
+                <div
+                  class="text-primary/80 font-mono text-sm tracking-wide uppercase"
+                >
+                  {c.role}
+                </div>
                 {#if c.description}
-                  <div class="mt-1 text-xs italic">{c.description}</div>
+                  <div class="mt-2 text-xs text-white/60 italic">
+                    {c.description}
+                  </div>
                 {/if}
               </div>
             </div>
@@ -71,14 +64,14 @@
       <!-- Tech Stack -->
       <section>
         <h2
-          class="text-secondary mb-6 font-mono text-2xl tracking-widest uppercase text-center"
+          class="text-secondary mb-6 text-center font-mono text-2xl tracking-widest uppercase"
         >
           Powered By
         </h2>
         <div class="flex flex-wrap justify-center gap-3">
           {#each credits?.components || [] as component}
             <span
-              class="badge badge-lg badge-outline border-primary text-primary whitespace-nowrap"
+              class="border-primary/50 bg-primary/10 text-primary rounded-full border px-4 py-1.5 text-sm font-medium whitespace-nowrap shadow-sm"
             >
               {component.name}
             </span>
@@ -89,21 +82,32 @@
       <!-- Assets -->
       <section>
         <h2
-          class="text-secondary mb-6 font-mono text-2xl tracking-widest uppercase text-center"
+          class="text-secondary mb-6 text-center font-mono text-2xl tracking-widest uppercase"
         >
           Assets
         </h2>
-        <div class="grid gap-4">
+        <div class="grid gap-4 sm:grid-cols-2">
           {#each credits?.assets || [] as asset}
-            <div class="card bg-base-200/50 border-primary/20 border">
-              <div class="card-body p-4">
-                <div class="font-mono text-sm opacity-70">
-                  {#if asset.subtype}
-                    {asset.type} ({asset.subtype}): {asset.provider}
-                  {:else}
-                    {asset.type}: {asset.provider}
-                  {/if}
-                </div>
+            <div
+              class="transition-hover rounded-xl border border-white/10 bg-white/5 p-4 text-left hover:bg-white/10"
+            >
+              <div class="font-mono text-sm text-white/70">
+                {#if asset.subtype}
+                  <span class="text-white/90">{asset.type}</span>
+                  <span class="text-primary/80 text-xs uppercase"
+                    >({asset.subtype})</span
+                  >
+                  <br class="hidden sm:block" />
+                  <span class="ml-0 text-xs opacity-50 sm:ml-2"
+                    >By {asset.provider}</span
+                  >
+                {:else}
+                  <span class="text-white/90">{asset.type}</span>
+                  <br class="hidden sm:block" />
+                  <span class="ml-0 text-xs opacity-50 sm:ml-2"
+                    >By {asset.provider}</span
+                  >
+                {/if}
               </div>
             </div>
           {/each}
@@ -115,8 +119,11 @@
       Generated on {currentDate}
     </div>
 
-    <div class="mt-4">
-      <a href="/" class="btn btn-outline btn-primary font-mono tracking-widest">
+    <div class="mt-12 pb-6 text-center">
+      <a
+        href="/"
+        class="border-primary text-primary hover:bg-primary inline-block rounded-md border px-8 py-3 font-mono text-sm tracking-widest uppercase transition-all hover:text-black hover:shadow-[0_0_15px_var(--color-primary)]"
+      >
         RETURN HOME
       </a>
     </div>

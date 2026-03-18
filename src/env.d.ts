@@ -6,9 +6,7 @@
 // DO NOT EDIT MANUALLY.
 
 declare module "/config-client.json" {
-  const value: {    daisyui: {      themes: string[];
-    };
-    auth: {      iid: {        enabled: boolean;
+  const value: {    auth: {      iid: {        enabled: boolean;
         domain: string;
       };
       webauthn: {        enabled: boolean;
@@ -778,9 +776,7 @@ declare module "/config-client.json" {
   export default value;
 }
 declare module "../../../static/config-client.json" {
-  const value: {    daisyui: {      themes: string[];
-    };
-    auth: {      iid: {        enabled: boolean;
+  const value: {    auth: {      iid: {        enabled: boolean;
         domain: string;
       };
       webauthn: {        enabled: boolean;

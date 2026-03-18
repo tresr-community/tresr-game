@@ -21,52 +21,20 @@ import {log} from "@/lib/utils/log";
 
 const COMPONENT_NAME = "SpriteManager";
 
-export interface SpriteAnimConfig {
-  name: string;
-  frames: number;
-  frameRate: number;
-  repeat: number;
-  path: string;
-  frameWidth: number;
-  frameHeight: number;
-}
+import type {ConfigTypes} from "@/types/config";
 
-export interface SpriteConfig {
-  scaleFactor?: number;
-  anims: SpriteAnimConfig[];
-}
+export type SpritesConfig = ConfigTypes["sprites"];
 
-export interface EnemyAnimConfig {
-  name: string;
-  frames: number;
-  frameRate: number;
-  repeat: number;
-  /** Per-variant path template with {i} placeholder */
-  pathTemplate?: string;
-  /** Shared path — same sprite for all variants */
+// For convenience, extracting the nested types from SpritesConfig:
+export type SpriteConfig = SpritesConfig["hero"];
+export type SpriteAnimConfig = SpritesConfig["hero"]["anims"][number];
+export type EnemySpriteConfig = SpritesConfig["enemies"];
+export type EnemyAnimConfig = SpritesConfig["enemies"]["anims"][number];
+
+export interface ExtendedAnimConfig
+  extends Omit<EnemyAnimConfig, "pathTemplate" | "path"> {
   path?: string;
-  frameWidth: number;
-  frameHeight: number;
-}
-
-export interface EnemySpriteConfig {
-  scaleFactor?: number;
-  count: number;
-  anims: EnemyAnimConfig[];
-}
-
-export interface SpritesConfig {
-  defaults: {
-    frameWidth: number;
-    frameHeight: number;
-  };
-  hero: SpriteConfig;
-  super?: SpriteConfig;
-  boss: SpriteConfig;
-  tresr_bot?: SpriteConfig;
-  enemies: EnemySpriteConfig;
-  items: Record<string, SpriteConfig>;
-  statics: Array<{name: string; path: string}>;
+  pathTemplate?: string;
 }
 
 /**
@@ -91,7 +59,7 @@ export class SpriteManager {
    */
   loadConfig(): SpritesConfig {
     if (this.config) return this.config;
-    this.config = config.sprites as unknown as SpritesConfig;
+    this.config = config.sprites;
     return this.config;
   }
 
@@ -129,10 +97,11 @@ export class SpriteManager {
 
       // Resolve path: prefer pathTemplate (per-variant), fall back to path (shared)
       let spritePath: string | undefined;
-      if (anim.pathTemplate) {
-        spritePath = anim.pathTemplate.replace("{i}", String(variantIndex));
-      } else if (anim.path) {
-        spritePath = anim.path;
+      const extAnim = anim as ExtendedAnimConfig;
+      if (extAnim.pathTemplate) {
+        spritePath = extAnim.pathTemplate.replace("{i}", String(variantIndex));
+      } else if (extAnim.path) {
+        spritePath = extAnim.path;
       }
 
       if (!spritePath) {
@@ -191,9 +160,11 @@ export class SpriteManager {
 
     // Load static images
     if (spriteConfig.statics) {
-      spriteConfig.statics.forEach((staticConfig) => {
-        this.scene.load.image(staticConfig.name, staticConfig.path);
-      });
+      (spriteConfig.statics as {name: string; path: string}[]).forEach(
+        (staticConfig) => {
+          this.scene.load.image(staticConfig.name, staticConfig.path);
+        }
+      );
     }
 
     log.info(COMPONENT_NAME, "Sprites queued for loading (enemies deferred)");
@@ -223,7 +194,7 @@ export class SpriteManager {
 
     const entityKey = `enemy_${variantIndex}`;
     const animKeys = spriteConfig.enemies.anims.map(
-      (a) => `${entityKey}_${a.name}`
+      (a: EnemyAnimConfig) => `${entityKey}_${a.name}`
     );
 
     // Check if textures already exist (e.g. from a previous scene)
@@ -296,8 +267,9 @@ export class SpriteManager {
 
     // Create item animations
     if (spriteConfig.items) {
-      Object.keys(spriteConfig.items).forEach((key) => {
-        this.createEntityAnimations(key, spriteConfig.items[key].anims);
+      const itemsConfig = spriteConfig.items as Record<string, SpriteConfig>;
+      Object.keys(itemsConfig).forEach((key) => {
+        this.createEntityAnimations(key, itemsConfig[key].anims);
       });
     }
 
@@ -409,19 +381,22 @@ export class SpriteManager {
 
     let base: number;
     if (entityKey === "hero") {
-      base = spritesConfig.hero?.scaleFactor ?? 1;
+      base = spritesConfig.hero.scaleFactor;
     } else if (entityKey === "super") {
-      base = spritesConfig.super?.scaleFactor ?? 1;
+      base = spritesConfig.super.scaleFactor;
     } else if (entityKey === "boss") {
-      base = spritesConfig.boss?.scaleFactor ?? 1;
+      base = spritesConfig.boss.scaleFactor;
     } else if (entityKey === "tresr_bot") {
-      base = spritesConfig.tresr_bot?.scaleFactor ?? 1;
+      base = spritesConfig.tresr_bot.scaleFactor;
     } else if (entityKey.startsWith("enemy")) {
-      base = spritesConfig.enemies?.scaleFactor ?? 1;
-    } else if (spritesConfig.items?.[entityKey]) {
-      base = spritesConfig.items[entityKey].scaleFactor ?? 1;
+      base = spritesConfig.enemies.scaleFactor;
     } else {
-      base = 1;
+      const itemsConfig = spritesConfig.items as Record<string, SpriteConfig>;
+      if (itemsConfig?.[entityKey]) {
+        base = itemsConfig[entityKey]?.scaleFactor ?? 1;
+      } else {
+        base = 1;
+      }
     }
 
     return base * resMult;

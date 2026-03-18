@@ -8,7 +8,6 @@
  */
 
 import {
-  initSatellite,
   signIn,
   signUp,
   signOut as junoSignOut,
@@ -18,6 +17,7 @@ import {
   setDoc,
   type User,
 } from "@junobuild/core";
+import {initializeJunoSatellite} from "@/lib/utils/juno";
 import {SiwaClient, type SiwaIdentity} from "ic-siwa";
 import type {Identity} from "@dfinity/agent";
 import {
@@ -38,21 +38,13 @@ import {
   initWalletReconnect,
 } from "@/lib/wallet/connection";
 import {config} from "@/lib/config/client";
-import {loadProfile, clearProfile, profileStore} from "@/lib/user/store";
+import {loadProfile, clearProfile, profileStore} from "@/lib/user/store.svelte";
 import {getUserProfile, enqueueProfileWrite} from "@/lib/user";
-import {authStore} from "./store";
+import {authStore, type AuthMode, type AuthState} from "./store.svelte";
 
 const COMPONENT_NAME = "Auth";
 
-export type AuthMode = "guest" | "internet-identity" | "avalanche";
-
-export interface AuthState {
-  isAuthenticated: boolean;
-  isGuest: boolean;
-  user: User | null;
-  authMode: AuthMode | null;
-  principalId: string | null;
-}
+export type {AuthMode, AuthState};
 
 // Auth state storage keys
 const STORAGE_KEY_AUTH_MODE = "tresr_auth_mode";
@@ -116,7 +108,7 @@ function getSiwaClient(): SiwaClient {
 }
 
 /**
- * Bridge SIWA identity into IndexedDB so initSatellite() recognizes the session.
+ * Bridge SIWA identity into IndexedDB so initializeJunoSatellite() recognizes the session.
  * Writes the Ed25519 base key and delegation chain into the auth-client IDB store.
  */
 async function bridgeSiwaToIdb(identity: SiwaIdentity): Promise<void> {
@@ -145,7 +137,7 @@ let authChangeCallbacks: Array<(state: AuthState) => void> = [];
 function notifyAuthChange(): void {
   const stateCopy = {...authState};
   // Keep the nanostore in sync — components subscribe to this directly.
-  authStore.set(stateCopy);
+  authStore.value = stateCopy;
   for (const callback of authChangeCallbacks) {
     try {
       callback(stateCopy);
@@ -192,14 +184,14 @@ export async function handleSignOut(
     const idbStorage = new IdbStorage();
     await idbStorage.remove(KEY_STORAGE_KEY);
     await idbStorage.remove(KEY_STORAGE_DELEGATION);
-  } catch (err) {
+  } catch (err: unknown) {
     log.warn(COMPONENT_NAME, "IDB cleanup failed (non-fatal):", err);
   }
 
   // Disconnect wallet so AppKit/Wagmi state is clean (ticket #205)
   try {
     await disconnectWallet();
-  } catch (err) {
+  } catch (err: unknown) {
     log.warn(COMPONENT_NAME, "Wallet disconnect failed (non-fatal):", err);
   }
 
@@ -250,13 +242,15 @@ async function doInitAuth(): Promise<void> {
     }
   }
 
-  // Warm the wagmi connection NOW — before initSatellite() — so the
-  // connector handshake runs in parallel with the Juno satellite init.
-  // This means the wallet modal opens instantly when the user clicks
-  // "Sign in with Avalanche" instead of blocking on the handshake.
-  initWalletReconnect();
+  // Warm the wagmi connection NOW — but only if the user previously had an
+  // Avalanche session. For guests and IID users, there is no wallet to
+  // reconnect and eagerly running reconnect() can trigger unexpected wallet
+  // modals when AppKit finds a stale session in localStorage.
+  if (storedMode === "avalanche") {
+    initWalletReconnect();
+  }
 
-  await initSatellite();
+  await initializeJunoSatellite();
 
   // Listen for auth state changes from Juno
   onAuthStateChange((user: User | null) => {
@@ -359,16 +353,6 @@ async function doInitAuth(): Promise<void> {
   };
   document.addEventListener("junoSignOutAuthTimer", signOutTimerHandler);
 
-  // Clean up auth timer listener and stale subscribers on Astro page navigation
-  document.addEventListener("astro:before-preparation", () => {
-    if (signOutTimerHandler) {
-      document.removeEventListener("junoSignOutAuthTimer", signOutTimerHandler);
-      signOutTimerHandler = null;
-    }
-    // Clear stale auth change callbacks from previous page components
-    authChangeCallbacks = [];
-  });
-
   // Restore guest session if present (initial load sync check)
   const isGuest = sessionStorage.getItem(STORAGE_KEY_GUEST) === "true";
   if (isGuest) {
@@ -419,7 +403,7 @@ export async function signInAsGuest(): Promise<void> {
     const idbStorage = new IdbStorage();
     await idbStorage.remove(KEY_STORAGE_KEY);
     await idbStorage.remove(KEY_STORAGE_DELEGATION);
-  } catch (err) {
+  } catch (err: unknown) {
     log.warn(COMPONENT_NAME, "IDB cleanup before guest login failed:", err);
   }
   siwaIdentity = null;
@@ -463,18 +447,22 @@ export async function signInWithInternetIdentity(): Promise<void> {
   authState.isGuest = false;
 
   try {
-    // Config for Internet Identity
-    // In development: identityProvider URL to local emulator
-    // In production: domain for id.ai
-    const options =
+    // For local development: no options needed — the Juno vite-plugin injects
+    // VITE_CONTAINER which the SDK uses internally to point to the emulator's
+    // II canister (aaaaa-ca.localhost:5987). Passing a custom `identityProvider`
+    // URL here causes "Unknown Domain" because InternetIdentitySignInOptions
+    // only accepts the `domain` field (a production literal, not a URL string).
+    //
+    // For production/staging: pass domain to use id.ai (II 2.0) which supports
+    // Internet Identity, Passkeys, Google, Apple, Microsoft.
+    const iiOptions =
       JUNO_ENVIRONMENT === "development"
-        ? {identityProvider: JUNO_INTERNET_IDENTITY}
-        : {domain: JUNO_INTERNET_IDENTITY};
+        ? {}
+        : {domain: JUNO_INTERNET_IDENTITY as "id.ai"};
 
     await signIn({
       internet_identity: {
-        // @ts-expect-error - Mismatch between build-time environment variables and Juno options
-        options,
+        options: Object.keys(iiOptions).length > 0 ? iiOptions : undefined,
       },
     });
   } catch (error) {
@@ -545,7 +533,7 @@ export async function signInWithAvalanche(): Promise<void> {
       throw new Error("SIWA login succeeded but identity is null");
     }
 
-    // Bridge SIWA identity to IDB so initSatellite() recognizes the session
+    // Bridge SIWA identity to IDB so initializeJunoSatellite() recognizes the session
     await bridgeSiwaToIdb(siwaIdentity);
 
     // Use the DelegationIdentity principal — this is the self-authenticating
@@ -559,7 +547,7 @@ export async function signInWithAvalanche(): Promise<void> {
     );
 
     // Pass identity to Juno
-    await initSatellite();
+    await initializeJunoSatellite();
 
     // Register in Juno's #user system collection so getDoc/setDoc are authorized
     try {
@@ -606,7 +594,7 @@ export async function signInWithAvalanche(): Promise<void> {
       // Read back the profile to populate the store
       const savedDoc = await getUserProfile(principal);
       if (savedDoc) {
-        profileStore.set(savedDoc.data);
+        profileStore.value = savedDoc.data;
       }
       log.info(COMPONENT_NAME, "Profile created/updated with SIWA wallet link");
     } catch (profileError) {
@@ -786,7 +774,7 @@ export function getDisplayName(): string {
   }
 
   // Try to get nickname from profile store
-  const profile = profileStore.get();
+  const profile = profileStore.value;
   if (profile?.nickname) {
     return profile.nickname;
   }

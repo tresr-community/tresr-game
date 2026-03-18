@@ -1,86 +1,82 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import {banModal} from "@/lib/stores/ui.svelte";
+  import Modal from "@/components/ui/Modal.svelte";
 
-  let dialog: HTMLDialogElement;
-  let expiresText = "—";
-  let offenceCount = 0;
+  let open = $state(false);
+  let expiresText = $state("—");
+  let offenceCount = $state(0);
+
+  $effect(() => {
+    const payload = banModal.current;
+    if (!payload) return;
+
+    expiresText =
+      payload.banned_until === Number.MAX_SAFE_INTEGER
+        ? "Permanent"
+        : new Date(payload.banned_until).toLocaleString();
+    offenceCount = payload.offence_count;
+    open = true;
+  });
 
   function handleBtnBack() {
-    dialog.close();
+    open = false;
+    banModal.set(null);
     window.location.href = "/";
   }
-
-  // Prevent Escape key dismissal (ticket #155)
-  function handleCancel(e: Event) {
-    e.preventDefault();
-  }
-
-  // Prevent backdrop click dismissal (ticket #155)
-  function handleBackdropClick(e: MouseEvent) {
-    if (e.target === dialog) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  }
-
-  function handleBanModalOpen(e: Event) {
-    const detail = (e as CustomEvent<{banned_until: number; offence_count: number}>).detail;
-
-    if (detail.banned_until === Number.MAX_SAFE_INTEGER) {
-      expiresText = "Permanent";
-    } else {
-      const date = new Date(detail.banned_until);
-      expiresText = date.toLocaleString();
-    }
-
-    offenceCount = detail.offence_count;
-    dialog.showModal();
-  }
-
-  onMount(() => {
-    document.addEventListener("tresr:ban-modal-open", handleBanModalOpen);
-  });
-
-  onDestroy(() => {
-    document.removeEventListener("tresr:ban-modal-open", handleBanModalOpen);
-  });
 </script>
 
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
-<dialog
-  bind:this={dialog}
-  class="modal modal-middle"
-  on:cancel={handleCancel}
-  on:click={handleBackdropClick}
+<Modal
+  bind:open
+  title="Access Denied"
+  closeOnEscape={false}
+  closeOnOutsideClick={false}
 >
-  <div class="modal-box border-error/30 bg-base-300 border text-center">
-    <h3 class="text-error font-display text-3xl font-black tracking-widest uppercase">
-      Access Denied
-    </h3>
-    <p class="py-4 opacity-70">
-      Your account has been temporarily suspended due to a tamper detection violation.
-    </p>
+  <p class="py-2 opacity-70">
+    Your account has been temporarily suspended due to a tamper detection
+    violation.
+  </p>
 
-    <div class="stats stats-vertical bg-base-200/50 my-4 w-full shadow">
-      <div class="stat">
-        <div class="stat-title text-xs uppercase">Reason</div>
-        <div class="stat-value text-error text-lg">Tamper Detection Violation</div>
+  <div
+    class="my-4 flex w-full flex-col gap-px overflow-hidden rounded-md border border-white/10 bg-white/10 shadow-inner"
+  >
+    <div class="flex flex-col border-b border-white/5 bg-black/40 p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-[#dc2626] uppercase"
+      >
+        Reason
       </div>
-      <div class="stat">
-        <div class="stat-title text-xs uppercase">Ban Expires</div>
-        <div class="stat-value text-warning font-mono text-lg">{expiresText}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-title text-xs uppercase">Offence Count</div>
-        <div class="stat-value text-warning font-mono text-lg">{offenceCount}</div>
+      <div class="text-sm font-bold text-[#f87171]">
+        Tamper Detection Violation
       </div>
     </div>
-
-    <div class="modal-action flex-col gap-2">
-      <button on:click={handleBtnBack} class="btn btn-ghost btn-block">
-        Return Home
-      </button>
+    <div class="flex flex-col border-b border-white/5 bg-black/40 p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-[#eab308] uppercase"
+      >
+        Ban Expires
+      </div>
+      <div class="font-mono text-sm font-bold text-[#fde047]">
+        {expiresText}
+      </div>
+    </div>
+    <div class="flex flex-col bg-black/40 p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-[#eab308] uppercase"
+      >
+        Offence Count
+      </div>
+      <div class="font-mono text-sm font-bold text-[#fde047]">
+        {offenceCount}
+      </div>
     </div>
   </div>
-</dialog>
+
+  {#snippet footer()}
+    <button
+      onclick={handleBtnBack}
+      class="w-full rounded-md border border-white/10 bg-white/5 px-4 py-2 font-bold tracking-widest text-white/70 uppercase transition-colors hover:bg-white/10 hover:text-white"
+    >
+      Return Home
+    </button>
+  {/snippet}
+</Modal>

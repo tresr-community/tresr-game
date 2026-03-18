@@ -1,28 +1,35 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import GameCanvas from "@/components/game/GameCanvas.svelte";
+  import {goto} from "$app/navigation";
+  import {onMount, onDestroy} from "svelte";
   import FeeGate from "@/components/game/FeeGate.svelte";
   import BanModal from "@/components/game/BanModal.svelte";
   import MaintenanceModal from "@/components/game/MaintenanceModal.svelte";
   import Loader from "@/components/game/Loader.svelte";
 
-  import { getAuthState, initAuth } from "@/lib/auth";
-  import { checkDeviceBan } from "@/lib/auth/ban";
-  import { isGuestRateLimited } from "@/lib/auth/guest";
-  import { isFeePaid, showFeeGate } from "@/lib/game/fee-gate";
-  import { profileStore } from "@/lib/user/store";
-  import { trackGameStart } from "@/lib/metrics/analytics";
-  import { config } from "@/lib/config/client";
-  import { log } from "@/lib/utils/log";
-  import { SCENE_KEYS } from "@/lib/game/constants";
+  import {getAuthState, initAuth} from "@/lib/auth";
+  import {checkDeviceBan} from "@/lib/auth/ban";
+  import {isGuestRateLimited} from "@/lib/auth/guest";
+  import {isFeePaid, showFeeGate} from "@/lib/game/fee-gate";
+  import {profileStore} from "@/lib/user/store.svelte";
+  import {trackGameStart} from "@/lib/metrics/analytics";
+  import {config} from "@/lib/config/client";
+  import {log} from "@/lib/utils/log";
+  import {SCENE_KEYS} from "@/lib/game/constants";
+  import {banModal, maintenanceModal, isPortrait} from "@/lib/stores/ui.svelte";
 
   const COMPONENT_NAME = "GamePage";
+
+  // Game canvas is conditionally mounted — only after auth + fee checks pass.
+  // This is the sveltekit-phaser pattern: no hidden div, no DOM start event.
+  let gameStarted = $state(false);
+  // Phaser.Game ref flows back from GameCanvas via bind:game
+  let game: Phaser.Game | null = $state(null);
 
   let wakeLock: WakeLockSentinel | null = null;
   let lastHandledPortrait: boolean | null = null;
 
   function checkBan(): boolean {
-    const profile = profileStore.get();
+    const profile = profileStore.value;
     if (!profile) return false;
 
     const bannedUntil = profile.banned_until;
@@ -31,14 +38,10 @@
     const now = Date.now();
     if (bannedUntil > now) {
       log.info(COMPONENT_NAME, `User is banned until ${bannedUntil}`);
-      document.dispatchEvent(
-        new CustomEvent("tresr:ban-modal-open", {
-          detail: {
-            banned_until: bannedUntil,
-            offence_count: profile.offence_count ?? 0,
-          },
-        })
-      );
+      banModal.set({
+        banned_until: bannedUntil,
+        offence_count: profile.offence_count ?? 0,
+      });
       return true;
     }
 
@@ -50,21 +53,17 @@
     const auth = getAuthState();
 
     if (!auth.isAuthenticated) {
-      window.location.href = "/";
+      goto("/");
       return;
     }
 
     const deviceBan = checkDeviceBan();
     if (deviceBan) {
       log.info(COMPONENT_NAME, "Device is banned, showing ban modal");
-      document.dispatchEvent(
-        new CustomEvent("tresr:ban-modal-open", {
-          detail: {
-            banned_until: deviceBan.bannedUntil,
-            offence_count: deviceBan.offenceCount,
-          },
-        })
-      );
+      banModal.set({
+        banned_until: deviceBan.bannedUntil,
+        offence_count: deviceBan.offenceCount,
+      });
       return;
     }
 
@@ -73,7 +72,7 @@
     if (auth.isGuest) {
       if (isGuestRateLimited()) {
         log.info(COMPONENT_NAME, "Guest rate limit reached, redirecting");
-        window.location.href = "/";
+        goto("/");
         return;
       }
       log.info(COMPONENT_NAME, "Guest mode - skipping fee gate");
@@ -81,26 +80,27 @@
       return;
     }
 
-    const profile = profileStore.get();
+    const profile = profileStore.value;
     if (profile && !profile.evm_wallet) {
-      log.info(COMPONENT_NAME, "No wallet linked, cannot enter fee gate");
-      // @ts-ignore
-      if (window.showWarningToast) window.showWarningToast("You need to link a wallet first");
-      window.location.href = "/";
+      log.warn(COMPONENT_NAME, "No wallet linked — redirecting to home");
+      goto("/");
       return;
     }
 
-    const { isVaultDeployed } = await import("@/lib/blockchain/networks/chain");
+    const {isVaultDeployed} = await import("@/lib/blockchain/networks/chain");
     if (!isVaultDeployed(config)) {
       log.info(COMPONENT_NAME, "Vault not deployed, skipping fee gate");
       startGame();
       return;
     }
 
-    const { isSatelliteInSync } = await import("@/lib/satellite/config-hash");
+    const {isSatelliteInSync} = await import("@/lib/satellite/config-hash");
     if (!(await isSatelliteInSync())) {
-      log.info(COMPONENT_NAME, "Satellite config hash mismatch — showing maintenance modal");
-      document.dispatchEvent(new CustomEvent("tresr:maintenance-modal-open"));
+      log.info(
+        COMPONENT_NAME,
+        "Satellite config hash mismatch — showing maintenance modal"
+      );
+      maintenanceModal.set(true);
       return;
     }
 
@@ -119,10 +119,10 @@
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("timed out")) {
         log.error(COMPONENT_NAME, "Fee gate transaction timed out");
-        window.location.href = "/";
+        goto("/");
       } else {
         log.info(COMPONENT_NAME, "Fee payment aborted, returning to home");
-        window.location.href = "/";
+        goto("/");
       }
     }
   }
@@ -181,7 +181,8 @@
   }
 
   async function requestFullscreen() {
-    const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    const isTouchDevice =
+      "ontouchstart" in window || navigator.maxTouchPoints > 0;
     if (!isTouchDevice) return;
 
     try {
@@ -196,9 +197,11 @@
   }
 
   function resumeAudioContext() {
-    const game = (window as any).__phaserGame;
-    if (game?.sound?.context?.state === "suspended") {
-      game.sound.context.resume().then(() => {
+    // game ref comes from GameCanvas via bind:game — no window global needed.
+    // sound.context only exists on WebAudioSoundManager, not the base type.
+    const soundMgr = game?.sound as any;
+    if (soundMgr?.context?.state === "suspended") {
+      soundMgr.context.resume().then(() => {
         log.info(COMPONENT_NAME, "AudioContext resumed on touch");
       });
     }
@@ -207,11 +210,6 @@
   }
 
   function startGame() {
-    const container = document.getElementById("game-container");
-    if (container) {
-      container.classList.remove("hidden");
-    }
-
     document.body.style.overflow = "hidden";
     document.body.style.position = "fixed";
     document.body.style.inset = "0";
@@ -224,12 +222,13 @@
     document.addEventListener("touchstart", resumeAudioContext, {once: true});
     document.addEventListener("click", resumeAudioContext, {once: true});
 
-    log.info(COMPONENT_NAME, "Dispatching game engine start event");
-    document.dispatchEvent(new CustomEvent("tresr:start-game-engine"));
+    // Mount GameCanvas — Phaser initialises inside the component's onMount.
+    // No tresr:start-game-engine DOM event needed.
+    gameStarted = true;
+    log.info(COMPONENT_NAME, "Game canvas mounted");
   }
 
   function handleKeyboardVisibility() {
-    const game = (window as any).__phaserGame;
     if (!game) return;
 
     const kb = game.input.keyboard;
@@ -245,12 +244,12 @@
     }
   }
 
-  function handlePortraitChange(e: Event) {
-    const {portrait} = (e as CustomEvent).detail;
+  // Portrait signal — replaces tresr:portrait-change DOM event
+  $effect(() => {
+    const portrait = isPortrait.current;
     if (portrait === lastHandledPortrait) return;
     lastHandledPortrait = portrait;
 
-    const game = (window as any).__phaserGame;
     if (!game) return;
 
     const mainScene = game.scene.getScene(SCENE_KEYS.MAIN);
@@ -263,12 +262,11 @@
       log.info(COMPONENT_NAME, "Landscape detected, resuming MainScene");
       if (mainScene.scene.isPaused()) mainScene.scene.resume();
     }
-  }
+  });
 
   onMount(() => {
     document.addEventListener("visibilitychange", reacquireWakeLock);
     document.addEventListener("visibilitychange", handleKeyboardVisibility);
-    document.addEventListener("tresr:portrait-change", handlePortraitChange);
     window.addEventListener("beforeunload", releaseLandscapeLock);
 
     checkAuthAndFee();
@@ -277,7 +275,6 @@
   onDestroy(() => {
     document.removeEventListener("visibilitychange", reacquireWakeLock);
     document.removeEventListener("visibilitychange", handleKeyboardVisibility);
-    document.removeEventListener("tresr:portrait-change", handlePortraitChange);
     document.removeEventListener("touchstart", resumeAudioContext);
     document.removeEventListener("click", resumeAudioContext);
     window.removeEventListener("beforeunload", releaseLandscapeLock);
@@ -297,7 +294,10 @@
 
 <svelte:head>
   <title>TRESR Game | Active Session</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"
+  />
 </svelte:head>
 
 <Loader id="game-loader" />
@@ -306,6 +306,19 @@
 <BanModal />
 <MaintenanceModal />
 
-<div id="game-container" class="fixed inset-0 hidden h-screen w-full touch-none overflow-hidden">
-  <GameCanvas />
-</div>
+{#if gameStarted}
+  <!--
+    GameCanvas is only mounted after auth + fee checks pass.
+    Phaser is loaded via dynamic import inside GameCanvas, so the
+    heavy bundle is code-split and not in the initial page load.
+    bind:game gives this page the Phaser.Game ref without window globals.
+  -->
+  {#await import("@/components/game/GameCanvas.svelte") then { default: GameCanvas }}
+    <div
+      id="game-container"
+      class="fixed inset-0 h-screen w-full touch-none overflow-hidden"
+    >
+      <GameCanvas bind:game />
+    </div>
+  {/await}
+{/if}

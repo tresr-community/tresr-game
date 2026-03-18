@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import {onMount, onDestroy} from "svelte";
   import PWA from "@/lib/pwa";
-  import { log } from "@/lib/utils/log";
-  import { trackPwaUpdate } from "@/lib/metrics/analytics";
+  import {log} from "@/lib/utils/log";
+  import {trackPwaUpdate} from "@/lib/metrics/analytics";
+  import Modal from "@/components/ui/Modal.svelte";
 
   const COMPONENT_NAME = "UpdatePrompt";
 
-  let modal: HTMLDialogElement;
-  let updateVersion = "v?.?.?";
+  let open = $state(false);
+  let updateVersion = $state("v?.?.?");
 
   function openUpdatePrompt(version: string) {
     if (window.location.pathname.includes("/game")) {
@@ -15,11 +16,11 @@
       return;
     }
     updateVersion = version;
-    modal?.showModal();
+    open = true;
   }
 
   function closeUpdatePrompt() {
-    modal?.close();
+    open = false;
   }
 
   async function handleUpdateNow() {
@@ -36,7 +37,7 @@
 
   function handlePwaUpdateReady(event: Event) {
     if (!(event instanceof CustomEvent)) return;
-    const { detail } = event;
+    const {detail} = event;
     openUpdatePrompt(detail.version);
   }
 
@@ -49,21 +50,24 @@
   });
 </script>
 
-<dialog bind:this={modal} class="modal">
-  <div class="modal-box border-primary/30 bg-base-200 border text-center">
-    <h3 class="text-primary mb-4 text-xl font-bold">
-      🚀 NEW VERSION AVAILABLE
-    </h3>
-    <p class="mb-6">
-      A new version (<span>{updateVersion}</span>) is ready to
-      install. Update now to get the latest features and fixes?
-    </p>
-    <div class="flex flex-col gap-3">
-      <button on:click={handleUpdateNow} class="btn btn-primary"> Update Now </button>
-      <button on:click={handleUpdateLater} class="btn btn-ghost"> Maybe Later </button>
-    </div>
-  </div>
-  <form method="dialog" class="modal-backdrop">
-    <button>close</button>
-  </form>
-</dialog>
+<Modal bind:open title="🚀 NEW VERSION AVAILABLE" closeOnOutsideClick={false}>
+  <p class="mb-6 opacity-80">
+    A new version (<span class="text-primary font-bold">{updateVersion}</span>)
+    is ready to install. Update now to get the latest features and fixes?
+  </p>
+
+  {#snippet footer()}
+    <button
+      onclick={handleUpdateLater}
+      class="rounded-md px-4 py-2 font-bold tracking-wider text-white/50 uppercase transition-colors hover:bg-white/5 hover:text-white sm:mr-2"
+    >
+      Maybe Later
+    </button>
+    <button
+      onclick={handleUpdateNow}
+      class="bg-primary hover:bg-primary/90 rounded-md px-6 py-2 font-bold tracking-widest text-[#0d0d12] uppercase shadow-[0_0_15px_var(--color-primary)] transition-all hover:scale-105 active:scale-95"
+    >
+      Update Now
+    </button>
+  {/snippet}
+</Modal>

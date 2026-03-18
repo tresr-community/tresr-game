@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
+  import {confettiTrigger} from "@/lib/stores/ui.svelte";
 
   const DEFAULT_COLORS = [
     "#FFD700",
@@ -80,18 +80,9 @@
     requestAnimationFrame(tick);
   }
 
-  function handleConfetti(e: Event) {
-    const detail = (e as CustomEvent).detail;
-    const count = detail?.count ?? DEFAULT_COUNT;
-    const colors = detail?.colors ?? DEFAULT_COLORS;
-    fire(count, colors);
-  }
-
-  onMount(() => {
-    document.addEventListener("tresr:confetti", handleConfetti);
-  });
-
-  onDestroy(() => {
-    document.removeEventListener("tresr:confetti", handleConfetti);
+  $effect(() => {
+    const payload = confettiTrigger.current;
+    if (!payload) return;
+    fire(payload.count ?? DEFAULT_COUNT, payload.colors ?? DEFAULT_COLORS);
   });
 </script>

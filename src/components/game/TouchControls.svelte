@@ -3,6 +3,7 @@
   import TouchInput from "@/lib/game/TouchInput";
   import {gameState} from "@/lib/game/state";
   import {config} from "@/lib/config/client";
+  import Button from "@/components/ui/Button.svelte";
 
   const touchInput = TouchInput.getInstance();
 
@@ -135,7 +136,7 @@
     >
       <div
         bind:this={joystickBaseElement}
-        class="border-primary/30 bg-base-300/40 relative flex h-24 w-24 items-center justify-center rounded-full border backdrop-blur-sm sm:h-32 sm:w-32"
+        class="border-primary/30 relative flex h-24 w-24 items-center justify-center rounded-full border bg-black/40 backdrop-blur-sm sm:h-32 sm:w-32"
       >
         <div
           bind:this={joystickThumbElement}
@@ -150,9 +151,10 @@
       style="bottom: max(0.5rem, var(--safe-bottom)); right: max(0.5rem, var(--safe-right));"
     >
       <!-- Jump button (top) -->
-      <button
-        on:touchstart={handleJumpStart}
-        class="btn btn-circle bg-info/40 border-info/60 h-14 w-14 border text-xs font-bold text-white backdrop-blur-sm active:scale-90 sm:h-16 sm:w-16"
+      <Button
+        variant="info"
+        ontouchstart={handleJumpStart}
+        class="border-info/60 h-14 w-14 rounded-full border text-xs font-bold text-white backdrop-blur-sm active:scale-90 sm:h-16 sm:w-16"
         aria-label="Jump"
       >
         <svg
@@ -169,13 +171,14 @@
           <path d="M12 19V5"></path>
           <path d="M5 12l7-7 7 7"></path>
         </svg>
-      </button>
+      </Button>
 
       <div class="flex gap-3">
         <!-- Super button (left of attack) -->
-        <button
-          on:touchstart={handleSuperStart}
-          class={`btn btn-circle bg-warning/40 border-warning/60 h-14 w-14 border text-xs font-bold text-white backdrop-blur-sm active:scale-90 sm:h-16 sm:w-16 ${canSuper ? "opacity-100 animate-pulse" : "opacity-50"}`}
+        <Button
+          variant="warning"
+          ontouchstart={handleSuperStart}
+          class={`border-warning/60 h-14 w-14 rounded-full border text-xs font-bold text-white backdrop-blur-sm active:scale-90 sm:h-16 sm:w-16 ${canSuper ? "animate-pulse opacity-100" : "opacity-50"}`}
           aria-label="Super attack"
         >
           <svg
@@ -189,12 +192,13 @@
               points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
             ></polygon>
           </svg>
-        </button>
+        </Button>
 
         <!-- Attack button (main) -->
-        <button
-          on:touchstart={handleAttackStart}
-          class="btn btn-circle bg-error/50 border-error/70 h-14 w-14 border text-xs font-bold text-white backdrop-blur-sm active:scale-90 sm:h-16 sm:w-16"
+        <Button
+          variant="error"
+          ontouchstart={handleAttackStart}
+          class="border-error/70 h-14 w-14 rounded-full border text-xs font-bold text-white backdrop-blur-sm active:scale-90 sm:h-16 sm:w-16"
           aria-label="Attack"
         >
           <svg
@@ -211,7 +215,7 @@
             <path d="M14.5 17.5L3 6l3-3 11.5 11.5M13 19l6-6M16 16l4 4M19 13l2 2"
             ></path>
           </svg>
-        </button>
+        </Button>
       </div>
     </div>
   </div>

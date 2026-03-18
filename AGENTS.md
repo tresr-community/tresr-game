@@ -2,7 +2,7 @@
 
 ## 🤖 Agent Identity & Role
 
-Role: Senior Web3 Game Developer, Juno Architect, SvelteKit Expert & DaisyUI Styling Expert.
+Role: Senior Web3 Game Developer, Juno Architect, SvelteKit Expert & Tailwind CSS / bits-ui Styling Expert.
 
 Objective: Assist in the development, deployment, and optimization of a decentralized game hosted on the Internet Computer blockchain using Juno's serverless platform and SvelteKit framework.
 
@@ -48,7 +48,6 @@ Available documentation:
 | Name      | Local File                | Source URL                                   |
 | --------- | ------------------------- | -------------------------------------------- |
 | SvelteKit | `docs/agents/svelte.txt`  | [LLMs](https://svelte.dev/docs/llms.txt)     |
-| DaisyUI   | `docs/agents/daisyui.txt` | [LLMs](https://daisyui.com/llms.txt)         |
 | Foundry   | `docs/agents/foundry.txt` | [LLMs](https://getfoundry.sh/llms-full.txt)  |
 | Juno      | `docs/agents/juno.txt`    | [LLMs](https://juno.build/llms-full.txt)     |
 | OISY      | `docs/agents/oisy.txt`    | [LLMs](https://docs.oisy.com/llms-full.txt)  |
@@ -158,69 +157,66 @@ log.error("Component", "Error message", err); // Also shows error toast
 - `src/integrations/` — Build-time Node.js integration scripts.
 - `bin/` CLI scripts — Node.js tooling that runs outside the browser.
 
-### DaisyUI
+### UI Components: bits-ui + Tailwind CSS v4
 
-Context: The project uses DaisyUI as a Tailwind CSS component library for rapid,
-semantic, and accessible UI development. DaisyUI provides pre-built components
-(e.g., buttons, modals, cards) and utilities that integrate seamlessly with
-Tailwind CSS v4+, enabling consistent, themeable designs without custom CSS.
-
-The project has a valid license for the DaisyUI Blueprint MCP server, which
-enhances AI-assisted styling with real-time previews, component suggestions,
-and theme customization.
+Context: The project uses [bits-ui](https://bits-ui.com) as the headless UI
+primitive library, paired with Tailwind CSS v4 for all styling. bits-ui provides
+unstyled, fully accessible Svelte 5 components (Dialog, DropdownMenu, Tooltip,
+Select, etc.) that are wired directly to your own Tailwind classes — there is no
+pre-built CSS shipped by the library.
 
 Directives:
 
-- **Primary Styling Framework**: Always use DaisyUI components and classes for UI
-  elements instead of raw Tailwind or custom CSS. Prioritize DaisyUI's semantic
-  classes (e.g., `btn`, `card`, `modal`) for buttons, layouts, and interactions.
-- **Theme Integration**: Leverage DaisyUI's built-in themes (e.g., light, dark,
-  cyberpunk, synthwave, retro, neon) for consistency. Customize via CSS variables in
-  `src/styles/global.css` or Tailwind config. Ensure themes align with the game's
-  cyberpunk aesthetic.
-- **Tailwind CSS Foundation**: Underpin DaisyUI with Tailwind utilities (e.g., spacing,
-  colors) but avoid redundant custom styles. Use Tailwind v4's features like improved
-  performance and modern syntax.
-- **Component-Driven Design**: Create reusable DaisyUI-based components in `.svelte` files. Follow BEM-like naming but rely on DaisyUI classes for structure.
-- **Accessibility & Semantics**: DaisyUI components are built with accessibility in mind; always use ARIA attributes and semantic HTML when extending them. Test for WCAG compliance.
-- **Performance Optimization**: Minimize custom CSS; let DaisyUI handle heavy lifting. Use Svelte's scoped styles sparingly and only for game-specific overrides.
-- **Mobile Responsiveness**: Utilize DaisyUI's responsive utilities (e.g., `btn-sm`, `lg:hidden`) combined with Tailwind breakpoints for mobile-first design.
-- **No Global Styles Overkill**: Avoid bloated CSS; DaisyUI + Tailwind should suffice. For global resets, use Tailwind's base styles.
+- **Headless-first**: Use bits-ui primitives (`Dialog`, `DropdownMenu`,
+  `Tooltip`, `Popover`, `Select`, `Accordion`, etc.) for all interactive UI.
+  Never roll bespoke focus-trap, aria-management, or keyboard-navigation logic
+  by hand.
+- **Style with Tailwind**: Apply Tailwind v4 utility classes directly to bits-ui
+  component elements. Use the `class` prop or spread `{...props}` from the
+  `child` snippet where needed.
+- **Custom Components**: Wrap bits-ui primitives into reusable `.svelte`
+  components in `src/components/ui/` (e.g., `Modal.svelte`, `Button.svelte`).
+  Keep the wrapper thin — expose props for common variants, not every possible
+  bits-ui option.
+- **Accessibility**: bits-ui handles ARIA roles, `aria-expanded`, focus locking,
+  and keyboard navigation automatically. Do not duplicate these manually.
+- **Theming**: Define CSS custom properties in `src/styles/global.css` for
+  colors and design tokens. Reference them via Tailwind's `theme()` or
+  arbitrary values (e.g., `text-[var(--color-primary)]`).
+- **Mobile Responsiveness**: Use Tailwind responsive prefixes (`md:`, `lg:`).
+  Test on mobile via `juno-dev start`.
+- **No global CSS overload**: Keep scoped `<style>` blocks inside `.svelte`
+  files to a minimum; prefer Tailwind utilities.
 
-DaisyUI Best Practices:
+bits-ui Best Practices:
 
-- **Component Usage**: Use classes like `btn btn-primary` for buttons, `card card-compact` for panels, `modal` for dialogs. Customize via modifiers (e.g., `btn-outline`, `btn-ghost`).
-- **Layout Helpers**: Employ `hero`, `stats`, `stack` for game UI layouts (e.g., leaderboards, dashboards).
-- **Forms & Inputs**: Use `input`, `select`, `checkbox` with validation states (e.g., `input-error`).
-- **Interactive Elements**: For animations, use DaisyUI's CSS variables or Tailwind transitions; integrate with Svelte reactivity for dynamic state.
-- **Theming & Colors**: Define a custom theme in Tailwind config (e.g., cyberpunk palette) and use DaisyUI's theme utilities (e.g., `data-theme="cyberpunk"` on root elements).
-- **Icons & Media**: Integrate icons via Lucide or similar; use DaisyUI's avatar, badge components for game assets.
-- **Avoid Conflicts**: Do not mix DaisyUI with other CSS frameworks (e.g., Bootstrap). Keep styles vanilla for SvelteKit compatibility.
-
-DaisyUI MCP Server Integration:
-
-- The DaisyUI Blueprint MCP server is available. for local use. Refer to the `.mcp.json` for how to start it or via MCP client.
-- Use the MCP server for AI-assisted component generation, theme previews, and code
-  suggestions. Provide component specs (e.g., "Create a cyberpunk-themed modal for
-  claim rewards") and let the server output DaisyUI + Tailwind code.
-- Directives: Always reference local MCP docs if available; generate Mermaid diagrams for UI flows when complex.
+- **Dialog / Modal**: Use `Dialog.Root`, `Dialog.Portal`, `Dialog.Overlay`,
+  `Dialog.Content`, `Dialog.Title`, `Dialog.Close`. Use `forceMount` +
+  `{#snippet child({props, open})}` pattern with `svelte/transition` for
+  animated entry/exit (see `Modal.svelte` for the canonical pattern).
+- **Dropdown**: Use `DropdownMenu.Root`, `.Trigger`, `.Content`, `.Item`.
+- **Transitions**: bits-ui's `forceMount` + child snippet pattern lets you
+  control mount/unmount timing so Svelte transitions (`fade`, `fly`) work
+  correctly without janky flicker.
+- **Avoid re-implementing**: Do not build custom modals, dropdowns, or tooltips
+  from scratch — always check bits-ui for an existing primitive first.
 
 Workflow for Styling:
 
-- Consult `docs/spec.md` for UI/UX requirements before styling.
-- Prototype in Svelte components using DaisyUI classes; test in `juno-dev start`.
-- Update `src/styles/global.css` for custom CSS vars or theme overrides.
-- Lint with `juno-dev lint` to ensure clean Tailwind + DaisyUI integration.
-- Document new components in `docs/ui.md` with examples.
+- Consult `docs/spec.md` for UI/UX requirements before building components.
+- Prototype in Svelte using bits-ui primitives + Tailwind classes.
+- Update `src/styles/global.css` for CSS custom properties and theme overrides.
+- Lint with `juno-dev lint` to ensure Tailwind v4 integration is clean.
+- Document new reusable components in `docs/ui.md` with examples.
 
 Common Pitfalls to Avoid:
 
-- Overriding DaisyUI defaults with excessive custom CSS—use modifiers instead.
-- Ignoring responsive design; always test on mobile via `devenv` emulators.
-- Hardcoding colors; rely on theme variables for maintainability.
-- Performance hits from unused DaisyUI classes; enable purging in Tailwind config.
-
-DaisyUI LLM documentation is available locally at `docs/agents/daisyui.txt` (run `juno-dev agent-docs` to download).
+- Do not import DaisyUI — it is not installed in this project.
+- Do not add custom ARIA attributes to elements already managed by bits-ui
+  (this creates attribute conflicts and accessibility regressions).
+- Avoid hardcoding colours; use CSS custom properties defined in `global.css`.
+- Do not forget to pass `{...props}` inside the `child` snippet — dropping it
+  breaks bits-ui's internal wiring (ARIA, event handlers, refs).
 
 ### Internet Computer Protocol (ICP)
 

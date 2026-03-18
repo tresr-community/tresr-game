@@ -58,17 +58,18 @@ function cmd_prebuild() {
 # skip_prebuild=true → skip the bun prebuild lifecycle hook (client-config
 # already ran earlier in the same session, e.g. before lint in oneshot).
 function cmd_svelte_build() {
-	local skip_prebuild="${1:-false}"
-	log_info "🚀 Clean SvelteKit build..."
+	local mode="${1:-development}"
+	local skip_prebuild="${2:-false}"
+	log_info "🚀 Clean SvelteKit build (mode=$mode)..."
 	rm -rf build node_modules/.vite .svelte-kit # Vite/Svelte caches
 	bun install
 	if [[ $skip_prebuild == "true" ]]; then
 		# client-config already ran; invoke svelte-kit directly to avoid a second run.
-		bun run build || return 1
+		bun run build --mode "$mode" || return 1
 	else
 		# NOTE: bun automatically runs the `prebuild` lifecycle hook before `build`,
 		# so client-config is regenerated exactly once without an explicit call here.
-		bun run build || return 1
+		bun run build --mode "$mode" || return 1
 	fi
 	log_success "✅ Build done. NEW SW: $(find dist/_astro -name 'sw*' -print -quit 2>/dev/null || echo 'None')"
 }
@@ -137,7 +138,7 @@ function cmd_juno_deploy() {
 	local skip_build="${2:-false}"
 
 	if [[ $skip_build != "true" ]]; then
-		cmd_svelte_build
+		cmd_svelte_build "$mode"
 	fi
 
 	log_info "📤 Juno hosting deploy (mode=$mode)..."
@@ -153,7 +154,7 @@ function cmd_juno_deploy() {
 	fi
 
 	local url
-	url="http://${VITE_DEVELOPMENT_SATELLITE_ID}.localhost:5987/"
+	url="http://${VITE_SATELLITE_ID}.localhost:5987/"
 	log_success "Satellite live: $url"
 	echo "$url" # For piping
 }
@@ -477,7 +478,7 @@ function cmd_setup() {
 		5. Secure the ${MAGENTA}Satellite ID${NC}.
 		6. Update your local configuration (${YELLOW}.env${NC}):
 
-		    ${CYAN}VITE_DEVELOPMENT_SATELLITE_ID=...${NC}
+		    ${CYAN}VITE_SATELLITE_ID=...${NC}
 
 		${RED}======================================${NC}
 		${RED}     Termination Protocol:${NC}
@@ -536,17 +537,17 @@ AGENT_DOCS_DIR="docs/agents"
 # Add new sources here - name will be lowercased for filename
 AGENT_DOC_SOURCES=(
 	"avalanche|https://build.avax.network/llms-full.txt"
+	"bits-ui|https://bits-ui.com/llms.txt"
 	"cloudflare|https://developers.cloudflare.com/llms.txt"
-	"daisyui|https://daisyui.com/llms.txt"
 	"foundry|https://getfoundry.sh/llms-full.txt"
 	"juno|https://juno.build/llms-full.txt"
 	"oisy|https://docs.oisy.com/llms-full.txt"
 	"reown|https://docs.reown.com/llms-full.txt"
+	"sveltekit|https://svelte.dev/llms-full.txt"
 	"viem|https://viem.sh/llms-full.txt"
 	"wagmi|https://wagmi.sh/llms-full.txt"
 	"xai|https://docs.x.ai/llms.txt"
 	"zod|https://zod.dev/llms-full.txt"
-	"sveltekit|https://svelte.dev/llms-full.txt"
 )
 
 function cmd_agent_docs() {

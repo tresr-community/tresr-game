@@ -1,19 +1,43 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import { isRpcAvailable } from "@/lib/blockchain/balance";
-  import { getEnvironmentKey, isVaultDeployed } from "@/lib/blockchain/networks/chain";
-  import { shortenAddress } from "@/lib/blockchain/networks/display";
-  import { getReadClient } from "@/lib/blockchain/tx";
-  import { getClaimCooldownStatus, getVaultCurrentBalance } from "@/lib/blockchain/contracts/vault";
-  import { subscribeToConnection, getConnectedAddress } from "@/lib/wallet/connection";
-  import { config } from "@/lib/config/client";
-  import { log } from "@/lib/utils/log";
-  import { subscribeToAuth } from "@/lib/auth";
-  import { getVaultTier, formatCooldown, formatVaultDisplay } from "@/lib/blockchain/vault-status";
-  import { VaultAbi } from "@/lib/blockchain/abi/vault";
+  import {onMount, onDestroy} from "svelte";
+  import {isRpcAvailable} from "@/lib/blockchain/balance";
+  import {
+    getEnvironmentKey,
+    isVaultDeployed,
+  } from "@/lib/blockchain/networks/chain";
+  import {shortenAddress} from "@/lib/blockchain/networks/display";
+  import {getReadClient} from "@/lib/blockchain/tx";
+  import {
+    getClaimCooldownStatus,
+    getVaultCurrentBalance,
+  } from "@/lib/blockchain/contracts/vault";
+  import {
+    subscribeToConnection,
+    getConnectedAddress,
+  } from "@/lib/wallet/connection";
+  import {config} from "@/lib/config/client";
+  import {log} from "@/lib/utils/log";
+  import {subscribeToAuth} from "@/lib/auth";
+  import {
+    getVaultTier,
+    formatCooldown,
+    formatVaultDisplay,
+  } from "@/lib/blockchain/vault-status";
+  import {VaultAbi} from "@/lib/blockchain/abi/vault";
+  import Card from "@/components/ui/Card.svelte";
+  import Badge from "@/components/ui/Badge.svelte";
+  import Alert from "@/components/ui/Alert.svelte";
+  import {
+    balanceRefreshTick,
+    confettiTrigger,
+    vaultStatus,
+  } from "@/lib/stores/ui.svelte";
 
   const COMPONENT_NAME = "VaultBalance";
-  if (!config.wallet?.vault_poll_interval_ms) throw new Error("Missing required config value: wallet.vault_poll_interval_ms");
+  if (!config.wallet?.vault_poll_interval_ms)
+    throw new Error(
+      "Missing required config value: wallet.vault_poll_interval_ms"
+    );
 
   const REFRESH_INTERVAL_MS = config.wallet.vault_poll_interval_ms;
   const COOLDOWN_TICK_MS = 1_000;
@@ -23,39 +47,56 @@
   const env = getEnvironmentKey();
   const ticker = config.blockchain.avalanche[env].token_ticker;
 
-  let isVisible = false;
-  let balanceDisplay = "--";
-  let difficulty = { tier: 'locked', emoji: '🔒', label: 'LOCKED', colorClass: 'badge-ghost', unlocked: false };
-  let showDifficulty = false;
-  let isOffline = !isRpcAvailable();
+  let isVisible = $state(false);
+  let balanceDisplay = $state("--");
+  let difficulty = $state({
+    tier: "locked",
+    emoji: "🔒",
+    label: "LOCKED",
+    colorClass: "ghost",
+    unlocked: false,
+  });
+  let showDifficulty = $state(false);
+  let isOffline = $state(!isRpcAvailable());
 
-  let cooldownRemaining = 0;
+  let badgeVariant = $derived(
+    difficulty.colorClass as
+      | "success"
+      | "warning"
+      | "error"
+      | "info"
+      | "ghost"
+      | "primary"
+      | "secondary"
+  );
 
-  let winToastVisible = false;
-  let winToastText = "";
+  let cooldownRemaining = $state(0);
+
+  let winToastVisible = $state(false);
+  let winToastText = $state("");
 
   let interval: ReturnType<typeof setInterval> | null = null;
   let cooldownInterval: ReturnType<typeof setInterval> | null = null;
   let winToastTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  let walletConnected = false;
-  let isAuthenticatedNonGuest = false;
-  let connectedAddress: string | null = null;
-  let consecutiveErrors = 0;
+  let walletConnected = $state(false);
+  let isAuthenticatedNonGuest = $state(false);
+  let connectedAddress: string | null = $state(null);
+  let consecutiveErrors = $state(0);
   let disposed = false;
   let unwatchClaim: (() => void) | null = null;
 
   function updateDifficultyBadge(balanceWei: bigint) {
     if (disposed) return;
     const tier = getVaultTier(balanceWei);
-    difficulty = { ...tier, unlocked: tier.tier !== 'locked' };
+    difficulty = {...tier, unlocked: tier.tier !== "locked"};
     showDifficulty = true;
 
-    document.dispatchEvent(
-      new CustomEvent("tresr:vault-status", {
-        detail: { tier: tier.tier, locked: tier.tier === "locked", balance: balanceWei },
-      })
-    );
+    vaultStatus.set({
+      tier: tier.tier,
+      locked: tier.tier === "locked",
+      balance: balanceWei,
+    });
   }
 
   async function fetchCooldown() {
@@ -98,7 +139,7 @@
     winToastText = `🏆 ${shortAddr} just won ${amountDisplay} $${ticker}!`;
     winToastVisible = true;
 
-    document.dispatchEvent(new CustomEvent("tresr:confetti"));
+    confettiTrigger.fire({});
 
     if (winToastTimeout) clearTimeout(winToastTimeout);
     winToastTimeout = setTimeout(() => {
@@ -109,10 +150,17 @@
   }
 
   async function startWatchingClaims() {
-    if (unwatchClaim || disposed || !isVaultDeployed(config) || !isRpcAvailable()) return;
+    if (
+      unwatchClaim ||
+      disposed ||
+      !isVaultDeployed(config) ||
+      !isRpcAvailable()
+    )
+      return;
     try {
       const publicClient = getReadClient();
-      const vaultAddress = config.blockchain.avalanche[env].vault_contract as `0x${string}`;
+      const vaultAddress = config.blockchain.avalanche[env]
+        .vault_contract as `0x${string}`;
 
       unwatchClaim = publicClient.watchContractEvent({
         address: vaultAddress,
@@ -122,7 +170,10 @@
           for (const l of logs) {
             const args = l.args as {user?: string; amount?: bigint} | undefined;
             if (args?.user && args?.amount) {
-              log.info(COMPONENT_NAME, `Claim detected: ${args.user} won ${args.amount}`);
+              log.info(
+                COMPONENT_NAME,
+                `Claim detected: ${args.user} won ${args.amount}`
+              );
               showWinToast(args.user, args.amount);
             }
           }
@@ -139,25 +190,6 @@
       unwatchClaim();
       unwatchClaim = null;
     }
-  }
-
-  function handleBlockchainSynced(e: Event) {
-    if (disposed) return;
-    const detail = (e as CustomEvent).detail;
-    if (!detail || detail.vaultBalance === undefined) return;
-
-    const balance = detail.vaultBalance;
-    isOffline = !isRpcAvailable();
-
-    if (isOffline) {
-      balanceDisplay = "Offline";
-      showDifficulty = false;
-      return;
-    }
-
-    balanceDisplay = formatVaultDisplay(balance);
-    updateDifficultyBadge(balance);
-    consecutiveErrors = 0;
   }
 
   async function updateBalance() {
@@ -177,7 +209,10 @@
       if (consecutiveErrors <= MAX_CONSECUTIVE_ERRORS) {
         log.error(COMPONENT_NAME, "Vault sync failed:", err);
       } else if (consecutiveErrors === MAX_CONSECUTIVE_ERRORS + 1) {
-        log.info(COMPONENT_NAME, `Suppressing further vault sync errors (${consecutiveErrors} consecutive failures)`);
+        log.info(
+          COMPONENT_NAME,
+          `Suppressing further vault sync errors (${consecutiveErrors} consecutive failures)`
+        );
       }
       balanceDisplay = "--";
     }
@@ -245,8 +280,13 @@
       evaluatePolling();
     });
 
-    document.addEventListener("tresr:blockchain-synced", handleBlockchainSynced);
     document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    $effect(() => {
+      const tick = balanceRefreshTick.current;
+      if (tick === 0 || disposed) return;
+      updateBalance();
+    });
   });
 
   onDestroy(() => {
@@ -255,46 +295,52 @@
     if (unsubAuth) unsubAuth();
     if (unsubWallet) unsubWallet();
     document.removeEventListener("visibilitychange", handleVisibilityChange);
-    document.removeEventListener("tresr:blockchain-synced", handleBlockchainSynced);
     if (winToastTimeout) clearTimeout(winToastTimeout);
   });
 </script>
 
 {#if isVisible}
-  <div class="stats bg-base-200/50 border-warning/30 border shadow">
-    <div class="stat place-items-center">
-      <div class="stat-title font-mono text-xs whitespace-nowrap">VAULT PRIZE POOL</div>
+  <Card variant="bordered" class="border-warning/30">
+    <div class="flex flex-col items-center p-4">
+      <div class="mb-2 font-mono text-xs whitespace-nowrap opacity-70">
+        VAULT PRIZE POOL
+      </div>
 
       {#if showDifficulty}
-        <span class="badge badge-sm {difficulty.colorClass}">
-          {difficulty.emoji} {difficulty.label}
-        </span>
+        <Badge variant={badgeVariant} size="sm" class="mb-2">
+          {difficulty.emoji}
+          {difficulty.label}
+        </Badge>
       {/if}
 
-      <div class="stat-value text-warning text-3xl">
-        {#if balanceDisplay === '--' && walletConnected && !isOffline}
-          <span class="loading loading-dots loading-sm"></span>
+      <div class="text-warning mb-1 text-3xl font-bold">
+        {#if balanceDisplay === "--" && walletConnected && !isOffline}
+          <span class="animate-pulse">...</span>
         {:else}
           {balanceDisplay}
         {/if}
       </div>
 
-      <div class="stat-desc flex items-center gap-2 font-mono">
-        <span>${ticker}</span>
+      <div class="mt-1 flex items-center gap-2 font-mono">
+        <span class="opacity-80">${ticker}</span>
         {#if cooldownRemaining <= 0}
-          <span class="text-xs opacity-70 text-success">✅ READY</span>
+          <span class="text-success text-xs font-bold">✅ READY</span>
         {:else}
-          <span class="text-xs opacity-70 text-error">⏱️ {formatCooldown(cooldownRemaining)}</span>
+          <span class="text-error text-xs font-bold"
+            >⏱️ {formatCooldown(cooldownRemaining)}</span
+          >
         {/if}
       </div>
     </div>
-  </div>
+  </Card>
 {/if}
 
 {#if winToastVisible}
-  <div class="toast toast-top toast-center z-[9999] transition-all duration-500">
-    <div class="alert alert-success border-success/50 bg-success/20 shadow-lg backdrop-blur">
-      <span class="font-mono text-sm">{winToastText}</span>
-    </div>
+  <div
+    class="animate-in fade-in slide-in-from-top-4 pointer-events-none fixed top-4 right-0 left-0 z-[9999] flex justify-center transition-all duration-500"
+  >
+    <Alert variant="success" class="shadow-2xl">
+      <span class="font-mono text-sm font-bold">{winToastText}</span>
+    </Alert>
   </div>
 {/if}

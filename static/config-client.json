@@ -1,32 +1,4 @@
 {
-  "daisyui": {
-    "themes": [
-      "abyss",
-      "aqua",
-      "black",
-      "bumblebee",
-      "business",
-      "cmyk",
-      "coffee",
-      "corporate",
-      "cyberpunk",
-      "dark",
-      "dim",
-      "dracula",
-      "fantasy",
-      "forest",
-      "halloween",
-      "lemonade",
-      "light",
-      "luxury",
-      "night",
-      "retro",
-      "sunset",
-      "synthwave",
-      "valentine",
-      "winter"
-    ]
-  },
   "auth": {
     "iid": {
       "enabled": true,
@@ -44,7 +16,7 @@
     "name": "TRESR Game",
     "description": "Beat up bankers to claim the $TRESR.",
     "tagline": "Collect Keys. Fight Enemies. Claim the $TRESR.",
-    "footer_text": "Powered by Avalanche 🔺",
+    "footer_text": "Powered by ICP ♾️ and Avalanche 🔺",
     "narration_text": {
       "intro": "Yo, I'm Ron Jay — full-time degen, airdrop farmer,\nmeme-coin maniac and diamond-handed legend.\n\nThese suit-wearing bankers think they can gatekeep crypto forever.\n\nThe streets are dead quiet tonight.\n\nBut not for long.\n\nGrab your fists, let's send these clowns to zero!\n"
     },
@@ -96,11 +68,11 @@
           "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
+        "tresr_token_contract": "0xDC11f7E700A4c898AE5CAddB1082cFfa76512aDD",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
-        "vault_contract": "0x9E545E3C0baAB3E08CdfD552C960A1050f373042",
-        "faucet_contract": "0x67d269191c92Caf3cD7723F116c85e6E9bf55933",
+        "vault_contract": "0x172076E0166D1F9Cc711C77Adf8488051744980C",
+        "faucet_contract": "0x8198f5d8F8CfFE8f9C413d98a0A55aEB8ab9FbB7",
         "explorer_url": "http://localhost:8545/tx/"
       },
       "testnet": {
@@ -1411,13 +1383,10 @@
     ],
     "components": [
       {
-        "name": "SvelteKit"
-      },
-      {
         "name": "Avalanche Network"
       },
       {
-        "name": "DaisyUI"
+        "name": "Bits UI"
       },
       {
         "name": "Internet Computer Protocol"
@@ -1427,6 +1396,9 @@
       },
       {
         "name": "Phaser 3"
+      },
+      {
+        "name": "SvelteKit"
       }
     ],
     "assets": [
@@ -1454,11 +1426,22 @@
         "type": "art",
         "subtype": "backgrounds",
         "provider": "Google Gemini Nano Banana"
+      },
+      {
+        "type": "art",
+        "subtype": "videos",
+        "provider": "Google Flow"
       }
     ]
   },
   "changelog": {
     "versions": [
+      {
+        "version": "0.5.0",
+        "date": "2026-03-19",
+        "title": "Notifications",
+        "notes": ["Migration to Svelte"]
+      },
       {
         "version": "0.4.0",
         "date": "2026-03-15",

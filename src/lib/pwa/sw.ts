@@ -85,7 +85,7 @@ self.addEventListener("message", (event: ExtendableMessageEvent) => {
 });
 
 // Fetch: Network-first for everything.
-// Hashed _astro/ assets are immutable (filename changes on rebuild) so
+// SvelteKit hashed assets (_app/*) are immutable (filename changes on rebuild) so
 // they don't benefit from cache-first — and cache-first causes stale
 // code to persist across deploys even after "hard reload".
 self.addEventListener("fetch", (event: FetchEvent) => {

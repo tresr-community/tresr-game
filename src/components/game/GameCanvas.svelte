@@ -1,7 +1,6 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import { initGame } from "@/lib/game/game";
-  import { log } from "@/lib/utils/log";
+  import {onDestroy} from "svelte";
+  import {log} from "@/lib/utils/log";
 
   import HUD from "./HUD.svelte";
   import GameModals from "./GameModals.svelte";
@@ -9,31 +8,42 @@
   import TouchControls from "./TouchControls.svelte";
   import CriticalError from "./CriticalError.svelte";
 
-  let container: HTMLDivElement;
-  let game: Phaser.Game | null = null;
-  const COMPONENT_NAME = "GameCanvas";
-
-  export let isStarting = false;
-
-  $: if (isStarting && !game && container) {
-      log.info(COMPONENT_NAME, "Initializing engine...");
-      game = initGame(container.id);
-      // Expose for portrait detection to pause/resume scenes
-      (window as any).__phaserGame = game;
+  /**
+   * Bindable ref to the running Phaser.Game instance.
+   * Parent (game/+page.svelte) binds this to get the game handle
+   * without relying on (window as any).__phaserGame.
+   */
+  interface Props {
+    game?: Phaser.Game | null;
   }
+
+  let {game = $bindable(null)}: Props = $props();
+
+  const COMPONENT_NAME = "GameCanvas";
+  let container: HTMLDivElement;
+
+  // $effect runs after DOM is painted — container ref is guaranteed bound here.
+  // Dynamic import of game ensures Phaser bundle is code-split from this chunk.
+  $effect(() => {
+    if (!container || game) return;
+    import("@/lib/game/game").then(({initGame}) => {
+      log.info(COMPONENT_NAME, "Initializing Phaser engine...");
+      game = initGame(container.id);
+    });
+  });
 
   onDestroy(() => {
     if (game) {
-      log.info(COMPONENT_NAME, "Destroying game engine and clearing WebAudio contexts");
-
-      // True flag removes canvas from DOM during destroy
-      game.destroy(true);
-
+      log.info(
+        COMPONENT_NAME,
+        "Destroying game engine and clearing WebAudio contexts"
+      );
       if (game.sound) {
-          game.sound.removeAll();
+        game.sound.removeAll();
       }
-
-      delete (window as any).__phaserGame;
+      // true = remove canvas from DOM
+      game.destroy(true);
+      game = null;
     }
   });
 </script>
@@ -43,7 +53,7 @@
   id="phaser-game-container"
   class="relative h-full w-full overflow-hidden bg-black"
 >
-  <!-- Overlays -->
+  <!-- Overlays rendered on top of Phaser canvas -->
   <HUD />
   <GameModals />
   <PauseMenu />

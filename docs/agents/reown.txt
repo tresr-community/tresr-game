@@ -16001,8 +16001,6 @@ Source: https://docs.reown.com/appkit/javascript/core/installation
 AppKit provides seamless integration with multiple blockchain ecosystems. It supports [Wagmi](https://wagmi.sh/) and [Ethers v6](https://docs.ethers.org/v6/) on Ethereum,
 [@solana/web3.js](https://solana-labs.github.io/solana-web3.js/) on Solana, as well as Bitcoin, TON, TRON and other networks.
 
-AppKit Core with [Universal Provider](https://www.npmjs.com/package/@walletconnect/universal-provider) library, enable compatibility across any blockchain protocol.
-
 <Note>
   We recommend using [Vite](https://vitejs.dev/guide/#scaffolding-your-first-vite-project) to get
   started with AppKit JavaScript.
@@ -16010,7 +16008,15 @@ AppKit Core with [Universal Provider](https://www.npmjs.com/package/@walletconne
 
 ## Installation
 
-**Setting up from scratch? → Try out the [AppKit CLI templates](#alternative-installation) or the [AI-assisted setup](#alternative-installation).**
+Try installing AppKit Skills to get AI-assisted guidance. Your AI coding assistant can help you set up, build, and debug your AppKit integration.
+
+To install AppKit Skills, run the following command in your terminal:
+
+```bash theme={null}
+npx skills add https://github.com/reown-com/skills --skill appkit --agent '*'
+```
+
+After installation, you can ask your AI assistant for help with AppKit setup, implementation, and troubleshooting.
 
 ## Custom Installation
 
@@ -16198,7 +16204,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `main.js` file set up the following configuration.
 
-    ```ts theme={null}
+    ```ts theme={null} theme={null}
     import { createAppKit } from '@reown/appkit'
     import { mainnet, arbitrum } from '@reown/appkit/networks'
     import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
@@ -16247,7 +16253,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Reown AppKit use [Viem](https://viem.sh/) networks under the hood, which provide a wide variety of networks for EVM chains. You can find all the networks supported by Viem within the `@reown/appkit/networks` path.
 
-    ```js {2} theme={null}
+    ```js {2} theme={null} theme={null}
     import { createAppKit } from '@reown/appkit'
     import { mainnet, arbitrum, base, scroll, polygon } from '@reown/appkit/networks'
     ```
@@ -16260,7 +16266,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
   <Tab title="Ethers v5">
     In your `main.js` file set up the following configuration.
 
-    ```ts theme={null}
+    ```ts theme={null} theme={null}
     import { createAppKit } from "@reown/appkit";
     import { Ethers5Adapter } from "@reown/appkit-adapter-ethers5";
     import { mainnet, arbitrum } from "@reown/appkit/networks";
@@ -16300,7 +16306,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `main.js` file set up the following configuration.
 
-    ```ts theme={null}
+    ```ts theme={null} theme={null}
     import { createAppKit } from "@reown/appkit";
     import { EthersAdapter } from "@reown/appkit-adapter-ethers";
     import { mainnet, arbitrum } from "@reown/appkit/networks";
@@ -16346,7 +16352,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import { createAppKit } from "@reown/appkit";
     import { SolanaAdapter } from "@reown/appkit-adapter-solana";
     import { solana, solanaTestnet, solanaDevnet } from "@reown/appkit/networks";
@@ -16387,7 +16393,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit'
     import { BitcoinAdapter } from '@reown/appkit-adapter-bitcoin'
@@ -16435,7 +16441,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     ## Bitcoin Provider Interface
 
-    ```ts theme={null}
+    ```ts theme={null} theme={null}
     export interface BitcoinConnector extends ChainAdapterConnector, Provider {
       getAccountAddresses(): Promise<BitcoinConnector.AccountAddress[]>;
       signMessage(params: BitcoinConnector.SignMessageParams): Promise<string>;
@@ -16450,7 +16456,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="SignMessageParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignMessageParams = {
             /**
              * The message to be signed
@@ -16465,7 +16471,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SendTransferParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SendTransferParams = {
             /**
              * The amount to be sent in satoshis
@@ -16480,7 +16486,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignPSBTParams = {
             /**
              * The PSBT to be signed, string base64 encoded
@@ -16516,7 +16522,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="AccountAddress">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type AccountAddress = {
             /**
              * Public address belonging to the account.
@@ -16539,7 +16545,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTResponse">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignPSBTResponse = {
             /**
              * The signed PSBT, string base64 encoded
@@ -16564,7 +16570,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit'
     import { TonAdapter } from '@reown/appkit-adapter-ton'
@@ -16616,7 +16622,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit'
     import { TronAdapter } from '@reown/appkit-adapter-tron'
@@ -16677,19 +16683,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
     <Tabs>
       <Tab title="TronLink">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-tronlink
           ```
         </CodeGroup>
@@ -16697,19 +16703,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="MetaMask">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-metamask-tron
           ```
         </CodeGroup>
@@ -16717,19 +16723,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="Trust Wallet">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-trust
           ```
         </CodeGroup>
@@ -16737,19 +16743,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="OKX Wallet">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-okxwallet
           ```
         </CodeGroup>
@@ -16757,19 +16763,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="BitKeep">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-bitkeep
           ```
         </CodeGroup>
@@ -16777,19 +16783,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="Binance Wallet">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-binance
           ```
         </CodeGroup>
@@ -16804,7 +16810,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     After installing your desired wallet adapters, import and add them to the `walletAdapters` array when creating the TRON adapter:
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import { TronLinkAdapter } from '@tronweb3/tronwallet-adapter-tronlink'
     import { MetaMaskAdapter } from '@tronweb3/tronwallet-adapter-metamask-tron'
     import { TrustAdapter } from '@tronweb3/tronwallet-adapter-trust'
@@ -16838,7 +16844,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     We recommend creating a config file to establish a singleton instance for the Universal Connector:
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import { UniversalConnector } from '@reown/appkit-universal-connector'
 
     export const projectId = import.meta.env.VITE_PROJECT_ID || "b56e18d47c72ab683b10814fe9495694" // this is a public projectId only to use on localhost
@@ -16902,7 +16908,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In de main.js file you can add :
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import { getUniversalConnector } from './config/appKit.js'
 
     async function setup() {
@@ -17072,7 +17078,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     For a practical example of how it works, you can refer to our [lab dApp](https://appkit-lab.reown.com/appkit/?name=solana).
 
-    ```js theme={null}
+    ```js theme={null} theme={null}
     import { PublicKey, LAMPORTS_PER_SOL, Transaction, SystemProgram } from "@solana/web3.js";
 
     import type { Provider } from '@reown/appkit-adapter-solana'
@@ -17131,16 +17137,16 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 If you are starting from scratch, you can use the following methods to set up your project with Reown AppKit.
 
 <AccordionGroup>
-  <Accordion title="Set up Reown AppKit using AI">
-    If you're using Cursor IDE (or another AI based IDE) to build a project with Reown AppKit, Reown provides a `.mdc` file that enhances your development experience. The `reown-appkit.mdc` [file here](https://github.com/reown-com/reown-docs/blob/main/reown-appkit.mdc) contains Cursor-specific rules and type hints for Reown AppKit.
+  <Accordion title="AppKit Skills">
+    AppKit Skills provide AI-powered assistance for building with Reown AppKit. Once installed, your AI coding assistant can help you set up, build, and debug your AppKit integration.
 
-    To use it in your project:
+    To install AppKit Skills, run the following command in your terminal:
 
-    1. Copy the `reown-appkit.mdc` file from this repository
-    2. Create a `.cursor/rules` folder in your project's root directory (if it doesn't exist)
-    3. Place the `.mdc` file in your project's `.cursor/rules` folder
+    ```bash theme={null}
+    npx skills add https://github.com/reown-com/skills --skill appkit --agent '*'
+    ```
 
-    For more info, refer to [Cursor's documentation](https://docs.cursor.com/context/rules#project-rules).
+    After installation, you can ask your AI assistant for help with AppKit setup, implementation, and troubleshooting.
   </Accordion>
 
   <Accordion title="AppKit CLI">
@@ -22548,8 +22554,6 @@ Source: https://docs.reown.com/appkit/next/core/installation
 AppKit provides seamless integration with multiple blockchain ecosystems. It supports [Wagmi](https://wagmi.sh/) and [Ethers v6](https://docs.ethers.org/v6/) on Ethereum,
 [@solana/web3.js](https://solana-labs.github.io/solana-web3.js/) on Solana, as well as Bitcoin, TON and other networks.
 
-AppKit Core with [Universal Provider](https://www.npmjs.com/package/@walletconnect/universal-provider) library, enable compatibility across any blockchain protocol.
-
 <Note>
   These steps are specific to [Next.js](https://nextjs.org/) app router. For other React frameworks
   read the [React documentation](../../react/core/installation).
@@ -22557,9 +22561,15 @@ AppKit Core with [Universal Provider](https://www.npmjs.com/package/@walletconne
 
 ## Installation
 
-If you prefer referring to a video tutorial for this, please [click here](#video-tutorial).
+Try installing AppKit Skills to get AI-assisted guidance. Your AI coding assistant can help you set up, build, and debug your AppKit integration.
 
-Setting up from scratch? Try out the [AppKit CLI templates](#alternative-installation) or the [AI-assisted setup](#alternative-installation).
+To install AppKit Skills, run the following command in your terminal:
+
+```bash theme={null}
+npx skills add https://github.com/reown-com/skills --skill appkit --agent '*'
+```
+
+After installation, you can ask your AI assistant for help with AppKit setup, implementation, and troubleshooting.
 
 ## Custom Installation
 
@@ -22731,7 +22741,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     For this example we will create a file called `config/index.tsx` outside our app directory and set up the following configuration
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import { cookieStorage, createStorage, http } from '@wagmi/core'
     import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
     import { mainnet, arbitrum } from '@reown/appkit/networks'
@@ -22762,7 +22772,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Reown AppKit use [Viem](https://viem.sh/) networks under the hood, which provide a wide variety of networks for EVM chains. You can find all the networks supported by Viem within the `@reown/appkit/networks` path.
 
-    ```js {2} theme={null}
+    ```js {2} theme={null} theme={null}
     import { createAppKit } from '@reown/appkit'
     import { mainnet, arbitrum, base, scroll, polygon } from '@reown/appkit/networks'
     ```
@@ -22784,7 +22794,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In this example we will create a file called `context/index.tsx` outside our app directory and set up the following configuration
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     'use client'
 
     import { wagmiAdapter, projectId } from '@/config'
@@ -22840,7 +22850,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     The `initialState` returned by `cookieToInitialState`, contains the optimistic values that will populate the Wagmi's store both on the server and client.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import type { Metadata } from 'next'
     import { Inter } from 'next/font/google'
     import './globals.css'
@@ -22877,7 +22887,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
   <Tab title="Ethers v5">
     In this example we will create a new file called `context/appkit.tsx` outside our app directory and set up the following configuration
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     "use client";
 
     import { createAppKit } from "@reown/appkit/react";
@@ -22915,7 +22925,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Next, in your `app/layout.tsx` or `app/layout.jsx` file, import the custom AppKit component.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import "./globals.css";
 
     import { AppKit } from "../context/appkit";
@@ -22948,7 +22958,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In this example we will create a new file called `context/appkit.tsx` outside our app directory and set up the following configuration
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     "use client";
 
     import { createAppKit } from "@reown/appkit/react";
@@ -22986,7 +22996,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Next, in your `app/layout.tsx` or `app/layout.jsx` file, import the custom AppKit component.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import "./globals.css";
 
     import { AppKit } from "../context/appkit";
@@ -23025,7 +23035,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     // App.tsx
     import { createAppKit } from "@reown/appkit/react";
     import { SolanaAdapter } from "@reown/appkit-adapter-solana/react";
@@ -23071,7 +23081,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit/react'
     import { BitcoinAdapter } from '@reown/appkit-adapter-bitcoin'
@@ -23116,7 +23126,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     ## Bitcoin Provider Interface
 
-    ```ts theme={null}
+    ```ts theme={null} theme={null}
     export interface BitcoinConnector extends ChainAdapterConnector, Provider {
       getAccountAddresses(): Promise<BitcoinConnector.AccountAddress[]>;
       signMessage(params: BitcoinConnector.SignMessageParams): Promise<string>;
@@ -23131,7 +23141,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="SignMessageParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignMessageParams = {
             /**
              * The message to be signed
@@ -23146,7 +23156,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SendTransferParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SendTransferParams = {
             /**
              * The amount to be sent in satoshis
@@ -23161,7 +23171,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignPSBTParams = {
             /**
              * The PSBT to be signed, string base64 encoded
@@ -23197,7 +23207,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="AccountAddress">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type AccountAddress = {
             /**
              * Public address belonging to the account.
@@ -23220,7 +23230,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTResponse">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignPSBTResponse = {
             /**
              * The signed PSBT, string base64 encoded
@@ -23245,7 +23255,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit/react'
     import { TonAdapter } from '@reown/appkit-adapter-ton'
@@ -23297,7 +23307,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     We recommend creating a config file to establish a singleton instance for the Universal Connector:
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import type { AppKitNetwork } from '@reown/appkit/networks'
     import type { CustomCaipNetwork } from '@reown/appkit-common'
     import { UniversalConnector } from '@reown/appkit-universal-connector'
@@ -23345,7 +23355,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In de App.tsx file you can add :
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import { useState, useEffect } from 'react'
     import { getUniversalConnector } from './config' // previous config file
     import { UniversalConnector } from '@reown/appkit-universal-connector'
@@ -23504,7 +23514,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     For a practical example of how it works, you can refer to our [lab dApp](https://appkit-lab.reown.com/appkit/?name=solana).
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import {
       SystemProgram,
       PublicKey,
@@ -23618,16 +23628,16 @@ const nextConfig = {
 If you are starting from scratch, you can use the following methods to set up your project with Reown AppKit.
 
 <AccordionGroup>
-  <Accordion title="Set up Reown AppKit using AI">
-    If you're using Cursor IDE (or another AI based IDE) to build a project with Reown AppKit, Reown provides a `.mdc` file that enhances your development experience. The `reown-appkit.mdc` [file here](https://github.com/reown-com/reown-docs/blob/main/reown-appkit.mdc) contains Cursor-specific rules and type hints for Reown AppKit.
+  <Accordion title="AppKit Skills">
+    AppKit Skills provide AI-powered assistance for building with Reown AppKit. Once installed, your AI coding assistant can help you set up, build, and debug your AppKit integration.
 
-    To use it in your project:
+    To install AppKit Skills, run the following command in your terminal:
 
-    1. Copy the `reown-appkit.mdc` file from this repository
-    2. Create a `.cursor/rules` folder in your project's root directory (if it doesn't exist)
-    3. Place the `.mdc` file in your project's `.cursor/rules` folder
+    ```bash theme={null}
+    npx skills add https://github.com/reown-com/skills --skill appkit --agent '*'
+    ```
 
-    For more info, refer to [Cursor's documentation](https://docs.cursor.com/context/rules#project-rules).
+    After installation, you can ask your AI assistant for help with AppKit setup, implementation, and troubleshooting.
   </Accordion>
 
   <Accordion title="AppKit CLI">
@@ -26908,6 +26918,16 @@ Choose one of these to get started.
 
 ## Installation
 
+Try installing AppKit Skills to get AI-assisted guidance. Your AI coding assistant can help you set up, build, and debug your AppKit integration.
+
+To install AppKit Skills, run the following command in your terminal:
+
+```bash theme={null}
+npx skills add https://github.com/reown-com/skills --skill appkit --agent '*'
+```
+
+After installation, you can ask your AI assistant for help with AppKit setup, implementation, and troubleshooting.
+
 <Tabs>
   <Tab title="Wagmi">
     <CodeGroup>
@@ -27030,7 +27050,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     First, configure your Nuxt application for SSR compatibility by updating your `nuxt.config.ts`:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     export default defineNuxtConfig({
       ssr: false,
       modules: ['@wagmi/vue/nuxt'],
@@ -27044,7 +27064,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Create Nuxt plugins for vue-query and wagmi setup:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     // plugins/1.vue-query.ts
     import { defineNuxtPlugin } from '#imports'
     import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
@@ -27061,7 +27081,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
     })
     ```
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     // plugins/2.wagmi.ts
     import { WagmiPlugin } from '@wagmi/vue'
     import { defineNuxtPlugin } from 'nuxt/app'
@@ -27074,7 +27094,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Create your AppKit configuration:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     // config/appkit.ts
     import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
     import { mainnet, arbitrum } from '@reown/appkit/networks'
@@ -27091,7 +27111,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Then in your `app.vue` file, set up AppKit:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <script setup lang="ts">
     import { createAppKit } from '@reown/appkit/vue'
     import { wagmiAdapter, networks, projectId } from './config/appkit'
@@ -27133,7 +27153,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     First, configure your `nuxt.config.ts` for SSR compatibility:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     export default defineNuxtConfig({
       ssr: false,
       runtimeConfig: {
@@ -27146,7 +27166,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Then in your `app.vue` file set up the following configuration:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <script setup lang="ts">
     import { createAppKit } from '@reown/appkit/vue'
     import { EthersAdapter } from '@reown/appkit-adapter-ethers'
@@ -27201,7 +27221,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     First, configure your `nuxt.config.ts` for SSR compatibility:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     export default defineNuxtConfig({
       ssr: false,
       runtimeConfig: {
@@ -27214,7 +27234,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Then in your `app.vue` file set up the following configuration:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <script setup lang="ts">
     import { createAppKit } from '@reown/appkit-solana/vue'
     import { SolanaAdapter } from '@reown/appkit-adapter-solana'
@@ -27264,7 +27284,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     First, configure your `nuxt.config.ts` for SSR compatibility:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     export default defineNuxtConfig({
       ssr: false,
       runtimeConfig: {
@@ -27277,7 +27297,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `app.vue` file set up the following configuration:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <script setup lang="ts">
     import { createAppKit } from '@reown/appkit/vue'
     import { BitcoinAdapter } from '@reown/appkit-adapter-bitcoin'
@@ -27324,7 +27344,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     ## Bitcoin Provider Interface
 
-    ```ts theme={null}
+    ```ts theme={null} theme={null}
     export interface BitcoinConnector extends ChainAdapterConnector, Provider {
       getAccountAddresses(): Promise<BitcoinConnector.AccountAddress[]>;
       signMessage(params: BitcoinConnector.SignMessageParams): Promise<string>;
@@ -27339,7 +27359,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="SignMessageParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignMessageParams = {
             /**
              * The message to be signed
@@ -27354,7 +27374,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SendTransferParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SendTransferParams = {
             /**
              * The amount to be sent in satoshis
@@ -27369,7 +27389,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignPSBTParams = {
             /**
              * The PSBT to be signed, string base64 encoded
@@ -27405,7 +27425,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="AccountAddress">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type AccountAddress = {
             /**
              * Public address belonging to the account.
@@ -27428,7 +27448,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTResponse">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignPSBTResponse = {
             /**
              * The signed PSBT, string base64 encoded
@@ -27453,7 +27473,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     First, configure your `nuxt.config.ts` for SSR compatibility:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     export default defineNuxtConfig({
       ssr: false,
       runtimeConfig: {
@@ -27466,7 +27486,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `app.vue` file set up the following configuration:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <script setup lang="ts">
     import { createAppKit } from '@reown/appkit/vue'
     import { TonAdapter } from '@reown/appkit-adapter-ton'
@@ -27669,6 +27689,18 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
     ```
   </Tab>
 </Tabs>
+
+## AppKit Skills
+
+AppKit Skills provide AI-powered assistance for building with Reown AppKit. Once installed, your AI coding assistant can help you set up, build, and debug your AppKit integration.
+
+To install AppKit Skills, run the following command in your terminal:
+
+```bash theme={null}
+npx skills add https://github.com/reown-com/skills --skill appkit --agent '*'
+```
+
+After installation, you can ask your AI assistant for help with AppKit setup, implementation, and troubleshooting.
 
 
 # Multichain
@@ -35824,15 +35856,17 @@ Source: https://docs.reown.com/appkit/react/core/installation
 AppKit provides seamless integration with multiple blockchain ecosystems. It supports [Wagmi](https://wagmi.sh/) and [Ethers v6](https://docs.ethers.org/v6/) on Ethereum,
 [@solana/web3.js](https://solana-labs.github.io/solana-web3.js/) on Solana, as well as Bitcoin, TON, TRON and other networks.
 
-AppKit Core with [Universal Provider](https://www.npmjs.com/package/@walletconnect/universal-provider) library, enable compatibility across any blockchain protocol.
-
-Choose one of these to get started.
-
 ## Installation
 
-If you prefer referring to a video tutorial for this, please [click here](#video-tutorial).
+Try installing AppKit Skills to get AI-assisted guidance. Your AI coding assistant can help you set up, build, and debug your AppKit integration.
 
-Setting up from scratch? Try out the [AppKit CLI templates](#alternative-installation) or the [AI-assisted setup](#alternative-installation).
+To install AppKit Skills, run the following command in your terminal:
+
+```bash theme={null}
+npx skills add https://github.com/reown-com/skills --skill appkit --agent '*'
+```
+
+After installation, you can ask your AI assistant for help with AppKit setup, implementation, and troubleshooting.
 
 ## Custom Installation
 
@@ -36078,7 +36112,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called **outside** any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import { createAppKit } from '@reown/appkit/react'
 
     import { WagmiProvider } from 'wagmi'
@@ -36134,7 +36168,7 @@ AppKit providers two different approaches on React to initialize it.
 
     Reown AppKit use [Viem](https://viem.sh/) networks under the hood, which provide a wide variety of networks for EVM chains. You can find all the networks supported by Viem within the `@reown/appkit/networks` path.
 
-    ```js {2} theme={null}
+    ```js {2} theme={null} theme={null}
     import { createAppKit } from '@reown/appkit'
     import { mainnet, arbitrum, base, scroll, polygon } from '@reown/appkit/networks'
     ```
@@ -36151,7 +36185,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import { createAppKit } from "@reown/appkit/react";
     import { Ethers5Adapter } from "@reown/appkit-adapter-ethers5";
     import { mainnet, arbitrum } from "@reown/appkit/networks";
@@ -36195,7 +36229,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import { createAppKit } from "@reown/appkit/react";
     import { EthersAdapter } from "@reown/appkit-adapter-ethers";
     import { arbitrum, mainnet } from "@reown/appkit/networks";
@@ -36248,7 +36282,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     // App.tsx
     import { createAppKit } from "@reown/appkit/react";
     import { SolanaAdapter } from "@reown/appkit-adapter-solana/react";
@@ -36294,7 +36328,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit/react'
     import { BitcoinAdapter } from '@reown/appkit-adapter-bitcoin'
@@ -36339,7 +36373,7 @@ AppKit providers two different approaches on React to initialize it.
 
     ## Bitcoin Provider Interface
 
-    ```ts theme={null}
+    ```ts theme={null} theme={null}
     export interface BitcoinConnector extends ChainAdapterConnector, Provider {
       getAccountAddresses(): Promise<BitcoinConnector.AccountAddress[]>;
       signMessage(params: BitcoinConnector.SignMessageParams): Promise<string>;
@@ -36354,7 +36388,7 @@ AppKit providers two different approaches on React to initialize it.
 
     <Tabs>
       <Tab title="SignMessageParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignMessageParams = {
             /**
              * The message to be signed
@@ -36369,7 +36403,7 @@ AppKit providers two different approaches on React to initialize it.
       </Tab>
 
       <Tab title="SendTransferParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SendTransferParams = {
             /**
              * The amount to be sent in satoshis
@@ -36384,7 +36418,7 @@ AppKit providers two different approaches on React to initialize it.
       </Tab>
 
       <Tab title="SignPSBTParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignPSBTParams = {
             /**
              * The PSBT to be signed, string base64 encoded
@@ -36420,7 +36454,7 @@ AppKit providers two different approaches on React to initialize it.
 
     <Tabs>
       <Tab title="AccountAddress">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type AccountAddress = {
             /**
              * Public address belonging to the account.
@@ -36443,7 +36477,7 @@ AppKit providers two different approaches on React to initialize it.
       </Tab>
 
       <Tab title="SignPSBTResponse">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignPSBTResponse = {
             /**
              * The signed PSBT, string base64 encoded
@@ -36464,7 +36498,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit/react'
     import { TonAdapter } from '@reown/appkit-adapter-ton'
@@ -36513,7 +36547,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit/react'
     import { TronAdapter } from '@reown/appkit-adapter-tron'
@@ -36571,19 +36605,19 @@ AppKit providers two different approaches on React to initialize it.
     <Tabs>
       <Tab title="TronLink">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-tronlink
           ```
         </CodeGroup>
@@ -36591,19 +36625,19 @@ AppKit providers two different approaches on React to initialize it.
 
       <Tab title="MetaMask">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-metamask-tron
           ```
         </CodeGroup>
@@ -36611,19 +36645,19 @@ AppKit providers two different approaches on React to initialize it.
 
       <Tab title="Trust Wallet">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-trust
           ```
         </CodeGroup>
@@ -36631,19 +36665,19 @@ AppKit providers two different approaches on React to initialize it.
 
       <Tab title="OKX Wallet">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-okxwallet
           ```
         </CodeGroup>
@@ -36651,19 +36685,19 @@ AppKit providers two different approaches on React to initialize it.
 
       <Tab title="BitKeep">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-bitkeep
           ```
         </CodeGroup>
@@ -36671,19 +36705,19 @@ AppKit providers two different approaches on React to initialize it.
 
       <Tab title="Binance Wallet">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-binance
           ```
         </CodeGroup>
@@ -36698,7 +36732,7 @@ AppKit providers two different approaches on React to initialize it.
 
     After installing your desired wallet adapters, import and add them to the `walletAdapters` array when creating the TRON adapter:
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import { TronLinkAdapter } from '@tronweb3/tronwallet-adapter-tronlink'
     import { MetaMaskAdapter } from '@tronweb3/tronwallet-adapter-metamask-tron'
     import { TrustAdapter } from '@tronweb3/tronwallet-adapter-trust'
@@ -36732,7 +36766,7 @@ AppKit providers two different approaches on React to initialize it.
 
     We recommend creating a config file to establish a singleton instance for the Universal Connector:
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import type { AppKitNetwork } from '@reown/appkit/networks'
     import type { CustomCaipNetwork } from '@reown/appkit-common'
     import { UniversalConnector } from '@reown/appkit-universal-connector'
@@ -36780,7 +36814,7 @@ AppKit providers two different approaches on React to initialize it.
 
     In de App.tsx file you can add :
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import { useState, useEffect } from 'react'
     import { getUniversalConnector } from './config' // previous config file
     import { UniversalConnector } from '@reown/appkit-universal-connector'
@@ -36939,7 +36973,7 @@ AppKit providers two different approaches on React to initialize it.
 
     For a practical example of how it works, you can refer to our [lab dApp](https://appkit-lab.reown.com/appkit/?name=solana).
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import {
       SystemProgram,
       PublicKey,
@@ -37035,16 +37069,16 @@ AppKit providers two different approaches on React to initialize it.
 If you are starting from scratch, you can use the following methods to set up your project with Reown AppKit.
 
 <AccordionGroup>
-  <Accordion title="Set up Reown AppKit using AI">
-    If you're using Cursor IDE (or another AI based IDE) to build a project with Reown AppKit, Reown provides a `.mdc` file that enhances your development experience. The `reown-appkit.mdc` [file here](https://github.com/reown-com/reown-docs/blob/main/reown-appkit.mdc) contains Cursor-specific rules and type hints for Reown AppKit.
+  <Accordion title="AppKit Skills">
+    AppKit Skills provide AI-powered assistance for building with Reown AppKit. Once installed, your AI coding assistant can help you set up, build, and debug your AppKit integration.
 
-    To use it in your project:
+    To install AppKit Skills, run the following command in your terminal:
 
-    1. Copy the `reown-appkit.mdc` file from this repository
-    2. Create a `.cursor/rules` folder in your project's root directory (if it doesn't exist)
-    3. Place the `.mdc` file in your project's `.cursor/rules` folder
+    ```bash theme={null}
+    npx skills add https://github.com/reown-com/skills --skill appkit --agent '*'
+    ```
 
-    For more info, refer to [Cursor's documentation](https://docs.cursor.com/context/rules#project-rules).
+    After installation, you can ask your AI assistant for help with AppKit setup, implementation, and troubleshooting.
   </Accordion>
 
   <Accordion title="AppKit CLI">
@@ -42837,6 +42871,16 @@ Choose one of these to get started.
 
 ## Installation
 
+Try installing AppKit Skills to get AI-assisted guidance. Your AI coding assistant can help you set up, build, and debug your AppKit integration.
+
+To install AppKit Skills, run the following command in your terminal:
+
+```bash theme={null}
+npx skills add https://github.com/reown-com/skills --skill appkit --agent '*'
+```
+
+After installation, you can ask your AI assistant for help with AppKit setup, implementation, and troubleshooting.
+
 <Tabs>
   <Tab title="Wagmi">
     <CodeGroup>
@@ -42959,7 +43003,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Start by importing `createAppKit` from `@reown/appkit` and the necessary chains and WagmiAdapter from `@reown/appkit-adapter-wagmi`.
 
-    ```ts theme={null}
+    ```ts theme={null} theme={null}
     // lib/appkit.ts
     import { browser } from '$app/environment'
     import { createAppKit } from '@reown/appkit'
@@ -43011,7 +43055,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Then import this configuration in your app layout to ensure AppKit is initialized:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <!-- src/routes/+layout.svelte -->
     <script>
       import '$lib/appkit';
@@ -43028,7 +43072,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Start by importing `createAppKit` from `@reown/appkit` and the necessary chains and EthersAdapter from `@reown/appkit-adapter-ethers`.
 
-    ```ts theme={null}
+    ```ts theme={null} theme={null}
     // lib/appkit.ts
     import { browser } from '$app/environment'
     import { createAppKit } from '@reown/appkit'
@@ -43085,7 +43129,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Start by importing `createAppKit` from `@reown/appkit` and the necessary chains and SolanaAdapter from `@reown/appkit-adapter-solana`.
 
-    ```ts theme={null}
+    ```ts theme={null} theme={null}
     // lib/appkit.ts
     import { browser } from '$app/environment'
     import { createAppKit } from '@reown/appkit'
@@ -43138,7 +43182,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Start by importing `createAppKit` from `@reown/appkit` and the necessary chains and BitcoinAdapter from `@reown/appkit-adapter-bitcoin`.
 
-    ```ts theme={null}
+    ```ts theme={null} theme={null}
     // lib/appkit.ts
     import { browser } from '$app/environment'
     import { createAppKit } from '@reown/appkit'
@@ -43191,7 +43235,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Start by importing `createAppKit` from `@reown/appkit` and the necessary chains and TonAdapter from `@reown/appkit-adapter-ton`.
 
-    ```ts theme={null}
+    ```ts theme={null} theme={null}
     // lib/appkit.ts
     import { browser } from '$app/environment'
     import { createAppKit } from '@reown/appkit'
@@ -43299,7 +43343,7 @@ Or use other AppKit web components:
   <Tab title="Wagmi">
     The recommended way to trigger the modal is using the `initializeAppKit` function and web components:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <script lang="ts">
       import { initializeAppKit } from './lib/stores/appkit';
 
@@ -43314,7 +43358,7 @@ Or use other AppKit web components:
 
     You can also trigger the modal programmatically by calling the `open` method from AppKit instance:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <!-- +page.svelte -->
     <script>
       import { appKit } from '$lib/appkit'
@@ -43329,7 +43373,7 @@ Or use other AppKit web components:
 
     You can select the modal's view when calling the `open` function:
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <script>
       import { appKit } from '$lib/appkit'
       
@@ -43350,7 +43394,7 @@ Or use other AppKit web components:
   <Tab title="Ethers">
     You can trigger the modal by calling the `open` method from AppKit instance.
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <!-- +page.svelte -->
     <script>
       import { appKit } from '$lib/appkit'
@@ -43365,7 +43409,7 @@ Or use other AppKit web components:
 
     You can also select the modal's view when calling the `open` function.
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <script>
       import { appKit } from '$lib/appkit'
       
@@ -43386,7 +43430,7 @@ Or use other AppKit web components:
   <Tab title="Solana">
     You can trigger the modal by calling the `open` method from AppKit instance.
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <!-- +page.svelte -->
     <script>
       import { appKit } from '$lib/appkit'
@@ -43401,7 +43445,7 @@ Or use other AppKit web components:
 
     You can also select the modal's view when calling the `open` function.
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <script>
       import { appKit } from '$lib/appkit'
       
@@ -43422,7 +43466,7 @@ Or use other AppKit web components:
   <Tab title="Bitcoin">
     You can trigger the modal by calling the `open` method from AppKit instance.
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <!-- +page.svelte -->
     <script>
       import { appKit } from '$lib/appkit'
@@ -43437,7 +43481,7 @@ Or use other AppKit web components:
 
     You can also select the modal's view when calling the `open` function.
 
-    ```javascript theme={null}
+    ```javascript theme={null} theme={null}
     <script>
       import { appKit } from '$lib/appkit'
       
@@ -43461,7 +43505,7 @@ Or use other AppKit web components:
 
     Web components are global html elements that don't require importing.
 
-    ```svelte theme={null}
+    ```svelte theme={null} theme={null}
     <script lang="ts">
       // Import your AppKit configuration to ensure it's initialized
       import '$lib/appkit';
@@ -43554,6 +43598,18 @@ Or use other AppKit web components:
     ```
   </Tab>
 </Tabs>
+
+## AppKit Skills
+
+AppKit Skills provide AI-powered assistance for building with Reown AppKit. Once installed, your AI coding assistant can help you set up, build, and debug your AppKit integration.
+
+To install AppKit Skills, run the following command in your terminal:
+
+```bash theme={null}
+npx skills add https://github.com/reown-com/skills --skill appkit --agent '*'
+```
+
+After installation, you can ask your AI assistant for help with AppKit setup, implementation, and troubleshooting.
 
 
 # Multichain
@@ -53138,7 +53194,15 @@ Choose one of these to get started.
 
 ## Installation
 
-**Setting up from scratch? → Try out the [AppKit CLI templates](#alternative-installation) or the [AI-assisted setup](#alternative-installation).**
+Try installing AppKit Skills to get AI-assisted guidance. Your AI coding assistant can help you set up, build, and debug your AppKit integration.
+
+To install AppKit Skills, run the following command in your terminal:
+
+```bash theme={null}
+npx skills add https://github.com/reown-com/skills --skill appkit --agent '*'
+```
+
+After installation, you can ask your AI assistant for help with AppKit setup, implementation, and troubleshooting.
 
 ## Custom Installation
 
@@ -53310,7 +53374,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `App.vue` file set up the following configuration
 
-    ```html theme={null}
+    ```html theme={null} theme={null}
     <script lang="ts" setup>
       import { createAppKit } from '@reown/appkit/vue'
       import { arbitrum, mainnet, type AppKitNetwork } from '@reown/appkit/networks'
@@ -53355,7 +53419,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Reown AppKit use [Viem](https://viem.sh/) networks under the hood, which provide a wide variety of networks for EVM chains. You can find all the networks supported by Viem within the `@reown/appkit/networks` path.
 
-    ```js {2} theme={null}
+    ```js {2} theme={null} theme={null}
     import { createAppKit } from '@reown/appkit/vue'
     import { mainnet, arbitrum, base, scroll, polygon } from '@reown/appkit/networks'
     ```
@@ -53368,7 +53432,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
   <Tab title="Ethers v5">
     In your `App.vue` file set up the following configuration.
 
-    ```html theme={null}
+    ```html theme={null} theme={null}
     <script setup lang="ts">
       import { createAppKit, useAppKit } from "@reown/appkit/vue";
       import { Ethers5Adapter } from "@reown/appkit-adapter-ethers5";
@@ -53418,7 +53482,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `App.vue` file set up the following configuration.
 
-    ```html theme={null}
+    ```html theme={null} theme={null}
     <script setup lang="ts">
       import { createAppKit, useAppKit } from "@reown/appkit/vue";
       import { EthersAdapter } from "@reown/appkit-adapter-ethers";
@@ -53469,7 +53533,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `App.vue` file set up the following configuration.
 
-    ```html theme={null}
+    ```html theme={null} theme={null}
     <script setup lang="ts">
       import { createAppKit, useAppKit } from "@reown/appkit-solana/vue";
       import { SolanaAdapter } from "@reown/appkit-adapter-solana/vue";
@@ -53517,7 +53581,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `App.vue` file set up the following configuration.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     <script setup lang="ts">
 
     import { createAppKit } from '@reown/appkit/react'
@@ -53562,7 +53626,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     ## Bitcoin Provider Interface
 
-    ```ts theme={null}
+    ```ts theme={null} theme={null}
     export interface BitcoinConnector extends ChainAdapterConnector, Provider {
       getAccountAddresses(): Promise<BitcoinConnector.AccountAddress[]>;
       signMessage(params: BitcoinConnector.SignMessageParams): Promise<string>;
@@ -53577,7 +53641,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="SignMessageParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignMessageParams = {
             /**
              * The message to be signed
@@ -53592,7 +53656,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SendTransferParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SendTransferParams = {
             /**
              * The amount to be sent in satoshis
@@ -53607,7 +53671,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTParams">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignPSBTParams = {
             /**
              * The PSBT to be signed, string base64 encoded
@@ -53643,7 +53707,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="AccountAddress">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type AccountAddress = {
             /**
              * Public address belonging to the account.
@@ -53666,7 +53730,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTResponse">
-        ```ts theme={null}
+        ```ts theme={null} theme={null}
           export type SignPSBTResponse = {
             /**
              * The signed PSBT, string base64 encoded
@@ -53693,7 +53757,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `App.vue` file set up the following configuration.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     <script setup lang="ts">
 
     import { createAppKit } from '@reown/appkit/vue'
@@ -53744,7 +53808,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `App.vue` file set up the following configuration.
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     <script setup lang="ts">
 
     import { createAppKit } from '@reown/appkit/vue'
@@ -53802,19 +53866,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
     <Tabs>
       <Tab title="TronLink">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-tronlink
           ```
         </CodeGroup>
@@ -53822,19 +53886,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="MetaMask">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-metamask-tron
           ```
         </CodeGroup>
@@ -53842,19 +53906,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="Trust Wallet">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-trust
           ```
         </CodeGroup>
@@ -53862,19 +53926,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="OKX Wallet">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-okxwallet
           ```
         </CodeGroup>
@@ -53882,19 +53946,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="BitKeep">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-bitkeep
           ```
         </CodeGroup>
@@ -53902,19 +53966,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="Binance Wallet">
         <CodeGroup>
-          ```bash npm theme={null}
+          ```bash npm theme={null} theme={null}
           npm install @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash Yarn theme={null}
+          ```bash Yarn theme={null} theme={null}
           yarn add @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash Bun theme={null}
+          ```bash Bun theme={null} theme={null}
           bun add @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash pnpm theme={null}
+          ```bash pnpm theme={null} theme={null}
           pnpm add @tronweb3/tronwallet-adapter-binance
           ```
         </CodeGroup>
@@ -53929,7 +53993,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     After installing your desired wallet adapters, import and add them to the `walletAdapters` array when creating the TRON adapter:
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import { TronLinkAdapter } from '@tronweb3/tronwallet-adapter-tronlink'
     import { MetaMaskAdapter } from '@tronweb3/tronwallet-adapter-metamask-tron'
     import { TrustAdapter } from '@tronweb3/tronwallet-adapter-trust'
@@ -54088,7 +54152,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     For a practical example of how it works, you can refer to our [lab dApp](https://appkit-lab.reown.com/appkit/?name=solana).
 
-    ```tsx theme={null}
+    ```tsx theme={null} theme={null}
     import { ref } from 'vue';
     import {
       SystemProgram,
@@ -54194,16 +54258,16 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 If you are starting from scratch, you can use the following methods to set up your project with Reown AppKit.
 
 <AccordionGroup>
-  <Accordion title="Set up Reown AppKit using AI">
-    If you're using Cursor IDE (or another AI based IDE) to build a project with Reown AppKit, Reown provides a `.mdc` file that enhances your development experience. The `reown-appkit.mdc` [file here](https://github.com/reown-com/reown-docs/blob/main/reown-appkit.mdc) contains Cursor-specific rules and type hints for Reown AppKit.
+  <Accordion title="AppKit Skills">
+    AppKit Skills provide AI-powered assistance for building with Reown AppKit. Once installed, your AI coding assistant can help you set up, build, and debug your AppKit integration.
 
-    To use it in your project:
+    To install AppKit Skills, run the following command in your terminal:
 
-    1. Copy the `reown-appkit.mdc` file from this repository
-    2. Create a `.cursor/rules` folder in your project's root directory (if it doesn't exist)
-    3. Place the `.mdc` file in your project's `.cursor/rules` folder
+    ```bash theme={null}
+    npx skills add https://github.com/reown-com/skills --skill appkit --agent '*'
+    ```
 
-    For more info, refer to [Cursor's documentation](https://docs.cursor.com/context/rules#project-rules).
+    After installation, you can ask your AI assistant for help with AppKit setup, implementation, and troubleshooting.
   </Accordion>
 
   <Accordion title="AppKit CLI">

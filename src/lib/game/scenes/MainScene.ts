@@ -527,7 +527,7 @@ export class MainScene extends Phaser.Scene {
         this.storeUnsubscribe = undefined;
       }
 
-      // Notify Astro layer
+      // Notify SvelteKit layer
       document.dispatchEvent(new CustomEvent("tresr:config-tampered"));
       return;
     }

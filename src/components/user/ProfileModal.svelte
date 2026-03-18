@@ -9,6 +9,7 @@
     enqueueProfileWrite,
   } from "@/lib/user";
   import {uploadAvatar} from "@/lib/user/avatar";
+  import Modal from "@/components/ui/Modal.svelte";
   import {
     connectWallet,
     getWalletClient,
@@ -18,7 +19,7 @@
   import {shortenAddress} from "@/lib/blockchain/networks/display";
   import type {UserProfile} from "@/types/backend";
   import {log} from "@/lib/utils/log";
-  import {profileStore} from "@/lib/user/store";
+  import {profileStore} from "@/lib/user/store.svelte";
   import {
     trackModalOpen,
     trackProfileUpdate,
@@ -29,38 +30,38 @@
 
   const COMPONENT_NAME = "ProfileModal";
 
-  let modal: HTMLDialogElement;
-  let walletLinkModal: HTMLDialogElement;
-  let fileInput: HTMLInputElement;
+  let open = $state(false);
+  let walletLinkOpen = $state(false);
+  let fileInput = $state<HTMLInputElement | null>(null);
 
-  let isLoading = true;
-  let isSaving = false;
-  let isAvatarUploading = false;
+  let isLoading = $state(true);
+  let isSaving = $state(false);
+  let isAvatarUploading = $state(false);
 
-  let currentProfile: UserProfile | null = null;
-  let currentVersion: bigint | undefined;
+  let currentProfile: UserProfile | null = $state(null);
+  let currentVersion: bigint | undefined = $state(undefined);
 
-  let nickname = "";
-  let email = "";
-  let principal = "-";
+  let nickname = $state("");
+  let email = $state("");
+  let principal = $state("-");
 
-  let isGuest = false;
-  let isSiwaLogin = false;
-  let hasWallet = false;
-  let walletDisplay = "";
-  let avatarUrl = "";
-  let avatarLetter = "?";
+  let isGuest = $state(false);
+  let isSiwaLogin = $state(false);
+  let hasWallet = $state(false);
+  let walletDisplay = $state("");
+  let avatarUrl = $state("");
+  let avatarLetter = $state("?");
 
-  let stats = {
+  let stats = $state({
     high_score: 0n,
     total_games_played: 0n,
     total_games_won: 0n,
     total_games_lost: 0n,
-  };
+  });
 
   async function openProfileModal() {
     log.info(COMPONENT_NAME, "Opening modal");
-    modal?.showModal();
+    open = true;
     trackModalOpen("profile");
     await loadProfile();
   }
@@ -165,11 +166,11 @@
           detail: {nickname: newNickname},
         })
       );
-      profileStore.set({...currentProfile} as any);
+      profileStore.value = {...currentProfile} as any;
 
       trackProfileUpdate("nickname");
       window.showInfoToast?.("Profile updated successfully");
-      modal?.close();
+      open = false;
     } catch (error) {
       log.error(COMPONENT_NAME, "Failed to save profile:", error);
     } finally {
@@ -178,7 +179,7 @@
   }
 
   async function handleLinkWallet() {
-    walletLinkModal?.showModal();
+    walletLinkOpen = true;
     try {
       const {address} = await connectWallet();
       const walletClient = await getWalletClient();
@@ -216,7 +217,7 @@
         log.error(COMPONENT_NAME, "Wallet link failed", err);
       }
     } finally {
-      walletLinkModal?.close();
+      walletLinkOpen = false;
     }
   }
 
@@ -265,7 +266,7 @@
       currentProfile.preferences.avatar_url = url;
       avatarUrl = url;
 
-      profileStore.set({...currentProfile} as any);
+      profileStore.value = {...currentProfile} as any;
       trackAvatarUpload();
       window.showInfoToast?.("Avatar updated!");
     } catch (err) {
@@ -286,250 +287,272 @@
   });
 </script>
 
-<dialog bind:this={modal} class="modal">
-  <div class="modal-box border-primary/30 bg-base-200 w-11/12 max-w-lg border">
-    <div class="mb-6 flex items-center justify-between">
-      <h2 class="text-primary text-2xl font-black tracking-widest uppercase">
-        Player Profile
-      </h2>
-      <button
-        on:click={() => modal.close()}
-        class="btn btn-circle btn-ghost min-h-[44px] min-w-[44px] text-lg"
-        >✕</button
+<Modal bind:open title="Player Profile">
+  {#if isLoading}
+    <div class="py-10 text-center">
+      <div
+        class="border-primary mx-auto h-10 w-10 animate-spin rounded-full border-4 border-t-transparent"
+      ></div>
+      <p
+        class="text-primary mt-4 animate-pulse font-mono text-xs tracking-widest"
       >
+        SCANNED BIOMETRICS...
+      </p>
     </div>
-
-    {#if isLoading}
-      <div class="py-10 text-center">
-        <span class="loading loading-spinner loading-lg text-primary"></span>
-        <p class="text-primary mt-2 animate-pulse font-mono text-xs">
-          SCANNED BIOMETRICS...
-        </p>
-      </div>
-    {:else}
-      <div class="space-y-6">
-        <!-- Avatar -->
-        <div class="flex justify-center">
-          <div
-            class="group relative cursor-pointer"
-            on:click={() => !isGuest && fileInput.click()}
-            role="button"
-            tabindex="0"
-            on:keydown={(e) =>
-              e.key === "Enter" && !isGuest && fileInput.click()}
-          >
-            <div class="avatar placeholder">
-              <div
-                class="bg-primary/20 text-primary border-primary/30 ring-primary/10 ring-offset-base-200 w-16 overflow-hidden rounded-full border-2 ring ring-offset-2"
-              >
-                {#if avatarUrl}
-                  <img
-                    src={avatarUrl}
-                    class="h-full w-full object-cover"
-                    alt="Avatar"
-                  />
-                {:else}
-                  <span class="text-xl font-black">{avatarLetter}</span>
-                {/if}
-              </div>
-            </div>
-            {#if !isGuest}
-              <div
-                class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 transition-opacity group-hover:opacity-100"
-              >
-                <span
-                  class="text-[10px] font-bold tracking-wider text-white uppercase"
-                  >Change</span
-                >
-              </div>
-            {/if}
-            {#if isAvatarUploading}
-              <div
-                class="absolute inset-0 flex items-center justify-center rounded-full bg-black/70"
-              >
-                <span class="loading loading-spinner loading-sm text-primary"
-                ></span>
-              </div>
-            {/if}
-          </div>
-          <input
-            bind:this={fileInput}
-            on:change={handleAvatarUpload}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            class="hidden"
-            disabled={isGuest}
-          />
-        </div>
-
-        <!-- Nickname -->
-        <div class="form-control w-full">
-          <label class="label" for="profile-nickname"
-            ><span
-              class="label-text text-primary font-bold tracking-widest uppercase"
-              >Degen Handle</span
-            ></label
-          >
-          <input
-            id="profile-nickname"
-            bind:value={nickname}
-            disabled={isGuest}
-            type="text"
-            placeholder="Enter handle..."
-            class="input input-bordered input-primary bg-base-300 w-full font-mono"
-          />
-        </div>
-
-        <!-- Email -->
-        <div class="form-control w-full">
-          <label class="label" for="profile-email"
-            ><span
-              class="label-text text-primary font-bold tracking-widest uppercase"
-              >Secure Comms (Email)</span
-            ></label
-          >
-          <input
-            id="profile-email"
-            bind:value={email}
-            disabled={isGuest}
-            type="email"
-            placeholder="spam@tresr.community"
-            class="input input-bordered input-primary bg-base-300 w-full font-mono"
-          />
-        </div>
-
-        <!-- Principal -->
-        <div class="form-control w-full">
-          <div class="label">
-            <span
-              class="label-text text-neutral-content/50 font-bold tracking-widest uppercase"
-              >Identity (Principal)</span
-            >
-          </div>
-          <div
-            class="bg-base-300 truncate rounded-lg p-3 font-mono text-xs break-all opacity-70 select-all"
-          >
-            {principal}
-          </div>
-        </div>
-
-        <!-- Wallet -->
-        {#if !isGuest}
-          <div
-            class="collapse-arrow border-base-content/10 bg-base-300 collapse border"
-          >
-            <input type="checkbox" checked={true} />
-            <div
-              class="collapse-title text-sm font-bold tracking-tighter uppercase"
-            >
-              Avalanche Wallet
-            </div>
-            <div class="collapse-content space-y-4 pt-4">
-              {#if isSiwaLogin}
-                <div role="alert" class="alert alert-info mb-4 px-3 py-2">
-                  <span class="text-[10px] font-bold uppercase"
-                    >Primary Identity</span
-                  >
-                  <span class="ml-auto font-mono text-xs opacity-80"
-                    >{walletDisplay}</span
-                  >
-                </div>
-                <p class="text-base-content/50 text-xs italic">
-                  This wallet was used to sign in and cannot be unlinked.
-                </p>
-              {:else if hasWallet}
-                <div role="alert" class="alert alert-success mb-4 px-3 py-2">
-                  <span class="text-[10px] font-bold uppercase"
-                    >Link Established</span
-                  >
-                  <span class="ml-auto font-mono text-xs opacity-80"
-                    >{walletDisplay}</span
-                  >
-                </div>
-                <button
-                  on:click={handleUnlinkWallet}
-                  class="btn btn-error btn-outline btn-sm w-full"
-                  >SEVER LINK</button
-                >
-              {:else}
-                <button
-                  on:click={handleLinkWallet}
-                  class="btn btn-accent btn-sm w-full gap-2"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    class="h-5 w-5"
-                    ><path
-                      d="M2.273 5.625A4.483 4.483 0 015.25 4.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 3H5.25a3 3 0 00-2.977 2.625zM2.273 8.625A4.483 4.483 0 015.25 7.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 6H5.25a3 3 0 00-2.977 2.625zM5.25 9a3 3 0 00-3 3v6a3 3 0 003 3h13.5a3 3 0 003-3v-6a3 3 0 00-3-3H15a.75.75 0 00-.75.75 2.25 2.25 0 01-4.5 0A.75.75 0 009 9H5.25z"
-                    ></path></svg
-                  >
-                  Link Wallet
-                </button>
-              {/if}
-            </div>
-          </div>
-        {/if}
-
-        <!-- Stats -->
+  {:else}
+    <div class="space-y-6 pt-2">
+      <!-- Avatar -->
+      <div class="flex justify-center">
         <div
-          class="stats stats-vertical md:stats-horizontal bg-base-200/50 w-full shadow"
+          class="group relative cursor-pointer"
+          onclick={() => !isGuest && fileInput?.click()}
+          role="button"
+          tabindex="0"
+          onkeydown={(e) => e.key === "Enter" && !isGuest && fileInput?.click()}
         >
-          <div class="stat place-items-center py-3">
-            <div class="stat-title text-[10px] uppercase">High Score</div>
-            <div class="stat-value text-primary font-mono text-xl">
-              {stats.high_score.toString()}
-            </div>
-          </div>
-          <div class="stat place-items-center py-3">
-            <div class="stat-title text-[10px] uppercase">Played</div>
-            <div class="stat-value text-accent font-mono text-xl">
-              {stats.total_games_played.toString()}
-            </div>
-          </div>
-          <div class="stat place-items-center py-3">
-            <div class="stat-title text-[10px] uppercase">Won</div>
-            <div class="stat-value text-success font-mono text-xl">
-              {stats.total_games_won.toString()}
-            </div>
-          </div>
-        </div>
-
-        {#if isGuest}
-          <div role="alert" class="alert alert-warning text-sm">
-            <span>Login to access full profile and link wallet.</span>
-          </div>
-        {/if}
-
-        <div class="divider"></div>
-
-        <div class="mt-2 flex items-center justify-between">
-          <a href="/claims" class="btn btn-warning btn-outline gap-2 px-6">
-            <span class="text-lg">🏆</span> Rewards
-          </a>
-          <button
-            on:click={handleSaveProfile}
-            disabled={isGuest || isSaving}
-            class="btn btn-primary px-8"
-            class:loading={isSaving}
+          <div
+            class="border-primary/30 bg-primary/10 text-primary ring-primary/10 ring-offset-background flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 shadow-[0_0_15px_var(--color-primary)] ring-2 ring-offset-2 transition-all hover:scale-105"
           >
-            Update Identity
-          </button>
+            {#if avatarUrl}
+              <img
+                src={avatarUrl}
+                class="h-full w-full object-cover"
+                alt="Avatar"
+              />
+            {:else}
+              <span class="text-3xl font-black">{avatarLetter}</span>
+            {/if}
+          </div>
+          {#if !isGuest}
+            <div
+              class="pointer-events-none absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 transition-opacity group-hover:opacity-100"
+            >
+              <span
+                class="text-[10px] font-bold tracking-wider text-white uppercase"
+                >Change</span
+              >
+            </div>
+          {/if}
+          {#if isAvatarUploading}
+            <div
+              class="absolute inset-0 flex items-center justify-center rounded-full bg-black/70"
+            >
+              <div
+                class="border-primary h-5 w-5 animate-spin rounded-full border-2 border-t-transparent"
+              ></div>
+            </div>
+          {/if}
+        </div>
+        <input
+          bind:this={fileInput}
+          onchange={handleAvatarUpload}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          class="hidden"
+          disabled={isGuest}
+        />
+      </div>
+
+      <!-- Nickname -->
+      <div class="flex w-full flex-col gap-1">
+        <label
+          class="px-1 text-xs font-bold tracking-widest text-[#a855f7] uppercase"
+          for="profile-nickname">Degen Handle</label
+        >
+        <input
+          id="profile-nickname"
+          bind:value={nickname}
+          disabled={isGuest}
+          type="text"
+          placeholder="Enter handle..."
+          class="border-primary/20 focus:border-primary focus:ring-primary w-full rounded-md border bg-black/40 px-4 py-3 font-mono text-white placeholder-white/30 transition-colors focus:ring-1 focus:outline-none disabled:opacity-50"
+        />
+      </div>
+
+      <!-- Email -->
+      <div class="flex w-full flex-col gap-1">
+        <label
+          class="px-1 text-xs font-bold tracking-widest text-[#a855f7] uppercase"
+          for="profile-email">Secure Comms (Email)</label
+        >
+        <input
+          id="profile-email"
+          bind:value={email}
+          disabled={isGuest}
+          type="email"
+          placeholder="spam@tresr.community"
+          class="border-primary/20 focus:border-primary focus:ring-primary w-full rounded-md border bg-black/40 px-4 py-3 font-mono text-white placeholder-white/30 transition-colors focus:ring-1 focus:outline-none disabled:opacity-50"
+        />
+      </div>
+
+      <!-- Principal -->
+      <div class="flex w-full flex-col gap-1">
+        <div
+          class="px-1 text-xs font-bold tracking-widest text-white/50 uppercase"
+        >
+          Identity (Principal)
+        </div>
+        <div
+          class="w-full truncate rounded-md border border-white/5 bg-black/20 p-3 font-mono text-xs tracking-wider text-white/70 opacity-70 select-all"
+        >
+          {principal}
         </div>
       </div>
-    {/if}
-  </div>
-  <form method="dialog" class="modal-backdrop">
-    <button>close</button>
-  </form>
-</dialog>
 
-<dialog bind:this={walletLinkModal} class="modal">
-  <div class="modal-box bg-base-100">
-    <div class="flex justify-center">
-      <div class="loading loading-spinner text-primary"></div>
+      <!-- Wallet -->
+      {#if !isGuest}
+        <div
+          class="flex w-full flex-col gap-3 rounded-md border border-white/10 bg-white/5 p-4"
+        >
+          <div class="text-sm font-bold tracking-widest text-white uppercase">
+            Avalanche Wallet
+          </div>
+          <div class="space-y-4">
+            {#if isSiwaLogin}
+              <div
+                role="alert"
+                class="flex items-center gap-2 rounded-md border border-[#0284c7]/50 bg-[#0284c7]/20 px-3 py-2 text-[#e0f2fe]"
+              >
+                <span class="text-[10px] font-bold uppercase"
+                  >Primary Identity</span
+                >
+                <span class="ml-auto font-mono text-xs opacity-80"
+                  >{walletDisplay}</span
+                >
+              </div>
+              <p class="text-xs text-white/40 italic">
+                This wallet was used to sign in and cannot be unlinked.
+              </p>
+            {:else if hasWallet}
+              <div
+                role="alert"
+                class="flex items-center gap-2 rounded-md border border-[#16a34a]/50 bg-[#16a34a]/20 px-3 py-2 text-[#dcfce7]"
+              >
+                <span class="text-[10px] font-bold uppercase"
+                  >Link Established</span
+                >
+                <span class="ml-auto font-mono text-xs opacity-80"
+                  >{walletDisplay}</span
+                >
+              </div>
+              <button
+                onclick={handleUnlinkWallet}
+                class="w-full rounded-md border border-[#dc2626]/50 bg-[#dc2626]/10 py-2 text-xs font-bold tracking-widest text-[#f87171] uppercase transition-colors hover:bg-[#dc2626]/20"
+                >Sever Link</button
+              >
+            {:else}
+              <button
+                onclick={handleLinkWallet}
+                class="flex w-full items-center justify-center gap-2 rounded-md bg-[#06b6d4] py-2 text-sm font-bold tracking-widest text-black uppercase shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all hover:scale-[1.02] hover:bg-[#0891b2] active:scale-95"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  class="h-5 w-5"
+                  ><path
+                    d="M2.273 5.625A4.483 4.483 0 015.25 4.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 3H5.25a3 3 0 00-2.977 2.625zM2.273 8.625A4.483 4.483 0 015.25 7.5h13.5c1.141 0 2.183.425 2.977 1.125A3 3 0 0018.75 6H5.25a3 3 0 00-2.977 2.625zM5.25 9a3 3 0 00-3 3v6a3 3 0 003 3h13.5a3 3 0 003-3v-6a3 3 0 00-3-3H15a.75.75 0 00-.75.75 2.25 2.25 0 01-4.5 0A.75.75 0 009 9H5.25z"
+                  ></path></svg
+                >
+                Link Wallet
+              </button>
+            {/if}
+          </div>
+        </div>
+      {/if}
+
+      <!-- Stats -->
+      <div
+        class="flex w-full flex-col overflow-hidden rounded-md border border-white/5 bg-black/40 shadow-inner md:flex-row"
+      >
+        <div
+          class="flex flex-1 flex-col items-center justify-center border-b border-white/5 p-4 md:border-r md:border-b-0"
+        >
+          <div
+            class="text-[10px] font-bold tracking-widest text-white/40 uppercase"
+          >
+            High Score
+          </div>
+          <div
+            class="text-primary font-mono text-2xl font-bold drop-shadow-[0_0_8px_var(--color-primary)]"
+          >
+            {stats.high_score.toString()}
+          </div>
+        </div>
+        <div
+          class="flex flex-1 flex-col items-center justify-center border-b border-white/5 p-4 md:border-r md:border-b-0"
+        >
+          <div
+            class="text-[10px] font-bold tracking-widest text-white/40 uppercase"
+          >
+            Played
+          </div>
+          <div class="font-mono text-2xl font-bold text-[#06b6d4]">
+            {stats.total_games_played.toString()}
+          </div>
+        </div>
+        <div class="flex flex-1 flex-col items-center justify-center p-4">
+          <div
+            class="text-[10px] font-bold tracking-widest text-white/40 uppercase"
+          >
+            Won
+          </div>
+          <div class="font-mono text-2xl font-bold text-[#10b981]">
+            {stats.total_games_won.toString()}
+          </div>
+        </div>
+      </div>
+
+      {#if isGuest}
+        <div
+          role="alert"
+          class="rounded-md border border-[#eab308]/50 bg-[#eab308]/10 p-3 text-sm text-[#fef08a]"
+        >
+          <span>Login to access full profile and link wallet.</span>
+        </div>
+      {/if}
+
+      <div class="h-px w-full bg-white/10"></div>
+
+      <div
+        class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <a
+          href="/claims"
+          class="flex w-full items-center justify-center gap-2 rounded-md border border-[#eab308] px-6 py-2 font-bold tracking-widest text-[#eab308] uppercase transition-colors hover:bg-[#eab308]/10 sm:w-auto"
+        >
+          <span class="text-lg">🏆</span> Rewards
+        </a>
+        <button
+          onclick={handleSaveProfile}
+          disabled={isGuest || isSaving}
+          class="bg-primary hover:bg-primary/90 flex w-full items-center justify-center rounded-md px-8 py-2 font-bold tracking-widest text-black uppercase shadow-[0_0_15px_var(--color-primary)] transition-all hover:scale-[1.02] active:scale-95 disabled:pointer-events-none disabled:opacity-50 sm:w-auto"
+        >
+          {#if isSaving}
+            <div
+              class="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent"
+            ></div>
+          {/if}
+          Update Identity
+        </button>
+      </div>
     </div>
-    <p class="mt-2 text-center">Linking wallet...</p>
+  {/if}
+</Modal>
+
+<Modal
+  bind:open={walletLinkOpen}
+  closeOnOutsideClick={false}
+  closeOnEscape={false}
+>
+  <div class="flex flex-col items-center justify-center py-8">
+    <div
+      class="border-primary h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"
+    ></div>
+    <p
+      class="mt-6 animate-pulse font-mono text-sm tracking-widest text-white/70 uppercase"
+    >
+      Establishing Link...
+    </p>
   </div>
-</dialog>
+</Modal>

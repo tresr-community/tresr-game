@@ -43,7 +43,7 @@ export class SwarmBehavior implements AIBehavior {
 
     // Re-evaluate ally center of mass periodically
     this.checkCounter++;
-    const checkInterval = swarmConfig.check_frame_interval ?? 10;
+    const checkInterval = swarmConfig.check_frame_interval;
     if (this.checkCounter >= checkInterval) {
       this.checkCounter = 0;
       this.centerOfMass = getNearbyAlliesCenter(ctx, swarmConfig.group_radius);

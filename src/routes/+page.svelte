@@ -7,15 +7,20 @@
   import BurnStats from "@/components/wallet/BurnStats.svelte";
   import Footer from "@/components/user/Footer.svelte";
   import {config} from "@/lib/config/client";
-  import {onMount, onDestroy} from "svelte";
+  import {onMount} from "svelte";
+  import {
+    vaultStatus,
+    openLeaderboard,
+    openHowToPlay,
+  } from "@/lib/stores/ui.svelte";
 
   const appName = config.app.name;
   const timeLimitMinutes = Math.floor(config.gameplay.time_limit_seconds / 60);
 
   const LAST_WALLPAPER_KEY = "tresr_last_wallpaper";
-  let wallpaperBgUrl = "";
-  let isWallpaperReady = false;
-  let vaultLocked = false;
+  let wallpaperBgUrl = $state("");
+  let isWallpaperReady = $state(false);
+  let vaultLocked = $state(false);
   let loginContent = "LOGIN";
 
   function selectWallpaper() {
@@ -39,18 +44,17 @@
     return selected;
   }
 
-  function handleVaultStatus(e: Event) {
-    const {locked} = (e as CustomEvent).detail;
-    vaultLocked = locked;
-  }
-
   function handleLeaderboardClick() {
-    document.dispatchEvent(new CustomEvent("tresr:open-leaderboard"));
+    openLeaderboard.open();
   }
 
   function handleManualClick() {
-    document.dispatchEvent(new CustomEvent("tresr:open-how-to-play"));
+    openHowToPlay.open();
   }
+
+  $effect(() => {
+    if (vaultStatus.current) vaultLocked = vaultStatus.current.locked;
+  });
 
   onMount(() => {
     const wallpaper = selectWallpaper();
@@ -62,12 +66,6 @@
       };
       img.src = `/assets/images/wallpapers/${wallpaper}.webp`;
     }
-
-    document.addEventListener("tresr:vault-status", handleVaultStatus);
-  });
-
-  onDestroy(() => {
-    document.removeEventListener("tresr:vault-status", handleVaultStatus);
   });
 </script>
 
@@ -90,17 +88,19 @@
 
 <div id="main-content" class="transition-opacity duration-1000">
   <div
-    class="hero relative flex min-h-dvh flex-col justify-end pb-8 md:justify-center md:pb-12"
+    class="relative flex min-h-dvh flex-col items-center justify-end pb-8 md:justify-center md:pb-12"
   >
-    <div class="hero-content z-10 px-2 text-center md:px-4">
-      <div class="max-w-3xl">
+    <div
+      class="z-10 flex w-full flex-col items-center px-2 text-center md:px-4"
+    >
+      <div class="flex max-w-3xl flex-col items-center">
         <h1
-          class="font-display text-primary mb-0 text-xl font-black tracking-tighter drop-shadow-[0_0_10px_rgba(var(--primary),0.8)] md:mb-2 md:text-5xl lg:text-7xl"
+          class="font-display text-primary mb-0 text-xl font-black tracking-tighter drop-shadow-[0_0_10px_rgba(var(--color-primary),0.8)] md:mb-2 md:text-5xl lg:text-7xl"
         >
           {appName}
         </h1>
         <p
-          class="border-secondary/20 bg-base-100/50 my-0 rounded-lg border px-3 py-0.5 font-mono text-sm tracking-widest uppercase backdrop-blur md:my-8 md:py-6 md:text-xl lg:text-2xl"
+          class="border-secondary/20 my-0 rounded-lg border bg-black/50 px-3 py-0.5 font-mono text-sm tracking-widest uppercase backdrop-blur md:my-8 md:py-6 md:text-xl lg:text-2xl"
         >
           <span class="text-info">COLLECT KEYS.</span>{" "}
           <span class="text-error">FIGHT ENEMIES.</span>{" "}
@@ -115,33 +115,44 @@
             <LoginButton />
             {#if vaultLocked}
               <div
-                class="absolute inset-0 z-10 block pointer-events-auto cursor-not-allowed"
+                class="pointer-events-auto absolute inset-0 z-10 block cursor-not-allowed"
               ></div>
             {/if}
           </div>
 
           <div
-            class="grid w-full max-w-4xl grid-cols-2 gap-1 opacity-80 md:grid-cols-3 md:gap-6"
+            class="grid w-full max-w-4xl grid-cols-2 gap-2 opacity-90 md:grid-cols-3 md:gap-6"
           >
-            <div class="stats bg-base-200/50 border-primary/20 border shadow">
-              <div class="stat place-items-center">
-                <div class="stat-title font-mono text-xs">OBJECTIVE</div>
-                <div class="stat-value text-primary text-xl md:text-3xl">
-                  COLLECT
-                </div>
-                <div class="stat-desc">Gather Keys</div>
+            <div
+              class="border-primary/20 flex flex-col items-center rounded-xl border bg-black/40 px-5 py-4 shadow backdrop-blur"
+            >
+              <div class="font-mono text-xs uppercase opacity-50">
+                OBJECTIVE
               </div>
+              <div
+                class="text-primary mt-1 font-mono text-xl font-bold md:text-3xl"
+              >
+                COLLECT
+              </div>
+              <div class="mt-1 text-xs opacity-40">Gather Keys</div>
             </div>
-            <div id="vault-display" class="hidden md:block">
+            <div
+              id="vault-display"
+              class="hidden overflow-hidden rounded-xl md:block"
+            >
               <VaultBalance />
             </div>
-            <div class="stats bg-base-200/50 border-primary/20 border shadow">
-              <div class="stat place-items-center">
-                <div class="stat-title font-mono text-xs">THREAT</div>
-                <div class="stat-value text-secondary text-xl md:text-3xl">
-                  SURVIVE
-                </div>
-                <div class="stat-desc">{timeLimitMinutes} Minutes</div>
+            <div
+              class="border-primary/20 flex flex-col items-center rounded-xl border bg-black/40 px-5 py-4 shadow backdrop-blur"
+            >
+              <div class="font-mono text-xs uppercase opacity-50">THREAT</div>
+              <div
+                class="text-secondary mt-1 font-mono text-xl font-bold md:text-3xl"
+              >
+                SURVIVE
+              </div>
+              <div class="mt-1 text-xs opacity-40">
+                {timeLimitMinutes} Minutes
               </div>
             </div>
           </div>
@@ -153,40 +164,30 @@
   </div>
 
   <!-- Bottom Corner Buttons -->
-  <div
-    class="tooltip tooltip-right fixed bottom-8 left-8 z-30"
-    data-tip="Leaderboard"
-  >
-    <!-- svelte-ignore a11y-missing-attribute -->
-    <a
-      role="button"
-      tabindex="0"
+  <div class="fixed bottom-8 left-8 z-30">
+    <button
+      type="button"
       aria-label="Open Leaderboard"
-      class="btn btn-ghost text-primary hover:bg-primary/10 hover:border-primary/50 gap-2 border border-transparent font-mono"
-      on:click|preventDefault={handleLeaderboardClick}
-      on:keydown={(e) => e.key === "Enter" && handleLeaderboardClick()}
+      title="Leaderboard"
+      class="border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 inline-flex items-center gap-2 rounded-md border bg-transparent px-4 py-2 font-mono transition-all"
+      onclick={handleLeaderboardClick}
     >
       <span class="text-xl">🏆</span>
       <span class="hidden lg:inline">LEADERBOARD</span>
-    </a>
+    </button>
   </div>
 
-  <div
-    class="tooltip tooltip-left fixed right-8 bottom-8 z-30"
-    data-tip="Manual"
-  >
-    <!-- svelte-ignore a11y-missing-attribute -->
-    <a
-      role="button"
-      tabindex="0"
+  <div class="fixed right-8 bottom-8 z-30">
+    <button
+      type="button"
       aria-label="Open Game Manual"
-      class="btn btn-ghost text-primary hover:bg-primary/10 hover:border-primary/50 gap-2 border border-transparent font-mono"
-      on:click|preventDefault={handleManualClick}
-      on:keydown={(e) => e.key === "Enter" && handleManualClick()}
+      title="Manual"
+      class="border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 inline-flex items-center gap-2 rounded-md border bg-transparent px-4 py-2 font-mono transition-all"
+      onclick={handleManualClick}
     >
       <span class="hidden lg:inline">MANUAL</span>
       <span class="text-xl">❓</span>
-    </a>
+    </button>
   </div>
 
   <Footer />

@@ -1,6 +1,6 @@
 // PWA Utilities: Service Worker Registration and Version Update Handling
 
-import {log, JUNO_ENVIRONMENT} from "../utils/log";
+import {log} from "../utils/log";
 import {trackPwaInstall} from "../metrics/analytics";
 
 const COMPONENT_NAME = "PWA";
@@ -230,11 +230,15 @@ class PWA {
       clearInterval(this.updateCheckInterval);
     }
 
-    const isDev = JUNO_ENVIRONMENT === "development";
-    const INTERVAL_MS = isDev ? 60_000 : 60 * 60_000;
+    const isLocalEmulator =
+      typeof window !== "undefined" &&
+      (window.location.hostname.endsWith("localhost") ||
+        window.location.hostname === "127.0.0.1");
+
+    const INTERVAL_MS = isLocalEmulator ? 60_000 : 60 * 60_000;
     log.info(
       COMPONENT_NAME,
-      `Update check interval: ${isDev ? "60s (dev)" : "1hr"}, build_id: ${BUILD_ID}`
+      `Update check interval: ${isLocalEmulator ? "60s (dev)" : "1hr"}, build_id: ${BUILD_ID}`
     );
 
     this.updateCheckInterval = setInterval(() => {

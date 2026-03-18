@@ -1,49 +1,63 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import { authStore } from "@/lib/auth/store";
-  import { walletStore } from "@/lib/wallet/store";
-  import { getConnectedAddress } from "@/lib/wallet/connection";
+  import {onMount, onDestroy} from "svelte";
+  import {authStore} from "@/lib/auth/store.svelte";
+  import {walletStore} from "@/lib/wallet/store.svelte";
+  import {getConnectedAddress} from "@/lib/wallet/connection";
   import {
     claimFaucet,
     getFaucetCooldownStatus,
     getFaucetDripAmount,
     isFaucetDeployed,
   } from "@/lib/blockchain/faucet";
-  import { clearCachedBalance, formatBalance } from "@/lib/blockchain/balance";
-  import { config } from "@/lib/config/client";
-  import { log } from "@/lib/utils/log";
-  import { trackFaucetClaim, trackError } from "@/lib/metrics/analytics";
-  import { JUNO_ENVIRONMENT } from "@/lib/config/constants";
+  import {clearCachedBalance, formatBalance} from "@/lib/blockchain/balance";
+  import {config} from "@/lib/config/client";
+  import {log} from "@/lib/utils/log";
+  import {trackFaucetClaim, trackError} from "@/lib/metrics/analytics";
+  import {JUNO_ENVIRONMENT} from "@/lib/config/constants";
+  import {balanceRefreshTick} from "@/lib/stores/ui.svelte";
 
   const COMPONENT_NAME = "FaucetButton";
   const isProduction = JUNO_ENVIRONMENT === "production";
   const EMOJI_CONTENT = "🚰";
 
-  let isVisible = false;
-  let isProcessing = false;
-  let cooldownRemaining = 0;
+  let isVisible = $state(false);
+  let isProcessing = $state(false);
+  let cooldownRemaining = $state(0);
   let cooldownInterval: ReturnType<typeof setInterval> | null = null;
   let disposed = false;
 
-  $: auth = $authStore;
-  $: wallet = $walletStore;
-
-  $: {
-    if (!isProduction && auth.isAuthenticated && !auth.isGuest && wallet.connected && isFaucetDeployed(config)) {
+  $effect(() => {
+    if (
+      !isProduction &&
+      authStore.value.isAuthenticated &&
+      !authStore.value.isGuest &&
+      walletStore.value.connected &&
+      isFaucetDeployed(config)
+    ) {
       isVisible = true;
       if (cooldownRemaining <= 0 && !isProcessing) {
-        if (wallet.connected && !isProcessing) {
+        if (walletStore.value.connected && !isProcessing) {
           checkInitialCooldown();
         }
       }
     } else {
       isVisible = false;
     }
-  }
+  });
 
-  $: btnDisabled = isProcessing || !wallet.connected || cooldownRemaining > 0;
-  $: btnTitle = isProcessing ? "Processing..." : !wallet.connected ? "Connecting wallet…" : cooldownRemaining > 0 ? `Cooldown: ${formatCooldownTime(cooldownRemaining)}` : "Claim test tokens";
-  $: btnContent = isProcessing ? "" : EMOJI_CONTENT;
+  let btnDisabled = $derived(
+    isProcessing || !walletStore.value.connected || cooldownRemaining > 0
+  );
+  let btnTitle = $derived(
+    isProcessing
+      ? "Processing..."
+      : !walletStore.value.connected
+        ? "Connecting wallet…"
+        : cooldownRemaining > 0
+          ? `Cooldown: ${formatCooldownTime(cooldownRemaining)}`
+          : "Claim test tokens"
+  );
+  let btnContent = $derived(isProcessing ? "" : EMOJI_CONTENT);
 
   function formatCooldownTime(seconds: number): string {
     const m = Math.floor(seconds / 60);
@@ -83,7 +97,7 @@
   }
 
   async function checkInitialCooldown() {
-    if (!wallet.connected || disposed) return;
+    if (!walletStore.value.connected || disposed) return;
     const address = getConnectedAddress();
     if (!address) return;
     try {
@@ -100,7 +114,7 @@
   async function handleClick() {
     if (isProcessing || disposed || btnDisabled) return;
 
-    if (!wallet.connected) {
+    if (!walletStore.value.connected) {
       window.showWarningToast?.("Connect your wallet first 🔗");
       return;
     }
@@ -117,7 +131,10 @@
       const status = await getFaucetCooldownStatus(address);
       if (disposed) return;
       if (!status.canClaim) {
-        log.warn(COMPONENT_NAME, `Faucet on cooldown: ${formatCooldownTime(status.remainingSeconds)}`);
+        log.warn(
+          COMPONENT_NAME,
+          `Faucet on cooldown: ${formatCooldownTime(status.remainingSeconds)}`
+        );
         setCooldownState(status.remainingSeconds);
         isProcessing = false;
         return;
@@ -134,7 +151,9 @@
       let amountDisplay = "tokens";
       try {
         const dripAmount = await getFaucetDripAmount();
-        const env = (await import("@/lib/blockchain/networks/chain")).getEnvironmentKey();
+        const env = (
+          await import("@/lib/blockchain/networks/chain")
+        ).getEnvironmentKey();
         const ticker = config.blockchain.avalanche[env].token_ticker;
         amountDisplay = `${formatBalance(dripAmount)} $${ticker}`;
       } catch {
@@ -145,7 +164,7 @@
       window.showInfoToast?.(`Claimed ${amountDisplay}!`);
 
       clearCachedBalance(address);
-      document.dispatchEvent(new CustomEvent("tresr:balance-refresh"));
+      balanceRefreshTick.tick();
 
       try {
         const status = await getFaucetCooldownStatus(address);
@@ -157,7 +176,11 @@
     } catch (err: any) {
       const message = err?.message || String(err);
 
-      const isUserRejection = message.includes("User rejected") || message.includes("user rejected") || message.includes("User denied") || message.includes("rejected the request");
+      const isUserRejection =
+        message.includes("User rejected") ||
+        message.includes("user rejected") ||
+        message.includes("User denied") ||
+        message.includes("rejected the request");
       const isReconnecting = message.includes("unavailable while reconnecting");
       const isBalanceTooHigh = message.includes("Balance too high");
 
@@ -169,12 +192,30 @@
       }
 
       if (isUserRejection) window.showInfoToast?.("Transaction cancelled ✋");
-      else if (isReconnecting) window.showWarningToast?.("Wallet is reconnecting — please try again in a moment 🔄");
-      else if (isBalanceTooHigh) window.showWarningToast?.("Sorry degen, you already have too many tokens 🤑");
-      else if (message.includes("Cooldown active")) window.showWarningToast?.("Hold up — faucet is on cooldown ⏳");
-      else if (message.includes("Faucet empty")) window.showWarningToast?.("Faucet is dry — no tokens left 🏜️");
-      else if (message.includes("not broadcast to the network")) window.showWarningToast?.("Transaction not sent — check your wallet activity and try again 🔄");
-      else if (message.includes("already imported") || message.includes("nonce too low") || message.includes("replacement transaction underpriced")) window.showWarningToast?.("Duplicate transaction detected — reset your wallet activity and try again 🔄");
+      else if (isReconnecting)
+        window.showWarningToast?.(
+          "Wallet is reconnecting — please try again in a moment 🔄"
+        );
+      else if (isBalanceTooHigh)
+        window.showWarningToast?.(
+          "Sorry degen, you already have too many tokens 🤑"
+        );
+      else if (message.includes("Cooldown active"))
+        window.showWarningToast?.("Hold up — faucet is on cooldown ⏳");
+      else if (message.includes("Faucet empty"))
+        window.showWarningToast?.("Faucet is dry — no tokens left 🏜️");
+      else if (message.includes("not broadcast to the network"))
+        window.showWarningToast?.(
+          "Transaction not sent — check your wallet activity and try again 🔄"
+        );
+      else if (
+        message.includes("already imported") ||
+        message.includes("nonce too low") ||
+        message.includes("replacement transaction underpriced")
+      )
+        window.showWarningToast?.(
+          "Duplicate transaction detected — reset your wallet activity and try again 🔄"
+        );
     } finally {
       isProcessing = false;
     }
@@ -188,13 +229,33 @@
 
 {#if !isProduction && isVisible}
   <button
-    on:click={handleClick}
+    onclick={handleClick}
     disabled={btnDisabled}
-    class="btn btn-ghost btn-circle text-xl"
+    class="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-xl transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
     title={btnTitle}
   >
     {#if isProcessing}
-      <span class="loading loading-spinner loading-sm"></span>
+      <svg
+        class="h-5 w-5 animate-spin text-current"
+        xmlns="http://www.w3.org/2000/svg"
+        fill="none"
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <circle
+          class="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          stroke-width="4"
+        />
+        <path
+          class="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+        />
+      </svg>
     {:else}
       {btnContent}
     {/if}

@@ -22,7 +22,7 @@ export interface VaultTierInfo {
   tier: VaultTier;
   label: string;
   emoji: string;
-  /** CSS class name for theming (DaisyUI semantic color) */
+  /** Tailwind CSS class name for theming */
   colorClass: string;
   /** Difficulty multiplier */
   multiplier: number;
@@ -61,7 +61,7 @@ export function getVaultTier(balanceWei: bigint): VaultTierInfo {
       tier: "locked",
       label: "VAULT RECHARGING",
       emoji: "⚫",
-      colorClass: "text-base-content/50",
+      colorClass: "text-white/40",
       multiplier: 0,
     };
   }

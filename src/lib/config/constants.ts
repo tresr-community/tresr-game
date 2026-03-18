@@ -5,7 +5,7 @@
  * All values are environment-aware and set automatically based on build mode.
  *
  * Note: App metadata (name, version, tagline) is defined in public/config.yaml
- * and loaded via src/lib/config.ts for use in Astro pages.
+ * and loaded via src/lib/config.ts for use in SvelteKit routes.
  */
 
 import {JUNO_ENVIRONMENT, log} from "@/lib/utils/log";

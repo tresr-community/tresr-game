@@ -44,7 +44,7 @@ export class PassiveBehavior implements AIBehavior {
 
     // Walk across screen
     const offscreenKillDistance =
-      ctx.config.gameplay.entities.enemy.offscreen_kill_distance_px ?? 50;
+      ctx.config.gameplay.entities.enemy.offscreen_kill_distance_px;
     if (
       ctx.x < -offscreenKillDistance ||
       ctx.x > ctx.cameraWidth + offscreenKillDistance

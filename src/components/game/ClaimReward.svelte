@@ -1,26 +1,49 @@
 <script lang="ts">
-  import { initSatellite, setDoc } from "@junobuild/core";
-  import { getAuthState } from "@/lib/auth";
-  import { connectWallet, getWalletClient } from "@/lib/wallet/connection";
-  import { getEnvironmentKey } from "@/lib/blockchain/networks/chain";
-  import { getExplorerUrl } from "@/lib/blockchain/networks/display";
-  import { VaultAbi } from "@/lib/blockchain/abi/vault";
-  import { loadConfigAsync } from "@/lib/config";
-  import { trackClaim } from "@/lib/metrics/analytics";
-  import { confirmReceipt } from "@/lib/blockchain/tx";
-  import { onMount } from "svelte";
+  import {setDoc} from "@junobuild/core";
+  import {initializeJunoSatellite} from "@/lib/utils/juno";
+  import {getAuthState} from "@/lib/auth";
+  import {connectWallet, getWalletClient} from "@/lib/wallet/connection";
+  import {getConnectedAddress, isConnected} from "@/lib/wallet/appkit";
+  import {getEnvironmentKey} from "@/lib/blockchain/networks/chain";
+  import {getExplorerUrl} from "@/lib/blockchain/networks/display";
+  import {VaultAbi} from "@/lib/blockchain/abi/vault";
+  import {config} from "@/lib/config/client";
+  import {trackClaim} from "@/lib/metrics/analytics";
+  import {confirmReceipt} from "@/lib/blockchain/tx";
+  import {log} from "@/lib/utils/log";
+  import {onMount, onDestroy} from "svelte";
+  import Card from "@/components/ui/Card.svelte";
+  import Button from "@/components/ui/Button.svelte";
 
-  export let gameSessionId: string;
-  export let amount: number;
-  export let vaultAddress: string | undefined = undefined;
+  const COMPONENT_NAME = "ClaimReward";
 
-  let statusText = "";
-  let isError = false;
-  let isSuccess = false;
-  let isProcessing = false;
+  let {
+    gameSessionId,
+    amount,
+    vaultAddress = undefined,
+  }: {
+    gameSessionId: string;
+    amount: number;
+    vaultAddress?: string;
+  } = $props();
+
+  let statusText = $state("");
+  let isError = $state(false);
+  let isSuccess = $state(false);
+  let isProcessing = $state(false);
+
+  let claimAbortController: AbortController | null = null;
 
   onMount(() => {
-    initSatellite().catch(console.error);
+    initializeJunoSatellite().catch((err) =>
+      log.error(COMPONENT_NAME, "Satellite init failed", err)
+    );
+  });
+
+  onDestroy(() => {
+    claimAbortController?.abort();
+    // Defensively reset so any future re-mount starts from a clean state.
+    isProcessing = false;
   });
 
   async function handleClaim() {
@@ -30,30 +53,39 @@
     statusText = "Initializing...";
 
     try {
-      const { user } = getAuthState();
+      const {user} = getAuthState();
       if (!user) throw new Error("User not authenticated.");
 
-      const connection = await connectWallet();
+      // Use the already-connected wallet if available, otherwise open the modal.
+      const address = isConnected()
+        ? (getConnectedAddress() as `0x${string}`)
+        : ((await connectWallet()) as unknown as `0x${string}`);
       const walletClient = await getWalletClient();
 
       let contractAddress = vaultAddress;
-      if (!contractAddress || contractAddress === "0x0000000000000000000000000000000000000000") {
-        const config = await loadConfigAsync();
+      if (
+        !contractAddress ||
+        contractAddress === "0x0000000000000000000000000000000000000000"
+      ) {
         const env = getEnvironmentKey();
-        contractAddress = config.blockchain.avalanche[env].vault_contract as `0x${string}`;
+        contractAddress = config.blockchain.avalanche[env]
+          .vault_contract as `0x${string}`;
       }
 
       const principalId = user.key;
+      claimAbortController = new AbortController();
       const sigResponse = await fetch("/api/get-claim-sig", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
           sessionId: gameSessionId,
           amount,
           principal: principalId,
         }),
+        signal: claimAbortController.signal,
       });
-      const { signature } = await sigResponse.json();
+      const {signature} = await sigResponse.json();
+      claimAbortController = null;
 
       statusText = "Confirm in wallet...";
       const hash = await walletClient.writeContract({
@@ -66,17 +98,17 @@
           BigInt(0),
           signature as `0x${string}`,
         ],
-        account: connection.address,
+        account: address,
         chain: null,
       });
 
-      statusText = `Confirming on-chain: ${hash.substring(0,10)}...`;
+      statusText = `Confirming on-chain: ${hash.substring(0, 10)}...`;
 
-      await confirmReceipt(hash, { component: "ClaimReward" });
+      await confirmReceipt(hash, {component: "ClaimReward"});
 
       statusText = "Saving claim record...";
       await setDoc({
-        collection: "audit",
+        collection: "claims",
         doc: {
           key: `claim_${crypto.randomUUID()}`,
           data: {
@@ -104,29 +136,32 @@
   }
 </script>
 
-<div class="card card-bordered bg-base-100 border-primary/20 shadow-xl">
-  <div class="card-body">
-    <h3 class="card-title text-primary">Claim Your Reward!</h3>
-    <div class="text-sm opacity-70">
-      <p>Session: <span class="font-mono">{gameSessionId}</span></p>
-      <p>Amount: <span class="text-secondary font-bold">{amount} $TRESR</span></p>
-    </div>
-    <div class="card-actions mt-4 justify-end">
-      <button
-        on:click={handleClaim}
-        disabled={isProcessing || isSuccess}
-        class="btn btn-primary"
-      >
-        {#if isProcessing}
-          <span class="loading loading-spinner"></span>
-        {/if}
-        {isSuccess ? "Claimed" : "Claim Reward"}
-      </button>
-    </div>
-    {#if statusText}
-      <p class="mt-2 text-xs" class:text-success={isSuccess} class:text-error={isError}>
-        {statusText}
-      </p>
-    {/if}
+<Card variant="bordered" class="mt-4">
+  <h3 class="text-primary mb-2 text-xl font-bold">Claim Your Reward!</h3>
+  <div class="mb-4 flex flex-col gap-1 text-sm opacity-70">
+    <p>Session: <span class="font-mono break-all">{gameSessionId}</span></p>
+    <p>Amount: <span class="font-bold text-white">{amount} $TRESR</span></p>
   </div>
-</div>
+  <div class="flex justify-end gap-2">
+    <Button
+      variant="primary"
+      onclick={handleClaim}
+      disabled={isProcessing || isSuccess}
+    >
+      {#if isProcessing}
+        Claiming...
+      {:else}
+        {isSuccess ? "Claimed" : "Claim Reward"}
+      {/if}
+    </Button>
+  </div>
+  {#if statusText}
+    <p
+      class="mt-3 text-xs opacity-80"
+      class:text-success={isSuccess}
+      class:text-error={isError}
+    >
+      {statusText}
+    </p>
+  {/if}
+</Card>

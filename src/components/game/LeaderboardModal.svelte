@@ -1,30 +1,41 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import { listDocs } from "@junobuild/core";
+  import {onDestroy} from "svelte";
+  import {listDocs} from "@junobuild/core";
   import PWA from "@/lib/pwa";
-  import { log } from "@/lib/utils/log";
-  import { trackModalOpen } from "@/lib/metrics/analytics";
+  import {log} from "@/lib/utils/log";
+  import {trackModalOpen} from "@/lib/metrics/analytics";
+  import Modal from "@/components/ui/Modal.svelte";
+  import {openLeaderboard} from "@/lib/stores/ui.svelte";
 
   const COMPONENT_NAME = "LeaderboardModal";
-  let dialog: HTMLDialogElement;
-  let currentTab: "active" | "alltime" = "active";
-  let isLoading = false;
-  let activeItems: any[] = [];
-  let alltimeItems: any[] = [];
-  let isError = false;
-  let errorMessage = "";
-  let infoMessage = "";
+  let open = $state(false);
+
+  // Capture the tick at mount so stale ticks from prior page visits don't
+  // re-open the modal when this component mounts on a fresh navigation.
+  const mountTick = openLeaderboard.current;
+
+  // Open only when the tick increments *after* this component was mounted
+  $effect(() => {
+    if (openLeaderboard.current > mountTick) openLeaderboardModal();
+  });
+  let currentTab: "active" | "alltime" = $state("active");
+  let isLoading = $state(false);
+  let activeItems: any[] = $state([]);
+  let alltimeItems: any[] = $state([]);
+  let isError = $state(false);
+  let errorMessage = $state("");
+  let infoMessage = $state("");
 
   let countdownInterval: ReturnType<typeof setInterval> | null = null;
-  let currentTime = Date.now();
+  let currentTime = $state(Date.now());
   let disposed = false;
 
-  $: {
+  $effect(() => {
     if (activeItems.length > 0) {
       // Re-trigger reactions when currentTime updates
       const _ = currentTime;
     }
-  }
+  });
 
   function formatCountdown(ms: number): string {
     if (ms <= 0) return "Expired";
@@ -37,7 +48,7 @@
   }
 
   async function openLeaderboardModal() {
-    dialog?.showModal();
+    open = true;
     trackModalOpen("leaderboard");
     currentTab = "active";
     loadActiveLeaderboard();
@@ -45,7 +56,7 @@
   }
 
   function handleCloseLeaderboard() {
-    dialog?.close();
+    open = false;
   }
 
   function setTab(tab: "active" | "alltime") {
@@ -76,9 +87,12 @@
     }, 10000);
 
     try {
-      const { items } = await listDocs({
+      const {items} = await listDocs({
         collection: "scores",
-        filter: { order: { desc: true, field: "active_score" as any }, paginate: { limit: 50 } },
+        filter: {
+          order: {desc: true, field: "active_score" as any},
+          paginate: {limit: 50},
+        },
       });
 
       if (disposed) return;
@@ -103,8 +117,13 @@
     } catch (err: any) {
       const errMsg = err?.message || String(err);
       isError = true;
-      if (errMsg.includes("not_found") || errMsg.includes("Datastore")) {
-        log.warn(COMPONENT_NAME, "Leaderboard collection not found", err);
+      if (
+        errMsg.includes("not_found") ||
+        errMsg.includes("Datastore") ||
+        errMsg.includes("index") ||
+        errMsg.includes("FailedPrecondition")
+      ) {
+        log.warn(COMPONENT_NAME, "Leaderboard collection/index not ready", err);
         infoMessage = "Leaderboard not available yet. Deploy in progress.";
         isError = false;
       } else {
@@ -132,9 +151,12 @@
     }, 10000);
 
     try {
-      const { items } = await listDocs({
+      const {items} = await listDocs({
         collection: "scores",
-        filter: { order: { desc: true, field: "high_score" as any }, paginate: { limit: 100 } },
+        filter: {
+          order: {desc: true, field: "high_score" as any},
+          paginate: {limit: 100},
+        },
       });
 
       if (disposed) return;
@@ -149,8 +171,13 @@
     } catch (err: any) {
       const errMsg = err?.message || String(err);
       isError = true;
-      if (errMsg.includes("not_found") || errMsg.includes("Datastore")) {
-        log.warn(COMPONENT_NAME, "Leaderboard collection not found", err);
+      if (
+        errMsg.includes("not_found") ||
+        errMsg.includes("Datastore") ||
+        errMsg.includes("index") ||
+        errMsg.includes("FailedPrecondition")
+      ) {
+        log.warn(COMPONENT_NAME, "Leaderboard collection/index not ready", err);
         infoMessage = "Leaderboard not available yet. Deploy in progress.";
         isError = false;
       } else {
@@ -163,105 +190,137 @@
     }
   }
 
-  function handleOpenLeaderboard() {
-    openLeaderboardModal();
-  }
-
-  onMount(() => {
-    document.addEventListener("tresr:open-leaderboard", handleOpenLeaderboard);
-  });
-
   onDestroy(() => {
     disposed = true;
     if (countdownInterval !== null) clearInterval(countdownInterval);
-    document.removeEventListener("tresr:open-leaderboard", handleOpenLeaderboard);
   });
 </script>
 
-<dialog bind:this={dialog} id="leaderboard-modal" class="modal">
-  <div class="modal-box bg-base-100 border-primary/30 w-11/12 max-w-2xl border">
-    <div class="mb-4 flex items-center justify-between">
-      <h2 class="text-primary flex items-center gap-2 text-2xl font-bold">
-        <span>&#x1F3C6;</span> DEGENERATE HALL OF FAME
-      </h2>
-      <button on:click={handleCloseLeaderboard} class="btn btn-circle btn-ghost min-h-[44px] min-w-[44px] text-lg">
-        &#x2715;
-      </button>
-    </div>
+<Modal bind:open title="🏆 DEGENERATE HALL OF FAME">
+  <div
+    class="mb-4 flex w-full rounded-md border border-white/10 bg-black/40 p-1"
+  >
+    <button
+      class="flex-1 rounded py-2 text-center text-sm font-bold tracking-widest transition-colors {currentTab ===
+      'active'
+        ? 'bg-primary text-black'
+        : 'text-white/50 hover:bg-white/5 hover:text-white'} uppercase"
+      onclick={() => setTab("active")}
+    >
+      ACTIVE
+    </button>
+    <button
+      class="flex-1 rounded py-2 text-center text-sm font-bold tracking-widest transition-colors {currentTab ===
+      'alltime'
+        ? 'bg-primary text-black'
+        : 'text-white/50 hover:bg-white/5 hover:text-white'} uppercase"
+      onclick={() => setTab("alltime")}
+    >
+      ALL TIME
+    </button>
+  </div>
 
-    <div role="tablist" class="tabs tabs-box mb-4">
-      <button role="tab" class="tab" class:tab-active={currentTab === 'active'} on:click={() => setTab('active')}>ACTIVE</button>
-      <button role="tab" class="tab" class:tab-active={currentTab === 'alltime'} on:click={() => setTab('alltime')}>ALL TIME</button>
+  {#if isLoading}
+    <div class="flex flex-col items-center justify-center py-10">
+      <div
+        class="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"
+      ></div>
+      <p
+        class="text-primary mt-4 animate-pulse font-mono text-xs tracking-widest uppercase"
+      >
+        Accessing Mainframe...
+      </p>
     </div>
-
-    {#if isLoading}
-      <div class="py-10 text-center">
-        <span class="loading loading-spinner loading-lg text-primary"></span>
-        <p class="text-primary mt-2 animate-pulse">Accessing Mainframe...</p>
-      </div>
-    {:else if isError}
-      <div class="py-10 text-center text-error">
-        <p>{errorMessage}</p>
-      </div>
-    {:else if infoMessage}
-      <div class="py-10 text-center text-info opacity-60">
-        <p>{infoMessage}</p>
-      </div>
-    {:else}
-      <div class="overflow-x-auto">
-        <table class="table-zebra table w-full">
-          <thead>
-            <tr class="text-secondary text-xs uppercase">
-              <th>#</th>
-              <th>Agent</th>
-              <th class="text-right">Score</th>
-              {#if currentTab === 'active'}
-                <th class="text-right">Expires</th>
+  {:else if isError}
+    <div
+      class="py-10 text-center font-mono text-sm tracking-widest text-[#ef4444] uppercase"
+    >
+      <p>{errorMessage}</p>
+    </div>
+  {:else if infoMessage}
+    <div
+      class="py-10 text-center font-mono text-sm tracking-widest text-[#38bdf8] uppercase opacity-60"
+    >
+      <p>{infoMessage}</p>
+    </div>
+  {:else}
+    <div class="overflow-x-auto rounded-md border border-white/10 bg-black/40">
+      <table class="w-full text-left">
+        <thead
+          class="text-primary border-b border-white/5 bg-white/5 text-[10px] font-bold tracking-widest uppercase"
+        >
+          <tr>
+            <th class="px-3 py-2.5">#</th>
+            <th class="px-3 py-2.5">Agent</th>
+            <th class="px-3 py-2.5 text-right">Score</th>
+            {#if currentTab === "active"}
+              <th class="px-3 py-2.5 text-right">Expires</th>
+            {:else}
+              <th class="hidden px-3 py-2.5 text-right sm:table-cell">Date</th>
+            {/if}
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/5">
+          {#each currentTab === "active" ? activeItems : alltimeItems as item, index}
+            <tr class="hover:bg-primary/5 transition-colors">
+              <td class="px-3 py-3 font-mono text-xs opacity-50">{index + 1}</td
+              >
+              <td class="px-3 py-3">
+                <div class="flex items-center gap-3">
+                  <div
+                    class="border-primary/30 bg-primary/20 text-primary flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border text-sm font-bold"
+                  >
+                    {#if item.data.avatar_url}
+                      <img
+                        src={item.data.avatar_url}
+                        alt={item.data.nickname}
+                        class="h-full w-full object-cover"
+                      />
+                    {:else}
+                      <span
+                        >{item.data.nickname &&
+                        typeof item.data.nickname === "string"
+                          ? item.data.nickname[0].toUpperCase()
+                          : "A"}</span
+                      >
+                    {/if}
+                  </div>
+                  <div class="text-base font-bold tracking-wide">
+                    {item.data.nickname &&
+                    typeof item.data.nickname === "string"
+                      ? item.data.nickname
+                      : "Unknown Agent"}
+                  </div>
+                </div>
+              </td>
+              <td
+                class="text-primary px-3 py-3 text-right font-mono text-base font-bold"
+              >
+                {currentTab === "active"
+                  ? item.data.active_score || 0
+                  : item.data.high_score || 0}
+              </td>
+              {#if currentTab === "active"}
+                <td
+                  class="px-3 py-3 text-right font-mono text-xs text-white/60 uppercase"
+                >
+                  {formatCountdown((item.data.expires_at || 0) - currentTime)}
+                </td>
               {:else}
-                <th class="hidden text-right sm:table-cell">Date</th>
+                <td
+                  class="hidden px-3 py-3 text-right font-mono text-xs text-white/40 uppercase sm:table-cell"
+                >
+                  {item.updated_at
+                    ? new Date(
+                        Number(item.updated_at / 1000000n)
+                      ).toLocaleDateString()
+                    : "N/A"}
+                </td>
               {/if}
             </tr>
-          </thead>
-          <tbody>
-            {#each currentTab === 'active' ? activeItems : alltimeItems as item, index}
-              <tr class="hover:bg-primary/5 transition-colors">
-                <td class="font-mono text-xs opacity-50">{index + 1}</td>
-                <td>
-                  <div class="flex items-center gap-2">
-                    <div class="avatar placeholder">
-                      <div class="bg-primary/20 text-primary w-8 rounded-full border border-primary/30 overflow-hidden">
-                        {#if item.data.avatar_url}
-                          <img src={item.data.avatar_url} alt={item.data.nickname} class="h-full w-full object-cover"/>
-                        {:else}
-                          <span class="text-xs">{(item.data.nickname && typeof item.data.nickname === 'string') ? item.data.nickname[0].toUpperCase() : 'A'}</span>
-                        {/if}
-                      </div>
-                    </div>
-                    <div>
-                      <div class="font-bold text-sm">{(item.data.nickname && typeof item.data.nickname === 'string') ? item.data.nickname : 'Unknown Agent'}</div>
-                    </div>
-                  </div>
-                </td>
-                <td class="text-right font-mono font-bold text-primary">
-                  {currentTab === 'active' ? (item.data.active_score || 0) : (item.data.high_score || 0)}
-                </td>
-                {#if currentTab === 'active'}
-                  <td class="text-right font-mono text-[10px] opacity-60 uppercase">
-                    {formatCountdown((item.data.expires_at || 0) - currentTime)}
-                  </td>
-                {:else}
-                  <td class="hidden text-right font-mono text-[10px] opacity-40 sm:table-cell uppercase">
-                    {item.updated_at ? new Date(Number(item.updated_at / 1000000n)).toLocaleDateString() : 'N/A'}
-                  </td>
-                {/if}
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-    {/if}
-  </div>
-  <form method="dialog" class="modal-backdrop">
-    <button on:click={handleCloseLeaderboard}>close</button>
-  </form>
-</dialog>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  {/if}
+</Modal>

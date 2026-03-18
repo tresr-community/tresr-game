@@ -1,180 +1,93 @@
 <script lang="ts">
-  import { onMount, onDestroy } from "svelte";
-  import { notificationManager } from "@/lib/notifications";
+  import {onMount, onDestroy} from "svelte";
+  import {notificationManager} from "@/lib/notifications";
   import PWA from "@/lib/pwa";
+  import Alert from "@/components/ui/Alert.svelte";
+  import Button from "@/components/ui/Button.svelte";
 
-  interface NotificationDoc {
+  interface Toast {
+    id: string;
     key: string;
-    data: {
-      message: string;
-      urgency: string;
-      type?: string;
-      details?: string;
-      errorId?: string;
-    };
+    message: string;
+    urgency: "info" | "success" | "warning" | "error";
+    type?: string;
+    details?: string;
+    errorId?: string;
   }
 
-  let container: HTMLElement;
-  const activeTimers = new Map<HTMLElement, ReturnType<typeof setTimeout>>();
+  let toasts = $state<Toast[]>([]);
+  let timers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  function getUrgencyClass(urgency: string) {
-    switch (urgency) {
-      case "urgent":
-        return "alert-error text-error-content";
-      case "non-urgent":
-        return "alert-warning text-warning-content";
-      default:
-        return "alert-info text-info-content";
+  function mapUrgency(u: string): "info" | "success" | "warning" | "error" {
+    if (u === "urgent") return "error";
+    if (u === "non-urgent") return "warning";
+    return "info";
+  }
+
+  function removeToast(id: string) {
+    toasts = toasts.filter((t) => t.id !== id);
+    const t = timers.get(id);
+    if (t) {
+      clearTimeout(t);
+      timers.delete(id);
     }
-  }
-
-  function removeToast(el: HTMLElement) {
-    activeTimers.delete(el);
-    el.classList.add("animate-out", "fade-out", "slide-out-to-right");
-    setTimeout(() => {
-      el.remove();
-      if (container && container.children.length === 0) {
-        container.hidePopover?.();
-      }
-    }, 300);
   }
 
   function handleNotificationToast(e: Event) {
-    if (!container) return;
-    const doc: NotificationDoc = (e as CustomEvent).detail;
-    const { message, urgency, type, details, errorId } = doc.data;
+    const doc = (e as CustomEvent).detail;
+    const {message, urgency, type, details, errorId} = doc.data;
 
-    const toast = document.createElement("div");
-    toast.className = `alert ${getUrgencyClass(urgency)} shadow-lg animate-in slide-in-from-right duration-300 pointer-events-auto flex flex-col items-start gap-2 min-w-[300px] max-w-[90vw] sm:max-w-sm`;
+    const toast: Toast = {
+      id: crypto.randomUUID(),
+      key: doc.key,
+      message,
+      urgency: mapUrgency(urgency),
+      type,
+      details,
+      errorId,
+    };
 
-    const isUpdate = type === "app_update";
+    toasts = [...toasts, toast];
+    const timeout = setTimeout(() => removeToast(toast.id), 5000);
+    timers.set(toast.id, timeout);
+  }
 
-    const headerRow = document.createElement("div");
-    headerRow.className = "flex w-full justify-between items-center gap-2";
+  function handleDismiss(toast: Toast) {
+    notificationManager.dismiss(toast.key);
+    removeToast(toast.id);
+  }
 
-    const headerLeft = document.createElement("div");
-    headerLeft.className = "flex items-center gap-2 flex-1";
-    const iconSpan = document.createElement("span");
-    iconSpan.textContent = urgency === "urgent" ? "\u{1F6A8}" : "\u{1F514}";
-    const msgSpan = document.createElement("span");
-    msgSpan.className = "font-bold break-words min-w-0";
-    msgSpan.textContent = message;
-    headerLeft.append(iconSpan, msgSpan);
+  function handleSnooze(toast: Toast) {
+    notificationManager.snooze(toast.key);
+    removeToast(toast.id);
+  }
 
-    const dismissBtn = document.createElement("button");
-    dismissBtn.className = "btn btn-ghost btn-xs shrink-0";
-    dismissBtn.textContent = "\u2715";
-    headerRow.append(headerLeft, dismissBtn);
-    toast.appendChild(headerRow);
+  function handleUpgrade(toast: Toast) {
+    notificationManager.dismiss(toast.key);
+    removeToast(toast.id);
+    PWA.getInstance().applyUpdate();
+  }
 
-    if (details) {
-      const detailsP = document.createElement("p");
-      detailsP.className = "text-xs opacity-90";
-      detailsP.textContent = details;
-      toast.appendChild(detailsP);
+  function handleToastClick(e: MouseEvent, toast: Toast) {
+    if ((e.target as HTMLElement).tagName === "BUTTON") return;
+
+    if (toast.type === "app_update") {
+      PWA.getInstance().showUpdatePrompt();
+    } else if (
+      toast.message.toLowerCase().includes("consolation") ||
+      (toast.details && toast.details.toLowerCase().includes("consolation"))
+    ) {
+      window.location.href = "/claims";
     }
+  }
 
-    if (errorId) {
-      const errorRow = document.createElement("div");
-      errorRow.className = "flex items-center gap-2 mt-1 w-full";
-
-      const codeSpan = document.createElement("code");
-      codeSpan.className = "text-xs font-mono bg-black/30 px-1.5 py-0.5 rounded select-all";
-      codeSpan.textContent = errorId;
-
-      const copyBtn = document.createElement("button");
-      copyBtn.className = "btn btn-ghost btn-xs opacity-70 hover:opacity-100";
-      copyBtn.title = "Copy error code";
-      copyBtn.textContent = "⎘";
-      copyBtn.addEventListener("click", () => {
-        navigator.clipboard?.writeText(errorId).catch(() => {});
-        copyBtn.textContent = "✓";
-        setTimeout(() => (copyBtn.textContent = "⎘"), 1500);
-      });
-
-      const label = document.createElement("span");
-      label.className = "text-xs opacity-75";
-      label.textContent = "Error code:";
-
-      errorRow.append(label, codeSpan, copyBtn);
-      toast.appendChild(errorRow);
-    }
-
-    const actionsRow = document.createElement("div");
-    actionsRow.className = "flex gap-2 mt-1 w-full justify-end";
-
-    let snoozeBtn: HTMLButtonElement | null = null;
-    let upgradeBtn: HTMLButtonElement | null = null;
-
-    if (isUpdate) {
-      upgradeBtn = document.createElement("button");
-      upgradeBtn.className = "btn btn-xs btn-primary";
-      upgradeBtn.textContent = "Upgrade";
-
-      const laterBtn = document.createElement("button");
-      laterBtn.className = "btn btn-xs btn-ghost";
-      laterBtn.textContent = "Later";
-
-      actionsRow.append(upgradeBtn, laterBtn);
-
-      laterBtn.addEventListener("click", () => {
-        clearTimeout(timeout);
-        activeTimers.delete(toast);
-        notificationManager.dismiss(doc.key);
-        removeToast(toast);
-      });
-    } else {
-      snoozeBtn = document.createElement("button");
-      snoozeBtn.className = "btn btn-xs btn-ghost";
-      snoozeBtn.textContent = "Snooze";
-      actionsRow.appendChild(snoozeBtn);
-    }
-    toast.appendChild(actionsRow);
-
-    const isConsolation = message.toLowerCase().includes("consolation") || (details && details.toLowerCase().includes("consolation"));
-
-    if (isUpdate) {
-      toast.style.cursor = "pointer";
-      toast.addEventListener("click", (e) => {
-        if ((e.target as HTMLElement).tagName === "BUTTON") return;
-        PWA.getInstance().showUpdatePrompt();
-      });
-    } else if (isConsolation) {
-      toast.style.cursor = "pointer";
-      toast.addEventListener("click", (e) => {
-        if ((e.target as HTMLElement).tagName === "BUTTON") return;
-        window.location.href = "/claims";
-      });
-    }
-
-    container.hidePopover?.();
-    container.appendChild(toast);
-    container.showPopover();
-
-    const timeout = setTimeout(() => removeToast(toast), 5000);
-    activeTimers.set(toast, timeout);
-
-    dismissBtn.addEventListener("click", () => {
-      clearTimeout(timeout);
-      activeTimers.delete(toast);
-      notificationManager.dismiss(doc.key);
-      removeToast(toast);
-    });
-
-    snoozeBtn?.addEventListener("click", () => {
-      clearTimeout(timeout);
-      activeTimers.delete(toast);
-      notificationManager.snooze(doc.key);
-      removeToast(toast);
-    });
-
-    upgradeBtn?.addEventListener("click", () => {
-      clearTimeout(timeout);
-      activeTimers.delete(toast);
-      notificationManager.dismiss(doc.key);
-      removeToast(toast);
-      PWA.getInstance().applyUpdate();
-    });
+  function copyError(errorId: string, btn: HTMLButtonElement) {
+    navigator.clipboard?.writeText(errorId).catch(() => {});
+    const orig = btn.textContent;
+    btn.textContent = "✓";
+    setTimeout(() => {
+      if (btn) btn.textContent = orig;
+    }, 1500);
   }
 
   onMount(() => {
@@ -182,31 +95,121 @@
 
     // Attach global helpers only on mount in client
     window.showInfoToast = (message: string, details?: string) => {
-      notificationManager.addNotification({ message, urgency: "none", type: "info", details });
+      notificationManager.addNotification({
+        message,
+        urgency: "none",
+        type: "info",
+        details,
+      });
     };
 
     window.showWarningToast = (message: string, details?: string) => {
-      notificationManager.addNotification({ message, urgency: "non-urgent", type: "warning", details });
+      notificationManager.addNotification({
+        message,
+        urgency: "non-urgent",
+        type: "warning",
+        details,
+      });
     };
 
-    window.showErrorToast = (message: string, details?: string, errorId?: string) => {
+    window.showErrorToast = (
+      message: string,
+      details?: string,
+      errorId?: string
+    ) => {
       notificationManager.addNotification({
-        message, urgency: "urgent", type: "error", details, errorId
+        message,
+        urgency: "urgent",
+        type: "error",
+        details,
+        errorId,
       } as any);
     };
   });
 
   onDestroy(() => {
     window.removeEventListener("notification-toast", handleNotificationToast);
-    for (const timer of activeTimers.values()) {
+    for (const timer of timers.values()) {
       clearTimeout(timer);
     }
-    activeTimers.clear();
+    timers.clear();
   });
 </script>
 
 <div
-  bind:this={container}
-  class="toast toast-bottom toast-end pointer-events-none fixed inset-0 z-[99999] m-0 bg-transparent p-4"
-  popover="manual"
-></div>
+  class="pointer-events-none fixed right-4 bottom-4 z-[99999] m-0 flex flex-col items-end gap-2 p-0"
+>
+  {#each toasts as toast (toast.id)}
+    <div
+      class="animate-in slide-in-from-right pointer-events-auto w-[90vw] transition-all duration-300 sm:w-[350px]"
+      role="button"
+      tabindex="0"
+      onclick={(e) => handleToastClick(e, toast)}
+      onkeydown={(e) => e.key === "Enter" && handleToastClick(e as any, toast)}
+      style={toast.type === "app_update" ||
+      toast.message.toLowerCase().includes("consolation")
+        ? "cursor: pointer;"
+        : ""}
+    >
+      <Alert variant={toast.urgency}>
+        <div class="flex w-full items-start justify-between gap-2">
+          <span class="min-w-0 flex-1 font-bold break-words"
+            >{toast.message}</span
+          >
+          <Button
+            variant="ghost"
+            size="xs"
+            class="-mt-1 -mr-2 h-6 px-1 py-0 opacity-50 hover:opacity-100"
+            onclick={() => handleDismiss(toast)}
+          >
+            ✕
+          </Button>
+        </div>
+
+        {#if toast.details}
+          <p class="mt-1 text-xs opacity-90">{toast.details}</p>
+        {/if}
+
+        {#if toast.errorId}
+          <div class="mt-2 flex w-full items-center gap-2">
+            <span class="text-xs opacity-75">Error:</span>
+            <code
+              class="flex-1 truncate rounded bg-black/30 px-1.5 py-0.5 font-mono text-[10px] select-all sm:text-xs"
+              >{toast.errorId}</code
+            >
+            <Button
+              variant="ghost"
+              size="xs"
+              class="h-6 min-h-0 flex-shrink-0 px-2 opacity-70 hover:opacity-100"
+              title="Copy error code"
+              onclick={(e) => copyError(toast.errorId!, e.currentTarget)}
+            >
+              ⎘
+            </Button>
+          </div>
+        {/if}
+
+        <div class="mt-2 flex w-full justify-end gap-2">
+          {#if toast.type === "app_update"}
+            <Button
+              variant="primary"
+              size="xs"
+              onclick={() => handleUpgrade(toast)}>Upgrade</Button
+            >
+            <Button
+              variant="ghost"
+              size="xs"
+              onclick={() => handleDismiss(toast)}>Later</Button
+            >
+          {:else}
+            <Button
+              variant="ghost"
+              size="xs"
+              onclick={() => handleSnooze(toast)}>Snooze</Button
+            >
+          {/if}
+        </div>
+      </Alert>
+    </div>
+  {/each}
+</div>

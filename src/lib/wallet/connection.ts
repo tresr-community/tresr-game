@@ -27,16 +27,9 @@ export {cancelConnectWallet};
 import {config as appConfig} from "../config/client";
 import {getEnvironmentKey} from "../config/constants";
 import {log} from "../utils/log";
-import {walletStore} from "./store";
+import {walletStore} from "./store.svelte";
 
 const COMPONENT_NAME = "Connection";
-
-/**
- * Eagerly warm the wagmi connection and keep store in sync.
- */
-export function resetReconnect(): void {
-  // SPA requires no distinct reconnect reset here normally, but keeping signature for compatibility.
-}
 
 /**
  * Eagerly warm the wagmi connection during auth init so that when the
@@ -50,14 +43,19 @@ export function resetReconnect(): void {
  * Call this once from the auth module during page load.
  */
 export function initWalletReconnect(): void {
-  const config = getWagmiConfig();
-  reconnect(config);
-  setupLockDetection();
+  try {
+    const config = getWagmiConfig();
+    reconnect(config);
+    setupLockDetection();
 
-  // One listener for the whole app — keeps walletStore in sync.
-  subscribeToConnection((connected, address) => {
-    walletStore.set({connected, address});
-  });
+    // One listener for the whole app — keeps walletStore in sync.
+    subscribeToConnection((connected, address) => {
+      walletStore.value = {connected, address};
+    });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    log.warn(COMPONENT_NAME, `Failed to initialize wallet reconnect: ${msg}`);
+  }
 }
 
 /**
@@ -99,7 +97,6 @@ export async function getHydratedAddress(): Promise<`0x${string}` | undefined> {
   if (account.isConnected) {
     const alive = await probeConnectorLiveness(config);
     if (!alive) {
-      resetReconnect();
       return undefined;
     }
     return account.address as `0x${string}`;
@@ -127,11 +124,10 @@ function setupLockDetection(): void {
 
   provider.on("accountsChanged", (accounts: string[]) => {
     if (accounts.length === 0) {
-      resetReconnect();
       log.info(COMPONENT_NAME, "Wallet locked — reconnect state reset");
       // Clear the store immediately so components react without waiting
       // for the next wagmi status transition.
-      walletStore.set({connected: false, address: undefined});
+      walletStore.value = {connected: false, address: undefined};
       document.dispatchEvent(new CustomEvent("tresr:wallet-locked"));
     }
   });
@@ -246,7 +242,6 @@ export async function connectWallet(): Promise<WalletConnection> {
         COMPONENT_NAME,
         "Wallet appears locked or unresponsive — requesting reconnect..."
       );
-      resetReconnect();
       walletNeedsReconnect = true;
     } else {
       log.info(COMPONENT_NAME, `Already connected: ${account.address}`);
