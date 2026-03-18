@@ -231,6 +231,7 @@ rlib
 rmz
 rmz_version
 rray
+rrggbb
 rustc
 rustup
 sarif
@@ -247,6 +248,7 @@ spritesheet
 spritesheets
 squircle
 startswith
+sveltekit
 synthwave
 tekumura
 temurin
@@ -283,6 +285,5 @@ webps
 worktree
 xhash
 xtampered
-rrggbb
 yoyo
 yzhang

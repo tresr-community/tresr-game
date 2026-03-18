@@ -45,17 +45,17 @@ juno-dev agent-docs
 
 Available documentation:
 
-| Name    | Local File                | Source URL                                     |
-| ------- | ------------------------- | ---------------------------------------------- |
-| SvelteKit | `docs/agents/svelte.txt`  | [LLMs](https://svelte.dev/docs/llms.txt)       |
-| DaisyUI | `docs/agents/daisyui.txt` | [LLMs](https://daisyui.com/llms.txt)           |
-| Foundry | `docs/agents/foundry.txt` | [LLMs](https://getfoundry.sh/llms-full.txt)    |
-| Juno    | `docs/agents/juno.txt`    | [LLMs](https://juno.build/llms-full.txt)       |
-| OISY    | `docs/agents/oisy.txt`    | [LLMs](https://docs.oisy.com/llms-full.txt)    |
-| Reown   | `docs/agents/reown.txt`   | [LLMs](https://docs.reown.com/llms-full.txt)   |
-| Viem    | `docs/agents/viem.txt`    | [LLMs](https://viem.sh/llms-full.txt)          |
-| Wagmi   | `docs/agents/wagmi.txt`   | [LLMs](https://wagmi.sh/llms-full.txt)         |
-| xAI     | `docs/agents/xai.txt`     | [LLMs](https://docs.x.ai/llms.txt)             |
+| Name      | Local File                | Source URL                                   |
+| --------- | ------------------------- | -------------------------------------------- |
+| SvelteKit | `docs/agents/svelte.txt`  | [LLMs](https://svelte.dev/docs/llms.txt)     |
+| DaisyUI   | `docs/agents/daisyui.txt` | [LLMs](https://daisyui.com/llms.txt)         |
+| Foundry   | `docs/agents/foundry.txt` | [LLMs](https://getfoundry.sh/llms-full.txt)  |
+| Juno      | `docs/agents/juno.txt`    | [LLMs](https://juno.build/llms-full.txt)     |
+| OISY      | `docs/agents/oisy.txt`    | [LLMs](https://docs.oisy.com/llms-full.txt)  |
+| Reown     | `docs/agents/reown.txt`   | [LLMs](https://docs.reown.com/llms-full.txt) |
+| Viem      | `docs/agents/viem.txt`    | [LLMs](https://viem.sh/llms-full.txt)        |
+| Wagmi     | `docs/agents/wagmi.txt`   | [LLMs](https://wagmi.sh/llms-full.txt)       |
+| xAI       | `docs/agents/xai.txt`     | [LLMs](https://docs.x.ai/llms.txt)           |
 
 When working on specific features, reference the relevant documentation file for accurate, up-to-date API information.
 
@@ -100,13 +100,16 @@ For diagrams, always use Mermaid over Graphviz or ASCIIDoc.
 
 ### SvelteKit
 
-Context: SvelteKit is used for the frontend, providing component-driven development with optimal performance. The project has migrated to a Single-Page Application (SPA) architecture targeting the static adapter for Juno deployments.
+Context: SvelteKit is used for the frontend, providing component-driven development with optimal performance.
+
+The project uses as Single-Page Application (SPA) architecture targeting the static adapter for Juno deployments.
 
 Directives:
 
 - **Svelte Components**: Use `.svelte` files for reusable UI elements and pages.
 - **State Management**: Use Svelte's built-in reactivity and nanostores (`@nanostores/svelte`) for complex global state.
-- **Client-Side SPA**: The app relies on SvelteKit routing without Server-Side Rendering (SSR). Components persist across route navigations, which requires explicit lifecycle management (`onDestroy`) for heavy utilities like Phaser and AudioContext.
+- **Client-Side SPA**: The app relies on SvelteKit routing without Server-Side Rendering (SSR).
+  - Components persist across route navigations, which requires explicit lifecycle management (`onDestroy`) for heavy utilities like Phaser and AudioContext.
 
 SvelteKit LLM documentation is available locally at `docs/agents/svelte.txt` (run `juno-dev agent-docs` to download).
 

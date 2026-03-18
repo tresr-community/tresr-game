@@ -536,7 +536,6 @@ AGENT_DOCS_DIR="docs/agents"
 # Add new sources here - name will be lowercased for filename
 AGENT_DOC_SOURCES=(
 	"avalanche|https://build.avax.network/llms-full.txt"
-	"astro|https://docs.astro.build/llms-full.txt"
 	"cloudflare|https://developers.cloudflare.com/llms.txt"
 	"daisyui|https://daisyui.com/llms.txt"
 	"foundry|https://getfoundry.sh/llms-full.txt"
