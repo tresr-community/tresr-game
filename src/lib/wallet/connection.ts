@@ -31,31 +31,11 @@ import {walletStore} from "./store";
 
 const COMPONENT_NAME = "Connection";
 
-// ── Singleton reconnect ───────────────────────────────────────────────────
-// wagmi's reconnect() iterates stored connectors and performs async
-// handshakes with injected wallets and WalletConnect relay servers.
-// Calling it on every user click blocks the modal from opening for up to
-// 15 s on testnet.  Instead we fire it once per page-load and share the
-// resulting promise across all callers.
-let _reconnectPromise: Promise<unknown> | null = null;
-
-function ensureReconnected(config: Config): Promise<unknown> {
-  if (!_reconnectPromise) {
-    _reconnectPromise = reconnect(config).catch(() => {
-      // Allow retry on next call if the first attempt failed
-      _reconnectPromise = null;
-    });
-  }
-  return _reconnectPromise;
-}
-
 /**
- * Reset the cached reconnect promise so the next ensureReconnected()
- * call starts a fresh handshake. Called when a disconnect/lock event fires
- * so that stale wagmi state doesn't bypass the AppKit modal.
+ * Eagerly warm the wagmi connection and keep store in sync.
  */
 export function resetReconnect(): void {
-  _reconnectPromise = null;
+  // SPA requires no distinct reconnect reset here normally, but keeping signature for compatibility.
 }
 
 /**
@@ -71,7 +51,7 @@ export function resetReconnect(): void {
  */
 export function initWalletReconnect(): void {
   const config = getWagmiConfig();
-  void ensureReconnected(config);
+  reconnect(config);
   setupLockDetection();
 
   // One listener for the whole app — keeps walletStore in sync.
@@ -105,7 +85,7 @@ export function getConnectedAddress(): `0x${string}` | undefined {
 export async function getHydratedAddress(): Promise<`0x${string}` | undefined> {
   const config = getWagmiConfig();
 
-  await ensureReconnected(config);
+  await reconnect(config).catch(() => {});
 
   let account = getConnection(config);
   if (!account.isConnected && appKitIsConnected()) {
@@ -113,7 +93,6 @@ export async function getHydratedAddress(): Promise<`0x${string}` | undefined> {
       COMPONENT_NAME,
       "AppKit connected but wagmi not yet hydrated (getHydratedAddress) — waiting for reconnect..."
     );
-    await waitForReconnect(config, 3_000);
     account = getConnection(config);
   }
 
@@ -241,25 +220,15 @@ function getTargetChainId(): number {
 export async function connectWallet(): Promise<WalletConnection> {
   const config = getWagmiConfig();
 
-  // Restore connection from localStorage after full page reload.
-  // Astro uses full page navigations (no ViewTransitions), so wagmi's
-  // in-memory state is lost between pages. ensureReconnected() is a singleton
-  // — the first call fires the handshake; every subsequent call returns the
-  // already-resolved promise instantly, eliminating per-click delay.
-  await ensureReconnected(config);
-
   // Check if already connected — prefer wagmi truth, fall back to AppKit.
-  // After Astro page navigation, AppKit's localStorage-backed state survives
-  // but wagmi's in-memory state is cleared. If AppKit already considers the
-  // wallet connected, wait briefly for wagmi to hydrate before opening the
-  // modal (which would loop on connection events without CONNECT_SUCCESS).
+  // In an SPA, wagmi state almost always persists, so we rarely need delays here.
   let account = getConnection(config);
   if (!account.isConnected && appKitIsConnected()) {
     log.debug(
       COMPONENT_NAME,
-      "AppKit connected but wagmi not yet hydrated — waiting for reconnect..."
+      "AppKit connected but wagmi not yet hydrated — connecting..."
     );
-    await waitForReconnect(config, 3_000);
+    await reconnect(config).catch(() => {});
     account = getConnection(config);
   }
 
@@ -365,54 +334,6 @@ export async function connectWallet(): Promise<WalletConnection> {
     chainId: targetChainId,
   };
 }
-
-/**
- * Wait for wagmi to leave the "reconnecting" state.
- *
- * After `reconnect()` is called, injected wallets (e.g. Brave Wallet) go
- * through an async handshake. During this window wagmi's status is
- * "reconnecting" and most connector methods are unavailable — any call to
- * getWalletClient will throw "Connector unavailable while reconnecting".
- *
- * This helper subscribes to the wagmi state store and resolves once the
- * status reaches "connected" or "disconnected". It times out after
- * `timeoutMs` ms to avoid hanging indefinitely if reconnection stalls.
- */
-async function waitForReconnect(
-  config: Config,
-  timeoutMs = 5_000
-): Promise<void> {
-  const currentStatus = (config.state as {status?: string}).status;
-  if (currentStatus !== "reconnecting") return;
-
-  return new Promise<void>((resolve) => {
-    let settled = false;
-
-    const timeoutId = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      unsub();
-      // Resolve rather than reject — let the caller try anyway; it may
-      // succeed if the connector restored just-in-time, or fail with a
-      // clearer downstream error.
-      resolve();
-    }, timeoutMs);
-
-    const unsub = config.subscribe(
-      (state: {status?: string}) => state.status,
-      (status) => {
-        if (settled) return;
-        if (status !== "reconnecting") {
-          settled = true;
-          clearTimeout(timeoutId);
-          unsub();
-          resolve();
-        }
-      }
-    );
-  });
-}
-
 /**
  * Get viem WalletClient for the connected wallet.
  *
@@ -422,22 +343,7 @@ async function waitForReconnect(
 export async function getWalletClient(): Promise<WalletClient> {
   const config = getWagmiConfig();
 
-  // Rehydrate connector from localStorage after full page reload.
-  // Without this, the connector's transport methods (getChainId, etc.)
-  // are missing, causing "connector.getChainId is not a function" errors.
-  //
-  // IMPORTANT: We capture the reconnect result to extract the live connector
-  // object. Passing it explicitly to getWalletClient bypasses wagmi's fallback
-  // to the serialized (un-hydrated) connector from its internal state store.
-  const reconnected = (await ensureReconnected(config)) as Awaited<
-    ReturnType<typeof reconnect>
-  >;
-
-  // Wait for the reconnection handshake to finish before touching the
-  // connector. Injected wallets (Brave, MetaMask) initialise asynchronously;
-  // during this window wagmi status is "reconnecting" and calling
-  // getWalletClient throws "Connector unavailable while reconnecting".
-  await waitForReconnect(config);
+  const reconnected = await reconnect(config).catch(() => []);
 
   const account = getConnection(config);
 
@@ -515,21 +421,9 @@ export function subscribeToConnection(
     }
   );
 
-  const currentStatus = (config.state as {status?: string}).status;
-
-  if (currentStatus === "reconnecting") {
-    // Wallet is still handshaking — wait for it to settle, then fire the
-    // initial callback once. Subsequent changes are handled by the subscriber above.
-    waitForReconnect(config).then(() => {
-      if (disposed) return;
-      const acc = getConnection(config);
-      callback(acc.isConnected, acc.address as `0x${string}` | undefined);
-    });
-  } else {
-    // Already settled — fire immediately with current state
-    const account = getConnection(config);
-    callback(account.isConnected, account.address as `0x${string}` | undefined);
-  }
+  // Fire immediately with current state since SPA doesn't suffer from missing state transitions.
+  const account = getConnection(config);
+  callback(account.isConnected, account.address as `0x${string}` | undefined);
 
   return () => {
     disposed = true;

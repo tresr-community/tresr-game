@@ -12,14 +12,14 @@
  *   bun run bin/audio.ts --help
  *
  * Drop MP3/OPUS files into:
- *   assets-source/audio/music/
- *   assets-source/audio/narration/
- *   assets-source/audio/sfx/
+ *   static-source/audio/music/
+ *   static-source/audio/narration/
+ *   static-source/audio/sfx/
  *
  * They will be converted to WebM and placed in:
- *   public/assets/audio/music/
- *   public/assets/audio/narration/
- *   public/assets/audio/sfx/
+ *   static/assets/audio/music/
+ *   static/assets/audio/narration/
+ *   static/assets/audio/sfx/
  *
  * Source files are deleted after successful conversion.
  */
@@ -34,8 +34,8 @@ const mkdir = promisify(fs.mkdir);
 const unlink = promisify(fs.unlink);
 
 // ── Paths ───────────────────────────────────────────────────────────
-const SOURCE_BASE_DIR = "assets-source/audio/";
-const OUTPUT_BASE_DIR = "public/assets/audio/";
+const SOURCE_BASE_DIR = "static-source/audio/";
+const OUTPUT_BASE_DIR = "static/assets/audio/";
 
 const CATEGORIES = ["music", "narration", "sfx"] as const;
 const SOURCE_EXTS = [".mp3", ".opus", ".wav"] as const;
@@ -192,14 +192,14 @@ ${c.bold}Usage:${c.reset}
 
 ${c.bold}Details:${c.reset}
   Drop MP3, OPUS, or WAV files into:
-    assets-source/audio/music/
-    assets-source/audio/narration/
-    assets-source/audio/sfx/
+    static-source/audio/music/
+    static-source/audio/narration/
+    static-source/audio/sfx/
 
   They will be converted to WebM and placed in:
-    public/assets/audio/music/
-    public/assets/audio/narration/
-    public/assets/audio/sfx/
+    static/assets/audio/music/
+    static/assets/audio/narration/
+    static/assets/audio/sfx/
 
   Source files are deleted after successful conversion.
   Existing destination files are overwritten if the name matches.

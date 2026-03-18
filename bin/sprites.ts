@@ -57,8 +57,8 @@ const divider = () => console.log(`${TAG} ${c.dim}${"─".repeat(50)}${c.reset}`
 
 // ── Paths ───────────────────────────────────────────────────────────
 const projectRoot = path.resolve(process.cwd());
-const sourceBase = path.join(projectRoot, "assets-source/images/sprites");
-const destBase = path.join(projectRoot, "public/assets/images/sprites");
+const sourceBase = path.join(projectRoot, "static-source/images/sprites");
+const destBase = path.join(projectRoot, "static/assets/images/sprites");
 const SPRITES_DIR = destBase;
 
 const WEBP_QUALITY = 85;
@@ -134,7 +134,7 @@ async function runConvert() {
   const entries = scanSources();
 
   if (entries.length === 0) {
-    warn("No source sprites found in assets-source/images/sprites/");
+    warn("No source sprites found in static-source/images/sprites/");
     return;
   }
 
@@ -429,7 +429,7 @@ function extractRow(
 
 const CUT_OUTPUT_DIR = path.join(
   projectRoot,
-  "assets-source",
+  "static-source",
   "images",
   "sprites",
   "cut"
@@ -532,7 +532,7 @@ function runCut() {
 // ═════════════════════════════════════════════════════════════════════
 
 /**
- * Scan assets-source/sprites/<entity>/ directories for PNG/JPG files
+ * Scan static-source/sprites/<entity>/ directories for PNG/JPG files
  * with green (#00FF00) backgrounds and replace the green with transparency.
  * Outputs transparent PNGs alongside the originals (overwrites if already PNG,
  * or creates .png next to .jpg).
@@ -546,7 +546,7 @@ async function runChromaKey(): Promise<void> {
   );
   divider();
 
-  const spritesRoot = path.join(projectRoot, "assets-source/images/sprites");
+  const spritesRoot = path.join(projectRoot, "static-source/images/sprites");
 
   if (!fs.existsSync(spritesRoot)) {
     warn(`Sprites directory not found: ${spritesRoot}`);
@@ -579,7 +579,7 @@ async function runChromaKey(): Promise<void> {
   }
 
   if (files.length === 0) {
-    warn("No sprite sheets found in assets-source/images/sprites/<entity>/");
+    warn("No sprite sheets found in static-source/images/sprites/<entity>/");
     info(
       "Generate sprites first, then run --chromakey to remove green backgrounds."
     );
@@ -1075,7 +1075,7 @@ async function runFlatten(filePath: string) {
  *          are surrounded by enough opaque neighbours get filled by averaging
  *          those neighbours. Runs multiple iterations to close larger gaps.
  *
- * Files are overwritten in-place (assets-source PNGs).
+ * Files are overwritten in-place (static-source PNGs).
  */
 async function runRepair(): Promise<void> {
   console.log();
@@ -1084,7 +1084,7 @@ async function runRepair(): Promise<void> {
   );
   divider();
 
-  const spritesRoot = path.join(projectRoot, "assets-source/images/sprites");
+  const spritesRoot = path.join(projectRoot, "static-source/images/sprites");
 
   if (!fs.existsSync(spritesRoot)) {
     warn(`Sprites directory not found: ${spritesRoot}`);
@@ -1268,12 +1268,12 @@ ${c.bold}Options:${c.reset}
   ${c.bold}--target${c.reset} <px>   Target frame size for --shrink (default: 512)
 
 ${c.bold}Source Paths:${c.reset}
-  Sources:        assets-source/images/sprites/{entity}/{action}.png|jpg
-  Chromakey src:  assets-source/images/sprites/{entity}/*.png|jpg (skips still.*)
+  Sources:        static-source/images/sprites/{entity}/{action}.png|jpg
+  Chromakey src:  static-source/images/sprites/{entity}/*.png|jpg (skips still.*)
 
 ${c.bold}Output:${c.reset}
-  WebP sheets:    public/assets/images/sprites/{entity}/{action}.webp
-  Chromakey out:  assets-source/images/sprites/{entity}/{action}.png (transparent)
+  WebP sheets:    static/assets/images/sprites/{entity}/{action}.webp
+  Chromakey out:  static-source/images/sprites/{entity}/{action}.png (transparent)
 `);
 }
 

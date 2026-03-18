@@ -24,13 +24,13 @@ direnv allow
 
 ### Tools Included
 
-| Tool      | Version | Purpose                        |
-| --------- | ------- | ------------------------------ |
-| **Astro** | Latest  | Frontend Framework             |
-| **Bun**   | Latest  | Fast package manager & runtime |
-| **Rust**  | Latest  | Backend compilation            |
-| **dfx**   | Latest  | IC SDK for canister management |
-| **juno**  | Latest  | Deployment and hosting         |
+| Tool          | Version | Purpose                        |
+| ------------- | ------- | ------------------------------ |
+| **SvelteKit** | Latest  | Frontend Framework             |
+| **Bun**       | Latest  | Fast package manager & runtime |
+| **Rust**      | Latest  | Backend compilation            |
+| **dfx**       | Latest  | IC SDK for canister management |
+| **juno**      | Latest  | Deployment and hosting         |
 
 **NOTE:** A shortcut wrapper script `juno-dev` is provided for convenience.
 
@@ -104,15 +104,15 @@ Access points:
 
 ## juno-dev Commands
 
-| Command                  | Description                                                |
-| ------------------------ | ---------------------------------------------------------- |
-| `juno-dev setup`         | Setup wizard only used on first-run                        |
-| `juno-dev start`         | Start emulator, build, deploy, and start Astro             |
-| `juno-dev stop`          | Stop all services                                          |
-| `juno-dev restart`       | Stop then start                                            |
-| `juno-dev status`        | Show status of running services                            |
-| `juno-dev logs`          | Tail all logs (Astro, Juno, global) with colors            |
-| `juno-dev rebuild`       | Rebuild Rust functions, Astro, and TypeScript declarations |
-| `juno-dev update`        | Update bun and cargo dependencies                          |
-| `juno-dev cleanup`       | Remove build artifacts (target/, node_modules/)            |
-| `juno-dev cleanup_state` | Remove Juno CLI state files                                |
+| Command                  | Description                                                    |
+| ------------------------ | -------------------------------------------------------------- |
+| `juno-dev setup`         | Setup wizard only used on first-run                            |
+| `juno-dev start`         | Start emulator, build, deploy, and start SvelteKit             |
+| `juno-dev stop`          | Stop all services                                              |
+| `juno-dev restart`       | Stop then start                                                |
+| `juno-dev status`        | Show status of running services                                |
+| `juno-dev logs`          | Tail all logs (SvelteKit, Juno, global) with colors            |
+| `juno-dev rebuild`       | Rebuild Rust functions, SvelteKit, and TypeScript declarations |
+| `juno-dev update`        | Update bun and cargo dependencies                              |
+| `juno-dev cleanup`       | Remove build artifacts (target/, node_modules/)                |
+| `juno-dev cleanup_state` | Remove Juno CLI state files                                    |

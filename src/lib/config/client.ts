@@ -1425,7 +1425,7 @@ export const config: ConfigTypes = {
     ],
     "components": [
       {
-        "name": "Astro"
+        "name": "SvelteKit"
       },
       {
         "name": "Avalanche Network"

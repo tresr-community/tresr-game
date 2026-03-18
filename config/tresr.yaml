@@ -2,7 +2,7 @@
 ##################################################
 # Server side configuration.
 #
-# Injected Astro during build time from config/config-server.json
+# Injected SvelteKit during build time from config/config-server.json
 ##################################################
 server:
   juno:

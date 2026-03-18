@@ -2,7 +2,7 @@
  * TouchInput — bridge between DOM touch controls and Phaser Player input.
  *
  * The Player reads `.x`, `.y`, `.attack`, `.super`, `.jump` each frame.
- * DOM event handlers in TouchControls.astro write to this singleton.
+ * DOM event handlers in TouchControls.svelte write to this singleton.
  */
 
 export interface TouchState {

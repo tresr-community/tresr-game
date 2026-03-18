@@ -97,7 +97,7 @@ async function doWrite(
       const updatedProfile = mutator(currentProfile);
 
       // Strip one-time verification fields — they are only needed during
-      // the explicit wallet-link flow (WalletLink.astro / ProfileModal.astro).
+      // the explicit wallet-link flow (WalletLink.svelte / ProfileModal.svelte).
       // Leaving them in causes the satellite to require re-verification
       // on every profile write that round-trips the evm_wallet field.
       // We only strip them if the evm_wallet HAS NOT changed in this update.

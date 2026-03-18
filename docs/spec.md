@@ -143,15 +143,15 @@ TRESR game uses a hybrid architecture to ensure responsive gameplay while mainta
 
 ### Components and Technology Stack
 
-- **Frontend (Astro/Phaser/TypeScript)**:
-  - **Astro**: Handles the "App" layer (Landing, Auth, Profile, Wallet, HUD, FeeGate, Modals).
+- **Frontend (SvelteKit/Phaser/TypeScript)**:
+  - **SvelteKit**: Handles the "App" layer (Landing, Auth, Profile, Wallet, HUD, FeeGate, Modals).
   - **Phaser v3**: Handles the "Game" layer (Canvas, Physics, Audio, Input) with Arcade Physics.
   - **TypeScript**: Strict typing enforced across both App and Game layers.
-  - **DaisyUI v5 + TailwindCSS v4**: DaisyUI-first styling for all HTML/Astro components.
+  - **DaisyUI v5 + TailwindCSS v4**: DaisyUI-first styling for all HTML/Svelte components.
     DaisyUI prebuilt components are preferred; Tailwind utilities used only for layout
     and spacing where DaisyUI lacks coverage. Custom CSS is prohibited except for game-specific
     visual effects with no DaisyUI/Tailwind equivalent.
-  - **Nanostores**: Reactive state management (`gameStore`) bridging Phaser and Astro.
+  - **Nanostores**: Reactive state management (`gameStore`) bridging Phaser and SvelteKit.
   - **2.5D Rendering**: Z-axis physics with gravity, depth sorting via `setDepth(groundY)`, shadow rendering for all entities.
 
 - **Backend (Juno - Rust Canisters)**: Manages authentication via Internet Identity 2.0, database operations using Juno Collections,
@@ -642,7 +642,7 @@ Intro voiceover played during the Preloader loading screen. Uses `HTMLAudioEleme
   - **Guests**: Narration always plays (no preference available).
   - **Logged-in users**: Controlled by `preferences.narration` boolean on their Juno user profile.
     Default: `true` (enabled). When `false`, `introFinished` is set immediately and the game proceeds without waiting.
-- **Toggle UI**: Narration checkbox in `MusicPlayer.astro`, visible only to logged-in (non-guest) users. Persists to Juno on change.
+- **Toggle UI**: Narration checkbox in `MusicPlayer.svelte`, visible only to logged-in (non-guest) users. Persists to Juno on change.
 - **Error Handling**: Autoplay blocked, audio load error, or missing file all set `introFinished = true` so the game proceeds normally.
 - **Polling Fallback**: If the async preference check hasn't resolved when `create()` fires, a 50ms polling interval waits for either `introFinished` or `introAudio` to become available.
 
@@ -997,7 +997,7 @@ Tresr implements a Progressive Web App setup for installability and caching.
 **Standardised Formats**: All assets in `public/assets/` use **WebP** for images and **WebM** for audio.
 No other media formats (PNG, JPG, MP3, OPUS, etc.) are permitted in `public/assets/`
 except platform-required icon PNGs in `public/assets/icons/`.
-Source files in other formats belong in `assets-source/` and are converted to WebP/WebM before deployment.
+Source files in other formats belong in `static-source/` and are converted to WebP/WebM before deployment.
 
 ### Static Game Assets
 

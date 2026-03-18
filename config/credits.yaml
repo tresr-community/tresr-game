@@ -28,7 +28,7 @@ coders:
     role: Consumer of Snacks
     description: MAHDTech's youngest son and master of eating snacks while testing.
 components:
-  - name: Astro
+  - name: SvelteKit
   - name: Avalanche Network
   - name: DaisyUI
   - name: Internet Computer Protocol

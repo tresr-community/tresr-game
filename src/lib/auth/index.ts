@@ -223,7 +223,7 @@ export async function handleSignOut(
  * Must be called once before any auth operations.
  */
 export function initAuth(): Promise<void> {
-  // Deduplicate concurrent calls — Header.astro and game.astro both call
+  // Deduplicate concurrent calls — Header.svelte and `/game` both call
   // initAuth() on page load; the promise ensures only one init runs.
   if (initPromise) return initPromise;
   initPromise = doInitAuth();

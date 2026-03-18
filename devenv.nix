@@ -55,12 +55,12 @@ let
       ripgrep
       yq-go
 
-      # Astro
-      astro-language-server
+      # Frontend
       nodePackages.postcss
       tailwindcss_4
       npm-check-updates
       nodejs
+      svelte-language-server
 
       # Nix
       nixd
@@ -259,11 +259,11 @@ in
         files = "^src/.*$";
         pass_filenames = false;
       };
-      astro-check = {
+      svelte-check = {
         enable = true;
-        name = "astro-check";
-        entry = "bun run astro check";
-        files = "^src/.*\\.(astro|ts|tsx)$";
+        name = "svelte-check";
+        entry = "bun svelte-check";
+        files = "^src/.*\\.(svelte|ts|js)$";
         pass_filenames = false;
       };
       client-config = {
@@ -382,7 +382,7 @@ in
         vscode = {
           extensions = [
             "arrterian.nix-env-selector"
-            "astro-build.astro-vscode"
+            "svelte.svelte-vscode"
             "esbenp.prettier-vscode"
             "github.vscode-github-actions"
             "gruntfuggly.todo-tree"
@@ -426,7 +426,7 @@ in
     };
     juno-dev = {
       package = pkgs.bash;
-      description = "Start/Stop development environment (Astro + Juno emulator).";
+      description = "Start/Stop development environment (SvelteKit + Juno emulator).";
       exec = ''
         ./scripts/juno-dev.sh "$@"
       '';

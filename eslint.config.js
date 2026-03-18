@@ -6,9 +6,9 @@ export default tseslint.config(
   {
     ignores: [
       "dist",
-      "public/workers",
+      "static/workers",
       "src/declarations",
-      ".astro",
+      ".svelte",
       "src/env.d.ts",
       "**/lib/openzeppelin-contracts/**",
       "**/lib/openzeppelin-contracts-upgradeable/**",

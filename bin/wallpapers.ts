@@ -79,9 +79,9 @@ function parseMode(): Mode {
 
 // ── Paths ───────────────────────────────────────────────────────────
 const projectRoot = path.resolve(process.cwd());
-const sourceDir = path.join(projectRoot, "assets-source/images/wallpapers");
-const keysDir = path.join(projectRoot, "assets-source/images/keys");
-const webpDir = path.join(projectRoot, "public/assets/images/wallpapers");
+const sourceDir = path.join(projectRoot, "static-source/images/wallpapers");
+const keysDir = path.join(projectRoot, "static-source/images/keys");
+const webpDir = path.join(projectRoot, "static/assets/images/wallpapers");
 const progressPath = path.join(sourceDir, ".progress.json");
 
 // ── State ───────────────────────────────────────────────────────────
@@ -645,7 +645,7 @@ function runPending() {
   console.log("KEY_FILE|WALLPAPER_NUM|OUTPUT_PATH");
   for (const p of pending) {
     console.log(
-      `${p.key}|${p.wallpaperNum}|assets-source/images/wallpapers/wallpaper_${p.wallpaperNum}.jpg`
+      `${p.key}|${p.wallpaperNum}|static-source/images/wallpapers/wallpaper_${p.wallpaperNum}.jpg`
     );
   }
 }

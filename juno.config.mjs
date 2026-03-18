@@ -30,7 +30,7 @@ export default defineConfig(({mode}) => ({
       staging: stagingSatelliteId || devSatelliteId,
       production: prodSatelliteId || devSatelliteId,
     },
-    source: "dist",
+    source: "build",
     storage: {
       headers: [
         // Hashed JS/CSS chunks from Vite — immutable, 1 year
@@ -86,7 +86,7 @@ export default defineConfig(({mode}) => ({
     //  --mode production => import.meta.env.PROD = true
     // In CI the workflow builds before deploying; locally juno-dev handles it.
     // The juno-action Docker image doesn't ship bun so predeploy must be skipped.
-    ...(process.env.CI ? {} : {predeploy: [`bun run build -- --mode ${mode}`]}),
+    ...(process.env.CI ? {} : {predeploy: ["bun run build"]}),
     collections: junoConfig.collections,
   },
   orbiter: {

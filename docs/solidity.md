@@ -178,7 +178,7 @@ slither .
 ### Additional Notes
 
 - Use Vault.sol with NatSpec docs.
-- For app testing, your Astro frontend connects to <http://127.0.0.1:8545>.
+- For app testing, your SvelteKit frontend connects to <http://127.0.0.1:8545>.
 
 ## Publishing
 
