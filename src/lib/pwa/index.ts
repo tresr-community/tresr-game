@@ -391,19 +391,14 @@ class PWA {
 
     log.info(COMPONENT_NAME, "Clearing auth session...");
 
-    // Clear auth session storage to force clean re-authentication
-    // after the upgrade. Stale Juno delegation identities in IndexedDB
-    // can cause initSatellite() to hang after a SW swap.
-    sessionStorage.removeItem("tresr_auth_mode");
-    sessionStorage.removeItem("tresr_is_guest");
-
-    // Sign out from Juno to clear IndexedDB delegation identity.
-    // Use windowReload: false since we handle navigation ourselves.
+    // Use centralized sign out to cleanly wipe Wagmi, SIWA, and Juno state
+    // before the service worker swap. Prevent the automatic page reload
+    // so we can coordinate it with the skipWaiting controller change below.
     try {
-      const {signOut} = await import("@junobuild/core");
-      await signOut({windowReload: false});
+      const {handleSignOut} = await import("../auth");
+      await handleSignOut({preventReload: true});
     } catch (err) {
-      log.warn(COMPONENT_NAME, "Juno sign-out during upgrade failed:", err);
+      log.warn(COMPONENT_NAME, "Auth sign-out during upgrade failed:", err);
     }
 
     if (this.registration?.waiting) {

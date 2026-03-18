@@ -400,7 +400,7 @@ const degenEnabled: boolean = iidEnabled || avalancheEnabled || webauthnEnabled;
 
     try {
       // Clear button spinner — AppKit shows its own modal for wallet selection.
-      clearButtonLoading(btnLoginAvalanche, "Login with Wallet");
+      clearButtonLoading(btnLoginAvalanche, "Login with Avalanche Wallet");
 
       // Show the auth loading overlay — it stays visible during the SIWA
       // handshake that happens after the user selects a wallet and signs.
@@ -414,7 +414,7 @@ const degenEnabled: boolean = iidEnabled || avalancheEnabled || webauthnEnabled;
       trackLogin("avalanche");
     } catch (error: unknown) {
       hideAuthOverlay();
-      clearButtonLoading(btnLoginAvalanche, "Login with Wallet");
+      clearButtonLoading(btnLoginAvalanche, "Login with Avalanche Wallet");
       const message = error instanceof Error ? error.message : String(error);
 
       if (

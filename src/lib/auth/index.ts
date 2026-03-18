@@ -158,7 +158,9 @@ function notifyAuthChange(): void {
 /**
  * Sign out the current user.
  */
-export async function handleSignOut(): Promise<void> {
+export async function handleSignOut(
+  options: {preventReload?: boolean} = {}
+): Promise<void> {
   log.info(COMPONENT_NAME, "Signing out...");
 
   // Clear session storage - AGGRESSIVELY
@@ -203,11 +205,13 @@ export async function handleSignOut(): Promise<void> {
 
   // Always sign out from Juno (which will trigger the auth state change)
   try {
-    await junoSignOut({windowReload: true});
+    await junoSignOut({windowReload: !options.preventReload});
   } catch (error) {
     log.error(COMPONENT_NAME, "Error signing out from Juno:", error);
     // Fallback if juno fails
-    window.location.reload();
+    if (!options.preventReload) {
+      window.location.reload();
+    }
   }
 
   notifyAuthChange();

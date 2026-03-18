@@ -354,6 +354,11 @@ export class MainScene extends Phaser.Scene {
    *  the Recorder's startTime, so that `ended_at - started_at` on the server
    *  matches `last action timestamp (t)` from the replay within the grace window. */
   private sessionStartMs: number = 0;
+  /** Wall-clock ms at the moment recorder.freeze() is called (boss defeat).
+   *  Used as `ended_at` in saveGameSession so the server's session duration
+   *  matches the replay's last action timestamp within the grace window.
+   *  Tab-away and post-boss async delays would inflate Date.now() at victory time. */
+  private sessionEndMs: number = 0;
 
   private escKey?: Phaser.Input.Keyboard.Key;
   /** Track previous-frame state of gamepad START button for edge detection */
@@ -1300,7 +1305,10 @@ export class MainScene extends Phaser.Scene {
   private spawnChest() {
     // Freeze the recorder NOW — post-victory wandering/chest-open time is
     // unbounded and must not be included in the replay timestamp window.
+    // Capture the end time at the same instant so saveGameSession uses the
+    // same epoch as the replay's last action timestamp (not inflated by async delays).
     this.recorder.freeze();
+    this.sessionEndMs = Date.now();
 
     // Stop bomb and key spawning — nothing new should fall after boss death.
     this.spawnManager.removeBombSpawnTimer();
@@ -1490,11 +1498,13 @@ export class MainScene extends Phaser.Scene {
           doc: {
             key: `session_${this.sessionId}`,
             data: {
-              // Use the recorder's epoch (set at startGameplay) so that
-              // ended_at - started_at matches the replay's last action
-              // timestamp within the Rust-side REPLAY_GRACE_MS window.
+              // Use the recorder's epoch (set at startGameplay) for started_at,
+              // and sessionEndMs (captured at recorder.freeze() = boss defeat) for
+              // ended_at.  Using Date.now() here would inflate ended_at by the
+              // async time spent in onVictory() (chest animation, setDoc awaits,
+              // tab-away time) and cause a REPLAY_GRACE_MS mismatch on the server.
               started_at: this.sessionStartMs,
-              ended_at: Date.now(),
+              ended_at: this.sessionEndMs || Date.now(),
               keys_collected: this.collectedKeys,
               boss_defeated: bossDefeated,
               score: this.score,

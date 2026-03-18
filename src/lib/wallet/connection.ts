@@ -95,6 +95,41 @@ export function getConnectedAddress(): `0x${string}` | undefined {
 }
 
 /**
+ * Safely returns the hydrated connected address, awaiting reconnection if necessary.
+ *
+ * During page load, wagmi's synchronous state drops but AppKit's localStorage
+ * survives. This means \`getConnectedAddress()\` may return undefined while wagmi
+ * is still handshaking. This async variant waits for wagmi to settle and then
+ * returns the address if genuinely connected (and unlocked), or undefined.
+ */
+export async function getHydratedAddress(): Promise<`0x${string}` | undefined> {
+  const config = getWagmiConfig();
+
+  await ensureReconnected(config);
+
+  let account = getConnection(config);
+  if (!account.isConnected && appKitIsConnected()) {
+    log.debug(
+      COMPONENT_NAME,
+      "AppKit connected but wagmi not yet hydrated (getHydratedAddress) — waiting for reconnect..."
+    );
+    await waitForReconnect(config, 3_000);
+    account = getConnection(config);
+  }
+
+  if (account.isConnected) {
+    const alive = await probeConnectorLiveness(config);
+    if (!alive) {
+      resetReconnect();
+      return undefined;
+    }
+    return account.address as `0x${string}`;
+  }
+
+  return undefined;
+}
+
+/**
  * Set up a listener on the injected provider for the `accountsChanged`
  * event. An empty accounts array means the wallet has auto-locked.
  * When that happens we reset the reconnect singleton so the next
@@ -146,10 +181,18 @@ async function probeConnectorLiveness(
   // getChainId() on it throws even when the wallet is healthy, because the
   // unhydrated copy lacks the provider binding. If we can't find the live
   // instance, treat as NOT live (can't confirm the wallet is reachable).
-  const liveConnector = config.connectors.find(
-    (c) => c.uid === account.connector?.uid
-  );
+  const liveConnector =
+    config.connectors.find((c) => c.uid === account.connector?.uid) ||
+    account.connector; // Fallback to account.connector if not in connectors array
   if (!liveConnector) return false;
+
+  // Skip the liveness probe for WalletConnect and AppKit.
+  // These connectors do not "auto-lock" in the browser like injected extensions
+  // (MetaMask, Brave), and pinging them can cause multi-second RPC timeouts that
+  // incorrectly flag the wallet as disconnected, forcing a second modal.
+  if (liveConnector.id === "walletConnect" || liveConnector.id === "appKit") {
+    return true;
+  }
 
   try {
     await Promise.race([

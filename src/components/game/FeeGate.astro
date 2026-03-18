@@ -72,7 +72,7 @@
   import {getExplorerUrl} from "@/lib/blockchain/networks/display";
   import {payFeeForGame} from "@/lib/blockchain/contracts/vault";
   import {setDoc, getDoc} from "@junobuild/core";
-  import {connectWallet, getConnectedAddress} from "@/lib/wallet/connection";
+  import {connectWallet, getHydratedAddress} from "@/lib/wallet/connection";
   import {confirmReceipt} from "@/lib/blockchain/tx";
   import {getTresrBalance, formatBalance} from "@/lib/blockchain/balance";
   import {parseBalance} from "@/lib/blockchain/balance";
@@ -221,7 +221,7 @@
       markStep("wallet", "active");
       let address: `0x${string}`;
 
-      const connectedAddress = getConnectedAddress();
+      const connectedAddress = await getHydratedAddress();
       if (connectedAddress) {
         address = (await connectWallet()).address;
         showStatus("Wallet connected ✓");

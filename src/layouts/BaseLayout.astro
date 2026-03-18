@@ -58,10 +58,22 @@ const {title, description = "A 2.5D platformer for the Tresr Community"} =
     />
     <script is:inline>
       window.startTime = Date.now();
-      // Apply saved theme immediately to prevent flash of wrong theme colors
+      // Apply saved theme immediately to prevent flash of wrong theme colors.
+      // Apply auth-hint immediately to prevent flash of unauthenticated wallet UI
+      // for returning users — the real auth subscriber will correct state within ~200ms.
       (function () {
         var t = localStorage.getItem("theme");
         if (t) document.documentElement.setAttribute("data-theme", t);
+
+        // Auth-hint: if there is a stored hint that the user was previously authenticated,
+        // leave wallet-state-unauthenticated hidden (its HTML default).
+        // If no hint exists (new/signed-out visitor), reveal it immediately so they
+        // don't stare at a blank wallet dropdown.
+        var hint = localStorage.getItem("tresr-auth-hint");
+        var unauthEl = document.getElementById("wallet-state-unauthenticated");
+        if (!hint && unauthEl) {
+          unauthEl.classList.remove("hidden");
+        }
       })();
     </script>
     <slot name="head" />

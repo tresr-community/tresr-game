@@ -24,7 +24,8 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
   >
     <div class="card-body">
       <!-- State: Not logged in -->
-      <div id="wallet-state-unauthenticated">
+      <!-- Starts hidden; is:inline auth-hint reveals it only when no returning-user hint is found -->
+      <div id="wallet-state-unauthenticated" class="hidden">
         <h3 class="text-lg font-bold">Wallet</h3>
         <p class="text-sm opacity-70">
           Please sign in to access wallet features.
@@ -55,7 +56,12 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
       </div>
 
       <!-- State: Wallet linked (IID+linked or SIWA) -->
-      <div id="wallet-state-linked" class="hidden">
+      <!-- data-token-symbol: passed from frontmatter so the script doesn't duplicate the envKey logic -->
+      <div
+        id="wallet-state-linked"
+        class="hidden"
+        data-token-symbol={tokenSymbol}
+      >
         <h3 class="text-lg font-bold">Wallet Balance</h3>
 
         <!-- Balance display -->
@@ -158,7 +164,6 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     resetRpcAvailability,
   } from "@/lib/blockchain/balance";
   import {shortenAddress} from "@/lib/blockchain/networks/display";
-  import {JUNO_ENVIRONMENT} from "@/lib/config/constants";
   import {log} from "@/lib/utils/log";
   import {config} from "@/lib/config/client";
 
@@ -204,14 +209,9 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
   let updateGeneration = 0;
   let disposed = false;
 
-  // Token symbol from config based on environment
-  const envKey =
-    JUNO_ENVIRONMENT === "development"
-      ? "anvil"
-      : JUNO_ENVIRONMENT === "staging"
-        ? "testnet"
-        : "mainnet";
-  const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
+  // Token symbol — read from the data attribute set in frontmatter (single source of truth).
+  // Frontmatter already computes envKey/token_ticker at build time; no need to repeat it here.
+  const tokenSymbol = stateLinked.dataset.tokenSymbol ?? "$TRESR";
 
   function hideAllStates() {
     stateUnauthenticated.classList.add("hidden");
@@ -339,14 +339,24 @@ const tokenSymbol = `$${config.blockchain.avalanche[envKey].token_ticker}`;
     }
   }
 
+  // Auth-hint key written to localStorage so the is:inline script in BaseLayout
+  // can suppress the flash of unauthenticated wallet UI on next page load.
+  const AUTH_HINT_KEY = "tresr-auth-hint";
+
   async function updateUI(authState: AuthState) {
     const gen = ++updateGeneration;
 
     if (!authState.isAuthenticated) {
+      // Clear hint — user is signed out, next load should show unauthenticated state.
+      localStorage.removeItem(AUTH_HINT_KEY);
       showState(stateUnauthenticated);
       currentAddress = null;
       return;
     }
+
+    // Write hint for any authenticated state (guest or full). The is:inline
+    // script uses this to keep wallet-state-unauthenticated hidden before paint.
+    localStorage.setItem(AUTH_HINT_KEY, "1");
 
     if (authState.isGuest) {
       showState(stateGuest);

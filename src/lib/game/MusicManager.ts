@@ -161,11 +161,17 @@ class MusicManager {
     if (isPaused) {
       // If the user left the player paused, set the track but don't play.
       // persist=false: this is automated restore, not a user action.
+      // Clear any pending queued autoplays from unauthenticated state
+      this.deferredPlay = null;
       if (favorite && this.tracks.includes(favorite)) {
         this.setTrack(favorite, false, false, false);
       } else if (mode === "shuffle") {
         // Queue up a random track silently (so the UI shows something)
-        this.playAfterNarration(() => this.playRandom());
+        // persist=false: automated restore
+        this.playRandom(false, false);
+      } else {
+        // Normal or Repeat One with no favorite
+        this.setTrack(this.tracks[0], false, false, false);
       }
       return;
     }
@@ -249,6 +255,8 @@ class MusicManager {
           favoriteTrack: favorite,
         });
 
+        // Clear any old queued auth actions before starting
+        this.deferredPlay = null;
         this.startInitialPlayback(!!prefs.is_paused);
       } else {
         // Defaults from config
@@ -795,12 +803,12 @@ class MusicManager {
     this.saveShuffleState();
   }
 
-  public playRandom() {
+  public playRandom(forcePlay: boolean = true, persist: boolean = true) {
     if (this.tracks.length === 0) return;
 
     // For single-track playlists, just play the track
     if (this.tracks.length === 1) {
-      this.setTrack(this.tracks[0], true);
+      this.setTrack(this.tracks[0], forcePlay, false, persist);
       return;
     }
 
@@ -811,7 +819,12 @@ class MusicManager {
       }
     }
 
-    this.setTrack(this.shuffledQueue[this.queueIndex++], true);
+    this.setTrack(
+      this.shuffledQueue[this.queueIndex++],
+      forcePlay,
+      false,
+      persist
+    );
     this.saveShuffleState();
   }
 }
