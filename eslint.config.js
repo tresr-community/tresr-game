@@ -5,7 +5,8 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   {
     ignores: [
-      "dist",
+      "build",
+      ".svelte-kit",
       "static/workers",
       "src/declarations",
       ".svelte",

@@ -14,7 +14,7 @@
     "prebuild": "bun run client-config",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "svelte-check && eslint .",
+    "lint": "svelte-kit sync && svelte-check && eslint .",
     "format": "prettier --write './**/*.{ts,js,mjs,json,css,svelte,html,md}'",
     "audio": "bun run bin/audio.ts",
     "sprites": "bun run bin/sprites.ts",
