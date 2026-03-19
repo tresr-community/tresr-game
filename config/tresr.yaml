@@ -793,8 +793,8 @@ client:
       exit_duration: 500 # Fade-out time (ms)
     # Audio configuration
     audio:
-      default_music_volume: 0.75 # Initial music volume (0.0 - 1.0)
-      default_sfx_volume: 0.5 # Initial SFX volume (0.0 - 1.0)
+      default_music_volume: 0.5 # Initial music volume (0.0 - 1.0)
+      default_sfx_volume: 0.25 # Initial SFX volume (0.0 - 1.0)
       crossfade_duration_ms: 2000 # Total time to crossfade between tracks (ms)
       crossfade_step_ms: 50 # Interval between volume steps during crossfade (ms)
       preference_save_debounce_ms: 2000 # Debounce delay before persisting volume prefs (ms)

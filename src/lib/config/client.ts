@@ -884,8 +884,8 @@ export const config: ConfigTypes = {
       "exit_duration": 500
     },
     "audio": {
-      "default_music_volume": 0.75,
-      "default_sfx_volume": 0.5,
+      "default_music_volume": 0.5,
+      "default_sfx_volume": 0.25,
       "crossfade_duration_ms": 2000,
       "crossfade_step_ms": 50,
       "preference_save_debounce_ms": 2000,
@@ -1548,5 +1548,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "8ee756039c1fd99cb11fefb6eda0e310b1542631d92e89e9c42a48cb997675cc"
+  "configHash": "02328191194371497160f6a60bca7019bf1e1a631829349af0a39bb7d1cb99df"
 };

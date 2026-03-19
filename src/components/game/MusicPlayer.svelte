@@ -22,6 +22,7 @@
 
   let showNarration = $state(false);
   let isNarrationEnabled = $state(true);
+  let isDropdownOpen = $state(false);
 
   let unsubState: () => void;
 
@@ -64,15 +65,16 @@
       }
     });
 
-    // Handle blur event to close dropdown
-    const blurListener = (e: MouseEvent) => {
-      if (document.activeElement?.closest(".dropdown")) {
-        (document.activeElement as HTMLElement)?.blur();
+    // Handle click outside to close dropdown
+    const clickListener = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("#track-dropdown-container")) {
+        isDropdownOpen = false;
       }
     };
-    document.addEventListener("click", blurListener);
+    document.addEventListener("click", clickListener);
 
-    return () => document.removeEventListener("click", blurListener);
+    return () => document.removeEventListener("click", clickListener);
   });
 
   onDestroy(() => {
@@ -122,7 +124,7 @@
 
   function selectTrack(track: string) {
     manager.setTrack(track, true, true);
-    (document.activeElement as HTMLElement)?.blur();
+    isDropdownOpen = false;
   }
 
   async function handleNarrationToggle() {
@@ -147,16 +149,62 @@
   class="border-primary/20 flex w-48 flex-col gap-1 rounded-lg border bg-black/80 p-2 shadow-xl backdrop-blur select-none sm:w-64 sm:gap-2 sm:p-3"
 >
   <!-- Track Info & Controls -->
-  <div class="flex items-center justify-between gap-2">
-    <div class="flex flex-col overflow-hidden">
-      <span class="hidden text-[10px] font-bold uppercase opacity-50 sm:inline"
-        >Now Playing</span
-      >
+  <div
+    id="track-dropdown-container"
+    class="relative flex items-center justify-between gap-2"
+  >
+    <button
+      class="flex cursor-pointer flex-col overflow-hidden text-left hover:opacity-80"
+      onclick={(e) => {
+        e.stopPropagation();
+        isDropdownOpen = !isDropdownOpen;
+      }}
+      type="button"
+    >
+      <span class="hidden text-[10px] font-bold uppercase opacity-50 sm:inline">
+        Now Playing
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="10"
+          height="10"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="ml-1 inline-block"><path d="m6 9 6 6 6-6"></path></svg
+        >
+      </span>
       <span
         class="text-primary truncate font-mono text-[10px] font-bold sm:text-xs"
-        >{currentTrackName}</span
       >
-    </div>
+        {currentTrackName}
+      </span>
+    </button>
+    {#if isDropdownOpen}
+      <ul
+        id="track-dropdown"
+        class="border-primary/20 scrollbar-thumb-primary/50 scrollbar-thin scrollbar-track-transparent absolute top-full left-0 z-50 mt-2 max-h-64 w-52 flex-col flex-nowrap overflow-x-hidden overflow-y-auto rounded-lg border bg-black/90 p-2 shadow"
+      >
+        {#each tracks as track}
+          <li>
+            <!-- svelte-ignore a11y_missing_attribute -->
+            <a
+              role="button"
+              tabindex="0"
+              class={`block cursor-pointer truncate rounded px-2 py-1 font-mono text-[10px] hover:bg-white/10 ${favoriteTrack === track ? "text-primary bg-primary/20 font-bold" : ""}`}
+              onclick={(e) => {
+                e.preventDefault();
+                selectTrack(track);
+              }}
+              onkeydown={(e) => e.key === "Enter" && selectTrack(track)}
+              >{track}</a
+            >
+          </li>
+        {/each}
+      </ul>
+    {/if}
 
     <div class="flex items-center gap-1">
       <button
@@ -345,59 +393,6 @@
     <div class="flex justify-between font-mono text-[10px] opacity-50">
       <span>{formatTime(currentTime)}</span>
       <span>{formatTime(totalTime)}</span>
-    </div>
-  </div>
-
-  <!-- Bottom: Track Selector -->
-  <div class="hidden items-center gap-3 sm:flex">
-    <div class="relative flex-1">
-      <button
-        class="border-primary/40 text-primary hover:bg-primary/10 flex w-full items-center justify-between truncate rounded border px-2 py-0.5 font-mono text-[10px] transition-colors"
-        onclick={(e) => {
-          e.stopPropagation();
-          const el = e.currentTarget.nextElementSibling as HTMLElement;
-          el &&
-            (el.style.display =
-              el.style.display === "block" ? "none" : "block");
-        }}
-        type="button"
-      >
-        <span>Tracks</span>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="10"
-          height="10"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"><path d="m18 15-6-6-6 6"></path></svg
-        >
-      </button>
-      <ul
-        class="border-primary/20 absolute bottom-full left-0 z-[1] mb-2 hidden max-h-64 w-52 flex-col flex-nowrap overflow-x-hidden overflow-y-auto rounded-lg border bg-black/90 p-2 shadow"
-        style="display:none"
-      >
-        {#each tracks as track}
-          <li>
-            <!-- svelte-ignore a11y_missing_attribute -->
-            <a
-              role="button"
-              tabindex="0"
-              class={`block cursor-pointer truncate rounded px-2 py-1 font-mono text-[10px] hover:bg-white/10 ${favoriteTrack === track ? "bg-primary/20 text-primary font-bold" : ""}`}
-              onclick={(e) => {
-                e.preventDefault();
-                selectTrack(track);
-                (e.currentTarget.closest("ul") as HTMLElement).style.display =
-                  "none";
-              }}
-              onkeydown={(e) => e.key === "Enter" && selectTrack(track)}
-              >{track}</a
-            >
-          </li>
-        {/each}
-      </ul>
     </div>
   </div>
 

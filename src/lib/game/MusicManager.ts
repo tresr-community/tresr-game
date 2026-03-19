@@ -109,6 +109,8 @@ class MusicManager {
       this.handleBeforeUnload = () => this.flushPendingPreferences();
       window.addEventListener("beforeunload", this.handleBeforeUnload);
 
+      let initialTrackSelected = false;
+
       this.authUnsubscribe = subscribeToAuth(async (state) => {
         try {
           if (state.isAuthenticated && !state.isGuest && state.user) {
@@ -116,18 +118,30 @@ class MusicManager {
               this.prefsLoaded = true;
               await this.loadPreferences(state.user.key);
             }
-          } else if (!this.initialPlayStarted && this.tracks.length > 0) {
-            // Guest or unauthenticated — default to shuffle playback
-            this.initialPlayStarted = true;
-            gameActions.updateMusic({playbackMode: "shuffle"});
-            this.playRandomAfterNarration();
+          } else if (state.isAuthenticated && state.isGuest) {
+            if (!this.initialPlayStarted && this.tracks.length > 0) {
+              this.initialPlayStarted = true;
+              // Reset any previously selected random track by enforcing shuffle
+              gameActions.updateMusic({playbackMode: "shuffle"});
+              // Force play Random (bypassing narration wait if on homepage, though playRandomAfterNarration handles this)
+              this.playRandom(true, false);
+            }
+          } else if (!state.isAuthenticated) {
+            if (!initialTrackSelected && this.tracks.length > 0) {
+              initialTrackSelected = true;
+              // Guest or unauthenticated — just select a random track silently
+              gameActions.updateMusic({playbackMode: "shuffle"});
+              const randomTrack =
+                this.tracks[Math.floor(Math.random() * this.tracks.length)];
+              this.setTrack(randomTrack, false, false, false);
+            }
           }
         } catch (err) {
           log.warn(COMPONENT_NAME, "Auth callback failed, falling back:", err);
           if (!this.initialPlayStarted && this.tracks.length > 0) {
             this.initialPlayStarted = true;
             gameActions.updateMusic({playbackMode: "shuffle"});
-            this.playRandomAfterNarration();
+            this.playRandom(true, false);
           }
         }
       });
@@ -180,32 +194,26 @@ class MusicManager {
       case "repeat-one":
         if (favorite && this.tracks.includes(favorite)) {
           // persist=false: automated restore, not a user action
-          this.playAfterNarration(() =>
-            this.setTrack(favorite, true, false, false)
-          );
+          this.setTrack(favorite, true, false, false);
         } else {
           // No favorite — fall back to shuffle for the first track
-          this.playAfterNarration(() => this.playRandom());
+          this.playRandom(true, false);
         }
         break;
       case "normal":
         if (favorite && this.tracks.includes(favorite)) {
           // Favorite plays first, then sequential from there.
           // persist=false: automated restore, not a user action.
-          this.playAfterNarration(() =>
-            this.setTrack(favorite, true, false, false)
-          );
+          this.setTrack(favorite, true, false, false);
         } else {
           // No favorite — start from the first track.
           // persist=false: automated restore, not a user action.
-          this.playAfterNarration(() =>
-            this.setTrack(this.tracks[0], true, false, false)
-          );
+          this.setTrack(this.tracks[0], true, false, false);
         }
         break;
       case "shuffle":
       default:
-        this.playRandomAfterNarration();
+        this.playRandom(true, false);
         break;
     }
   }
@@ -267,7 +275,7 @@ class MusicManager {
         gameActions.updateMusic({playbackMode: "shuffle"});
         this.setVolume(defaultMusicVol, false);
         this.setSfxVolume(defaultSfxVol, false);
-        this.playRandomAfterNarration();
+        this.playRandom(true, false);
       }
     } catch (e) {
       log.warn(
@@ -279,7 +287,7 @@ class MusicManager {
       gameActions.updateMusic({playbackMode: "shuffle"});
       this.setVolume(audioConfig.default_music_volume, false);
       this.setSfxVolume(audioConfig.default_sfx_volume, false);
-      this.playRandomAfterNarration();
+      this.playRandom(true, false);
     }
   }
 
