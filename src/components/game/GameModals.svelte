@@ -234,6 +234,16 @@
       <div
         class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
       >
+        Time
+      </div>
+      <div class="font-mono text-sm font-bold text-[#facc15] sm:text-lg">
+        {_time}
+      </div>
+    </div>
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
         Keys
       </div>
       <div class="font-mono text-sm font-bold text-[#38bdf8] sm:text-lg">
@@ -254,30 +264,20 @@
       <div
         class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
       >
-        Time
-      </div>
-      <div class="font-mono text-sm font-bold text-[#facc15] sm:text-lg">
-        {_time}
-      </div>
-    </div>
-    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
-      <div
-        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
-      >
-        Boss Hits
-      </div>
-      <div class="font-mono text-sm font-bold text-[#c084fc] sm:text-lg">
-        {bossHits}
-      </div>
-    </div>
-    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
-      <div
-        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
-      >
-        Super Hits
+        Super
       </div>
       <div class="font-mono text-sm font-bold text-[#fbbf24] sm:text-lg">
         {superHits}
+      </div>
+    </div>
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Boss
+      </div>
+      <div class="font-mono text-sm font-bold text-[#c084fc] sm:text-lg">
+        {bossHits}
       </div>
     </div>
   </div>
@@ -341,6 +341,16 @@
       <div
         class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
       >
+        Time
+      </div>
+      <div class="font-mono text-sm font-bold text-[#facc15] sm:text-lg">
+        {_time}
+      </div>
+    </div>
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
         Keys
       </div>
       <div class="font-mono text-sm font-bold text-[#38bdf8] sm:text-lg">
@@ -361,30 +371,20 @@
       <div
         class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
       >
-        Time
-      </div>
-      <div class="font-mono text-sm font-bold text-[#facc15] sm:text-lg">
-        {_time}
-      </div>
-    </div>
-    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
-      <div
-        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
-      >
-        Boss Hits
-      </div>
-      <div class="font-mono text-sm font-bold text-[#c084fc] sm:text-lg">
-        {bossHits}
-      </div>
-    </div>
-    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
-      <div
-        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
-      >
-        Super Hits
+        Super
       </div>
       <div class="font-mono text-sm font-bold text-[#fbbf24] sm:text-lg">
         {superHits}
+      </div>
+    </div>
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Boss
+      </div>
+      <div class="font-mono text-sm font-bold text-[#c084fc] sm:text-lg">
+        {bossHits}
       </div>
     </div>
   </div>

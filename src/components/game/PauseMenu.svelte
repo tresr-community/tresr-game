@@ -319,7 +319,8 @@
         onmouseup={() => (seekActive = false)}
         ontouchstart={() => (seekActive = true)}
         ontouchend={() => (seekActive = false)}
-        class="[&::-webkit-slider-thumb]:bg-primary h-1 w-full appearance-none rounded-full bg-white/20 outline-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full"
+        style="background: linear-gradient(to right, rgba(var(--color-primary), 1) {progress}%, rgba(255, 255, 255, 0.2) {progress}%);"
+        class="[&::-webkit-slider-thumb]:bg-primary h-1 w-full appearance-none rounded-full outline-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full"
       />
       <div class="flex justify-between font-mono text-[10px] text-white/50">
         <span>{formatTime(currentTime)}</span>
@@ -342,7 +343,8 @@
       max="100"
       bind:value={musicVolume}
       oninput={handleMusicVolume}
-      class="[&::-webkit-slider-thumb]:bg-primary h-1 w-full appearance-none rounded-full bg-white/20 outline-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full"
+      style="background: linear-gradient(to right, rgba(var(--color-primary), 1) {musicVolume}%, rgba(255, 255, 255, 0.2) {musicVolume}%);"
+      class="[&::-webkit-slider-thumb]:bg-primary h-1 w-full appearance-none rounded-full outline-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full"
     />
 
     <div class="mt-4 mb-1 flex items-center justify-between sm:mt-5">
@@ -359,7 +361,8 @@
       max="100"
       bind:value={sfxVolume}
       oninput={handleSfxVolume}
-      class="h-1 w-full appearance-none rounded-full bg-white/20 outline-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#10b981]"
+      style="background: linear-gradient(to right, #10b981 {sfxVolume}%, rgba(255, 255, 255, 0.2) {sfxVolume}%);"
+      class="h-1 w-full appearance-none rounded-full outline-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#10b981]"
     />
   </div>
 

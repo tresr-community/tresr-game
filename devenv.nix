@@ -342,6 +342,7 @@ in
         enable = true;
         excludes = [
           "^src/declarations/.*$"
+          "^src/satellite/satellite_extension.did"
         ];
       };
       trufflehog.enable = true;

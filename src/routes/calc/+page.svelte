@@ -155,7 +155,7 @@
             </div>
             <div class="flex flex-col gap-1">
               <label for="boss_hits" class="font-mono text-xs opacity-70"
-                >Boss Hits</label
+                >Boss</label
               >
               <input
                 type="number"
@@ -167,7 +167,7 @@
             </div>
             <div class="flex flex-col gap-1">
               <label for="super_hits" class="font-mono text-xs opacity-70"
-                >Super Hits</label
+                >Super</label
               >
               <input
                 type="number"
