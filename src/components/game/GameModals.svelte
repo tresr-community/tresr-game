@@ -194,20 +194,20 @@
   closeOnEscape={false}
   closeOnOutsideClick={false}
 >
-  <p class="py-2 text-sm opacity-70 sm:py-4 sm:text-base">
+  <p class="py-2 text-center text-sm opacity-70 sm:py-4 sm:text-base">
     The Banker has been regulated. The vault is yours.
   </p>
 
   <div
     class="my-4 flex w-full flex-col gap-px overflow-hidden rounded-md border border-white/10 bg-white/10 shadow-inner"
   >
-    <div class="flex flex-col bg-black/40 p-3">
+    <div class="flex flex-col items-center bg-black/40 p-3">
       <div
         class="text-[10px] font-bold tracking-widest text-[#10b981] uppercase"
       >
         Reward
       </div>
-      <div class="text-primary font-mono text-sm font-bold sm:text-2xl">
+      <div class="text-primary mt-1 font-mono text-sm font-bold sm:text-2xl">
         {victoryRewardText}
       </div>
     </div>
@@ -296,7 +296,7 @@
   closeOnEscape={false}
   closeOnOutsideClick={false}
 >
-  <p class="py-2 text-sm opacity-70 sm:py-4 sm:text-base">
+  <p class="py-2 text-center text-sm opacity-70 sm:py-4 sm:text-base">
     Sorry Degen, the Bankers have won this round.
   </p>
 

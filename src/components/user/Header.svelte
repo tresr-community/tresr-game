@@ -45,7 +45,7 @@
   }
 
   function handleAuthBtnClick() {
-    document.dispatchEvent(new CustomEvent("tresr:open-profile"));
+    window.dispatchEvent(new CustomEvent("tresr:open-profile"));
   }
 
   function handleToolbarClickOutside(e: MouseEvent) {
@@ -117,6 +117,20 @@
 
       <WalletLink />
       <FaucetButton />
+
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger
+          class="flex h-12 w-12 items-center justify-center rounded-full text-xl transition-colors hover:bg-white/10"
+          title="Music Player">🎵</DropdownMenu.Trigger
+        >
+        <DropdownMenu.Content
+          class="z-[60] outline-none"
+          sideOffset={8}
+          align="end"
+        >
+          <MusicPlayer />
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
 
       {#if !isAuthenticated || isGuest}
         <!-- Profile: Guest -->

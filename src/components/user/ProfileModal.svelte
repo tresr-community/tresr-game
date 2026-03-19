@@ -269,9 +269,9 @@
       profileStore.value = {...currentProfile} as any;
       trackAvatarUpload();
       window.showInfoToast?.("Avatar updated!");
-    } catch (err) {
-      log.error(COMPONENT_NAME, "Avatar upload failed:", err);
-      window.showErrorToast?.("Avatar upload failed");
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error(COMPONENT_NAME, `Avatar upload failed: ${msg}`, err);
     } finally {
       isAvatarUploading = false;
       if (fileInput) fileInput.value = "";
@@ -387,10 +387,37 @@
 
       <!-- Principal -->
       <div class="flex w-full flex-col gap-1">
-        <div
-          class="px-1 text-xs font-bold tracking-widest text-white/50 uppercase"
-        >
-          Identity (Principal)
+        <div class="flex items-center justify-between px-1">
+          <div
+            class="text-xs font-bold tracking-widest text-white/50 uppercase"
+          >
+            Identity (Principal)
+          </div>
+          <button
+            onclick={() => {
+              navigator.clipboard.writeText(principal);
+              window.showInfoToast?.("Principal copied to clipboard");
+            }}
+            class="text-white/40 transition-colors hover:text-white"
+            title="Copy Principal"
+            aria-label="Copy Principal"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+              ></path>
+            </svg>
+          </button>
         </div>
         <div
           class="w-full truncate rounded-md border border-white/5 bg-black/20 p-3 font-mono text-xs tracking-wider text-white/70 opacity-70 select-all"
@@ -519,6 +546,7 @@
       >
         <a
           href="/claims"
+          onclick={() => (open = false)}
           class="flex w-full items-center justify-center gap-2 rounded-md border border-[#eab308] px-6 py-2 font-bold tracking-widest text-[#eab308] uppercase transition-colors hover:bg-[#eab308]/10 sm:w-auto"
         >
           <span class="text-lg">🏆</span> Rewards

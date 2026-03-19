@@ -21,7 +21,7 @@ server:
     # Add your Internet Identity / SIWA principal text here.
     admins:
       # Development (Local)
-      - "pegnp-gazih-6vb6n-cze6g-gei4h-y3dlc-i77bm-7ityv-rmome-rshwy-wqe"
+      - "5lsg4-u66ij-nal3d-h3cbs-efiac-eye46-w4j6l-ef2x6-thj4e-3m6zt-uae"
       # Staging (Testnet)
       - "3n3c2-3pc3z-enxej-thoeh-glav5-ii4fc-itegf-wpru2-erb6e-ivawj-zqe"
       # Production (Mainnet)
@@ -81,7 +81,7 @@ server:
       max_actions: 50000
       min_action_gap_ms: 0
       min_attack_gap_ms: 200
-      grace_ms: 5000
+      grace_ms: 3600000
       # Max actions allowed in any 100ms sliding window.
       # At 60fps, 100ms ≈ 6 frames; a player can legitimately generate ~5 actions/frame
       # (move + jump + attack + bot events), so a real burst ceiling is ~30.
@@ -277,7 +277,7 @@ client:
         # (injected via --add-host in juno.config.mjs extraHosts).
         # Anvil must be started with --host 0.0.0.0.
         anvil:
-          canister_id: lm4fb-uh777-77777-aaacq-cai
+          canister_id: kirkt-nh777-77777-aaaeq-cai
           rpc_url: "http://host.docker.internal:8545"
         # Fuji testnet — uses the shared ICP EVM RPC canister with custom providers.
         # These URLs are satellite-only; the browser uses blockchain.avalanche.testnet.rpc_urls.

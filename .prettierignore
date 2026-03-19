@@ -1,9 +1,10 @@
-# Auto-generated files
+# Auto-generated static files
 config/config-server.json
-public/config-client.json
-public/precache-manifest.json
-public/workers/
+static/config-client.json
+static/precache-manifest.json
 static/workers/
+
+# Auto-generated source files
 src/declarations/
 src/env.d.ts
 src/lib/config/client.ts

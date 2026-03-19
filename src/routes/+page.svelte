@@ -88,7 +88,7 @@
 
 <div id="main-content" class="transition-opacity duration-1000">
   <div
-    class="relative flex min-h-dvh flex-col items-center justify-end pb-8 md:justify-center md:pb-12"
+    class="relative flex min-h-dvh flex-col items-center justify-center pb-12"
   >
     <div
       class="z-10 flex w-full flex-col items-center px-2 text-center md:px-4"
@@ -124,7 +124,7 @@
             class="grid w-full max-w-4xl grid-cols-2 gap-2 opacity-90 md:grid-cols-3 md:gap-6"
           >
             <div
-              class="border-primary/20 flex flex-col items-center rounded-xl border bg-black/40 px-5 py-4 shadow backdrop-blur"
+              class="border-primary/20 flex h-full flex-col items-center justify-center rounded-xl border bg-black/40 px-5 py-4 shadow backdrop-blur"
             >
               <div class="font-mono text-xs uppercase opacity-50">
                 OBJECTIVE
@@ -138,12 +138,12 @@
             </div>
             <div
               id="vault-display"
-              class="hidden overflow-hidden rounded-xl md:block"
+              class="hidden h-full overflow-hidden rounded-xl md:block"
             >
               <VaultBalance />
             </div>
             <div
-              class="border-primary/20 flex flex-col items-center rounded-xl border bg-black/40 px-5 py-4 shadow backdrop-blur"
+              class="border-primary/20 flex h-full flex-col items-center justify-center rounded-xl border bg-black/40 px-5 py-4 shadow backdrop-blur"
             >
               <div class="font-mono text-xs uppercase opacity-50">THREAT</div>
               <div

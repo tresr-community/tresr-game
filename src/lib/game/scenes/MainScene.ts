@@ -1366,12 +1366,14 @@ export class MainScene extends Phaser.Scene {
       })
     );
     const winDuration = Math.round(
-      this.gameplayConfig.time_limit_seconds - this.survivalTimer
+      ((this.sessionEndMs || Date.now()) - this.sessionStartMs) / 1000
     );
     trackGameWin(this.score, {
       keysCollected: this.collectedKeys,
       duration: winDuration,
     });
+    // Sync final elapsed time to store for the victory screen display
+    gameActions.setTimer(winDuration);
 
     const auth = getAuthState();
     if (auth.isGuest) {
@@ -1573,9 +1575,7 @@ export class MainScene extends Phaser.Scene {
     this.playSound("game_over");
     void MusicManager.getInstance().stop();
     this.uiManager.showPhaseAnnouncement("RUG PULLED");
-    const deathDuration = Math.round(
-      this.gameplayConfig.time_limit_seconds - this.survivalTimer
-    );
+    const deathDuration = Math.round((Date.now() - this.sessionStartMs) / 1000);
     trackPlayerDeath(this.score, deathPhase, this.collectedKeys);
     trackGameLoss("player_died", {
       score: this.score,
@@ -1583,6 +1583,8 @@ export class MainScene extends Phaser.Scene {
       keysCollected: this.collectedKeys,
       duration: deathDuration,
     });
+    // Sync final elapsed time to store for the game over screen display
+    gameActions.setTimer(deathDuration);
 
     // Increment guest session counter after game completes
     const auth = getAuthState();

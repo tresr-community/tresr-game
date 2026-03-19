@@ -879,7 +879,7 @@ build-functions | bf)
 
 # Deploy serverless functions only
 deploy-functions | df)
-	cmd_functions_deploy "${2:-development}" || {
+	cmd_functions_deploy development || {
 		log_error "Could not deploy serverless functions."
 		exit 2
 	}
@@ -887,7 +887,7 @@ deploy-functions | df)
 
 # Deploy to Juno
 deploy | d)
-	cmd_juno_deploy "${2:-development}" || {
+	cmd_juno_deploy development || {
 		log_error "Could not deploy to Juno."
 		exit 2
 	}
@@ -1018,6 +1018,10 @@ oneshot | loop)
 		log_error "Could not deploy serverless functions."
 		exit 2
 	}
+	cmd_juno_config development || {
+		log_error "Could not apply Juno config."
+		exit 23
+	}
 	;;
 
 # Clear satellite data
@@ -1054,7 +1058,7 @@ topup-wallet | fund-wallet)
 
 # Apply Juno satellite config (collections + storage headers) without deploying files
 config)
-	cmd_juno_config "${2:-development}" || {
+	cmd_juno_config development || {
 		log_error "Could not apply Juno config."
 		exit 23
 	}

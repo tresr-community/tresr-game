@@ -67,14 +67,14 @@
 {#if isLoaded && isDeployed}
   <div class="relative mt-6 grid w-full max-w-4xl grid-cols-3 gap-2">
     <div
-      class="border-info/20 flex flex-col items-center rounded-xl border bg-black/40 px-5 py-4 shadow backdrop-blur"
+      class="border-info/20 flex flex-col items-center rounded-xl border bg-black/50 px-5 py-4 shadow backdrop-blur"
     >
       <div class="font-mono text-xs uppercase opacity-50">FEES</div>
       <div class="text-info mt-1 font-mono text-2xl font-bold">{fees}</div>
       <div class="mt-1 font-mono text-xs opacity-40">${ticker}</div>
     </div>
     <div
-      class="flex flex-col items-center rounded-xl border border-green-500/20 bg-black/40 px-5 py-4 shadow backdrop-blur"
+      class="flex flex-col items-center rounded-xl border border-green-500/20 bg-black/50 px-5 py-4 shadow backdrop-blur"
     >
       <div class="font-mono text-xs uppercase opacity-50">REWARDED</div>
       <div class="mt-1 font-mono text-2xl font-bold text-green-400">
@@ -83,7 +83,7 @@
       <div class="mt-1 font-mono text-xs opacity-40">${ticker}</div>
     </div>
     <div
-      class="flex flex-col items-center rounded-xl border border-red-500/20 bg-black/40 px-5 py-4 shadow backdrop-blur"
+      class="flex flex-col items-center rounded-xl border border-red-500/20 bg-black/50 px-5 py-4 shadow backdrop-blur"
     >
       <div class="font-mono text-xs uppercase opacity-50">BURNED</div>
       <div class="mt-1 font-mono text-2xl font-bold text-red-400">{burned}</div>

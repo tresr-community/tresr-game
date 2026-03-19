@@ -300,8 +300,8 @@
 </script>
 
 {#if isVisible}
-  <Card variant="bordered" class="border-warning/30">
-    <div class="flex flex-col items-center p-4">
+  <Card variant="bordered" class="border-warning/30 h-full">
+    <div class="flex h-full flex-col items-center justify-center p-4">
       <div class="mb-2 font-mono text-xs whitespace-nowrap opacity-70">
         VAULT PRIZE POOL
       </div>

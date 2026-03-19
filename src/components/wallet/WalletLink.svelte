@@ -219,7 +219,7 @@
   });
 
   function handleOpenProfile(e?: Event) {
-    document.dispatchEvent(new CustomEvent("tresr:open-profile"));
+    window.dispatchEvent(new CustomEvent("tresr:open-profile"));
     dropdownOpen = false;
   }
 

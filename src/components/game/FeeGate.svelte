@@ -324,7 +324,7 @@
   <div
     class="my-4 flex w-full flex-col gap-px overflow-hidden rounded-md border border-white/10 bg-white/10 shadow-inner"
   >
-    <div class="flex flex-col bg-black/40 p-3">
+    <div class="flex flex-col items-center bg-black/40 p-3 text-center">
       <div
         class="text-[10px] font-bold tracking-widest text-[#eab308] uppercase"
       >

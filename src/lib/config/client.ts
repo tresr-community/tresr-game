@@ -126,7 +126,7 @@ export const config: ConfigTypes = {
     "icp": {
       "evm_rpc": {
         "anvil": {
-          "canister_id": "lm4fb-uh777-77777-aaacq-cai",
+          "canister_id": "kirkt-nh777-77777-aaaeq-cai",
           "rpc_url": "http://host.docker.internal:8545"
         },
         "testnet": {
@@ -1370,7 +1370,7 @@ export const config: ConfigTypes = {
       "max_actions": 50000,
       "min_action_gap_ms": 0,
       "min_attack_gap_ms": 200,
-      "grace_ms": 5000,
+      "grace_ms": 3600000,
       "burst_limit_per_100ms": 40,
       "min_actions": 50,
       "attack_per_key_divisor": 100
