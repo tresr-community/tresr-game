@@ -217,6 +217,7 @@ in
       "^.vscode/"
       "^contracts/" # Using custom pre-commit hook.
       "^docs/agents/.*"
+      "^src/satellite/*.did"
       "candid/.*\\.ts$"
       "dist/"
       "node_modules/"
