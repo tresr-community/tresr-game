@@ -293,6 +293,7 @@ export class CombatManager {
         const bkb = this.config.entities.boss.knockback;
         this.boss.applyKnockback(player.x, bkb.force, bkb.stun_ms);
         this.addScore(scoring.boss_hit);
+        gameActions.incrementBossHits();
         hit = true;
       }
     }
@@ -427,6 +428,7 @@ export class CombatManager {
       this.addScore(scoring.enemy_kill);
     } else {
       this.addScore(scoring.super_hit);
+      gameActions.incrementSuperHits();
     }
 
     // Fire burst VFX at pierce point
@@ -466,6 +468,7 @@ export class CombatManager {
     const superEffects = this.config.entities.player.super.effects;
 
     this.addScore(scoring.boss_hit);
+    gameActions.incrementBossHits();
 
     // Visual explosion at impact point
     this.triggerFlash();

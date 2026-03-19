@@ -29,6 +29,8 @@ export interface GameState {
   keys: number;
   timer: number;
   enemiesKilled: number;
+  bossHits: number;
+  superHits: number;
   phase: "survival" | "boss" | "victory" | "lost";
   isPaused: boolean;
   configTampered: boolean;
@@ -46,6 +48,8 @@ const INITIAL_STATE: GameState = {
   keys: 0,
   timer: 0,
   enemiesKilled: 0,
+  bossHits: 0,
+  superHits: 0,
   phase: "survival",
   isPaused: false,
   configTampered: false,
@@ -131,6 +135,16 @@ export const gameActions = {
   /** Increment enemy kill counter (ticket #181) */
   incrementEnemiesKilled() {
     store.setKey("enemiesKilled", store.get().enemiesKilled + 1);
+  },
+
+  /** Increment boss hit counter */
+  incrementBossHits() {
+    store.setKey("bossHits", store.get().bossHits + 1);
+  },
+
+  /** Increment super hit counter */
+  incrementSuperHits() {
+    store.setKey("superHits", store.get().superHits + 1);
   },
 
   /** Mark config as tampered (one-way, cannot be un-tampered) */

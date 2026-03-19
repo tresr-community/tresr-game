@@ -499,7 +499,7 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
         _ => Ok(()),
     };
 
-    let ic_used = ic_cdk::api::instruction_counter() - ic_start;
+    let ic_used = ic_cdk::api::instruction_counter().saturating_sub(ic_start);
     logging::log_debug(
         "Perf",
         &format!(
@@ -2115,7 +2115,7 @@ async fn claim_authorize(
         claimed_doc,
     )?;
 
-    let ic_used = ic_cdk::api::instruction_counter() - ic_start;
+    let ic_used = ic_cdk::api::instruction_counter().saturating_sub(ic_start);
     logging::log_debug(
         "Perf",
         &format!(

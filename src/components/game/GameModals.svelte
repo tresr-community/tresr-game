@@ -21,6 +21,8 @@
   let score = $state("0");
   let keys = $state("0");
   let enemies = $state("0");
+  let bossHits = $state("0");
+  let superHits = $state("0");
   let _time = $state("0:00");
 
   let showVictoryHighScore = $state(false);
@@ -55,6 +57,8 @@
     score = state.score.toString();
     keys = state.keys.toString();
     enemies = state.enemiesKilled.toString();
+    bossHits = state.bossHits.toString();
+    superHits = state.superHits.toString();
     _time = formatTime(state.timer);
 
     const auth = getAuthState();
@@ -214,7 +218,7 @@
   </div>
 
   <div
-    class="mb-4 grid w-full grid-cols-4 gap-px overflow-hidden rounded-md border border-white/10 bg-white/10 shadow-inner"
+    class="mb-4 grid w-full grid-cols-3 gap-px overflow-hidden rounded-md border border-white/10 bg-white/10 shadow-inner sm:grid-cols-6"
   >
     <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
       <div
@@ -301,7 +305,7 @@
   </p>
 
   <div
-    class="mt-2 mb-4 grid w-full grid-cols-4 gap-px overflow-hidden rounded-md border border-white/10 bg-white/10 shadow-inner"
+    class="mt-2 mb-4 grid w-full grid-cols-3 gap-px overflow-hidden rounded-md border border-white/10 bg-white/10 shadow-inner sm:grid-cols-6"
   >
     <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
       <div
@@ -341,6 +345,26 @@
       </div>
       <div class="font-mono text-sm font-bold text-[#facc15] sm:text-lg">
         {_time}
+      </div>
+    </div>
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Boss Hits
+      </div>
+      <div class="font-mono text-sm font-bold text-[#c084fc] sm:text-lg">
+        {bossHits}
+      </div>
+    </div>
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Super Hits
+      </div>
+      <div class="font-mono text-sm font-bold text-[#fbbf24] sm:text-lg">
+        {superHits}
       </div>
     </div>
   </div>

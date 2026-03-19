@@ -1204,6 +1204,7 @@ export class MainScene extends Phaser.Scene {
     if (k.active) {
       k.kill();
       this.collectedKeys++;
+      gameActions.collectKey();
       this.score += this.gameplayConfig.scoring.key_collection;
       this.playSound("key_collect");
       log.info(COMPONENT_NAME, `Key Collected! Total: ${this.collectedKeys}`);
@@ -1332,6 +1333,13 @@ export class MainScene extends Phaser.Scene {
 
   private async onVictory() {
     if (this.phase === "victory" || this.phase === "lost") return;
+
+    // Sync final elapsed time to store for the victory screen display BEFORE phase change
+    const winDuration = Math.round(
+      ((this.sessionEndMs || Date.now()) - this.sessionStartMs) / 1000
+    );
+    gameActions.setTimer(winDuration);
+
     this.phase = "victory";
     gameActions.setPhase("victory");
     log.info(COMPONENT_NAME, "VICTORY! Authorizing settlement...");
@@ -1365,15 +1373,10 @@ export class MainScene extends Phaser.Scene {
         },
       })
     );
-    const winDuration = Math.round(
-      ((this.sessionEndMs || Date.now()) - this.sessionStartMs) / 1000
-    );
     trackGameWin(this.score, {
       keysCollected: this.collectedKeys,
       duration: winDuration,
     });
-    // Sync final elapsed time to store for the victory screen display
-    gameActions.setTimer(winDuration);
 
     const auth = getAuthState();
     if (auth.isGuest) {
@@ -1551,6 +1554,11 @@ export class MainScene extends Phaser.Scene {
   private async onPlayerDeath() {
     if (this.phase === "lost" || this.phase === "victory") return;
     const deathPhase = this.phase;
+
+    // Sync final elapsed time to store for the game over screen display BEFORE phase change
+    const deathDuration = Math.round((Date.now() - this.sessionStartMs) / 1000);
+    gameActions.setTimer(deathDuration);
+
     this.phase = "lost";
     gameActions.setPhase("lost");
     log.info(COMPONENT_NAME, "PLAYER DIED. Rug pulled.");
@@ -1575,7 +1583,7 @@ export class MainScene extends Phaser.Scene {
     this.playSound("game_over");
     void MusicManager.getInstance().stop();
     this.uiManager.showPhaseAnnouncement("RUG PULLED");
-    const deathDuration = Math.round((Date.now() - this.sessionStartMs) / 1000);
+
     trackPlayerDeath(this.score, deathPhase, this.collectedKeys);
     trackGameLoss("player_died", {
       score: this.score,
@@ -1583,8 +1591,6 @@ export class MainScene extends Phaser.Scene {
       keysCollected: this.collectedKeys,
       duration: deathDuration,
     });
-    // Sync final elapsed time to store for the game over screen display
-    gameActions.setTimer(deathDuration);
 
     // Increment guest session counter after game completes
     const auth = getAuthState();
