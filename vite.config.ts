@@ -23,15 +23,12 @@ const BUILD_ID = `${gitHash}-${gitTimestamp}`;
 // Vite config
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, process.cwd(), "");
-  const emulatorPort = env.VITE_JUNO_EMULATOR_PORT ?? 5987;
 
   return {
     plugins: [
       sveltekit(),
       juno({
-        container: env.VITE_SATELLITE_ID
-          ? {url: `http://${env.VITE_SATELLITE_ID}.localhost:${emulatorPort}`}
-          : true,
+        container: true,
       }),
       tailwindcss(),
       swBuilder(),
@@ -55,6 +52,7 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
+      port: 5174,
       fs: {
         allow: [
           "..", // To allow serving files from the workspace root or devenv node_modules
@@ -90,6 +88,9 @@ export default defineConfig(({mode}) => {
             warning.exporter === "@icp-sdk/core/candid"
           )
             return;
+          // Third-party packages like @walletconnect use /*#__PURE__*/ annotations 
+          // that Rollup warns about. Safe to ignore.
+          if (warning.code === "INVALID_ANNOTATION") return;
           // SVG assets in /public are resolved at runtime by the browser, not at
           // build time. Vite warns when it can't find them statically — safe to ignore.
           if (

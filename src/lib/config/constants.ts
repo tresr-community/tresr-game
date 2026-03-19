@@ -43,12 +43,15 @@ export const JUNO_SIWA_PROVIDER = config.auth.avalanche.enabled
 log.debug(COMPONENT_NAME, `Juno SIWA Provider: ${JUNO_SIWA_PROVIDER}`);
 
 // IC Host URL for SIWA client
-// In development: use local emulator
-// In production: use mainnet
+// In development: use local emulator (localhost, not 127.0.0.1 — browsers
+// treat them differently for CORS and cookie scoping).
+// Detection uses import.meta.env.DEV (Juno-recommended) OR MODE, so
+// both `bun run dev` (Vite dev server) and local deploys are covered.
 export const IC_HOST =
-  JUNO_ENVIRONMENT === "development"
-    ? `http://127.0.0.1:${JUNO_EMULATOR_PORT}`
+  import.meta.env.DEV === true || JUNO_ENVIRONMENT === "development"
+    ? `http://localhost:${JUNO_EMULATOR_PORT}`
     : "https://ic0.app";
+log.debug(COMPONENT_NAME, `IC_HOST resolved: ${IC_HOST} (env: ${JUNO_ENVIRONMENT}, DEV: ${import.meta.env.DEV})`);
 
 /**
  * Get the environment key for blockchain config lookup.

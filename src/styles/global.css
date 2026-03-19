@@ -44,6 +44,7 @@
   src: url("/fonts/jetbrainsmono-bold.woff2") format("woff2");
 }
 @plugin "@tailwindcss/typography";
+@plugin "tailwind-scrollbar";
 
 /* Tailwind v4 theme configuration */
 @theme {

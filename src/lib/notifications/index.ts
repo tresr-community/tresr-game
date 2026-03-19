@@ -7,7 +7,7 @@ import {
 } from "@/lib/auth";
 import {log, showToast} from "@/lib/utils/log";
 import type {UserProfile, NotificationItem} from "@/types/backend";
-import {enqueueProfileWrite} from "@/lib/user";
+import {enqueueProfileWrite} from "@/lib/user/write-queue";
 
 const COMPONENT_NAME = "NotificationManager";
 const MAX_NOTIFICATIONS = 50;

@@ -6,6 +6,8 @@
 ##################################################
 server:
   juno:
+    # Currently using the same variable name as we are using
+    # Environments inside GitHub Actions to differentiate.
     development:
       satellite_id: "${VITE_SATELLITE_ID}"
       orbiter_id: "${VITE_ORBITER_ID}"

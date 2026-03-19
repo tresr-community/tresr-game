@@ -12,6 +12,9 @@ src/lib/config/validate.ts
 src/styles/global.css
 src/types/config.ts
 
+# Agents docs
+docs/agents/
+
 # Build outputs
 dist/
 .astro/

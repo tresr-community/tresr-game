@@ -33,9 +33,9 @@ type ErrorRecord = record {
   error_id : text;
 };
 // # HTTP Header.
-//
+// 
 // Represents a HTTP header.
-//
+// 
 // See [`HttpRequestArgs::headers`] and [`HttpRequestResult::headers`].
 type HttpHeader = record {
   // Value of the header.
@@ -44,7 +44,7 @@ type HttpHeader = record {
   name : text;
 };
 // # HTTP Request Result
-//
+// 
 // Result type of [`http_request`](https://internetcomputer.org/docs/current/references/ic-interface-spec/#ic-http_request).
 type HttpRequestResult = record {
   // The response status (e.g. 200, 404).
@@ -59,14 +59,14 @@ type Result_1 = variant { Ok; Err : text };
 type Result_2 = variant { Ok : vec ErrorRecord; Err : text };
 type Result_3 = variant { Ok : text; Err : text };
 // # Transform Args.
-//
+// 
 // ```text
 // record {
 // response : http_response;
 // context : blob;
 // }
 // ```
-//
+// 
 // See [`TransformContext`].
 type TransformArgs = record {
   // Context for response transformation
@@ -82,11 +82,11 @@ service : {
   delete_errors : (vec text) -> (Result_1);
   // Returns the build-time config hash so the client can verify that the deployed
   // satellite was built from the same config as the running frontend.
-  //
+  // 
   // Called by the game pre-flight check in `game` before the fee gate opens.
   // A mismatch means the satellite and frontend are out of sync (e.g. during a
   // rolling deploy) and the player should see an "Under Maintenance" notice.
-  //
+  // 
   // The hash is baked into the Wasm at build time from `server-constants.ts`
   // via `build.rs` — it never changes at runtime.
   get_config_hash : () -> (text) query;
@@ -97,7 +97,7 @@ service : {
   // This is the oracle address used for on-chain signature verification.
   get_oracle_address : () -> (Result_3);
   // Lift a ban on a user. Admin-only.
-  //
+  // 
   // Clears `banned_until` and `ban_reason` on the user's profile so they can
   // play again. Does NOT reset `offence_count` — ban tiers still escalate on
   // future offences.
@@ -105,7 +105,7 @@ service : {
   // Report a client-side error. Anyone (including unauthenticated callers) can
   // report errors. The satellite generates the `error_id` server-side so the
   // client cannot forge it.
-  //
+  // 
   // Returns the `error_id` (e.g. "err_1772598984825320076") which is also the
   // Juno document key. Users give this to support; admins filter by it.
   report_error : (ErrorPayload) -> (Result_3);
@@ -113,11 +113,11 @@ service : {
   // Fetches the current document version for optimistic concurrency before writing.
   resolve_error : (text, bool) -> (Result_1);
   // Transform function for IC management canister HTTP outcalls.
-  //
+  // 
   // Strips all response headers (Date, Content-Length, server-specific metadata)
   // so that all IC replicas see the same deterministic response body, which is
   // required for HTTP outcall consensus.
-  //
+  // 
   // Referenced by `fetch_transaction_json` in `evm_rpc.rs` via `TransformContext`.
   strip_http_headers : (TransformArgs) -> (HttpRequestResult) query;
 }

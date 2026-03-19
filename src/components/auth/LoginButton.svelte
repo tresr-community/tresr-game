@@ -349,9 +349,14 @@
     {#if activeTab === "normie"}
       <div class="animate-in fade-in flex flex-col gap-4">
         <p
+          class="text-center text-xs tracking-wide text-white/70 sm:text-sm"
+        >
+          Fight some bankers without spending tokens.
+        </p>
+        <p
           class="text-center text-xs tracking-wide text-white/50 italic sm:text-sm"
         >
-          "Fight some bankers without spending tokens. No risk, no reward."
+          No risk, no reward.
         </p>
         <button
           onclick={handleNormieLogin}
@@ -370,9 +375,14 @@
       <div class="animate-in fade-in flex flex-col gap-4">
         {#if degenEnabled}
           <p
+            class="text-center text-xs tracking-wide text-white/70 sm:text-sm"
+          >
+            Join the decentralized elite.
+          </p>
+          <p
             class="text-center text-xs tracking-wide text-white/50 italic sm:text-sm"
           >
-            "Join the decentralized elite. High risk, high reward."
+            High risk, high reward.
           </p>
           <div class="flex flex-col gap-3">
             {#if iidEnabled}

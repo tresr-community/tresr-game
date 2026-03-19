@@ -142,7 +142,7 @@ function cmd_juno_deploy() {
 	fi
 
 	log_info "📤 Juno hosting deploy (mode=$mode)..."
-	if ! juno hosting deploy --immediate --mode "$mode"; then
+	if ! SKIP_PREDEPLOY=true juno hosting deploy --immediate --mode "$mode"; then
 		log_error "Deploy failed!"
 		return 1
 	fi
@@ -1004,7 +1004,8 @@ oneshot | loop)
 		exit 20
 	}
 	# skip_prebuild=true: client-config already ran above for lint.
-	cmd_svelte_build true || {
+	# Args: mode=development, skip_prebuild=true (client-config already ran above)
+	cmd_svelte_build development true || {
 		log_error "Build failed."
 		exit 9
 	}

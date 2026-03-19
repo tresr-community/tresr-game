@@ -9,6 +9,7 @@
   import NotificationToast from "@/components/notifications/NotificationToast.svelte";
   import Confetti from "@/components/effects/Confetti.svelte";
   import {isPortrait} from "@/lib/stores/ui.svelte";
+  import PwaRegistration from "@/lib/pwa";
 
   import "../styles/global.css";
 
@@ -29,7 +30,7 @@
     });
 
     // 2. Register PWA and Analytics
-    import("@/lib/pwa").then((m) => m.default.getInstance().register());
+    PwaRegistration.getInstance().register();
     import("@/lib/metrics/analytics").then(async (m) => {
       await m.initAnalytics();
       await m.trackPageView(window.location.pathname);
@@ -80,7 +81,7 @@
       window.removeEventListener("resize", debouncedCheck);
       window.removeEventListener("orientationchange", orientationHandler);
 
-      import("@/lib/pwa").then((m) => m.default.getInstance().destroy());
+      PwaRegistration.getInstance().destroy();
     };
   });
 </script>

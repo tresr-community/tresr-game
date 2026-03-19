@@ -421,8 +421,52 @@ interface PendingWrite {
 
     // Write server config as JSON so juno.config.mjs (and the Skylab container)
     // can read it without needing the `yaml` npm package.
+    // Expand ${VAR} placeholders from process.env BEFORE writing so the generated
+    // file always contains real values, not template strings.
     const serverSection = (config.server as Record<string, unknown>) || {};
-    writeOrCollect(serverConfigPath, JSON.stringify(serverSection, null, 2));
+
+    // Deep-expand all ${VAR} placeholders in an object tree using process.env.
+    function expandEnvVars(obj: unknown): unknown {
+      if (typeof obj === "string") {
+        return obj.replace(/\$\{(\w+)\}/g, (match, name) => {
+          const val = process.env[name];
+          if (val === undefined || val === "") {
+            log.error(
+              COMPONENT_NAME,
+              `config-server.json: environment variable '${name}' is not set (referenced as '${match}' in tresr.yaml)`
+            );
+            process.exit(1);
+          }
+          return val;
+        });
+      }
+      if (Array.isArray(obj)) return obj.map(expandEnvVars);
+      if (obj !== null && typeof obj === "object") {
+        return Object.fromEntries(
+          Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
+            k,
+            expandEnvVars(v),
+          ])
+        );
+      }
+      return obj;
+    }
+
+    const expandedServerSection = expandEnvVars(serverSection);
+
+    // Secondary guard: bomb out if any value still looks like an unexpanded
+    // placeholder (indicates expandEnvVars missed a path — defence in depth).
+    const serverJson = JSON.stringify(expandedServerSection, null, 2);
+    const unexpandedMatch = serverJson.match(/\$\{(\w+)\}/);
+    if (unexpandedMatch) {
+      log.error(
+        COMPONENT_NAME,
+        `config-server.json still contains unexpanded placeholder '${unexpandedMatch[0]}' after expansion — check tresr.yaml and your .env file`
+      );
+      process.exit(1);
+    }
+
+    writeOrCollect(serverConfigPath, serverJson);
 
     writeOrCollect(publicConfigPath, JSON.stringify(clientConfig, null, 2));
 

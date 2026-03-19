@@ -196,7 +196,7 @@
   });
 </script>
 
-<Modal bind:open title="🏆 DEGENERATE HALL OF FAME">
+<Modal bind:open title="🏆 DEGENERATE HALL OF FAME" maxWidth="max-w-2xl">
   <div
     class="mb-4 flex w-full rounded-md border border-white/10 bg-black/40 p-1"
   >
