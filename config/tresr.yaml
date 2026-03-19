@@ -66,6 +66,8 @@ server:
           write: "managed"
           memory: "stable"
   anti_cheat:
+    # Scores above this value are mathematically impossible and trigger immediate bans.
+    max_score: 20000
     ban_durations_hours:
       - 24
       - 72
@@ -95,9 +97,10 @@ server:
       # Set high (100) to be permissive — the check mainly catches zero-attack key farmers.
       attack_per_key_divisor: 100
   highscore:
-    score_ttl_hours: 24
-    consolation_prize_percent: 1
-    consolation_prize_min_games: 3
+    score_ttl_hours: 24 # How long a score stays on the leaderboard
+    consolation_prize_percent: 1 # Percentage of the prize pool to give to consolation winners
+    consolation_prize_min_games: 3 # Minimum number of games to play to be eligible for consolation prize
+    consolation_prize_expiration_days: 7 # How long a consolation prize is valid for
 
 ##################################################
 # Client side configuration.
@@ -344,7 +347,12 @@ client:
     # Vault economics
     # Reference: docs/fomo.md
     vault:
-      max_score: 20000
+      payout_max_score: 15000
+      payout_curve:
+        - {score: 0, percent: 0}
+        - {score: 5000, percent: 20}
+        - {score: 10000, percent: 50}
+        - {score: 15000, percent: 100}
       # Below this cap, paid mode is locked out.
       minimum_cap: 1000
       tiers:

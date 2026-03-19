@@ -12,6 +12,7 @@
   import {authStore} from "@/lib/auth/store.svelte";
   import {notificationManager} from "@/lib/notifications";
   import {enqueueProfileWrite} from "@/lib/user";
+  import {claimsStore} from "@/lib/user/claimsStore.svelte";
   import {log} from "@/lib/utils/log";
   import {config} from "@/lib/config/client";
   import {initializeJunoSatellite} from "@/lib/utils/juno";
@@ -155,9 +156,22 @@
         <!-- Profile: Authenticated -->
         <button
           onclick={handleAuthBtnClick}
-          class="flex h-12 w-12 items-center justify-center rounded-full text-xl transition-colors hover:bg-white/10"
-          title="My Profile">👤</button
+          class="relative flex h-12 w-12 items-center justify-center rounded-full text-xl transition-colors hover:bg-white/10 {claimsStore.hasUrgentClaims
+            ? 'bg-warning/20 animate-pulse shadow-[0_0_15px_var(--color-warning)]'
+            : ''}"
+          title="My Profile"
         >
+          {#if claimsStore.hasUrgentClaims}
+            <span class="absolute top-0 right-0 z-10 flex h-3 w-3">
+              <span
+                class="bg-warning absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+              ></span>
+              <span class="bg-warning relative inline-flex h-3 w-3 rounded-full"
+              ></span>
+            </span>
+          {/if}
+          👤
+        </button>
       {/if}
 
       {#if isAdmin}

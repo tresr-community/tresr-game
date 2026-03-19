@@ -3,17 +3,7 @@
   import {getVaultCurrentBalance} from "@/lib/blockchain/contracts/vault";
   import {log} from "@/lib/utils/log";
 
-  // Game constants replicating config/tresr.yaml and satellite/src/lib.rs exactly
-  const VAULT_TIER_BUILDING = 10000n * 10n ** 18n;
-  const VAULT_TIER_SWEET_SPOT = 50000n * 10n ** 18n;
-  const VAULT_TIER_FOMO = 100000n * 10n ** 18n;
-
-  const PAYOUT_FIXED_BUILDING = 500n * 10n ** 18n;
-  const PAYOUT_PERCENT_SWEET_SPOT = 10n;
-  const PAYOUT_PERCENT_FOMO = 25n;
-  const PAYOUT_PERCENT_LEGENDARY = 50n;
-
-  const MAX_SCORE = 20000n;
+  import {calculateScore, calculateRewardAmount} from "@/lib/game/reward";
 
   interface Inputs {
     vaultBalance: HTMLInputElement | null;
@@ -54,44 +44,11 @@
       const bossHits = parseInt(inputValues.bossHits || "0");
       const superHits = parseInt(inputValues.superHits || "0");
 
-      // Score evaluation matching gameplayConfig parameters exactly
-      const score = BigInt(
-        keys * 100 + kills * 10 + bossHits * 25 + superHits * 25
-      );
+      // Score evaluation
+      const score = calculateScore(keys, kills, bossHits, superHits);
 
-      // 2. Maximum payout tier mapping
-      let maxPayoutWei = 0n;
-      if (vaultBalanceWei <= VAULT_TIER_BUILDING) {
-        maxPayoutWei = PAYOUT_FIXED_BUILDING;
-      } else if (vaultBalanceWei <= VAULT_TIER_SWEET_SPOT) {
-        maxPayoutWei = (vaultBalanceWei * PAYOUT_PERCENT_SWEET_SPOT) / 100n;
-      } else if (vaultBalanceWei <= VAULT_TIER_FOMO) {
-        maxPayoutWei = (vaultBalanceWei * PAYOUT_PERCENT_FOMO) / 100n;
-      } else {
-        maxPayoutWei = (vaultBalanceWei * PAYOUT_PERCENT_LEGENDARY) / 100n;
-      }
-
-      // 3. Performance scalar calculation
-      // Following `max_perf = max_payout.checked_mul(session.score)...` from Rust
-      let maxPerfWei = (maxPayoutWei * score) / MAX_SCORE;
-
-      // Safety cap: never drain more than 50%
-      const halfVault = vaultBalanceWei / 2n;
-      if (maxPerfWei > halfVault) {
-        maxPerfWei = halfVault;
-      }
-
-      // 4. Fixed guaranteed compensation (assumes base entry fee)
-      // `let guaranteed = fee_amount * 11 / 10;`
-      // Assumes generic feeAmount = 1 TRESR
-      const feeAmountWei = 1n * 10n ** 18n;
-      const guaranteedWei = (feeAmountWei * 11n) / 10n;
-
-      // 5. Final resolution
-      let amountWei = maxPerfWei > guaranteedWei ? maxPerfWei : guaranteedWei;
-      if (amountWei > vaultBalanceWei) {
-        amountWei = vaultBalanceWei;
-      }
+      // Final resolution
+      const amountWei = calculateRewardAmount(score, vaultBalanceWei);
 
       const formatted = (Number(amountWei) / 1e18).toLocaleString("en-US", {
         minimumFractionDigits: 2,

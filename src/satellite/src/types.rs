@@ -137,6 +137,63 @@ where
 }
 
 // =============================================================================
+// Flexible u128 deserializer
+// =============================================================================
+
+/// Deserialize a u128 that may arrive as a number, a string, or a map wrapper.
+fn deserialize_flexible_u128<'de, D>(deserializer: D) -> Result<u128, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::{self, MapAccess, Visitor};
+    use std::fmt;
+
+    struct FlexU128;
+
+    impl<'de> Visitor<'de> for FlexU128 {
+        type Value = u128;
+
+        fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.write_str("a u128, a numeric string, or a wrapped bigint object")
+        }
+
+        fn visit_u64<E: de::Error>(self, v: u64) -> Result<u128, E> {
+            Ok(v as u128)
+        }
+
+        fn visit_i64<E: de::Error>(self, v: i64) -> Result<u128, E> {
+            u128::try_from(v).map_err(de::Error::custom)
+        }
+
+        fn visit_f64<E: de::Error>(self, v: f64) -> Result<u128, E> {
+            if v >= 0.0 && v <= u128::MAX as f64 {
+                Ok(v as u128)
+            } else {
+                Err(de::Error::custom(format!("f64 {} out of u128 range", v)))
+            }
+        }
+
+        fn visit_str<E: de::Error>(self, v: &str) -> Result<u128, E> {
+            v.parse::<u128>().map_err(de::Error::custom)
+        }
+
+        fn visit_map<M: MapAccess<'de>>(self, mut map: M) -> Result<u128, M::Error> {
+            let mut value: Option<u128> = None;
+            while let Some(key) = map.next_key::<String>()? {
+                let raw: String = map.next_value()?;
+                if let Ok(n) = raw.parse::<u128>() {
+                    value = Some(n);
+                }
+                let _ = key;
+            }
+            value.ok_or_else(|| de::Error::custom("map wrapper contained no numeric value"))
+        }
+    }
+
+    deserializer.deserialize_any(FlexU128)
+}
+
+// =============================================================================
 // User Profile (stored in "users" collection)
 // =============================================================================
 
@@ -350,8 +407,8 @@ pub enum FeeStatus {
 #[derive(CandidType, Serialize, Deserialize, Clone, Debug)]
 pub struct ClaimRequest {
     /// Amount to claim in tokens
-    #[serde(deserialize_with = "deserialize_flexible_u64")]
-    pub amount: u64,
+    #[serde(deserialize_with = "deserialize_flexible_u128")]
+    pub amount: u128,
 
     /// Current status of the claim
     pub status: ClaimStatus,
@@ -378,6 +435,10 @@ pub struct ClaimRequest {
     /// Claim type: "boss_kill" (default) or "consolation"
     #[serde(default = "default_claim_type")]
     pub claim_type: String,
+
+    /// Expiration timestamp in milliseconds. If present, claim cannot be authorized after this time.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<u64>,
 }
 
 fn default_claim_type() -> String {

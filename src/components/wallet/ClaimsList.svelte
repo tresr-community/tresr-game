@@ -18,6 +18,7 @@
   let isLoading = $state(true);
   let currentUser: any = $state(null);
   let allClaims: Doc<any>[] = $state([]);
+  let now = $state(Date.now());
 
   const env = getEnvironmentKey();
   const explorerUrl = config.blockchain.avalanche[env].explorer_url;
@@ -35,7 +36,13 @@
   let unsubAuth: (() => void) | null = null;
   let disposed = false;
 
+  let timerInterval: number;
+
   onMount(() => {
+    timerInterval = window.setInterval(() => {
+      now = Date.now();
+    }, 1000);
+
     initAuth().then(() => {
       if (disposed) return;
       unsubAuth = subscribeToAuth(async (user) => {
@@ -51,6 +58,7 @@
 
   onDestroy(() => {
     disposed = true;
+    window.clearInterval(timerInterval);
     if (unsubAuth) unsubAuth();
   });
 
@@ -210,11 +218,33 @@
               class="hover:border-warning/60 transition-colors"
             >
               <h2
-                class="text-warning mb-4 font-mono text-xl font-bold tracking-wide"
+                class="text-warning mb-4 flex items-center justify-between font-mono text-xl font-bold tracking-wide"
               >
-                {claim.data.claim_type === "consolation"
-                  ? "Consolation Prize"
-                  : "Boss Defeated!"}
+                <span
+                  >{claim.data.claim_type === "consolation"
+                    ? "Consolation Prize"
+                    : "Boss Defeated!"}</span
+                >
+                {#if claim.data.expires_at}
+                  {@const remaining = Number(claim.data.expires_at) - now}
+                  {#if remaining > 0}
+                    {@const d = Math.floor(remaining / 86400000)}
+                    {@const h = Math.floor((remaining % 86400000) / 3600000)}
+                    {@const m = Math.floor((remaining % 3600000) / 60000)}
+                    {@const s = Math.floor((remaining % 60000) / 1000)}
+                    <span
+                      class="bg-warning/20 text-warning rounded px-2 py-1 font-mono text-xs"
+                    >
+                      Expires in: {d}d {h}h {m}m {s}s
+                    </span>
+                  {:else}
+                    <span
+                      class="bg-error/20 text-error rounded px-2 py-1 font-mono text-xs"
+                    >
+                      Expired
+                    </span>
+                  {/if}
+                {/if}
               </h2>
               <div class="mt-2 flex items-end justify-between">
                 <div>
@@ -223,7 +253,12 @@
                   >
                     Reward amount
                   </p>
-                  <p class="font-mono text-3xl font-bold">
+                  <p
+                    class="font-mono text-3xl font-bold {claim.data
+                      .expires_at && Number(claim.data.expires_at) - now <= 0
+                      ? 'text-white/40'
+                      : ''}"
+                  >
                     {(claim.data.amount / 1e18).toFixed(2)}
                     <span class="text-primary text-sm">$TRESR</span>
                   </p>
@@ -232,10 +267,14 @@
                   variant="warning"
                   size="sm"
                   onclick={() => handleClaim(claim.key)}
-                  disabled={processingClaims[claim.key]}
+                  disabled={processingClaims[claim.key] ||
+                    (claim.data.expires_at &&
+                      Number(claim.data.expires_at) - now <= 0)}
                 >
                   {#if processingClaims[claim.key]}
                     Claiming...
+                  {:else if claim.data.expires_at && Number(claim.data.expires_at) - now <= 0}
+                    Expired
                   {:else}
                     Claim Now
                   {/if}

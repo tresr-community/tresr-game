@@ -74,6 +74,7 @@ const AntiCheatSchema = z.object({
   ban_durations_hours: z.array(z.number().positive()).min(1),
   permanent_after_offence: z.number().int().min(1),
   ban_reasons: z.array(z.string().min(1)).min(1),
+  max_score: z.number().int().positive(),
   replay: AntiCheatReplaySchema,
 });
 
@@ -492,7 +493,13 @@ const VaultTiersSchema = z.object({
 });
 
 const VaultSchema = z.object({
-  max_score: z.number().int().positive(),
+  payout_max_score: z.number().int().positive(),
+  payout_curve: z.array(
+    z.object({
+      score: z.number().int().nonnegative(),
+      percent: z.number().int().nonnegative(),
+    })
+  ),
   minimum_cap: z.number().int().positive(),
   tiers: VaultTiersSchema,
   difficulty_multipliers: z.record(z.string(), z.number().positive()),

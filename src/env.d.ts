@@ -115,7 +115,10 @@ declare module "/config-client.json" {
       claim_retries: {        max_attempts: number;
         base_delay_ms: number;
       };
-      vault: {        max_score: number;
+      vault: {        payout_max_score: number;
+        payout_curve: Array<{          score: number;
+          percent: number;
+        }>;
         minimum_cap: number;
         tiers: {          building: number;
           sweet_spot: number;
@@ -744,6 +747,7 @@ declare module "/config-client.json" {
     anti_cheat: {      ban_durations_hours: Array<number>;
       permanent_after_offence: number;
       ban_reasons: string[];
+      max_score: number;
       replay: {        max_actions: number;
         min_action_gap_ms: number;
         min_attack_gap_ms: number;
@@ -885,7 +889,10 @@ declare module "../../../static/config-client.json" {
       claim_retries: {        max_attempts: number;
         base_delay_ms: number;
       };
-      vault: {        max_score: number;
+      vault: {        payout_max_score: number;
+        payout_curve: Array<{          score: number;
+          percent: number;
+        }>;
         minimum_cap: number;
         tiers: {          building: number;
           sweet_spot: number;
@@ -1514,6 +1521,7 @@ declare module "../../../static/config-client.json" {
     anti_cheat: {      ban_durations_hours: Array<number>;
       permanent_after_offence: number;
       ban_reasons: string[];
+      max_score: number;
       replay: {        max_actions: number;
         min_action_gap_ms: number;
         min_attack_gap_ms: number;

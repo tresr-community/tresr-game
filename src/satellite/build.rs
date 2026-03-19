@@ -31,6 +31,7 @@ struct Juno {
 
 #[derive(Deserialize)]
 struct AntiCheat {
+    max_score: u64,
     ban_durations_hours: Vec<u64>,
     permanent_after_offence: u64,
     replay: Replay,
@@ -52,6 +53,7 @@ struct Highscore {
     score_ttl_hours: u64,
     consolation_prize_percent: u64,
     consolation_prize_min_games: u64,
+    consolation_prize_expiration_days: u64,
 }
 
 #[derive(Deserialize)]
@@ -69,10 +71,17 @@ struct Gameplay {
 
 #[derive(Deserialize)]
 struct VaultConfig {
-    max_score: u64,
+    payout_max_score: u64,
     tiers: VaultTiers,
     payout_fixed: PayoutFixed,
     payout_percentages: PayoutPercentages,
+    payout_curve: Vec<CurvePoint>,
+}
+
+#[derive(Deserialize)]
+struct CurvePoint {
+    score: u64,
+    percent: u64,
 }
 
 #[derive(Deserialize)]
@@ -254,6 +263,17 @@ fn main() {
         .collect::<Vec<_>>()
         .join(", ");
 
+    // Format payout curve as Rust array of tuples
+    let payout_curve_str = config
+        .client
+        .gameplay
+        .vault
+        .payout_curve
+        .iter()
+        .map(|p| format!("({}, {})", p.score, p.percent))
+        .collect::<Vec<_>>()
+        .join(", ");
+
     // Generate Rust constants
     let ecdsa_key_name = match network.as_str() {
         "mainnet" => "key_1",
@@ -273,8 +293,14 @@ pub const PERMANENT_AFTER_OFFENCE: u64 = {permanent};
 /// Maximum keys a player can collect per session (from client.gameplay.max_keys)
 pub const MAX_KEYS_COLLECTED: u64 = {max_keys};
 
-/// Maximum score a player can realistically achieve (from client.gameplay.vault.max_score)
-pub const MAX_SCORE: u64 = {max_score};
+/// Maximum score achievable before being considered a cheater (from server.anti_cheat.max_score)
+pub const ANTI_CHEAT_MAX_SCORE: u64 = {anti_cheat_max_score};
+
+/// The maximum score achievable for 100% of payout matching the vault tier limit (from client.gameplay.vault.payout_max_score)
+pub const PAYOUT_MAX_SCORE: u64 = {payout_max_score};
+
+/// Array of (score, percent) points for piecewise linear payout calculation (from client.gameplay.vault.payout_curve)
+pub const PAYOUT_CURVE: &[(u64, u64)] = &[{payout_curve}];
 
 /// EVM RPC canister ID on the Internet Computer (from client.blockchain.icp.evm_rpc.{network}.canister_id)
 pub const EVM_RPC_CANISTER_ID: &str = "{evm_rpc_canister_id}";
@@ -318,6 +344,9 @@ pub const CONSOLATION_PRIZE_PERCENT: u64 = {consolation_prize_percent};
 
 /// Minimum games played to qualify for consolation prize (from server.highscore.consolation_prize_min_games)
 pub const CONSOLATION_PRIZE_MIN_GAMES: u64 = {consolation_prize_min_games};
+
+/// Consolation prize expiration in days (from server.highscore.consolation_prize_expiration_days)
+pub const CONSOLATION_PRIZE_EXPIRATION_DAYS: u64 = {consolation_prize_expiration_days};
 
 /// Vault Tier Building threshold in tokens
 pub const VAULT_TIER_BUILDING: u64 = {vault_tier_building};
@@ -374,7 +403,9 @@ pub const REPLAY_ATTACK_PER_KEY_DIVISOR: u64 = {replay_attack_per_key_divisor};
         ban_durations = ban_durations,
         permanent = config.server.anti_cheat.permanent_after_offence,
         max_keys = config.client.gameplay.max_keys,
-        max_score = config.client.gameplay.vault.max_score,
+        anti_cheat_max_score = config.server.anti_cheat.max_score,
+        payout_max_score = config.client.gameplay.vault.payout_max_score,
+        payout_curve = payout_curve_str,
         evm_rpc_canister_id = &evm_rpc_net.canister_id,
         chain_id = chain.chain_id,
         vault_contract = chain.vault_contract,
@@ -388,6 +419,8 @@ pub const REPLAY_ATTACK_PER_KEY_DIVISOR: u64 = {replay_attack_per_key_divisor};
         score_ttl_hours = config.server.highscore.score_ttl_hours,
         consolation_prize_percent = config.server.highscore.consolation_prize_percent,
         consolation_prize_min_games = config.server.highscore.consolation_prize_min_games,
+        consolation_prize_expiration_days =
+            config.server.highscore.consolation_prize_expiration_days,
         vault_tier_building = config.client.gameplay.vault.tiers.building,
         vault_tier_sweet_spot = config.client.gameplay.vault.tiers.sweet_spot,
         vault_tier_fomo = config.client.gameplay.vault.tiers.fomo,

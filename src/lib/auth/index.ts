@@ -40,6 +40,7 @@ import {
 import {config} from "@/lib/config/client";
 import {loadProfile, clearProfile, profileStore} from "@/lib/user/store.svelte";
 import {getUserProfile, enqueueProfileWrite} from "@/lib/user";
+import {loadClaims, clearClaims} from "@/lib/user/claimsStore.svelte";
 import {authStore, type AuthMode, type AuthState} from "./store.svelte";
 
 const COMPONENT_NAME = "Auth";
@@ -297,13 +298,13 @@ async function doInitAuth(): Promise<void> {
         principalId: user.key,
       };
 
-      // Load profile asynchronously
-      loadProfile(user.key)
+      // Load profile and claims asynchronously
+      Promise.all([loadProfile(user.key), loadClaims(user.key)])
         .then(() => {
           notifyAuthChange();
         })
         .catch((err) => {
-          log.info(COMPONENT_NAME, "Failed to load profile:", err);
+          log.info(COMPONENT_NAME, "Failed to load profile/claims:", err);
           notifyAuthChange();
         });
     } else {
@@ -328,6 +329,7 @@ async function doInitAuth(): Promise<void> {
           principalId: null,
         };
         clearProfile();
+        clearClaims();
       }
     }
 

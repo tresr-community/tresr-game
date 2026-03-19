@@ -271,7 +271,7 @@ pub async fn verify_avalanche_fee(tx_hash: &str) -> Result<ParsedFee, String> {
 pub async fn verify_avalanche_claim_tx(
     tx_hash: &str,
     expected_session_id: &str,
-    expected_amount: u64,
+    expected_amount: u128,
     expected_keys: u64,
 ) -> Result<(), String> {
     // Use a direct IC HTTP outcall to fetch the full transaction JSON.
@@ -433,7 +433,7 @@ fn extract_transfer_amount_to_vault(
 fn verify_claim_transaction(
     tx_data: &serde_json::Value,
     expected_session_id: &str,
-    expected_amount: u64,
+    expected_amount: u128,
     expected_keys: u64,
 ) -> Result<(), String> {
     // Check 'to' address matches vault
@@ -1160,7 +1160,7 @@ mod tests {
     /// ABI layout:
     ///   selector (4 B) | session (32 B) | amount (32 B) | keys (32 B)
     ///   offset (32 B)  | sig_len (32 B) | sig_data (padded to 32-B boundary)
-    fn claim_calldata(session_hex: &str, amount_tokens: u64, keys: u64) -> String {
+    fn claim_calldata(session_hex: &str, amount_tokens: u128, keys: u64) -> String {
         let session_clean = session_hex.strip_prefix("0x").unwrap_or(session_hex);
         let session_padded = format!("{:0>64}", session_clean);
         let amount_hex = to_u256_hex(&tokens_to_wei(amount_tokens));
@@ -1184,7 +1184,7 @@ mod tests {
         })
     }
 
-    fn claim_tx(session_hex: &str, amount_tokens: u64, keys: u64) -> serde_json::Value {
+    fn claim_tx(session_hex: &str, amount_tokens: u128, keys: u64) -> serde_json::Value {
         json!({
             "from": "0xb81749C72DB5B5209098f2bd45A7a0293925DA13",
             "to": crate::config::VAULT_CONTRACT_ADDRESS,

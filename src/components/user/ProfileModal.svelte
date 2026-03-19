@@ -20,6 +20,7 @@
   import type {UserProfile} from "@/types/backend";
   import {log} from "@/lib/utils/log";
   import {profileStore} from "@/lib/user/store.svelte";
+  import {claimsStore} from "@/lib/user/claimsStore.svelte";
   import {
     trackModalOpen,
     trackProfileUpdate,
@@ -547,9 +548,12 @@
         <a
           href="/claims"
           onclick={() => (open = false)}
-          class="flex w-full items-center justify-center gap-2 rounded-md border border-[#eab308] px-6 py-2 font-bold tracking-widest text-[#eab308] uppercase transition-colors hover:bg-[#eab308]/10 sm:w-auto"
+          class="flex w-full items-center justify-center gap-2 rounded-md border {claimsStore.hasUrgentClaims
+            ? 'animate-pulse border-[#eab308] bg-[#eab308]/20 text-white hover:bg-[#eab308]/30'
+            : 'border-[#eab308] px-6 py-2 font-bold tracking-widest text-[#eab308] hover:bg-[#eab308]/10'} px-6 py-2 font-bold tracking-widest uppercase transition-colors sm:w-auto"
         >
-          <span class="text-lg">🏆</span> Rewards
+          <span class="text-lg">🏆</span>
+          {claimsStore.hasUrgentClaims ? "Claim Prize!" : "Rewards"}
         </a>
         <button
           onclick={handleSaveProfile}

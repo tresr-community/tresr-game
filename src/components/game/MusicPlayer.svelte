@@ -86,7 +86,12 @@
   }
 
   function handleToggle() {
-    manager.toggle();
+    if (!currentTrackName && tracks.length > 0) {
+      const idx = Math.floor(Math.random() * tracks.length);
+      selectTrack(tracks[idx]);
+    } else {
+      manager.toggle();
+    }
   }
   function handlePrev() {
     manager.prev();
@@ -413,7 +418,7 @@
   {/if}
 
   <!-- Volume Controls -->
-  <div class="hidden items-center gap-4 sm:flex">
+  <div class="mt-2 hidden w-full flex-col gap-2 sm:flex">
     <!-- Music Volume -->
     <div class="flex flex-1 items-center gap-2">
       <svg

@@ -399,7 +399,25 @@ export const config: ConfigTypes = {
       "base_delay_ms": 100
     },
     "vault": {
-      "max_score": 20000,
+      "payout_max_score": 15000,
+      "payout_curve": [
+        {
+          "score": 0,
+          "percent": 0
+        },
+        {
+          "score": 5000,
+          "percent": 20
+        },
+        {
+          "score": 10000,
+          "percent": 50
+        },
+        {
+          "score": 15000,
+          "percent": 100
+        }
+      ],
       "minimum_cap": 1000,
       "tiers": {
         "building": 10000,
@@ -1366,6 +1384,7 @@ export const config: ConfigTypes = {
       "score_exceeds_maximum",
       "wallet_tampering"
     ],
+    "max_score": 20000,
     "replay": {
       "max_actions": 50000,
       "min_action_gap_ms": 0,
@@ -1529,5 +1548,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "7cbb74b557fed28e0d0b305403f73cc269aa0c31a73c6f1cca78eee7af4c928b"
+  "configHash": "8ee756039c1fd99cb11fefb6eda0e310b1542631d92e89e9c42a48cb997675cc"
 };

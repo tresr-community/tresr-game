@@ -875,7 +875,7 @@ fn admin_caller() -> candid::Principal {
 async fn generate_claim_signature(
     session_id: &str,
     user_address: &str,
-    amount: u64,
+    amount: u128,
     keys: u64,
 ) -> Result<String, String> {
     // --- abi.encodePacked(sessionId, msg.sender, amount, keys) ---
@@ -902,9 +902,9 @@ async fn generate_claim_signature(
         ));
     }
 
-    // amount: u64 → 32-byte big-endian uint256
+    // amount: u128 → 32-byte big-endian uint256
     let mut amount_bytes = [0u8; 32];
-    amount_bytes[24..32].copy_from_slice(&amount.to_be_bytes());
+    amount_bytes[16..32].copy_from_slice(&amount.to_be_bytes());
 
     // keys: u64 → 32-byte big-endian uint256
     let mut keys_bytes = [0u8; 32];
@@ -988,6 +988,29 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
             };
 
             // Generate signature for consolation claim (keys_collected = 0)
+
+            // Validate expiration if present
+            if let Some(expires_at) = claim.expires_at {
+                let now_ms = time() / 1_000_000;
+                if now_ms > expires_at {
+                    claim.status = ClaimStatus::Failed;
+                    claim.error = Some("Consolation prize window has expired.".to_string());
+                    set_doc_store(
+                        context.caller,
+                        "claims".to_string(),
+                        context.data.key.clone(),
+                        SetDoc {
+                            data: encode_doc_data(&claim)?,
+                            description: Some("Claim rejected automatically (expired)".to_string()),
+                            version: context.data.data.after.version,
+                        },
+                    )?;
+                    return Err(
+                        "This consolation prize has expired and cannot be claimed.".to_string()
+                    );
+                }
+            }
+
             let signature =
                 generate_claim_signature(&claim.game_session_id, &wallet_addr, claim.amount, 0)
                     .await?;
@@ -1491,11 +1514,15 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         }
     };
     let consolation_amount =
-        ((vault_balance as u128 * config::CONSOLATION_PRIZE_PERCENT as u128) / 100) as u64;
+        (vault_balance as u128 * config::CONSOLATION_PRIZE_PERCENT as u128) / 100;
 
     // Create consolation claim
     let claim_key = format!("consolation_{}_{}", winner_key, now_ms);
     let session_id = winner_entry.session_id.clone().unwrap_or_default();
+
+    // Calculate expiration deadline for consolation prizes
+    let expiration_ms = config::CONSOLATION_PRIZE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
+    let expires_at_ms = now_ms + expiration_ms;
 
     let claim = ClaimRequest {
         amount: consolation_amount,
@@ -1506,6 +1533,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         keys_collected: 0,
         error: None,
         claim_type: "consolation".to_string(),
+        expires_at: Some(expires_at_ms),
     };
 
     let claim_doc = SetDoc {
@@ -1958,6 +1986,35 @@ async fn claim_authorize(
         ));
     }
 
+    if session.score > config::ANTI_CHEAT_MAX_SCORE {
+        // Cheat detected — apply ban
+        apply_ban(&mut user_profile);
+        let ban_doc = SetDoc {
+            data: encode_doc_data(&user_profile)?,
+            description: Some("Ban applied: score exceeds mathematical maximum".to_string()),
+            version: user_doc_version,
+        };
+        set_doc_store(caller, "users".to_string(), caller_text.clone(), ban_doc)?;
+
+        logging::log_error(
+            "AntiCheat",
+            &format!(
+                "CHEAT_DETECTED: score {} exceeds max {} for user {}. Offence #{}, banned_until={:?}",
+                session.score,
+                config::ANTI_CHEAT_MAX_SCORE,
+                caller_text,
+                user_profile.offence_count,
+                user_profile.banned_until
+            ),
+        );
+
+        return Err(format!(
+            "CHEAT_DETECTED: Score exceeds maximum. Offence #{}, banned_until={}",
+            user_profile.offence_count,
+            user_profile.banned_until.unwrap_or(0)
+        ));
+    }
+
     // 5. Calc amount — integer-only arithmetic (no f64 precision loss)
     // Determine maximum possible payout for this vault tier
     let vault_tier_building = (config::VAULT_TIER_BUILDING as u128) * 1_000_000_000_000_000_000u128;
@@ -1984,32 +2041,59 @@ async fn claim_authorize(
             .unwrap_or(0)
     };
 
-    // Calculate performance multiplier based on score
-    // perf_mult = session.score / MAX_SCORE
-    // => max_perf = max_payout * session.score / MAX_SCORE
-    let max_perf = max_payout
-        .checked_mul(session.score as u128)
-        .map(|v| v / (config::MAX_SCORE as u128))
-        .unwrap_or(0)
-        .min(vault_balance / 2); // safety cap: never drain more than 50%
+    // Calculate performance amount from piecewise linear PAYOUT_CURVE
+    let mut max_perf = 0u128;
+    let score = session.score;
+
+    let last_point = config::PAYOUT_CURVE.last().unwrap();
+    if score >= last_point.0 {
+        max_perf = max_payout
+            .checked_mul(last_point.1 as u128)
+            .map(|v| v / 100)
+            .unwrap_or(0);
+    } else {
+        let mut prev_point = (0u64, 0u64);
+        for point in config::PAYOUT_CURVE {
+            if score <= point.0 {
+                let score_range = (point.0 - prev_point.0) as u128;
+                let percent_range = (point.1 - prev_point.1) as u128;
+                let score_offset = (score - prev_point.0) as u128;
+
+                // Base payout for prev_point
+                let base_payout = max_payout
+                    .checked_mul(prev_point.1 as u128)
+                    .map(|v| v / 100)
+                    .unwrap_or(0);
+
+                // Added payout for the offset within this segment
+                let range_payout = max_payout
+                    .checked_mul(percent_range)
+                    .map(|v| v / 100)
+                    .unwrap_or(0);
+
+                let offset_payout = range_payout
+                    .checked_mul(score_offset)
+                    .map(|v| v / score_range)
+                    .unwrap_or(0);
+
+                max_perf = base_payout + offset_payout;
+                break;
+            }
+            prev_point = *point;
+        }
+    }
+
+    max_perf = max_perf.min(vault_balance / 2); // safety cap: never drain more than 50%
+
     let guaranteed = fee_amount
         .checked_mul(11)
         .map(|v| v / 10)
         .unwrap_or(fee_amount);
     let amount = max_perf.max(guaranteed).min(vault_balance);
 
-    if amount > u64::MAX as u128 {
-        return Err("Claim amount exceeds u64 range".to_string());
-    }
-
     // 6. Sign with IC threshold ECDSA
-    let signature_hex = generate_claim_signature(
-        &session_id,
-        &wallet_addr,
-        amount as u64,
-        session.keys_collected,
-    )
-    .await?;
+    let signature_hex =
+        generate_claim_signature(&session_id, &wallet_addr, amount, session.keys_collected).await?;
 
     // Convert hex signature to bytes for return
     let sig_clean = signature_hex.strip_prefix("0x").unwrap_or(&signature_hex);
