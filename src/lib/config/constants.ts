@@ -25,12 +25,11 @@ export const JUNO_EMULATOR_PORT =
 
 // Internet Identity provider
 //  - Development: localhost
-//  - Staging: id.ai
-//  - Production: id.ai
+//  - Staging/Production: dynamic (from config.auth.iid.domain, e.g., id.ai)
 export const JUNO_INTERNET_IDENTITY =
   JUNO_ENVIRONMENT === "development"
     ? `http://${import.meta.env.VITE_INTERNET_IDENTITY_ID}.localhost:${JUNO_EMULATOR_PORT}`
-    : "id.ai";
+    : config.auth.iid.domain;
 log.debug(COMPONENT_NAME, `Juno Internet Identity: ${JUNO_INTERNET_IDENTITY}`);
 
 // SIWA Provider Canister ID (Sign In With Avalanche)
@@ -51,7 +50,10 @@ export const IC_HOST =
   import.meta.env.DEV === true || JUNO_ENVIRONMENT === "development"
     ? `http://localhost:${JUNO_EMULATOR_PORT}`
     : "https://ic0.app";
-log.debug(COMPONENT_NAME, `IC_HOST resolved: ${IC_HOST} (env: ${JUNO_ENVIRONMENT}, DEV: ${import.meta.env.DEV})`);
+log.debug(
+  COMPONENT_NAME,
+  `IC_HOST resolved: ${IC_HOST} (env: ${JUNO_ENVIRONMENT}, DEV: ${import.meta.env.DEV})`
+);
 
 /**
  * Get the environment key for blockchain config lookup.

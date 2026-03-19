@@ -61,6 +61,7 @@ export default defineConfig(({mode}) => {
     },
     build: {
       target: "esnext",
+      chunkSizeWarningLimit: 2000,
       rollupOptions: {
         output: {
           manualChunks(id) {
@@ -88,7 +89,7 @@ export default defineConfig(({mode}) => {
             warning.exporter === "@icp-sdk/core/candid"
           )
             return;
-          // Third-party packages like @walletconnect use /*#__PURE__*/ annotations 
+          // Third-party packages like @walletconnect use /*#__PURE__*/ annotations
           // that Rollup warns about. Safe to ignore.
           if (warning.code === "INVALID_ANNOTATION") return;
           // SVG assets in /public are resolved at runtime by the browser, not at
