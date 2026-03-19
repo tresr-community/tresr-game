@@ -10,6 +10,7 @@ src/env.d.ts
 src/lib/config/client.ts
 src/lib/config/server-constants.ts
 src/lib/config/validate.ts
+src/satellite/satellite_extension.did
 src/styles/global.css
 src/types/config.ts
 
