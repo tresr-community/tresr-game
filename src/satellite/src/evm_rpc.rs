@@ -1143,13 +1143,13 @@ mod tests {
         format!("{:0>64}", format!("{:x}", n))
     }
 
-    fn tokens_to_wei(tokens: u64) -> BigUint {
+    fn tokens_to_wei(tokens: u128) -> BigUint {
         BigUint::from(tokens) * BigUint::from(10u64).pow(18)
     }
 
     /// Build ABI-encoded `payFee(uint256 amount, bytes32 sessionId)` calldata.
     fn pay_fee_calldata(amount_tokens: u64, session_hex: &str) -> String {
-        let amount_hex = to_u256_hex(&tokens_to_wei(amount_tokens));
+        let amount_hex = to_u256_hex(&tokens_to_wei(amount_tokens as u128));
         let session_clean = session_hex.strip_prefix("0x").unwrap_or(session_hex);
         let session_padded = format!("{:0>64}", session_clean);
         format!("0x{}{}{}", PAY_FEE_SELECTOR, amount_hex, session_padded)
