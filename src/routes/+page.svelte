@@ -95,21 +95,23 @@
     >
       <div class="flex max-w-3xl flex-col items-center">
         <h1
-          class="font-display text-primary mb-0 text-xl font-black tracking-tighter drop-shadow-[0_0_10px_rgba(var(--color-primary),0.8)] md:mb-2 md:text-5xl lg:text-7xl"
+          class="font-display text-primary mb-2 text-5xl font-black tracking-tighter drop-shadow-[0_0_10px_rgba(var(--color-primary),0.8)] sm:mb-3 sm:text-6xl md:text-7xl lg:text-8xl"
         >
           {appName}
         </h1>
         <p
-          class="border-secondary/20 my-0 rounded-lg border bg-black/50 px-3 py-0.5 font-mono text-sm tracking-widest uppercase backdrop-blur md:my-8 md:py-6 md:text-xl lg:text-2xl"
+          class="border-secondary/20 my-2 rounded-lg border bg-black/50 px-3 py-1 font-mono text-xs tracking-widest uppercase backdrop-blur sm:my-3 sm:px-4 sm:py-1.5 sm:text-sm md:my-6 md:text-xl lg:text-2xl"
         >
           <span class="text-info">COLLECT KEYS.</span>{" "}
           <span class="text-error">FIGHT ENEMIES.</span>{" "}
           <span class="text-warning italic">CLAIM THE $TRESR.</span>
         </p>
 
-        <div class="mt-0.5 flex flex-col items-center gap-0 md:mt-8 md:gap-6">
+        <div
+          class="mt-6 flex w-full shrink-0 flex-col items-center gap-6 md:mt-10 md:gap-8"
+        >
           <div
-            class="-mb-3 flex flex-col gap-1 md:mb-0 md:flex-row md:gap-4"
+            class="relative z-10 flex shrink-0 flex-col gap-2"
             style={vaultLocked ? "opacity: 0.5;" : ""}
           >
             <LoginButton />
@@ -121,43 +123,53 @@
           </div>
 
           <div
-            class="grid w-full max-w-4xl grid-cols-2 gap-2 opacity-90 md:grid-cols-3 md:gap-6"
+            class="grid w-full max-w-4xl shrink-0 grid-cols-2 gap-3 opacity-90 sm:gap-4 md:grid-cols-3 md:gap-6"
           >
             <div
-              class="border-primary/20 flex h-full flex-col items-center justify-center rounded-xl border bg-black/40 px-5 py-4 shadow backdrop-blur"
+              class="border-primary/20 flex shrink-0 flex-col items-center justify-center rounded-xl border bg-black/40 px-2 py-3 shadow backdrop-blur sm:px-5 sm:py-4"
             >
-              <div class="font-mono text-xs uppercase opacity-50">
+              <div
+                class="font-mono text-[10px] uppercase opacity-50 sm:text-xs"
+              >
                 OBJECTIVE
               </div>
               <div
-                class="text-primary mt-1 font-mono text-xl font-bold md:text-3xl"
+                class="text-primary mt-1 font-mono text-xl font-bold sm:mt-1.5 sm:text-2xl md:text-3xl"
               >
                 COLLECT
               </div>
-              <div class="mt-1 text-xs opacity-40">Gather Keys</div>
+              <div class="mt-1 text-[10px] opacity-40 sm:text-xs">
+                Gather Keys
+              </div>
             </div>
             <div
               id="vault-display"
-              class="hidden h-full overflow-hidden rounded-xl md:block"
+              class="hidden shrink-0 overflow-hidden rounded-xl md:block"
             >
               <VaultBalance />
             </div>
             <div
-              class="border-primary/20 flex h-full flex-col items-center justify-center rounded-xl border bg-black/40 px-5 py-4 shadow backdrop-blur"
+              class="border-primary/20 flex shrink-0 flex-col items-center justify-center rounded-xl border bg-black/40 px-2 py-3 shadow backdrop-blur sm:px-5 sm:py-4"
             >
-              <div class="font-mono text-xs uppercase opacity-50">THREAT</div>
               <div
-                class="text-secondary mt-1 font-mono text-xl font-bold md:text-3xl"
+                class="font-mono text-[10px] uppercase opacity-50 sm:text-xs"
+              >
+                THREAT
+              </div>
+              <div
+                class="text-secondary mt-1 font-mono text-xl font-bold sm:mt-1.5 sm:text-2xl md:text-3xl"
               >
                 SURVIVE
               </div>
-              <div class="mt-1 text-xs opacity-40">
+              <div class="mt-1 text-[10px] opacity-40 sm:text-xs">
                 {timeLimitMinutes} Minutes
               </div>
             </div>
           </div>
 
-          <BurnStats />
+          <div class="w-full shrink-0">
+            <BurnStats />
+          </div>
         </div>
       </div>
     </div>

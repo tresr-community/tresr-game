@@ -74,11 +74,11 @@ export const config: ConfigTypes = {
           "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0xDC11f7E700A4c898AE5CAddB1082cFfa76512aDD",
+        "tresr_token_contract": "0xf953b3A269d80e3eB0F2947630Da976B896A8C5b",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
-        "vault_contract": "0x172076E0166D1F9Cc711C77Adf8488051744980C",
-        "faucet_contract": "0x8198f5d8F8CfFE8f9C413d98a0A55aEB8ab9FbB7",
+        "vault_contract": "0x4b6aB5F819A515382B0dEB6935D793817bB4af28",
+        "faucet_contract": "0x720472c8ce72c2A2D711333e064ABD3E6BbEAdd3",
         "explorer_url": "http://localhost:8545/tx/"
       },
       "testnet": {

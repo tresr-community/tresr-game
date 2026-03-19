@@ -199,7 +199,7 @@
   closeOnOutsideClick={false}
 >
   <p class="py-2 text-center text-sm opacity-70 sm:py-4 sm:text-base">
-    The Banker has been regulated. The vault is yours.
+    The Bankers have been regulated. The vault is yours Degen.
   </p>
 
   <div
@@ -258,6 +258,26 @@
       </div>
       <div class="font-mono text-sm font-bold text-[#facc15] sm:text-lg">
         {_time}
+      </div>
+    </div>
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Boss Hits
+      </div>
+      <div class="font-mono text-sm font-bold text-[#c084fc] sm:text-lg">
+        {bossHits}
+      </div>
+    </div>
+    <div class="flex flex-col items-center bg-black/40 p-2 sm:p-3">
+      <div
+        class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
+      >
+        Super Hits
+      </div>
+      <div class="font-mono text-sm font-bold text-[#fbbf24] sm:text-lg">
+        {superHits}
       </div>
     </div>
   </div>

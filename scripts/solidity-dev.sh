@@ -499,10 +499,37 @@ function regen_client_config() {
 ANVIL_BURN_ADDRESS="0x000000000000000000000000000000000000dEaD"
 
 function run_deploy_vault() {
-	# Oracle address for local dev (same as admin — Anvil account #0)
-	# Must be set here (not at top-level) because ANVIL_ADMIN_ADDRESS
-	# is populated by load_config() which runs after script parse.
-	local ANVIL_ORACLE_ADDRESS="$ANVIL_ADMIN_ADDRESS"
+	# Oracle address for local dev (matches satellite's deterministic ECDSA eth address in Juno local dev)
+	local ANVIL_ORACLE_ADDRESS="0x96E38aFd72Ca03c9794c0CCD2a8405FC47A9F926"
+
+	# Dynamically fetch the oracle address from the local satellite if possible
+	local env_file
+	env_file="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.env"
+	local satellite_id="${VITE_SATELLITE_ID:-}"
+	if [[ -z $satellite_id && -f $env_file ]]; then
+		satellite_id=$(grep -E "^VITE_SATELLITE_ID=" "$env_file" | cut -d '=' -f2 | tr -d ' "' || true)
+	fi
+
+	if [[ -n $satellite_id ]]; then
+		log_info "Fetching oracle address from satellite ${CYAN}${satellite_id}${NC}..."
+		local oracle_output=""
+		oracle_output=$(dfx canister call "$satellite_id" get_oracle_address '()' 2>/dev/null || true)
+		if [[ -z $oracle_output || $oracle_output == *"Error"* ]]; then
+			oracle_output=$(dfx canister call "$satellite_id" get_oracle_address '()' --network ic 2>/dev/null || true)
+		fi
+
+		local extracted=""
+		extracted=$(echo "$oracle_output" | grep -oP '0x[0-9a-fA-F]{40}' | head -1 || true)
+
+		if [[ -n $extracted ]]; then
+			ANVIL_ORACLE_ADDRESS="$extracted"
+			log_info "Dynamic oracle address: ${GREEN}${ANVIL_ORACLE_ADDRESS}${NC}"
+		else
+			log_warn "Failed to fetch oracle address from satellite. Using fallback: ${ANVIL_ORACLE_ADDRESS}"
+		fi
+	else
+		log_warn "VITE_SATELLITE_ID not found. Using fallback oracle address: ${ANVIL_ORACLE_ADDRESS}"
+	fi
 
 	assert_anvil_running
 
@@ -822,17 +849,17 @@ function run_balance() {
 		${CYAN}==============================================================================${NC}
 
 		  ${YELLOW}Player${NC}     ${wallet}
-		    ${TOKEN_TICKER}:  ${GREEN}${player_tresr}${NC}
-		    AVAX:    ${GREEN}${player_avax}${NC}
+			${TOKEN_TICKER}:  ${GREEN}${player_tresr}${NC}
+			AVAX:    ${GREEN}${player_avax}${NC}
 
 		  ${YELLOW}Admin${NC}      ${ANVIL_ADMIN_ADDRESS}
-		    AVAX:    ${GREEN}${admin_avax}${NC}
+			AVAX:    ${GREEN}${admin_avax}${NC}
 
 		  ${YELLOW}Vault${NC}      ${vault_address:-$ZERO_ADDRESS}
-		    ${TOKEN_TICKER}:  ${GREEN}${vault_label}${NC}
+			${TOKEN_TICKER}:  ${GREEN}${vault_label}${NC}
 
 		  ${YELLOW}Faucet${NC}     ${faucet_address:-$ZERO_ADDRESS}
-		    ${TOKEN_TICKER}:  ${GREEN}${faucet_label}${NC}
+			${TOKEN_TICKER}:  ${GREEN}${faucet_label}${NC}
 
 		${CYAN}==============================================================================${NC}
 

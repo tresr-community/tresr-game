@@ -280,7 +280,7 @@
   <button
     onclick={handleLoginClick}
     class:hidden={hideTrigger}
-    class="font-display rounded-lg px-8 py-3 text-lg font-black tracking-widest uppercase transition-all duration-300 hover:scale-[1.02] active:scale-95 md:px-12 md:text-2xl
+    class="font-display rounded-lg px-6 py-2 text-base font-black tracking-widest uppercase transition-all duration-300 hover:scale-[1.02] active:scale-95 sm:px-8 sm:py-3 sm:text-lg md:px-12 md:text-2xl
       {!isAuthenticated && !isMaintenance
       ? 'bg-primary text-black shadow-[0_0_20px_var(--color-primary)]'
       : ''}
@@ -348,9 +348,7 @@
   >
     {#if activeTab === "normie"}
       <div class="animate-in fade-in flex flex-col gap-4">
-        <p
-          class="text-center text-xs tracking-wide text-white/70 sm:text-sm"
-        >
+        <p class="text-center text-xs tracking-wide text-white/70 sm:text-sm">
           Fight some bankers without spending tokens.
         </p>
         <p
@@ -374,9 +372,7 @@
     {:else}
       <div class="animate-in fade-in flex flex-col gap-4">
         {#if degenEnabled}
-          <p
-            class="text-center text-xs tracking-wide text-white/70 sm:text-sm"
-          >
+          <p class="text-center text-xs tracking-wide text-white/70 sm:text-sm">
             Join the decentralized elite.
           </p>
           <p

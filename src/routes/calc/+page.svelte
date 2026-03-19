@@ -2,6 +2,7 @@
   import {onMount} from "svelte";
   import {getVaultCurrentBalance} from "@/lib/blockchain/contracts/vault";
   import {log} from "@/lib/utils/log";
+  import {config} from "@/lib/config/client";
 
   import {calculateScore, calculateRewardAmount} from "@/lib/game/reward";
 
@@ -23,6 +24,7 @@
   let resultEl: HTMLElement | null = null;
 
   let resultText = "0.00 TRESR";
+  let isImpossible = false;
   let inputValues = {
     vaultBalance: "50000",
     keys: "50",
@@ -39,13 +41,19 @@
       const vaultBalanceWei =
         BigInt(Math.floor(vaultInput * 1000000)) * 10n ** 12n;
 
-      const keys = parseInt(inputValues.keys || "0");
+      let keys = parseInt(inputValues.keys || "0");
+      if (keys > config.gameplay.max_keys) {
+        keys = config.gameplay.max_keys;
+        inputValues.keys = keys.toString();
+      }
+
       const kills = parseInt(inputValues.kills || "0");
       const bossHits = parseInt(inputValues.bossHits || "0");
       const superHits = parseInt(inputValues.superHits || "0");
 
       // Score evaluation
       const score = calculateScore(keys, kills, bossHits, superHits);
+      isImpossible = score > BigInt(config.anti_cheat.max_score);
 
       // Final resolution
       const amountWei = calculateRewardAmount(score, vaultBalanceWei);
@@ -107,7 +115,7 @@
             Simulation Inputs
           </h2>
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div class="flex flex-col gap-1">
+            <div class="flex flex-col gap-1 sm:col-span-2">
               <label for="vault_balance" class="font-mono text-xs opacity-70"
                 >Vault Balance (TRESR)</label
               >
@@ -130,6 +138,7 @@
                 bind:value={inputValues.keys}
                 class="focus:border-primary w-full rounded border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none"
                 min="0"
+                max={config.gameplay.max_keys}
               />
             </div>
             <div class="flex flex-col gap-1">
@@ -156,7 +165,7 @@
                 min="0"
               />
             </div>
-            <div class="flex flex-col gap-1 sm:col-span-2">
+            <div class="flex flex-col gap-1">
               <label for="super_hits" class="font-mono text-xs opacity-70"
                 >Super Hits</label
               >
@@ -173,19 +182,35 @@
           <div class="border-primary/20 my-8 border-t"></div>
 
           <div class="text-center font-mono">
-            <div
-              class="text-secondary mb-2 text-sm tracking-widest uppercase opacity-70"
-            >
-              Calculated Payout
-            </div>
-            <div
-              class="text-primary text-4xl font-black break-words drop-shadow-[0_0_8px_rgba(var(--primary),0.8)] sm:text-5xl"
-            >
-              {resultText}
-            </div>
-            <div class="mt-2 text-xs opacity-50">
-              Determined strictly by on-chain algorithm variables
-            </div>
+            {#if isImpossible}
+              <div
+                class="mb-2 animate-pulse text-sm font-black tracking-widest text-[#ef4444] uppercase"
+              >
+                ⚠ ANTI-CHEAT ACTIVATED
+              </div>
+              <div
+                class="animate-pulse text-4xl font-black break-words text-[#ef4444] drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] sm:text-5xl"
+              >
+                IMPOSSIBLE SCORE
+              </div>
+              <div class="mt-2 text-xs text-[#ef4444] opacity-50">
+                Detected maximum mathematical limit exceeded
+              </div>
+            {:else}
+              <div
+                class="text-secondary mb-2 text-sm tracking-widest uppercase opacity-70"
+              >
+                Calculated Payout
+              </div>
+              <div
+                class="text-primary text-4xl font-black break-words drop-shadow-[0_0_8px_rgba(var(--primary),0.8)] sm:text-5xl"
+              >
+                {resultText}
+              </div>
+              <div class="mt-2 text-xs opacity-50">
+                Determined strictly by on-chain algorithm variables
+              </div>
+            {/if}
           </div>
         </div>
       </div>
