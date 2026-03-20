@@ -16,6 +16,8 @@ export interface NotificationData {
   type: string;
   message: string;
   details?: string;
+  /** Optional transaction hash — rendered as an explorer link in the UI. */
+  txHash?: string;
   urgency: "none" | "non-urgent" | "urgent";
   timestamp: number;
   snoozeUntil?: number;

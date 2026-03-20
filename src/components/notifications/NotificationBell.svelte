@@ -5,6 +5,7 @@
   import {log} from "@/lib/utils/log";
   import {loadConfigAsync} from "@/lib/config";
   import {DropdownMenu} from "bits-ui";
+  import {getExplorerUrl} from "@/lib/blockchain/networks/display";
 
   const COMPONENT_NAME = "NotificationBell";
 
@@ -100,7 +101,7 @@
         >Clear All</button
       >
     </div>
-    <ul class="max-h-96 overflow-y-auto p-2">
+    <ul class="themed-scroll max-h-96 overflow-y-auto p-2">
       {#if notifications.length === 0}
         <li class="py-4 text-center font-mono text-xs text-white/50 italic">
           {customNotifications[
@@ -135,6 +136,37 @@
                 <p class="mt-1 text-[10px] leading-tight text-white/70">
                   {n.data.details}
                 </p>
+              {/if}
+              {#if n.data.txHash}
+                {@const explorerUrl = getExplorerUrl(n.data.txHash)}
+                <a
+                  href={explorerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="mt-1 flex items-center gap-1 font-mono text-[10px] text-white/50 hover:text-white/90 hover:underline"
+                  onclick={(e) => e.stopPropagation()}
+                >
+                  <span>Tx:</span>
+                  <span class="truncate"
+                    >{n.data.txHash.slice(0, 10)}…{n.data.txHash.slice(
+                      -6
+                    )}</span
+                  >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="inline h-3 w-3 flex-shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                    />
+                  </svg>
+                </a>
               {/if}
               {#if n.data.type === "app_update"}
                 <button
@@ -182,6 +214,27 @@
 </DropdownMenu.Root>
 
 <style>
+  /* Themed scrollbar for the notification list */
+  .themed-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-primary, #7c3aed) rgba(255, 255, 255, 0.05);
+  }
+  .themed-scroll::-webkit-scrollbar {
+    width: 4px;
+  }
+  .themed-scroll::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 2px;
+  }
+  .themed-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-primary, #7c3aed);
+    border-radius: 2px;
+    opacity: 0.7;
+  }
+  .themed-scroll::-webkit-scrollbar-thumb:hover {
+    opacity: 1;
+  }
+
   @keyframes breathe-orange {
     0%,
     100% {

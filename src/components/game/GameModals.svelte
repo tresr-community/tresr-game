@@ -125,7 +125,7 @@
         .join("")}` as `0x${string}`;
 
       const hash = await claimWin(sessionId, amount, state.keys, sigHex);
-      window.showInfoToast?.(`Claim successful! Tx: ${hash}`);
+      window.showInfoToast?.("Claim successful!", undefined, hash);
       setTimeout(() => {
         window.location.href = "/";
       }, 3000);

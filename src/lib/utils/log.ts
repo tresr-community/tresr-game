@@ -2,7 +2,7 @@ import {maintenanceState} from "./maintenance-state";
 
 declare global {
   interface Window {
-    showInfoToast: (message: string, details?: string) => void;
+    showInfoToast: (message: string, details?: string, txHash?: string) => void;
     showWarningToast: (message: string, details?: string) => void;
     // errorId is the short code shown to users so they can quote it to devs.
     showErrorToast: (

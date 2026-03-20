@@ -4,6 +4,7 @@
   import PWA from "@/lib/pwa";
   import Alert from "@/components/ui/Alert.svelte";
   import Button from "@/components/ui/Button.svelte";
+  import {getExplorerUrl} from "@/lib/blockchain/networks/display";
 
   interface Toast {
     id: string;
@@ -13,6 +14,7 @@
     type?: string;
     details?: string;
     errorId?: string;
+    txHash?: string;
   }
 
   let toasts = $state<Toast[]>([]);
@@ -35,7 +37,7 @@
 
   function handleNotificationToast(e: Event) {
     const doc = (e as CustomEvent).detail;
-    const {message, urgency, type, details, errorId} = doc.data;
+    const {message, urgency, type, details, errorId, txHash} = doc.data;
 
     const toast: Toast = {
       id: crypto.randomUUID(),
@@ -45,6 +47,7 @@
       type,
       details,
       errorId,
+      txHash,
     };
 
     toasts = [...toasts, toast];
@@ -94,13 +97,18 @@
     window.addEventListener("notification-toast", handleNotificationToast);
 
     // Attach global helpers only on mount in client
-    window.showInfoToast = (message: string, details?: string) => {
+    window.showInfoToast = (
+      message: string,
+      details?: string,
+      txHash?: string
+    ) => {
       notificationManager.addNotification({
         message,
         urgency: "none",
         type: "info",
         details,
-      });
+        txHash,
+      } as any);
     };
 
     window.showWarningToast = (message: string, details?: string) => {
@@ -168,6 +176,36 @@
 
         {#if toast.details}
           <p class="mt-1 text-xs opacity-90">{toast.details}</p>
+        {/if}
+
+        {#if toast.txHash}
+          {@const explorerUrl = getExplorerUrl(toast.txHash)}
+          <a
+            href={explorerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-1 flex items-center gap-1 font-mono text-[10px] break-all opacity-70 hover:underline hover:opacity-100"
+            onclick={(e) => e.stopPropagation()}
+          >
+            <span>Tx:</span>
+            <span class="truncate"
+              >{toast.txHash.slice(0, 10)}…{toast.txHash.slice(-6)}</span
+            >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="inline h-3 w-3 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+              />
+            </svg>
+          </a>
         {/if}
 
         {#if toast.errorId}
