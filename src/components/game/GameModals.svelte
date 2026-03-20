@@ -2,10 +2,7 @@
   import {onMount, onDestroy} from "svelte";
   import {gameState, type GameState} from "@/lib/game/state";
   import {clearFeePaid, getSessionId} from "@/lib/game/fee-gate";
-  import {
-    claimWin,
-    getClaimCooldownStatus,
-  } from "@/lib/blockchain/contracts/vault";
+  import {claimWin} from "@/lib/blockchain/contracts/vault";
   import {getConnectedAddress} from "@/lib/wallet/connection";
   import {getAuthState} from "@/lib/auth";
   import {checkBanStatus} from "@/lib/auth/ban";
@@ -96,20 +93,11 @@
     }
 
     const walletAddr = getConnectedAddress();
-    if (walletAddr) {
-      try {
-        const cooldown = await getClaimCooldownStatus(walletAddr);
-        if (!cooldown.canClaim) {
-          const hours = Math.floor(cooldown.remainingSeconds / 3600);
-          const mins = Math.floor((cooldown.remainingSeconds % 3600) / 60);
-          window.showWarningToast?.(
-            `Cooldown active: ${hours}h ${mins}m remaining. 1 claim per 24 hours.`
-          );
-          return;
-        }
-      } catch {
-        log.warn("GameModals", "Could not check cooldown — proceeding.");
-      }
+    if (!walletAddr) {
+      window.showWarningToast?.(
+        "Wallet not connected. Please connect your wallet."
+      );
+      return;
     }
 
     if (!lastClaimAuth) {
@@ -199,7 +187,7 @@
   closeOnOutsideClick={false}
 >
   <p class="py-2 text-center text-sm opacity-70 sm:py-4 sm:text-base">
-    The Bankers have been regulated. The vault is yours Degen.
+    The Bankers have been regulated. Claim your reward Degen.
   </p>
 
   <div

@@ -43,12 +43,10 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
 
     // Config
     uint256 public burnRate; // Basis points: 10000 = 100%
-    uint256 public claimCooldown; // seconds
 
     // State
     mapping(bytes32 => bool) public paidSessions; // sessionId -> fee paid
     mapping(bytes32 => bool) public claimedSessions; // sessionId -> claimed
-    mapping(address => uint256) public lastClaimTime; // user -> last claim timestamp
 
     // Cumulative counters (readable via view functions — no event scanning needed)
     uint256 public totalFeesCollected; // Total entry fees paid by users (wei)
@@ -59,7 +57,6 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
     event FeePaid(bytes32 indexed sessionId, address indexed user, uint256 amount, uint256 burned, uint256 poolAmount);
     event Claim(bytes32 indexed sessionId, address indexed user, uint256 amount);
     event BurnRateUpdated(uint256 newRate);
-    event ClaimCooldownUpdated(uint256 newCooldown);
     event BurnAddressUpdated(address indexed newBurnAddress);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -86,7 +83,6 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
         token = IERC20(tokenAddr);
         burnAddress = burnAddr;
         burnRate = 1000; // 10.00% — keep in sync with config/tresr.yaml burn_rate
-        claimCooldown = 3600; // 1 hour
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ADMIN_ROLE, admin);
@@ -133,8 +129,6 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
         require(!claimedSessions[sessionId], "Session already claimed");
         require(amount >= 5e19, "Min claim 50 TRESR");
         require(amount <= (token.balanceOf(address(this)) * 5000) / 10000, "Max 50% of vault");
-        // slither-disable-next-line timestamp
-        require(block.timestamp >= lastClaimTime[msg.sender] + claimCooldown, "Claim cooldown active");
 
         // Verify Signature
         bytes32 hash = keccak256(abi.encodePacked(sessionId, msg.sender, amount, keys));
@@ -144,7 +138,6 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
         require(hasRole(ORACLE_ROLE, signer), "Invalid signature");
 
         claimedSessions[sessionId] = true;
-        lastClaimTime[msg.sender] = block.timestamp;
         totalRewardsPaid += amount;
 
         token.safeTransfer(msg.sender, amount);
@@ -158,13 +151,6 @@ contract TresrVault is Initializable, AccessControlUpgradeable, ReentrancyGuard,
         require(newBurnRate <= 2000, "Max burn rate 20%");
         burnRate = newBurnRate;
         emit BurnRateUpdated(newBurnRate);
-    }
-
-    function setClaimCooldown(uint256 newCooldown) external onlyRole(ADMIN_ROLE) {
-        require(newCooldown >= 60, "Min cooldown 60s");
-        require(newCooldown <= 7 days, "Max cooldown 7 days");
-        claimCooldown = newCooldown;
-        emit ClaimCooldownUpdated(newCooldown);
     }
 
     function setBurnAddress(address newBurnAddress) external onlyRole(ADMIN_ROLE) {

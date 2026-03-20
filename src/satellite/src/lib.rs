@@ -511,7 +511,18 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
         ),
     );
 
-    result
+    // Log hook errors but swallow them — returning Err from a timer-fired hook
+    // causes ic0.trap which crashes the entire timer callback (ticket #cannot_write).
+    if let Err(ref e) = result {
+        logging::log_error(
+            "Hooks",
+            &format!(
+                "on_set_doc error for collection='{}' key='{}': {}",
+                collection, key, e
+            ),
+        );
+    }
+    Ok(())
 }
 
 /// Sync sanitized leaderboard entry when a user profile is saved.
@@ -967,10 +978,18 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
     if claim.status == ClaimStatus::Pending && claim.signature.is_none() {
         if claim.claim_type == "consolation" {
             // --- Consolation claim: skip game session validation ---
+            // Resolve the actual user principal from the claim data.
+            // When triggered from resolve_expired_top_score, context.caller is
+            // admin_caller() — the real user is stored in claim.user_principal.
+            let caller_text = context.caller.to_text();
+            let user_principal_text = claim.user_principal.as_deref().unwrap_or(&caller_text);
+            let user_principal = candid::Principal::from_text(user_principal_text)
+                .map_err(|e| format!("Invalid user principal in consolation claim: {}", e))?;
+
             let user_doc = get_doc_store(
-                context.caller,
+                user_principal,
                 "users".to_string(),
-                context.caller.to_text(),
+                user_principal_text.to_string(),
             )?;
 
             let user_profile: UserProfile = match user_doc {
@@ -1396,12 +1415,58 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
     });
     if should_update {
         TOP_SCORER.with(|cell| *cell.borrow_mut() = TopScorerState::Active(new_cache.clone()));
-        // Write-through to datastore for cold-start recovery
-        persist_top_scorer_cache(&new_cache)?;
+        // Write-through to datastore for cold-start recovery (best-effort).
+        // A failure here is non-fatal: the cache persists in memory and will
+        // retry on the next game completion.
+        if let Err(e) = persist_top_scorer_cache(&new_cache) {
+            logging::log_error(
+                "Scores",
+                &format!("Failed to persist top scorer cache (non-fatal): {}", e),
+            );
+        }
     }
 
-    // Resolve any expired top scores (consolation prize)
-    resolve_expired_top_score().await?;
+    // Any boss kill resets the 24h consolation timer — even if the score
+    // isn't a new top. The goal: "if nobody kills the boss in 24h, award
+    // consolation to the current #1."
+    if session.boss_defeated && !should_update {
+        let refreshed = TOP_SCORER.with(|cell| {
+            let mut cache = cell.borrow_mut();
+            if let TopScorerState::Active(ref mut c) = *cache {
+                c._expires_at = new_expires;
+                Some(c.clone())
+            } else {
+                None
+            }
+        });
+        if let Some(ref c) = refreshed {
+            if let Err(e) = persist_top_scorer_cache(c) {
+                logging::log_error(
+                    "Scores",
+                    &format!(
+                        "Failed to persist refreshed consolation timer (non-fatal): {}",
+                        e
+                    ),
+                );
+            }
+            logging::log_info(
+                "Consolation",
+                &format!(
+                    "Boss defeated by {} — consolation timer reset to {}",
+                    caller_key, new_expires
+                ),
+            );
+        }
+    }
+
+    // Resolve any expired top scores (consolation prize).
+    // Non-fatal: consolation logic must not crash the leaderboard update.
+    if let Err(e) = resolve_expired_top_score().await {
+        logging::log_error(
+            "Consolation",
+            &format!("resolve_expired_top_score failed (non-fatal): {}", e),
+        );
+    }
 
     Ok(())
 }
@@ -1534,6 +1599,9 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         error: None,
         claim_type: "consolation".to_string(),
         expires_at: Some(expires_at_ms),
+        // Store the winner's principal so on_claim_created can look up their
+        // profile (context.caller will be admin_caller, not the user).
+        user_principal: Some(winner_principal.to_text()),
     };
 
     let claim_doc = SetDoc {
@@ -1542,15 +1610,21 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         version: None,
     };
 
+    // Write to audit with claim_ prefix — this triggers the on_set_doc hook
+    // which dispatches to on_claim_created (existing machinery handles consolation
+    // claims, generates signature, and manages the claim lifecycle).
+    // Using admin_caller() so the claim is owned by admin — users cannot modify
+    // audit records after creation (preserves audit trail).
+    // This follows the client→hook pattern documented in data-storage.md.
     set_doc_store(
-        winner_principal,
-        "claims".to_string(),
+        admin_caller(),
+        "audit".to_string(),
         claim_key.clone(),
         claim_doc,
     )?;
 
     // Clear winner's expires_at to prevent double-award
-    clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
+    clear_leaderboard_expiry(&winner_key, &winner_entry, admin_caller())?;
 
     // Add notification to winner's profile
     let notification = serde_json::json!({
@@ -1587,7 +1661,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     };
 
     set_doc_store(
-        winner_principal,
+        admin_caller(),
         "users".to_string(),
         winner_key.clone(),
         profile_doc,

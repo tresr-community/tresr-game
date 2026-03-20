@@ -7,10 +7,7 @@
   } from "@/lib/blockchain/networks/chain";
   import {shortenAddress} from "@/lib/blockchain/networks/display";
   import {getReadClient} from "@/lib/blockchain/tx";
-  import {
-    getClaimCooldownStatus,
-    getVaultCurrentBalance,
-  } from "@/lib/blockchain/contracts/vault";
+  import {getVaultCurrentBalance} from "@/lib/blockchain/contracts/vault";
   import {
     subscribeToConnection,
     getConnectedAddress,
@@ -20,7 +17,6 @@
   import {subscribeToAuth} from "@/lib/auth";
   import {
     getVaultTier,
-    formatCooldown,
     formatVaultDisplay,
   } from "@/lib/blockchain/vault-status";
   import {VaultAbi} from "@/lib/blockchain/abi/vault";
@@ -40,7 +36,6 @@
     );
 
   const REFRESH_INTERVAL_MS = config.wallet.vault_poll_interval_ms;
-  const COOLDOWN_TICK_MS = 1_000;
   const MAX_CONSECUTIVE_ERRORS = 3;
   const WIN_TOAST_DURATION_MS = 8_000;
 
@@ -70,13 +65,10 @@
       | "secondary"
   );
 
-  let cooldownRemaining = $state(0);
-
   let winToastVisible = $state(false);
   let winToastText = $state("");
 
   let interval: ReturnType<typeof setInterval> | null = null;
-  let cooldownInterval: ReturnType<typeof setInterval> | null = null;
   let winToastTimeout: ReturnType<typeof setTimeout> | null = null;
 
   let walletConnected = $state(false);
@@ -97,38 +89,6 @@
       locked: tier.tier === "locked",
       balance: balanceWei,
     });
-  }
-
-  async function fetchCooldown() {
-    if (disposed || !walletConnected || !connectedAddress) return;
-    try {
-      const status = await getClaimCooldownStatus(connectedAddress);
-      if (disposed) return;
-      cooldownRemaining = status.remainingSeconds;
-      startCooldownTick();
-    } catch {
-      // Silently fail
-    }
-  }
-
-  function startCooldownTick() {
-    stopCooldownTick();
-    if (cooldownRemaining <= 0) return;
-    cooldownInterval = setInterval(() => {
-      if (disposed) {
-        stopCooldownTick();
-        return;
-      }
-      cooldownRemaining = Math.max(0, cooldownRemaining - 1);
-      if (cooldownRemaining <= 0) stopCooldownTick();
-    }, COOLDOWN_TICK_MS);
-  }
-
-  function stopCooldownTick() {
-    if (cooldownInterval) {
-      clearInterval(cooldownInterval);
-      cooldownInterval = null;
-    }
   }
 
   function showWinToast(user: string, amountWei: bigint) {
@@ -221,7 +181,6 @@
   function startPolling() {
     updateBalance();
     if (!interval) interval = setInterval(updateBalance, REFRESH_INTERVAL_MS);
-    fetchCooldown();
     startWatchingClaims();
   }
 
@@ -230,7 +189,6 @@
       clearInterval(interval);
       interval = null;
     }
-    stopCooldownTick();
     stopWatchingClaims();
   }
 
@@ -261,6 +219,13 @@
   let unsubWallet: (() => void) | null = null;
 
   onMount(() => {
+    // Eager check — if already connected (e.g., after redirect), start immediately
+    const addr = getConnectedAddress();
+    if (addr) {
+      walletConnected = true;
+      connectedAddress = addr;
+    }
+
     unsubAuth = subscribeToAuth((state) => {
       isAuthenticatedNonGuest = state.isAuthenticated && !state.isGuest;
 
@@ -323,13 +288,7 @@
 
       <div class="mt-1 flex items-center gap-2 font-mono">
         <span class="opacity-80">${ticker}</span>
-        {#if cooldownRemaining <= 0}
-          <span class="text-success text-xs font-bold">✅ READY</span>
-        {:else}
-          <span class="text-error text-xs font-bold"
-            >⏱️ {formatCooldown(cooldownRemaining)}</span
-          >
-        {/if}
+        <span class="text-success text-xs font-bold">✅ READY</span>
       </div>
     </div>
   </Card>

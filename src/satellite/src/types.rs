@@ -439,6 +439,11 @@ pub struct ClaimRequest {
     /// Expiration timestamp in milliseconds. If present, claim cannot be authorized after this time.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub expires_at: Option<u64>,
+
+    /// The user's principal ID (text). Required for consolation claims where
+    /// context.caller is admin_caller() rather than the actual user.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user_principal: Option<String>,
 }
 
 fn default_claim_type() -> String {

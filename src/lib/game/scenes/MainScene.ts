@@ -16,7 +16,7 @@ import {config as clientConfig} from "@/lib/config/client";
 import {setDoc} from "@junobuild/core";
 import {claimAuthorize} from "@/lib/satellite/satellite-api";
 
-import {enqueueProfileWrite} from "@/lib/user";
+import {enqueueProfileWrite} from "@/lib/user/write-queue";
 import {getAuthState} from "@/lib/auth";
 import {
   trackGameLoss,

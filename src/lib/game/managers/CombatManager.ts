@@ -423,12 +423,14 @@ export class CombatManager {
   private handleSuperPierce(data: {x: number; y: number; killed: boolean}) {
     const scoring = this.config.scoring;
 
+    // Count every super hit (killed or survived)
+    gameActions.incrementSuperHits();
+
     // Score: full kill points if enemy died, hit points if survived
     if (data.killed) {
       this.addScore(scoring.enemy_kill);
     } else {
       this.addScore(scoring.super_hit);
-      gameActions.incrementSuperHits();
     }
 
     // Fire burst VFX at pierce point
@@ -469,6 +471,7 @@ export class CombatManager {
 
     this.addScore(scoring.boss_hit);
     gameActions.incrementBossHits();
+    gameActions.incrementSuperHits();
 
     // Visual explosion at impact point
     this.triggerFlash();

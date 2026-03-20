@@ -15,6 +15,13 @@ export BLUE=$'\033[0;34m'
 
 export FOUNDRY_DISABLE_NIGHTLY_WARNING=true
 
+# Restore terminal scrollback — forge uses the alternate screen buffer for its
+# progress spinner, which disables scrollback if the script exits abnormally.
+function restore_terminal() {
+	printf '\e[?1049l' 2>/dev/null || true # leave alternate screen buffer
+}
+trap restore_terminal EXIT
+
 function log_info() {
 	echo -e "${GREEN}[INFO]${NC} $*"
 }
@@ -153,6 +160,8 @@ function show_help() {
 	echo "  fund    [--wallet ADDR]        Mint tokens to vault + wallet (Anvil must be running)"
 	echo "  health                         Smoke-test Anvil: RPC, chain ID, send tx, confirm receipt"
 	echo "  balance [--wallet ADDR]        Show token + AVAX balance for an address"
+	# shellcheck disable=SC2016
+	echo '  burn     <address>             Burn all $tRON from an address to 0xdead (for faucet testing)'
 	echo "  deploy-token                   Deploy RonToken + TresrFaucet to Anvil (run FIRST)"
 	echo "  deploy-vault                   Deploy Vault contract to Anvil (run AFTER deploy-token)"
 	echo "  help                           Show this help message"
@@ -304,12 +313,13 @@ function fund_wallet() {
 	# Use deployer (who is owner of RonToken) to mint fresh tokens.
 	log_info "Minting ${GREEN}${fund_human}${NC} $TOKEN_TICKER via deployer..."
 
-	# Calculate splits
+	# Calculate splits: 1,000 to wallet, rest to vault
+	local wallet_cap="1000000000000000000000" # 1,000e18
 	local vault_amount="0"
 	local wallet_amount="$fund_amount"
 	if [[ $vault_deployed == true ]]; then
-		vault_amount=$(echo "$fund_amount / 2" | bc)
-		wallet_amount=$(echo "$fund_amount - $vault_amount" | bc)
+		wallet_amount="$wallet_cap"
+		vault_amount=$(echo "$fund_amount - $wallet_amount" | bc)
 		local vault_human_split wallet_human_split
 		vault_human_split=$(cast from-wei "$vault_amount" 2>/dev/null || echo "$vault_amount")
 		vault_human_split=$(printf "%'.2f" "$vault_human_split")
@@ -470,6 +480,70 @@ function run_fund() {
 }
 
 # =============================================================================
+# Burn — Send all $tRON from an address to 0xdead (for faucet testing)
+# =============================================================================
+
+function run_burn() {
+	local wallet="$PLAYER_WALLET"
+
+	# Parse burn sub-options
+	shift || true
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+		--wallet)
+			wallet="${2:?'--wallet requires an address'}"
+			shift 2
+			;;
+		*)
+			log_error "Unknown burn option: $1"
+			show_help
+			exit 1
+			;;
+		esac
+	done
+
+	assert_anvil_running
+
+	# Query current balance
+	local raw_balance
+	raw_balance=$(cast call \
+		"$ANVIL_TOKEN_ADDRESS" \
+		"balanceOf(address)(uint256)" \
+		"$wallet" \
+		--rpc-url "$ANVIL_RPC_URL" 2>/dev/null || echo "0")
+
+	if [[ $raw_balance == "0" || -z $raw_balance ]]; then
+		log_info "Wallet ${CYAN}${wallet}${NC} has no $TOKEN_TICKER to burn."
+		return 0
+	fi
+
+	local human_balance
+	human_balance=$(cast from-wei "$raw_balance" 2>/dev/null || echo "$raw_balance")
+	human_balance=$(printf "%'.2f" "$human_balance")
+
+	log_info "Burning ${RED}${human_balance}${NC} $TOKEN_TICKER from ${CYAN}${wallet}${NC} → ${RED}${ANVIL_BURN_ADDRESS}${NC}"
+
+	# Impersonate the wallet on Anvil (no private key needed)
+	cast rpc anvil_impersonateAccount "$wallet" --rpc-url "$ANVIL_RPC_URL" >/dev/null
+
+	# Transfer all tokens to burn address
+	cast send \
+		"$ANVIL_TOKEN_ADDRESS" \
+		"transfer(address,uint256)(bool)" \
+		"$ANVIL_BURN_ADDRESS" \
+		"$raw_balance" \
+		--from "$wallet" \
+		--rpc-url "$ANVIL_RPC_URL" \
+		--unlocked \
+		>/dev/null
+
+	# Stop impersonating
+	cast rpc anvil_stopImpersonatingAccount "$wallet" --rpc-url "$ANVIL_RPC_URL" >/dev/null
+
+	log_info "${GREEN}Done!${NC} Burned ${RED}${human_balance}${NC} $TOKEN_TICKER from ${CYAN}${wallet}${NC}"
+}
+
+# =============================================================================
 # Regenerate client config — keep frontend in sync with tresr.yaml
 # =============================================================================
 
@@ -511,21 +585,32 @@ function run_deploy_vault() {
 	fi
 
 	if [[ -n $satellite_id ]]; then
-		log_info "Fetching oracle address from satellite ${CYAN}${satellite_id}${NC}..."
-		local oracle_output=""
-		oracle_output=$(dfx canister call "$satellite_id" get_oracle_address '()' 2>/dev/null || true)
-		if [[ -z $oracle_output || $oracle_output == *"Error"* ]]; then
-			oracle_output=$(dfx canister call "$satellite_id" get_oracle_address '()' --network ic 2>/dev/null || true)
-		fi
-
-		local extracted=""
-		extracted=$(echo "$oracle_output" | grep -oP '0x[0-9a-fA-F]{40}' | head -1 || true)
-
-		if [[ -n $extracted ]]; then
-			ANVIL_ORACLE_ADDRESS="$extracted"
-			log_info "Dynamic oracle address: ${GREEN}${ANVIL_ORACLE_ADDRESS}${NC}"
+		if ! command -v dfx &>/dev/null; then
+			log_warn "dfx not found in PATH — cannot fetch oracle address dynamically. Using fallback: ${ANVIL_ORACLE_ADDRESS}"
 		else
-			log_warn "Failed to fetch oracle address from satellite. Using fallback: ${ANVIL_ORACLE_ADDRESS}"
+			log_info "Fetching oracle address from satellite ${CYAN}${satellite_id}${NC}..."
+			local oracle_output=""
+			local oracle_err=""
+			oracle_err=$(mktemp)
+			# Use Juno's Pocket IC port directly — no dfx.json needed
+			oracle_output=$(dfx canister call "$satellite_id" get_oracle_address '()' --network http://localhost:5987 2>"$oracle_err") || true
+
+			if [[ -z $oracle_output || $oracle_output == *"Error"* ]]; then
+				local err_msg
+				err_msg=$(cat "$oracle_err" 2>/dev/null || true)
+				[[ -n $err_msg ]] && log_warn "dfx call failed: ${err_msg}"
+			fi
+			rm -f "$oracle_err"
+
+			local extracted=""
+			extracted=$(echo "$oracle_output" | grep -oP '0x[0-9a-fA-F]{40}' | head -1 || true)
+
+			if [[ -n $extracted ]]; then
+				ANVIL_ORACLE_ADDRESS="$extracted"
+				log_info "Dynamic oracle address: ${GREEN}${ANVIL_ORACLE_ADDRESS}${NC}"
+			else
+				log_warn "Failed to fetch oracle address from satellite. Using fallback: ${ANVIL_ORACLE_ADDRESS}"
+			fi
 		fi
 	else
 		log_warn "VITE_SATELLITE_ID not found. Using fallback oracle address: ${ANVIL_ORACLE_ADDRESS}"
@@ -1030,6 +1115,9 @@ deploy-vault)
 	;;
 deploy-token)
 	run_deploy_token
+	;;
+burn)
+	run_burn "$@"
 	;;
 loop)
 	# Parse flags before dispatching

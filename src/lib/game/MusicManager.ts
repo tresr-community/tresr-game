@@ -1,7 +1,8 @@
 import {gameActions, gameState} from "./state";
 import type {PlaybackMode} from "./state";
 import {getAuthState, subscribeToAuth} from "@/lib/auth";
-import {getUserProfile, enqueueProfileWrite} from "@/lib/user";
+import {getUserProfile} from "@/lib/user";
+import {enqueueProfileWrite} from "@/lib/user/write-queue";
 import {config} from "@/lib/config/client";
 import {log} from "@/lib/utils/log";
 
