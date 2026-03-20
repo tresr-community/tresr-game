@@ -14,7 +14,7 @@ const BUILD_ID = import.meta.env.BUILD_ID || "unknown";
 
 // Delay before notifying the user of an update — allows time for
 // asset uploads to complete so the new version is fully available.
-const UPDATE_NOTIFY_DELAY_MS = 3 * 60_000; // 3 minutes
+const UPDATE_NOTIFY_DELAY_MS = 5 * 60_000; // 5 minutes
 
 class PWA {
   private static instance: PWA;
