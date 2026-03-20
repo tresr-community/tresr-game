@@ -2397,6 +2397,46 @@ fn replay_verify_plausibility(
         ));
     }
 
+    // ── Score cross-validation ────────────────────────────────────────────────
+    // Independently derive the maximum score the session could legitimately yield
+    // from physics constraints, then reject if session.score exceeds that ceiling.
+    //
+    // Scoring weights (from config::SCORING_*) mirror reward.ts calculateScore():
+    //   score = keys × key_collection + kills × enemy_kill + boss_hits × boss_hit + super_hits × super_hit
+    //
+    // We use the most generous upper-bound for each component:
+    //   keys      → reported_keys (already validated ≤ MAX_KEYS_COLLECTED above)
+    //   kills     → max theoretically possible in TIME_LIMIT_MS at MIN_ENEMY_SPAWN_MS (+25% burst margin)
+    //   boss_hits → ceil(boss_health / player_damage) — exactly 1 boss per session
+    //   super_hits→ max_kills / kills_per_charge × max_projectiles
+    {
+        let max_kills =
+            (config::TIME_LIMIT_MS / config::MIN_ENEMY_SPAWN_MS).saturating_mul(125) / 100; // ×1.25 burst margin
+        let max_boss_hits = config::BOSS_HEALTH.div_ceil(config::PLAYER_DAMAGE);
+        let kills_per_charge = config::SUPER_MAX_CHARGE / config::SUPER_CHARGE_PER_KILL;
+        let max_super_fires = max_kills / kills_per_charge;
+        let max_super_hits = max_super_fires * config::SUPER_MAX_PROJECTILES;
+
+        let max_score_from_components = reported_keys
+            .saturating_mul(config::SCORING_KEY_COLLECTION)
+            .saturating_add(max_kills.saturating_mul(config::SCORING_ENEMY_KILL))
+            .saturating_add(max_boss_hits.saturating_mul(config::SCORING_BOSS_HIT))
+            .saturating_add(max_super_hits.saturating_mul(config::SCORING_SUPER_HIT));
+
+        if session.score > max_score_from_components {
+            return Err(format!(
+                "CHEAT_DETECTED: session score {} exceeds physics-derived ceiling {} \
+                 (keys={} kills_cap={} boss_hits_cap={} super_hits_cap={})",
+                session.score,
+                max_score_from_components,
+                reported_keys,
+                max_kills,
+                max_boss_hits,
+                max_super_hits,
+            ));
+        }
+    }
+
     Ok(())
 }
 

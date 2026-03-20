@@ -67,6 +67,47 @@ struct Gameplay {
     max_keys: u64,
     time_limit_seconds: u64,
     vault: VaultConfig,
+    scoring: Scoring,
+    entities: Entities,
+    difficulty_escalation: DifficultyEscalation,
+}
+
+#[derive(Deserialize)]
+struct Scoring {
+    key_collection: u64,
+    enemy_kill: u64,
+    boss_hit: u64,
+    super_hit: u64,
+}
+
+#[derive(Deserialize)]
+struct DifficultyEscalation {
+    min_enemy_spawn_ms: u64,
+}
+
+#[derive(Deserialize)]
+struct Entities {
+    player: PlayerEntity,
+    boss: BossEntity,
+}
+
+#[derive(Deserialize)]
+struct PlayerEntity {
+    damage: u64,
+    #[serde(rename = "super")]
+    super_config: SuperConfig,
+}
+
+#[derive(Deserialize)]
+struct SuperConfig {
+    charge_per_kill: u64,
+    max_charge: u64,
+    max_projectiles: u64,
+}
+
+#[derive(Deserialize)]
+struct BossEntity {
+    health: u64,
 }
 
 #[derive(Deserialize)]
@@ -401,6 +442,26 @@ pub const REPLAY_MIN_ACTIONS: u64 = {replay_min_actions};
 
 /// Divisor for attack-to-key ratio check: attacks >= keys / divisor (#171)
 pub const REPLAY_ATTACK_PER_KEY_DIVISOR: u64 = {replay_attack_per_key_divisor};
+
+/// Scoring weights (from client.gameplay.scoring.*)
+pub const SCORING_KEY_COLLECTION: u64 = {scoring_key_collection};
+pub const SCORING_ENEMY_KILL: u64 = {scoring_enemy_kill};
+pub const SCORING_BOSS_HIT: u64 = {scoring_boss_hit};
+pub const SCORING_SUPER_HIT: u64 = {scoring_super_hit};
+
+/// Boss HP — used to derive max boss hits  =  ceil(boss_hp / player_damage)
+pub const BOSS_HEALTH: u64 = {boss_health};
+
+/// Player melee damage per hit (from client.gameplay.entities.player.damage)
+pub const PLAYER_DAMAGE: u64 = {player_damage};
+
+/// Super charge earned per kill — full charge = max_charge / charge_per_kill kills
+pub const SUPER_CHARGE_PER_KILL: u64 = {super_charge_per_kill};
+pub const SUPER_MAX_CHARGE: u64 = {super_max_charge};
+pub const SUPER_MAX_PROJECTILES: u64 = {super_max_projectiles};
+
+/// Minimum enemy spawn interval after full difficulty escalation (ms)
+pub const MIN_ENEMY_SPAWN_MS: u64 = {min_enemy_spawn_ms};
 "#,
         network = network,
         ban_durations = ban_durations,
@@ -441,6 +502,38 @@ pub const REPLAY_ATTACK_PER_KEY_DIVISOR: u64 = {replay_attack_per_key_divisor};
         replay_burst_limit_per_100ms = config.server.anti_cheat.replay.burst_limit_per_100ms,
         replay_min_actions = config.server.anti_cheat.replay.min_actions,
         replay_attack_per_key_divisor = config.server.anti_cheat.replay.attack_per_key_divisor,
+        scoring_key_collection = config.client.gameplay.scoring.key_collection,
+        scoring_enemy_kill = config.client.gameplay.scoring.enemy_kill,
+        scoring_boss_hit = config.client.gameplay.scoring.boss_hit,
+        scoring_super_hit = config.client.gameplay.scoring.super_hit,
+        boss_health = config.client.gameplay.entities.boss.health,
+        player_damage = config.client.gameplay.entities.player.damage,
+        super_charge_per_kill = config
+            .client
+            .gameplay
+            .entities
+            .player
+            .super_config
+            .charge_per_kill,
+        super_max_charge = config
+            .client
+            .gameplay
+            .entities
+            .player
+            .super_config
+            .max_charge,
+        super_max_projectiles = config
+            .client
+            .gameplay
+            .entities
+            .player
+            .super_config
+            .max_projectiles,
+        min_enemy_spawn_ms = config
+            .client
+            .gameplay
+            .difficulty_escalation
+            .min_enemy_spawn_ms,
     );
 
     // Write to OUT_DIR

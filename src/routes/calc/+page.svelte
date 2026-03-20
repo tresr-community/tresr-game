@@ -5,6 +5,9 @@
   import {config} from "@/lib/config/client";
 
   import {calculateScore, calculateRewardAmount} from "@/lib/game/reward";
+  import {getPhysicsLimits} from "@/lib/game/physics-limits";
+
+  const limits = getPhysicsLimits();
 
   interface Inputs {
     vaultBalance: HTMLInputElement | null;
@@ -25,6 +28,12 @@
 
   let resultText = "0.00 TRESR";
   let isImpossible = false;
+  let fieldFlags = {
+    keys: false,
+    kills: false,
+    bossHits: false,
+    superHits: false,
+  };
   let inputValues = {
     vaultBalance: "50000",
     keys: "50",
@@ -51,9 +60,19 @@
       const bossHits = parseInt(inputValues.bossHits || "0");
       const superHits = parseInt(inputValues.superHits || "0");
 
+      // Per-field physics violations
+      fieldFlags = {
+        keys: keys > limits.keys,
+        kills: kills > limits.kills,
+        bossHits: bossHits > limits.bossHits,
+        superHits: superHits > limits.superHits,
+      };
+      const anyFieldExceeded = Object.values(fieldFlags).some(Boolean);
+
       // Score evaluation
       const score = calculateScore(keys, kills, bossHits, superHits);
-      isImpossible = score > BigInt(config.anti_cheat.max_score);
+      isImpossible =
+        score > BigInt(config.anti_cheat.max_score) || anyFieldExceeded;
 
       // Final resolution
       const amountWei = calculateRewardAmount(score, vaultBalanceWei);
@@ -128,54 +147,121 @@
                 step="1000"
               />
             </div>
+            <!-- Keys -->
             <div class="flex flex-col gap-1">
-              <label for="keys" class="font-mono text-xs opacity-70"
-                >Keys Collected</label
-              >
+              <div class="flex items-center justify-between">
+                <label
+                  for="keys"
+                  class="font-mono text-xs opacity-70"
+                  class:text-[#ef4444]={fieldFlags.keys}
+                  class:opacity-100={fieldFlags.keys}>Keys Collected</label
+                >
+                <span class="font-mono text-xs opacity-40"
+                  >max {limits.keys}</span
+                >
+              </div>
               <input
                 type="number"
                 id="keys"
                 bind:value={inputValues.keys}
-                class="focus:border-primary w-full rounded border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none"
+                class="focus:border-primary w-full rounded border bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none {fieldFlags.keys
+                  ? 'border-[#ef4444]'
+                  : 'border-white/10'}"
                 min="0"
-                max={config.gameplay.max_keys}
+                max={limits.keys}
               />
+              {#if fieldFlags.keys}
+                <span class="font-mono text-xs text-[#ef4444]"
+                  >⚠ Exceeds max ({limits.keys})</span
+                >
+              {/if}
             </div>
+            <!-- Kills -->
             <div class="flex flex-col gap-1">
-              <label for="kills" class="font-mono text-xs opacity-70"
-                >Enemy Kills</label
-              >
+              <div class="flex items-center justify-between">
+                <label
+                  for="kills"
+                  class="font-mono text-xs opacity-70"
+                  class:text-[#ef4444]={fieldFlags.kills}
+                  class:opacity-100={fieldFlags.kills}>Enemy Kills</label
+                >
+                <span class="font-mono text-xs opacity-40"
+                  >max ~{limits.kills}</span
+                >
+              </div>
               <input
                 type="number"
                 id="kills"
                 bind:value={inputValues.kills}
-                class="focus:border-primary w-full rounded border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none"
+                class="focus:border-primary w-full rounded border bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none {fieldFlags.kills
+                  ? 'border-[#ef4444]'
+                  : 'border-white/10'}"
                 min="0"
+                max={limits.kills}
               />
+              {#if fieldFlags.kills}
+                <span class="font-mono text-xs text-[#ef4444]"
+                  >⚠ Exceeds physics limit (~{limits.kills})</span
+                >
+              {/if}
             </div>
+            <!-- Boss Hits -->
             <div class="flex flex-col gap-1">
-              <label for="boss_hits" class="font-mono text-xs opacity-70"
-                >Boss</label
-              >
+              <div class="flex items-center justify-between">
+                <label
+                  for="boss_hits"
+                  class="font-mono text-xs opacity-70"
+                  class:text-[#ef4444]={fieldFlags.bossHits}
+                  class:opacity-100={fieldFlags.bossHits}>Boss</label
+                >
+                <span class="font-mono text-xs opacity-40"
+                  >max {limits.bossHits}</span
+                >
+              </div>
               <input
                 type="number"
                 id="boss_hits"
                 bind:value={inputValues.bossHits}
-                class="focus:border-primary w-full rounded border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none"
+                class="focus:border-primary w-full rounded border bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none {fieldFlags.bossHits
+                  ? 'border-[#ef4444]'
+                  : 'border-white/10'}"
                 min="0"
+                max={limits.bossHits}
               />
+              {#if fieldFlags.bossHits}
+                <span class="font-mono text-xs text-[#ef4444]"
+                  >⚠ Exceeds max ({limits.bossHits})</span
+                >
+              {/if}
             </div>
+            <!-- Super Hits -->
             <div class="flex flex-col gap-1">
-              <label for="super_hits" class="font-mono text-xs opacity-70"
-                >Super</label
-              >
+              <div class="flex items-center justify-between">
+                <label
+                  for="super_hits"
+                  class="font-mono text-xs opacity-70"
+                  class:text-[#ef4444]={fieldFlags.superHits}
+                  class:opacity-100={fieldFlags.superHits}>Super</label
+                >
+                <span class="font-mono text-xs opacity-40"
+                  >max ~{limits.superHits}</span
+                >
+              </div>
               <input
                 type="number"
                 id="super_hits"
                 bind:value={inputValues.superHits}
-                class="focus:border-primary w-full rounded border border-white/10 bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none"
+                class="focus:border-primary w-full rounded border bg-white/5 px-3 py-2 font-mono text-sm text-white focus:outline-none {fieldFlags.superHits
+                  ? 'border-[#ef4444]'
+                  : 'border-white/10'}"
                 min="0"
+                max={limits.superHits}
               />
+              {#if fieldFlags.superHits}
+                <span class="font-mono text-xs text-[#ef4444]"
+                  >⚠ Exceeds physics limit (~{limits.superHits})</span
+                >
+              {/if}
             </div>
           </div>
 
