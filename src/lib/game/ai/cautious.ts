@@ -39,7 +39,7 @@ export class CautiousBehavior implements AIBehavior {
 
     // Count nearby allies periodically
     this.checkCounter++;
-    const checkInterval = cautiousConfig.check_frame_interval ?? 10;
+    const checkInterval = cautiousConfig.check_frame_interval;
     if (this.checkCounter >= checkInterval) {
       this.checkCounter = 0;
       this.nearbyCount = countNearbyAllies(ctx, cautiousConfig.group_radius);

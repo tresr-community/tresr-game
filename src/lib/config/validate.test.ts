@@ -5,7 +5,6 @@ import {validateConfig} from "./validate";
 function makeValidConfig(): Record<string, unknown> {
   return {
     configHash: "a".repeat(64),
-    daisyui: {},
     auth: {
       avalanche: {
         enabled: true,
@@ -86,7 +85,6 @@ describe("validateConfig", () => {
 
   describe("missing required top-level keys", () => {
     const requiredKeys = [
-      "daisyui",
       "auth",
       "app",
       "blockchain",

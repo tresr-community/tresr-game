@@ -37,6 +37,7 @@ ignorePaths:
   - public/config-client.json
   - public/workers
   - secrets
+  - static/workers/**
   - vendor
 ignoreRegExpList:
   - /-----BEGIN PGP PUBLIC KEY BLOCK-----[\s\S]*?-----END PGP PUBLIC KEY BLOCK-----/

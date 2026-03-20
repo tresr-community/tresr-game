@@ -272,11 +272,12 @@ jobs:
           mode: production
           satellite-id: ${{ vars.VITE_SATELLITE_ID }}
           orbiter-id: ${{ vars.VITE_ORBITER_ID }}
-          astro-site-url: ${{ vars.VITE_ASTRO_SITE_URL }}
+          site-url: ${{ vars.VITE_SITE_URL }}
           siwa-provider-id: ${{ vars.VITE_SIWA_PROVIDER_ID }}
           walletconnect-project-id: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
           version: ${{ needs.release.outputs.tag }}
           version-mode: current
+          satellite-network: mainnet
 
   ##################################################
   # Deploy Solidity contracts (Mainnet)

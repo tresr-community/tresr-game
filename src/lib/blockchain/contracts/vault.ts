@@ -170,7 +170,26 @@ export async function getVaultCurrentBalance(): Promise<bigint> {
     getValidVaultAddress();
     return await getVaultTresrBalance(false);
   } catch (err) {
-    log.error(COMPONENT_NAME, "Failed to fetch currentBalance", String(err));
+    const msg = String(err);
+    // Expected non-error states — vault not yet deployed, or RPC unavailable.
+    // These are handled silently/at warn level; log.error is reserved for
+    // unexpected failures.
+    if (
+      msg.includes("not deployed") ||
+      msg.includes("invalid address") ||
+      msg.includes("returned no data") ||
+      msg.includes("ContractFunctionExecutionError") ||
+      msg.includes("ECONNREFUSED") ||
+      msg.includes("fetch failed") ||
+      msg.includes("Failed to fetch")
+    ) {
+      log.warn(
+        COMPONENT_NAME,
+        "Vault balance unavailable (not deployed or RPC unreachable)"
+      );
+    } else {
+      log.error(COMPONENT_NAME, "Failed to fetch currentBalance", msg);
+    }
     return 0n;
   }
 }
@@ -376,43 +395,4 @@ export async function claimWin(
   });
 
   return hash;
-}
-
-/**
- * Get the claim cooldown status for a user.
- *
- * @param userAddress - The user's wallet address
- * @returns Cooldown info: remaining seconds (0 = can claim), last claim timestamp
- */
-export async function getClaimCooldownStatus(
-  userAddress: string
-): Promise<{remainingSeconds: number; canClaim: boolean}> {
-  const env = getEnvironmentKey();
-  const chainConfig = config.blockchain.avalanche[env];
-  const publicClient = getReadClient();
-
-  const lastClaimTime = await publicClient.readContract({
-    address: chainConfig.vault_contract as `0x${string}`,
-    abi: VaultAbi,
-    functionName: "lastClaimTime",
-    args: [userAddress as `0x${string}`],
-  });
-
-  if (lastClaimTime === 0n) {
-    return {remainingSeconds: 0, canClaim: true};
-  }
-
-  const cooldownSeconds = Number(
-    await publicClient.readContract({
-      address: chainConfig.vault_contract as `0x${string}`,
-      abi: VaultAbi,
-      functionName: "claimCooldown",
-    })
-  );
-
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  const nextClaimTime = Number(lastClaimTime) + cooldownSeconds;
-  const remaining = Math.max(0, nextClaimTime - nowSeconds);
-
-  return {remainingSeconds: remaining, canClaim: remaining === 0};
 }

@@ -28,12 +28,12 @@ coders:
     role: Consumer of Snacks
     description: MAHDTech's youngest son and master of eating snacks while testing.
 components:
-  - name: Astro
   - name: Avalanche Network
-  - name: DaisyUI
+  - name: Bits UI
   - name: Internet Computer Protocol
   - name: Juno
   - name: Phaser 3
+  - name: SvelteKit
 assets:
   - type: audio
     subtype: sfx
@@ -50,3 +50,6 @@ assets:
   - type: art
     subtype: backgrounds
     provider: Google Gemini Nano Banana
+  - type: art
+    subtype: videos
+    provider: Google Flow

@@ -44,7 +44,7 @@ Before running the bootstrap you need:
 
 4. **GitHub Environment variables**:
    - `vars.FOUNDRY_PROFILE` — the foundry profile to use (testnet or mainnet).
-   - `vars.VITE_ASTRO_SITE_URL` — the deployed Astro site URL.
+   - `vars.VITE_SITE_URL` — the deployed SvelteKit site URL.
    - `vars.VITE_ORBITER_ID` — the deployed Orbiter ID.
    - `vars.VITE_SIWA_PROVIDER_ID` — the deployed Siwa provider ID.
    - `vars.VITE_SATELLITE_ID` — the deployed satellite canister ID.

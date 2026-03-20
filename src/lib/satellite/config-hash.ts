@@ -5,7 +5,7 @@
  * Returns true  → satellite is in sync, proceed to fee gate
  * Returns false → hash mismatch or satellite unreachable → show maintenance modal
  *
- * Called from game.astro after the vault-deployed check, before the fee gate.
+ * Called from `/game` after the vault-deployed check, before the fee gate.
  * IC queries are free (~100 ms), so this adds negligible latency.
  */
 import {SERVER_CONFIG_HASH} from "@/lib/config/server-constants";

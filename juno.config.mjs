@@ -8,29 +8,44 @@ const serverConfig = JSON.parse(configContent);
 const junoConfig = serverConfig.juno;
 
 // Variable substitution for placeholders like ${VAR}
+// Throws immediately if a variable is missing — unexpanded placeholders
+// indicate a misconfigured environment and must never silently pass as ''.
 const substitute = (val) => {
   if (typeof val !== "string") return val;
-  return val.replace(/\${(\w+)}/g, (_, name) => process.env[name] || "");
+  return val.replace(/(\$\{(\w+)\})/g, (match, _full, name) => {
+    const resolved = process.env[name];
+    if (!resolved) {
+      throw new Error(
+        `juno.config.mjs: environment variable '${name}' is not set. ` +
+          `config-server.json still contains placeholder '${match}'. ` +
+          `Run 'direnv reload' or set ${name} before starting the dev server.`
+      );
+    }
+    return resolved;
+  });
 };
 
+// Development
 const devSatelliteId = substitute(junoConfig.development?.satellite_id);
-const stagingSatelliteId = substitute(junoConfig.staging?.satellite_id);
-const prodSatelliteId = substitute(junoConfig.production?.satellite_id);
-
 const devOrbiterId = substitute(junoConfig.development?.orbiter_id);
+
+// Staging
+const stagingSatelliteId = substitute(junoConfig.staging?.satellite_id);
 const stagingOrbiterId = substitute(junoConfig.staging?.orbiter_id);
+
+// Production
+const prodSatelliteId = substitute(junoConfig.production?.satellite_id);
 const prodOrbiterId = substitute(junoConfig.production?.orbiter_id);
 
 /** @type {import('@junobuild/config').JunoConfig} */
 export default defineConfig(({mode}) => ({
   satellite: {
     ids: {
-      local: devSatelliteId,
       development: devSatelliteId,
       staging: stagingSatelliteId || devSatelliteId,
       production: prodSatelliteId || devSatelliteId,
     },
-    source: "dist",
+    source: "build",
     storage: {
       headers: [
         // Hashed JS/CSS chunks from Vite — immutable, 1 year
@@ -86,7 +101,11 @@ export default defineConfig(({mode}) => ({
     //  --mode production => import.meta.env.PROD = true
     // In CI the workflow builds before deploying; locally juno-dev handles it.
     // The juno-action Docker image doesn't ship bun so predeploy must be skipped.
-    ...(process.env.CI ? {} : {predeploy: [`bun run build -- --mode ${mode}`]}),
+    // Locally, juno-dev.sh builds first, so we only run predeploy if SKIP_PREDEPLOY is not set.
+    // When we do run it, we must explicitly pass the mode so dev deployments don't get overwritten with prod builds.
+    ...(process.env.CI || process.env.SKIP_PREDEPLOY
+      ? {}
+      : {predeploy: [`bun run build --mode ${mode}`]}),
     collections: junoConfig.collections,
   },
   orbiter: {
@@ -110,9 +129,9 @@ export default defineConfig(({mode}) => ({
     },
     skylab: {
       ports: {
-        server: 5987,
-        admin: 5999,
-        console: 5866,
+        server: 5987, // Pocket IC (local ic0.app replacement)
+        admin: 5999, // Juno Admin API
+        console: 5866, // Juno Admin Console
       },
     },
   },

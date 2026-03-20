@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="A 2.5D platformer for the Tresr Community"
+    />
+    <meta name="theme-color" content="#1a1025" />
+    <link rel="icon" type="image/png" href="/assets/icons/ios/32.png" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Self-hosted Orbitron -->
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/orbitron-v35-latin-700.woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/orbitron-v35-latin-900.woff2"
+      crossorigin
+    />
+    <!-- Self-hosted JetBrains Mono -->
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/jetbrainsmono-regular.woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      as="font"
+      type="font/woff2"
+      href="/fonts/jetbrainsmono-bold.woff2"
+      crossorigin
+    />
+    <script>
+      window.startTime = Date.now();
+      (function () {
+        var t = localStorage.getItem("theme");
+        if (t) document.documentElement.setAttribute("data-theme", t);
+
+        var hint = localStorage.getItem("tresr-auth-hint");
+        var unauthEl = document.getElementById("wallet-state-unauthenticated");
+        if (!hint && unauthEl) {
+          unauthEl.classList.remove("hidden");
+        }
+      })();
+    </script>
+    <style>
+      @font-face {
+        font-family: "Orbitron";
+        src: url("/fonts/orbitron-v35-latin-700.woff2") format("woff2");
+        font-weight: 700;
+        font-style: normal;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "Orbitron";
+        src: url("/fonts/orbitron-v35-latin-900.woff2") format("woff2");
+        font-weight: 900;
+        font-style: normal;
+        font-display: swap;
+      }
+      h1,
+      h2,
+      h3,
+      .font-display {
+        font-family: "Orbitron", sans-serif;
+      }
+    </style>
+    %sveltekit.head%
+  </head>
+  <body
+    class="bg-base-300 min-h-screen overflow-x-hidden"
+    style="touch-action: manipulation"
+  >
+    <div style="display: contents">%sveltekit.body%</div>
+  </body>
+</html>

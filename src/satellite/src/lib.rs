@@ -499,7 +499,7 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
         _ => Ok(()),
     };
 
-    let ic_used = ic_cdk::api::instruction_counter() - ic_start;
+    let ic_used = ic_cdk::api::instruction_counter().saturating_sub(ic_start);
     logging::log_debug(
         "Perf",
         &format!(
@@ -511,7 +511,18 @@ async fn on_set_doc(context: OnSetDocContext) -> Result<(), String> {
         ),
     );
 
-    result
+    // Log hook errors but swallow them — returning Err from a timer-fired hook
+    // causes ic0.trap which crashes the entire timer callback (ticket #cannot_write).
+    if let Err(ref e) = result {
+        logging::log_error(
+            "Hooks",
+            &format!(
+                "on_set_doc error for collection='{}' key='{}': {}",
+                collection, key, e
+            ),
+        );
+    }
+    Ok(())
 }
 
 /// Sync sanitized leaderboard entry when a user profile is saved.
@@ -598,24 +609,37 @@ async fn on_user_profile_updated(context: OnSetDocContext) -> Result<(), String>
 /// How many times to retry `verify_avalanche_fee` before giving up.
 ///
 /// Fuji testnet RPC providers can lag 5–15 s in indexing new blocks.
-/// The EVM RPC canister requires *all* configured providers to agree, so
-/// a single lagging node returns `null` → "Receipt not found".  We retry
-/// with a 5-second delay between each attempt to let propagation settle.
+/// With `quorum_rpc_config` (2-of-3 threshold) any single downed/lagging
+/// provider is tolerated. Retries here cover the rare case where 2+ providers
+/// simultaneously haven't indexed the block yet.
+///
+/// Each call to `verify_avalanche_fee` involves an inter-canister round-trip
+/// to the EVM RPC canister plus outbound HTTP calls — naturally 2–10 s per
+/// attempt, giving ~10–50 s of implicit delay across 5 retries without
+/// any artificial sleep.
+///
+/// Each attempt also writes `FeeStatus::Verifying` back to the Juno `audit`
+/// doc so the frontend can display live retry-progress messages.
 ///
 /// Only transient "not found" / "inconsistent" errors are retried.
 /// Hard errors (wrong vault, tx reverted, wrong sender) fail immediately.
-const FEE_VERIFY_MAX_RETRIES: u32 = 3;
+const FEE_VERIFY_MAX_RETRIES: u32 = 5;
 
 /// Returns true for errors that are worth retrying (receipt hasn't propagated yet).
 fn is_retryable_fee_error(e: &str) -> bool {
     e.contains("Receipt not found") || e.contains("Inconsistent receipt results")
 }
 
-/// Process fee requests - verify on EVM chain with retry logic.
+/// Process fee requests — verify on EVM chain with retry logic.
 ///
-/// Retries transient "Receipt not found" / "Inconsistent" errors up to
-/// `FEE_VERIFY_MAX_RETRIES` times with a `FEE_VERIFY_RETRY_DELAY_NS` delay
-/// between each attempt.  Hard validation failures are never retried.
+/// On each transient "Receipt not found" or "Inconsistent" error the function
+/// writes `FeeStatus::Verifying` (+ attempt info in `error`) back to the
+/// Juno `audit` doc so the frontend can poll progress in real-time, then
+/// continues to the next attempt. The natural latency of each ICP outcall
+/// (~2–10 s per attempt) provides implicit backoff without explicit sleeps.
+///
+/// Hard validation failures (tx reverted, wrong vault, wrong sender) are
+/// never retried — they fail immediately with `FeeStatus::Failed`.
 async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
     let mut fee: FeeRequest = decode_doc_data(&context.data.data.after.data)?;
 
@@ -624,14 +648,7 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
         return Ok(());
     }
 
-    // --- Retry loop: verify_avalanche_fee with natural delay ---------------
-    // Each call to verify_avalanche_fee involves an inter-canister round-trip
-    // to the EVM RPC canister plus 3 outbound HTTP calls to Fuji RPC providers.
-    // This naturally costs ~2–5 seconds per attempt — no explicit sleep needed.
-    //
-    // With quorum_rpc_config (2-of-3 threshold) any single downed/lagging
-    // provider is tolerated. Retries here cover the rare case where 2+ providers
-    // simultaneously haven't indexed the block yet.
+    // --- Retry loop: verify_avalanche_fee with Verifying status updates ------
     let mut last_error = String::new();
     let mut parsed_fee_opt: Option<evm_rpc::ParsedFee> = None;
 
@@ -651,7 +668,7 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                 parsed_fee_opt = Some(parsed);
                 break;
             }
-            Err(ref e) if is_retryable_fee_error(e) => {
+            Err(ref e) if is_retryable_fee_error(e) && attempt < FEE_VERIFY_MAX_RETRIES => {
                 last_error = e.clone();
                 logging::log_info(
                     "Fees",
@@ -660,7 +677,45 @@ async fn on_fee_created(context: OnSetDocContext) -> Result<(), String> {
                         attempt, FEE_VERIFY_MAX_RETRIES, e
                     ),
                 );
-                // Continue to next retry
+
+                // Write Verifying status so the frontend can show retry progress.
+                // Include the attempt info in the `error` field so the UI can
+                // parse "Attempt N/M" and display a user-friendly message.
+                // This is best-effort — a write failure does not abort the retry.
+                fee.status = FeeStatus::Verifying;
+                fee.error = Some(format!(
+                    "Attempt {}/{}: {}",
+                    attempt, FEE_VERIFY_MAX_RETRIES, e
+                ));
+                let verifying_doc = SetDoc {
+                    data: encode_doc_data(&fee).unwrap_or_default(),
+                    description: context.data.data.after.description.clone(),
+                    version: context.data.data.after.version,
+                };
+                set_doc_store(
+                    context.caller,
+                    context.data.collection.clone(),
+                    context.data.key.clone(),
+                    verifying_doc,
+                )
+                .ok(); // best-effort — a write failure must not abort the retry
+
+                // Reset to Pending so subsequent writes don't early-return above
+                fee.status = FeeStatus::Pending;
+                // No explicit sleep — the next verify_avalanche_fee call
+                // naturally takes 2–10 s (ICP inter-canister + HTTP outcalls),
+                // providing implicit backoff.
+            }
+            Err(ref e) if is_retryable_fee_error(e) => {
+                // Final attempt — record error and fall through to Failed
+                last_error = e.clone();
+                logging::log_info(
+                    "Fees",
+                    &format!(
+                        "Fee verification attempt {}/{} returned transient error: {}",
+                        attempt, FEE_VERIFY_MAX_RETRIES, e
+                    ),
+                );
             }
             Err(e) => {
                 // Hard error (reverted, wrong vault, wrong sender) — don't retry
@@ -831,7 +886,7 @@ fn admin_caller() -> candid::Principal {
 async fn generate_claim_signature(
     session_id: &str,
     user_address: &str,
-    amount: u64,
+    amount: u128,
     keys: u64,
 ) -> Result<String, String> {
     // --- abi.encodePacked(sessionId, msg.sender, amount, keys) ---
@@ -858,9 +913,9 @@ async fn generate_claim_signature(
         ));
     }
 
-    // amount: u64 → 32-byte big-endian uint256
+    // amount: u128 → 32-byte big-endian uint256
     let mut amount_bytes = [0u8; 32];
-    amount_bytes[24..32].copy_from_slice(&amount.to_be_bytes());
+    amount_bytes[16..32].copy_from_slice(&amount.to_be_bytes());
 
     // keys: u64 → 32-byte big-endian uint256
     let mut keys_bytes = [0u8; 32];
@@ -923,10 +978,18 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
     if claim.status == ClaimStatus::Pending && claim.signature.is_none() {
         if claim.claim_type == "consolation" {
             // --- Consolation claim: skip game session validation ---
+            // Resolve the actual user principal from the claim data.
+            // When triggered from resolve_expired_top_score, context.caller is
+            // admin_caller() — the real user is stored in claim.user_principal.
+            let caller_text = context.caller.to_text();
+            let user_principal_text = claim.user_principal.as_deref().unwrap_or(&caller_text);
+            let user_principal = candid::Principal::from_text(user_principal_text)
+                .map_err(|e| format!("Invalid user principal in consolation claim: {}", e))?;
+
             let user_doc = get_doc_store(
-                context.caller,
+                user_principal,
                 "users".to_string(),
-                context.caller.to_text(),
+                user_principal_text.to_string(),
             )?;
 
             let user_profile: UserProfile = match user_doc {
@@ -944,6 +1007,29 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
             };
 
             // Generate signature for consolation claim (keys_collected = 0)
+
+            // Validate expiration if present
+            if let Some(expires_at) = claim.expires_at {
+                let now_ms = time() / 1_000_000;
+                if now_ms > expires_at {
+                    claim.status = ClaimStatus::Failed;
+                    claim.error = Some("Consolation prize window has expired.".to_string());
+                    set_doc_store(
+                        context.caller,
+                        "claims".to_string(),
+                        context.data.key.clone(),
+                        SetDoc {
+                            data: encode_doc_data(&claim)?,
+                            description: Some("Claim rejected automatically (expired)".to_string()),
+                            version: context.data.data.after.version,
+                        },
+                    )?;
+                    return Err(
+                        "This consolation prize has expired and cannot be claimed.".to_string()
+                    );
+                }
+            }
+
             let signature =
                 generate_claim_signature(&claim.game_session_id, &wallet_addr, claim.amount, 0)
                     .await?;
@@ -1329,12 +1415,58 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
     });
     if should_update {
         TOP_SCORER.with(|cell| *cell.borrow_mut() = TopScorerState::Active(new_cache.clone()));
-        // Write-through to datastore for cold-start recovery
-        persist_top_scorer_cache(&new_cache)?;
+        // Write-through to datastore for cold-start recovery (best-effort).
+        // A failure here is non-fatal: the cache persists in memory and will
+        // retry on the next game completion.
+        if let Err(e) = persist_top_scorer_cache(&new_cache) {
+            logging::log_error(
+                "Scores",
+                &format!("Failed to persist top scorer cache (non-fatal): {}", e),
+            );
+        }
     }
 
-    // Resolve any expired top scores (consolation prize)
-    resolve_expired_top_score().await?;
+    // Any boss kill resets the 24h consolation timer — even if the score
+    // isn't a new top. The goal: "if nobody kills the boss in 24h, award
+    // consolation to the current #1."
+    if session.boss_defeated && !should_update {
+        let refreshed = TOP_SCORER.with(|cell| {
+            let mut cache = cell.borrow_mut();
+            if let TopScorerState::Active(ref mut c) = *cache {
+                c._expires_at = new_expires;
+                Some(c.clone())
+            } else {
+                None
+            }
+        });
+        if let Some(ref c) = refreshed {
+            if let Err(e) = persist_top_scorer_cache(c) {
+                logging::log_error(
+                    "Scores",
+                    &format!(
+                        "Failed to persist refreshed consolation timer (non-fatal): {}",
+                        e
+                    ),
+                );
+            }
+            logging::log_info(
+                "Consolation",
+                &format!(
+                    "Boss defeated by {} — consolation timer reset to {}",
+                    caller_key, new_expires
+                ),
+            );
+        }
+    }
+
+    // Resolve any expired top scores (consolation prize).
+    // Non-fatal: consolation logic must not crash the leaderboard update.
+    if let Err(e) = resolve_expired_top_score().await {
+        logging::log_error(
+            "Consolation",
+            &format!("resolve_expired_top_score failed (non-fatal): {}", e),
+        );
+    }
 
     Ok(())
 }
@@ -1447,11 +1579,15 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         }
     };
     let consolation_amount =
-        ((vault_balance as u128 * config::CONSOLATION_PRIZE_PERCENT as u128) / 100) as u64;
+        (vault_balance as u128 * config::CONSOLATION_PRIZE_PERCENT as u128) / 100;
 
     // Create consolation claim
     let claim_key = format!("consolation_{}_{}", winner_key, now_ms);
     let session_id = winner_entry.session_id.clone().unwrap_or_default();
+
+    // Calculate expiration deadline for consolation prizes
+    let expiration_ms = config::CONSOLATION_PRIZE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
+    let expires_at_ms = now_ms + expiration_ms;
 
     let claim = ClaimRequest {
         amount: consolation_amount,
@@ -1462,6 +1598,10 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         keys_collected: 0,
         error: None,
         claim_type: "consolation".to_string(),
+        expires_at: Some(expires_at_ms),
+        // Store the winner's principal so on_claim_created can look up their
+        // profile (context.caller will be admin_caller, not the user).
+        user_principal: Some(winner_principal.to_text()),
     };
 
     let claim_doc = SetDoc {
@@ -1470,15 +1610,21 @@ async fn resolve_expired_top_score() -> Result<(), String> {
         version: None,
     };
 
+    // Write to audit with claim_ prefix — this triggers the on_set_doc hook
+    // which dispatches to on_claim_created (existing machinery handles consolation
+    // claims, generates signature, and manages the claim lifecycle).
+    // Using admin_caller() so the claim is owned by admin — users cannot modify
+    // audit records after creation (preserves audit trail).
+    // This follows the client→hook pattern documented in data-storage.md.
     set_doc_store(
-        winner_principal,
-        "claims".to_string(),
+        admin_caller(),
+        "audit".to_string(),
         claim_key.clone(),
         claim_doc,
     )?;
 
     // Clear winner's expires_at to prevent double-award
-    clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
+    clear_leaderboard_expiry(&winner_key, &winner_entry, admin_caller())?;
 
     // Add notification to winner's profile
     let notification = serde_json::json!({
@@ -1515,7 +1661,7 @@ async fn resolve_expired_top_score() -> Result<(), String> {
     };
 
     set_doc_store(
-        winner_principal,
+        admin_caller(),
         "users".to_string(),
         winner_key.clone(),
         profile_doc,
@@ -1914,6 +2060,35 @@ async fn claim_authorize(
         ));
     }
 
+    if session.score > config::ANTI_CHEAT_MAX_SCORE {
+        // Cheat detected — apply ban
+        apply_ban(&mut user_profile);
+        let ban_doc = SetDoc {
+            data: encode_doc_data(&user_profile)?,
+            description: Some("Ban applied: score exceeds mathematical maximum".to_string()),
+            version: user_doc_version,
+        };
+        set_doc_store(caller, "users".to_string(), caller_text.clone(), ban_doc)?;
+
+        logging::log_error(
+            "AntiCheat",
+            &format!(
+                "CHEAT_DETECTED: score {} exceeds max {} for user {}. Offence #{}, banned_until={:?}",
+                session.score,
+                config::ANTI_CHEAT_MAX_SCORE,
+                caller_text,
+                user_profile.offence_count,
+                user_profile.banned_until
+            ),
+        );
+
+        return Err(format!(
+            "CHEAT_DETECTED: Score exceeds maximum. Offence #{}, banned_until={}",
+            user_profile.offence_count,
+            user_profile.banned_until.unwrap_or(0)
+        ));
+    }
+
     // 5. Calc amount — integer-only arithmetic (no f64 precision loss)
     // Determine maximum possible payout for this vault tier
     let vault_tier_building = (config::VAULT_TIER_BUILDING as u128) * 1_000_000_000_000_000_000u128;
@@ -1940,32 +2115,59 @@ async fn claim_authorize(
             .unwrap_or(0)
     };
 
-    // Calculate performance multiplier based on score
-    // perf_mult = session.score / MAX_SCORE
-    // => max_perf = max_payout * session.score / MAX_SCORE
-    let max_perf = max_payout
-        .checked_mul(session.score as u128)
-        .map(|v| v / (config::MAX_SCORE as u128))
-        .unwrap_or(0)
-        .min(vault_balance / 2); // safety cap: never drain more than 50%
+    // Calculate performance amount from piecewise linear PAYOUT_CURVE
+    let mut max_perf = 0u128;
+    let score = session.score;
+
+    let last_point = config::PAYOUT_CURVE.last().unwrap();
+    if score >= last_point.0 {
+        max_perf = max_payout
+            .checked_mul(last_point.1 as u128)
+            .map(|v| v / 100)
+            .unwrap_or(0);
+    } else {
+        let mut prev_point = (0u64, 0u64);
+        for point in config::PAYOUT_CURVE {
+            if score <= point.0 {
+                let score_range = (point.0 - prev_point.0) as u128;
+                let percent_range = (point.1 - prev_point.1) as u128;
+                let score_offset = (score - prev_point.0) as u128;
+
+                // Base payout for prev_point
+                let base_payout = max_payout
+                    .checked_mul(prev_point.1 as u128)
+                    .map(|v| v / 100)
+                    .unwrap_or(0);
+
+                // Added payout for the offset within this segment
+                let range_payout = max_payout
+                    .checked_mul(percent_range)
+                    .map(|v| v / 100)
+                    .unwrap_or(0);
+
+                let offset_payout = range_payout
+                    .checked_mul(score_offset)
+                    .map(|v| v / score_range)
+                    .unwrap_or(0);
+
+                max_perf = base_payout + offset_payout;
+                break;
+            }
+            prev_point = *point;
+        }
+    }
+
+    max_perf = max_perf.min(vault_balance / 2); // safety cap: never drain more than 50%
+
     let guaranteed = fee_amount
         .checked_mul(11)
         .map(|v| v / 10)
         .unwrap_or(fee_amount);
     let amount = max_perf.max(guaranteed).min(vault_balance);
 
-    if amount > u64::MAX as u128 {
-        return Err("Claim amount exceeds u64 range".to_string());
-    }
-
     // 6. Sign with IC threshold ECDSA
-    let signature_hex = generate_claim_signature(
-        &session_id,
-        &wallet_addr,
-        amount as u64,
-        session.keys_collected,
-    )
-    .await?;
+    let signature_hex =
+        generate_claim_signature(&session_id, &wallet_addr, amount, session.keys_collected).await?;
 
     // Convert hex signature to bytes for return
     let sig_clean = signature_hex.strip_prefix("0x").unwrap_or(&signature_hex);
@@ -1987,7 +2189,7 @@ async fn claim_authorize(
         claimed_doc,
     )?;
 
-    let ic_used = ic_cdk::api::instruction_counter() - ic_start;
+    let ic_used = ic_cdk::api::instruction_counter().saturating_sub(ic_start);
     logging::log_debug(
         "Perf",
         &format!(
@@ -2290,7 +2492,7 @@ async fn get_oracle_address() -> Result<String, String> {
 /// Returns the build-time config hash so the client can verify that the deployed
 /// satellite was built from the same config as the running frontend.
 ///
-/// Called by the game pre-flight check in game.astro before the fee gate opens.
+/// Called by the game pre-flight check in `game` before the fee gate opens.
 /// A mismatch means the satellite and frontend are out of sync (e.g. during a
 /// rolling deploy) and the player should see an "Under Maintenance" notice.
 ///

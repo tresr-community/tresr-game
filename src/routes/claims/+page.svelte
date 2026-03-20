@@ -1,0 +1,62 @@
+<script lang="ts">
+  import ClaimsList from "@/components/wallet/ClaimsList.svelte";
+  import Confetti from "@/components/effects/Confetti.svelte";
+  import Footer from "@/components/user/Footer.svelte";
+  import {config} from "@/lib/config/client";
+
+  const appName = config.app.name;
+</script>
+
+<svelte:head>
+  <title>Claims | {appName}</title>
+</svelte:head>
+
+<Confetti />
+
+<!-- Terminal Grid Background -->
+<div
+  class="pointer-events-none fixed inset-0 z-[-1] bg-[linear-gradient(rgba(18,16,11,0.8)_2px,transparent_2px),linear-gradient(90deg,rgba(18,16,11,0.8)_2px,transparent_2px)] bg-[size:40px_40px] opacity-20"
+></div>
+
+<div class="relative flex min-h-dvh flex-col px-4 pt-24 pb-12 sm:px-6 lg:px-8">
+  <div class="mx-auto w-full max-w-5xl flex-grow">
+    <!-- Header Section -->
+    <div class="mb-10 space-y-4 text-center">
+      <h1
+        class="font-display text-warning animate-pulse text-4xl font-black drop-shadow-[0_0_15px_rgba(var(--warning),0.6)] md:text-6xl"
+      >
+        🎉 CLAIM YOUR PRIZES 🎉
+      </h1>
+      <p
+        class="mx-auto max-w-2xl font-mono text-lg tracking-wide text-white/80 md:text-xl"
+      >
+        🤑 Let's get that $TRESR! 🤑
+      </p>
+    </div>
+
+    <!-- Main Content Area -->
+    <div
+      class="border-warning/20 rounded-3xl border bg-black/60 p-4 shadow-2xl backdrop-blur md:p-8"
+    >
+      <ClaimsList />
+    </div>
+  </div>
+
+  <div class="mt-auto pt-10 text-center">
+    <div class="mb-8">
+      <a
+        href="/"
+        class="border-primary text-primary hover:bg-primary inline-block rounded-md border px-8 py-3 font-mono text-sm tracking-widest uppercase transition-all hover:text-black hover:shadow-[0_0_15px_var(--color-primary)]"
+      >
+        RETURN HOME
+      </a>
+    </div>
+    <Footer />
+  </div>
+</div>
+
+<!-- Confetti Container (Script in ClaimsList will trigger this) -->
+<div
+  id="confetti-container"
+  class="pointer-events-none fixed inset-0 z-50 overflow-hidden"
+></div>

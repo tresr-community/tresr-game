@@ -1,11 +1,11 @@
 plugins:
-  - prettier-plugin-astro
+  - prettier-plugin-svelte
   - prettier-plugin-tailwindcss
 
 overrides:
-  - files: "*.astro"
+  - files: "*.svelte"
     options:
-      parser: astro
+      parser: svelte
 
 bracketSpacing: false
 endOfLine: lf

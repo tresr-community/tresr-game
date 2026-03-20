@@ -43,9 +43,9 @@ devenv.local.yaml
 # ignore node packages
 node_modules/
 
-# Astro
-dist/
-.astro/
+# SvelteKit
+build/
+.svelte-kit/
 
 # Vite
 .vite/
@@ -61,7 +61,7 @@ TODO/
 TEMP/
 
 # Source assets (keys, raw JPGs/PNGs — only WebP outputs are committed)
-assets-source/
+static-source/
 
 # Solidity/Foundry
 contracts/cache/

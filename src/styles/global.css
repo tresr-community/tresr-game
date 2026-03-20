@@ -43,45 +43,39 @@
   font-display: swap;
   src: url("/fonts/jetbrainsmono-bold.woff2") format("woff2");
 }
-@plugin "daisyui" {
-  themes:
-    abyss,
-    aqua,
-    black,
-    bumblebee,
-    business,
-    cmyk,
-    coffee,
-    corporate,
-    cyberpunk,
-    dark,
-    dim,
-    dracula,
-    fantasy,
-    forest,
-    halloween,
-    lemonade,
-    light,
-    luxury,
-    night,
-    retro,
-    sunset,
-    synthwave,
-    valentine,
-    winter;
-}
-
 @plugin "@tailwindcss/typography";
+@plugin "tailwind-scrollbar";
 
 /* Tailwind v4 theme configuration */
 @theme {
   --p: 258deg;
 
-  /* Game-specific colors */
+  --color-game-primary: var(--cv-primary);
+  --color-game-accent: var(--cv-accent);
   --color-game-gold: hsl(45 100% 50%);
   --color-game-health: hsl(0 85% 55%);
-  --color-game-energy: hsl(180 100% 50%);
+  --color-game-energy: hsl(190 90% 60%);
   --color-game-xp: hsl(270 100% 60%);
+
+  --color-background: var(--cv-background);
+  --color-surface: var(--cv-surface);
+  --color-surface-hover: var(--cv-surface-hover);
+  --color-foreground: var(--cv-foreground);
+  --color-foreground-muted: var(--cv-foreground-muted);
+
+  --color-primary: var(--cv-primary);
+  --color-primary-content: var(--cv-primary-content);
+  --color-secondary: var(--cv-secondary);
+  --color-accent: var(--cv-accent);
+  --color-neutral: var(--cv-neutral);
+  --color-base-100: var(--cv-background);
+  --color-base-200: var(--cv-surface);
+  --color-base-300: var(--cv-surface-hover);
+  --color-error: hsl(0 85% 55%);
+  --color-success: hsl(150 100% 40%);
+  --color-warning: var(--cv-warning);
+  --color-info: var(--cv-info);
+  --color-border: var(--cv-border);
 
   --radius-sm: 0.25rem;
   --radius-md: 0.5rem;
@@ -89,11 +83,56 @@
 }
 
 @layer base {
-  :root {
+  :root, :root[data-theme="synthwave"] {
+    --cv-primary: hsl(280 100% 60%);
+    --cv-primary-content: hsl(0 0% 0%);
+    --cv-secondary: hsl(320 100% 60%);
+    --cv-accent: hsl(180 100% 50%);
+    --cv-background: hsl(240 10% 5%);
+    --cv-surface: hsl(240 10% 10%);
+    --cv-surface-hover: hsl(240 10% 15%);
+    --cv-foreground: hsl(0 0% 100%);
+    --cv-foreground-muted: hsl(240 5% 65%);
+    --cv-neutral: hsl(240 10% 20%);
+    --cv-border: hsl(240 10% 20%);
+    --cv-warning: hsl(45 100% 50%);
+    --cv-info: hsl(200 100% 50%);
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-right: env(safe-area-inset-right, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-left: env(safe-area-inset-left, 0px);
+  }
+
+  :root[data-theme="dark"] {
+    --cv-primary: hsl(220 100% 60%);
+    --cv-primary-content: hsl(0 0% 0%);
+    --cv-secondary: hsl(180 100% 40%);
+    --cv-accent: hsl(150 100% 50%);
+    --cv-background: hsl(0 0% 5%);
+    --cv-surface: hsl(0 0% 10%);
+    --cv-surface-hover: hsl(0 0% 15%);
+    --cv-foreground: hsl(0 0% 95%);
+    --cv-foreground-muted: hsl(0 0% 60%);
+    --cv-neutral: hsl(0 0% 15%);
+    --cv-border: hsl(0 0% 20%);
+    --cv-warning: hsl(45 80% 50%);
+    --cv-info: hsl(200 80% 50%);
+  }
+
+  :root[data-theme="light"] {
+    --cv-primary: hsl(250 80% 50%);
+    --cv-primary-content: hsl(0 0% 100%);
+    --cv-secondary: hsl(300 80% 40%);
+    --cv-accent: hsl(200 90% 40%);
+    --cv-background: hsl(0 0% 98%);
+    --cv-surface: hsl(0 0% 95%);
+    --cv-surface-hover: hsl(0 0% 90%);
+    --cv-foreground: hsl(0 0% 10%);
+    --cv-foreground-muted: hsl(0 0% 40%);
+    --cv-neutral: hsl(0 0% 80%);
+    --cv-border: hsl(0 0% 85%);
+    --cv-warning: hsl(35 90% 50%);
+    --cv-info: hsl(210 90% 50%);
   }
 
   * {
@@ -116,7 +155,7 @@
   }
 }
 
-/* Scanline effect remains as it is game-specific and not in DaisyUI */
+/* Scanline overlay — game-specific screen effect */
 .scanlines::after {
   content: "";
   position: absolute;
@@ -157,15 +196,4 @@
     overflow-y: auto !important;
   }
 
-  /* Force DaisyUI modal-box fullscreen on mobile landscape.
-     DaisyUI's .modal-box has high-specificity defaults for max-width,
-     max-height, and border-radius that override Tailwind utility classes.
-     This ensures game modals (pause, death, victory, login) go edge-to-edge. */
-  .modal > .modal-box {
-    max-width: 100vw !important;
-    max-height: 100dvh !important;
-    width: 100vw !important;
-    height: 100dvh !important;
-    border-radius: 0 !important;
-  }
 }

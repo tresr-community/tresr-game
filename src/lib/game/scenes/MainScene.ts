@@ -16,7 +16,7 @@ import {config as clientConfig} from "@/lib/config/client";
 import {setDoc} from "@junobuild/core";
 import {claimAuthorize} from "@/lib/satellite/satellite-api";
 
-import {enqueueProfileWrite} from "@/lib/user";
+import {enqueueProfileWrite} from "@/lib/user/write-queue";
 import {getAuthState} from "@/lib/auth";
 import {
   trackGameLoss,
@@ -354,6 +354,11 @@ export class MainScene extends Phaser.Scene {
    *  the Recorder's startTime, so that `ended_at - started_at` on the server
    *  matches `last action timestamp (t)` from the replay within the grace window. */
   private sessionStartMs: number = 0;
+  /** Wall-clock ms at the moment recorder.freeze() is called (boss defeat).
+   *  Used as `ended_at` in saveGameSession so the server's session duration
+   *  matches the replay's last action timestamp within the grace window.
+   *  Tab-away and post-boss async delays would inflate Date.now() at victory time. */
+  private sessionEndMs: number = 0;
 
   private escKey?: Phaser.Input.Keyboard.Key;
   /** Track previous-frame state of gamepad START button for edge detection */
@@ -522,7 +527,7 @@ export class MainScene extends Phaser.Scene {
         this.storeUnsubscribe = undefined;
       }
 
-      // Notify Astro layer
+      // Notify SvelteKit layer
       document.dispatchEvent(new CustomEvent("tresr:config-tampered"));
       return;
     }
@@ -1199,6 +1204,7 @@ export class MainScene extends Phaser.Scene {
     if (k.active) {
       k.kill();
       this.collectedKeys++;
+      gameActions.collectKey();
       this.score += this.gameplayConfig.scoring.key_collection;
       this.playSound("key_collect");
       log.info(COMPONENT_NAME, `Key Collected! Total: ${this.collectedKeys}`);
@@ -1300,7 +1306,10 @@ export class MainScene extends Phaser.Scene {
   private spawnChest() {
     // Freeze the recorder NOW — post-victory wandering/chest-open time is
     // unbounded and must not be included in the replay timestamp window.
+    // Capture the end time at the same instant so saveGameSession uses the
+    // same epoch as the replay's last action timestamp (not inflated by async delays).
     this.recorder.freeze();
+    this.sessionEndMs = Date.now();
 
     // Stop bomb and key spawning — nothing new should fall after boss death.
     this.spawnManager.removeBombSpawnTimer();
@@ -1324,6 +1333,13 @@ export class MainScene extends Phaser.Scene {
 
   private async onVictory() {
     if (this.phase === "victory" || this.phase === "lost") return;
+
+    // Sync final elapsed time to store for the victory screen display BEFORE phase change
+    const winDuration = Math.round(
+      ((this.sessionEndMs || Date.now()) - this.sessionStartMs) / 1000
+    );
+    gameActions.setTimer(winDuration);
+
     this.phase = "victory";
     gameActions.setPhase("victory");
     log.info(COMPONENT_NAME, "VICTORY! Authorizing settlement...");
@@ -1356,9 +1372,6 @@ export class MainScene extends Phaser.Scene {
           colors: ["#facc15", "#f59e0b", "#fbbf24", "#34d399", "#60a5fa"],
         },
       })
-    );
-    const winDuration = Math.round(
-      this.gameplayConfig.time_limit_seconds - this.survivalTimer
     );
     trackGameWin(this.score, {
       keysCollected: this.collectedKeys,
@@ -1490,11 +1503,13 @@ export class MainScene extends Phaser.Scene {
           doc: {
             key: `session_${this.sessionId}`,
             data: {
-              // Use the recorder's epoch (set at startGameplay) so that
-              // ended_at - started_at matches the replay's last action
-              // timestamp within the Rust-side REPLAY_GRACE_MS window.
+              // Use the recorder's epoch (set at startGameplay) for started_at,
+              // and sessionEndMs (captured at recorder.freeze() = boss defeat) for
+              // ended_at.  Using Date.now() here would inflate ended_at by the
+              // async time spent in onVictory() (chest animation, setDoc awaits,
+              // tab-away time) and cause a REPLAY_GRACE_MS mismatch on the server.
               started_at: this.sessionStartMs,
-              ended_at: Date.now(),
+              ended_at: this.sessionEndMs || Date.now(),
               keys_collected: this.collectedKeys,
               boss_defeated: bossDefeated,
               score: this.score,
@@ -1539,6 +1554,11 @@ export class MainScene extends Phaser.Scene {
   private async onPlayerDeath() {
     if (this.phase === "lost" || this.phase === "victory") return;
     const deathPhase = this.phase;
+
+    // Sync final elapsed time to store for the game over screen display BEFORE phase change
+    const deathDuration = Math.round((Date.now() - this.sessionStartMs) / 1000);
+    gameActions.setTimer(deathDuration);
+
     this.phase = "lost";
     gameActions.setPhase("lost");
     log.info(COMPONENT_NAME, "PLAYER DIED. Rug pulled.");
@@ -1563,9 +1583,7 @@ export class MainScene extends Phaser.Scene {
     this.playSound("game_over");
     void MusicManager.getInstance().stop();
     this.uiManager.showPhaseAnnouncement("RUG PULLED");
-    const deathDuration = Math.round(
-      this.gameplayConfig.time_limit_seconds - this.survivalTimer
-    );
+
     trackPlayerDeath(this.score, deathPhase, this.collectedKeys);
     trackGameLoss("player_died", {
       score: this.score,

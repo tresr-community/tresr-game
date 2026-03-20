@@ -23,7 +23,7 @@ export class RetardioBehavior implements AIBehavior {
 
   onSpawn(ctx: EnemyContext): void {
     const retardioConfig = ctx.config.gameplay.entities.enemy.ai.retardio;
-    ctx.speed = ctx.baseSpeed * (retardioConfig?.speed_mult ?? 1.1);
+    ctx.speed = ctx.baseSpeed * retardioConfig.speed_mult;
     this.retardioTarget = undefined;
     this.retargetTimer = 0;
     this.attackTimer = 0;
@@ -34,7 +34,7 @@ export class RetardioBehavior implements AIBehavior {
 
   update(ctx: EnemyContext, dt: number): BehaviorResult {
     const retardioConfig = ctx.config.gameplay.entities.enemy.ai.retardio;
-    const jitterTime = retardioConfig?.jitter_time ?? 0.3;
+    const jitterTime = retardioConfig.jitter_time;
 
     this.retargetTimer += dt;
     this.attackTimer += dt;
@@ -45,13 +45,13 @@ export class RetardioBehavior implements AIBehavior {
       !this.retardioTarget ||
       !this.retardioTarget.active ||
       this.retardioTarget.hp <= 0 ||
-      this.retargetTimer > (retardioConfig?.retarget_time ?? 4)
+      this.retargetTimer > retardioConfig.retarget_time
     ) {
       this.retargetTimer = 0;
       this.retardioTarget = findNearestEnemy(ctx);
 
       if (this.retardioTarget) {
-        ctx.setTint(retardioConfig?.rage_tint ?? 0xff0000);
+        ctx.setTint(retardioConfig.rage_tint);
       } else {
         ctx.clearTint();
       }
@@ -87,9 +87,9 @@ export class RetardioBehavior implements AIBehavior {
 
         // Deal damage on cooldown
         if (this.retardioTarget.active && this.retardioTarget.hp > 0) {
-          const attackCooldown = retardioConfig?.attack_cooldown_s ?? 0.5;
+          const attackCooldown = retardioConfig.attack_cooldown_s;
           if (this.attackTimer > attackCooldown) {
-            this.retardioTarget.takeDamage(retardioConfig?.attack_damage ?? 10);
+            this.retardioTarget.takeDamage(retardioConfig.attack_damage);
             this.attackTimer = 0;
           }
         }

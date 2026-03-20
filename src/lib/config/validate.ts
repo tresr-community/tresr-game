@@ -8,7 +8,6 @@ export function validateConfig(config: unknown): config is ConfigTypes {
   if (typeof c.configHash !== "string" || !/^[a-f0-9]{64}$/.test(c.configHash))
     return false;
   // Check all required top-level keys
-  if (!c.daisyui || typeof c.daisyui !== "object") return false;
   if (!c.auth || typeof c.auth !== "object") return false;
   if (!c.app || typeof c.app !== "object") return false;
   if (!c.blockchain || typeof c.blockchain !== "object") return false;

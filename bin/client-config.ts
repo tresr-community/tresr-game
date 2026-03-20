@@ -13,7 +13,7 @@ const projectRoot: string = path.resolve(process.cwd());
 const configPath: string = path.join(projectRoot, "config", "tresr.yaml");
 const publicConfigPath: string = path.join(
   projectRoot,
-  "public",
+  "static",
   "config-client.json"
 );
 const serverConfigPath: string = path.join(
@@ -71,7 +71,7 @@ function generateTypes(
 }
 
 function generateModuleDeclaration(obj: Record<string, unknown>): string {
-  const types = `declare module "/config-client.json" {\n  const value: ${generateTypes(obj, "    ")};\n  export default value;\n}\ndeclare module "../../../public/config-client.json" {\n  const value: ${generateTypes(obj, "    ")};\n  export default value;\n}\n`;
+  const types = `declare module "/config-client.json" {\n  const value: ${generateTypes(obj, "    ")};\n  export default value;\n}\ndeclare module "../../../static/config-client.json" {\n  const value: ${generateTypes(obj, "    ")};\n  export default value;\n}\n`;
   return types;
 }
 
@@ -235,9 +235,9 @@ interface PendingWrite {
     }
 
     // Scan for audio files
-    const musicDir = path.join(projectRoot, "public/assets/audio/music");
-    const sfxDir = path.join(projectRoot, "public/assets/audio/sfx");
-    const imagesDir = path.join(projectRoot, "public/assets/images/wallpapers");
+    const musicDir = path.join(projectRoot, "static/assets/audio/music");
+    const sfxDir = path.join(projectRoot, "static/assets/audio/sfx");
+    const imagesDir = path.join(projectRoot, "static/assets/images/wallpapers");
 
     const assets: {music?: string[]; sfx?: string[]; wallpapers?: string[]} =
       {};
@@ -357,29 +357,6 @@ interface PendingWrite {
       log.info(COMPONENT_NAME, "Loaded changelog from config/changelog.yaml");
     }
 
-    // Generate DaisyUI themes in global.css
-    const daisyui = (clientConfig.daisyui as Record<string, unknown>) || {};
-    const themes = (daisyui.themes as string[]) || [];
-    if (themes.length > 0) {
-      const cssPath = path.join(projectRoot, "src", "styles", "global.css");
-      let css = fs.readFileSync(cssPath, "utf8");
-      const themesStr = "themes:\n    " + themes.join(",\n    ") + ";";
-      const regex = /themes:\s*([\s\S]*?);/; // Replace multiline themes block
-      css = css.replace(regex, themesStr);
-      writeOrCollect(cssPath, css);
-      if (!CHECK_MODE) {
-        log.info(
-          COMPONENT_NAME,
-          "Updated src/styles/global.css with DaisyUI themes"
-        );
-      }
-    } else {
-      log.warn(
-        COMPONENT_NAME,
-        "No DaisyUI themes defined in client.daisyui.themes"
-      );
-    }
-
     if (Object.keys(clientConfig).length === 0) {
       log.warn(
         COMPONENT_NAME,
@@ -444,8 +421,52 @@ interface PendingWrite {
 
     // Write server config as JSON so juno.config.mjs (and the Skylab container)
     // can read it without needing the `yaml` npm package.
+    // Expand ${VAR} placeholders from process.env BEFORE writing so the generated
+    // file always contains real values, not template strings.
     const serverSection = (config.server as Record<string, unknown>) || {};
-    writeOrCollect(serverConfigPath, JSON.stringify(serverSection, null, 2));
+
+    // Deep-expand all ${VAR} placeholders in an object tree using process.env.
+    function expandEnvVars(obj: unknown): unknown {
+      if (typeof obj === "string") {
+        return obj.replace(/\$\{(\w+)\}/g, (match, name) => {
+          const val = process.env[name];
+          if (val === undefined || val === "") {
+            log.error(
+              COMPONENT_NAME,
+              `config-server.json: environment variable '${name}' is not set (referenced as '${match}' in tresr.yaml)`
+            );
+            process.exit(1);
+          }
+          return val;
+        });
+      }
+      if (Array.isArray(obj)) return obj.map(expandEnvVars);
+      if (obj !== null && typeof obj === "object") {
+        return Object.fromEntries(
+          Object.entries(obj as Record<string, unknown>).map(([k, v]) => [
+            k,
+            expandEnvVars(v),
+          ])
+        );
+      }
+      return obj;
+    }
+
+    const expandedServerSection = expandEnvVars(serverSection);
+
+    // Secondary guard: bomb out if any value still looks like an unexpanded
+    // placeholder (indicates expandEnvVars missed a path — defence in depth).
+    const serverJson = JSON.stringify(expandedServerSection, null, 2);
+    const unexpandedMatch = serverJson.match(/\$\{(\w+)\}/);
+    if (unexpandedMatch) {
+      log.error(
+        COMPONENT_NAME,
+        `config-server.json still contains unexpanded placeholder '${unexpandedMatch[0]}' after expansion — check tresr.yaml and your .env file`
+      );
+      process.exit(1);
+    }
+
+    writeOrCollect(serverConfigPath, serverJson);
 
     writeOrCollect(publicConfigPath, JSON.stringify(clientConfig, null, 2));
 
@@ -541,7 +562,7 @@ interface PendingWrite {
     // JIT during the loading screen, so precaching adds unnecessary SW bloat.
 
     writeOrCollect(
-      path.join(projectRoot, "public", "precache-manifest.json"),
+      path.join(projectRoot, "static", "precache-manifest.json"),
       JSON.stringify(precacheAssets, null, 2)
     );
 
@@ -561,7 +582,7 @@ interface PendingWrite {
     writeOrCollect(libConfigPath, libConfigContent);
 
     // Generate env.d.ts
-    const envContent = `/// <reference path="../.astro/types.d.ts" />\n/// <reference types="astro/client" />\n/// <reference lib="webworker" />\n\n// THIS FILE IS AUTOMATICALLY GENERATED BY bin/client-config.ts\n// DO NOT EDIT MANUALLY.\n\n${generateModuleDeclaration(clientConfig)}\n`;
+    const envContent = `/// <reference types="@sveltejs/kit" />\n/// <reference types="vite/client" />\n/// <reference lib="webworker" />\n\n// THIS FILE IS AUTOMATICALLY GENERATED BY bin/client-config.ts\n// DO NOT EDIT MANUALLY.\n\n${generateModuleDeclaration(clientConfig)}\n`;
     writeOrCollect(envOutputPath, envContent);
 
     // --check mode: compare all pending writes against existing files
@@ -595,7 +616,7 @@ interface PendingWrite {
     // Normal mode: log success
     log.info(
       COMPONENT_NAME,
-      "Generated public/config-client.json from config/tresr.yaml client section."
+      "Generated static/config-client.json from config/tresr.yaml client section."
     );
     log.info(COMPONENT_NAME, "Generated src/types/config.ts");
     log.info(COMPONENT_NAME, "Generated src/lib/config/client.ts");

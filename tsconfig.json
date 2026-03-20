@@ -1,4 +1,5 @@
 {
+  "extends": "./.svelte-kit/tsconfig.json",
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
     "target": "ESNext",
@@ -16,11 +17,7 @@
     "jsx": "preserve",
     "strict": true,
     "lib": ["ESNext", "DOM", "WebWorker"],
-    "baseUrl": ".",
-    "types": ["bun-types", "vite/client", "@junobuild/core"],
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "types": ["bun-types", "vite/client", "@junobuild/core"]
   },
   "exclude": [
     "dist",
@@ -29,5 +26,5 @@
     "src/declarations",
     "src/integrations"
   ],
-  "include": [".astro/types.d.ts", "src/**/*", "bin/**/*"]
+  "include": ["src/**/*", "bin/**/*"]
 }

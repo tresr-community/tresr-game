@@ -5,7 +5,7 @@
  * All values are environment-aware and set automatically based on build mode.
  *
  * Note: App metadata (name, version, tagline) is defined in public/config.yaml
- * and loaded via src/lib/config.ts for use in Astro pages.
+ * and loaded via src/lib/config.ts for use in SvelteKit routes.
  */
 
 import {JUNO_ENVIRONMENT, log} from "@/lib/utils/log";
@@ -25,12 +25,11 @@ export const JUNO_EMULATOR_PORT =
 
 // Internet Identity provider
 //  - Development: localhost
-//  - Staging: id.ai
-//  - Production: id.ai
+//  - Staging/Production: dynamic (from config.auth.iid.domain, e.g., id.ai)
 export const JUNO_INTERNET_IDENTITY =
   JUNO_ENVIRONMENT === "development"
     ? `http://${import.meta.env.VITE_INTERNET_IDENTITY_ID}.localhost:${JUNO_EMULATOR_PORT}`
-    : "id.ai";
+    : config.auth.iid.domain;
 log.debug(COMPONENT_NAME, `Juno Internet Identity: ${JUNO_INTERNET_IDENTITY}`);
 
 // SIWA Provider Canister ID (Sign In With Avalanche)
@@ -43,12 +42,18 @@ export const JUNO_SIWA_PROVIDER = config.auth.avalanche.enabled
 log.debug(COMPONENT_NAME, `Juno SIWA Provider: ${JUNO_SIWA_PROVIDER}`);
 
 // IC Host URL for SIWA client
-// In development: use local emulator
-// In production: use mainnet
+// In development: use local emulator (localhost, not 127.0.0.1 — browsers
+// treat them differently for CORS and cookie scoping).
+// Detection uses import.meta.env.DEV (Juno-recommended) OR MODE, so
+// both `bun run dev` (Vite dev server) and local deploys are covered.
 export const IC_HOST =
-  JUNO_ENVIRONMENT === "development"
-    ? `http://127.0.0.1:${JUNO_EMULATOR_PORT}`
+  import.meta.env.DEV === true || JUNO_ENVIRONMENT === "development"
+    ? `http://localhost:${JUNO_EMULATOR_PORT}`
     : "https://ic0.app";
+log.debug(
+  COMPONENT_NAME,
+  `IC_HOST resolved: ${IC_HOST} (env: ${JUNO_ENVIRONMENT}, DEV: ${import.meta.env.DEV})`
+);
 
 /**
  * Get the environment key for blockchain config lookup.

@@ -72,9 +72,6 @@ contract VaultTest is Test {
         // 1. User pays fee
         testPayFee();
 
-        // Advance time past cooldown (1 hour + 1 second)
-        vm.warp(block.timestamp + 3601);
-
         bytes32 sessionId = keccak256("session1");
         uint256 prize = 100 * 10 ** 18; // 100 TRESR < 50% of 900 TRESR
         uint256 keys = 75;
@@ -100,7 +97,6 @@ contract VaultTest is Test {
 
     function testClaimMinAmount() public {
         testPayFee();
-        vm.warp(block.timestamp + 3601);
 
         bytes32 sessionId = keccak256("session1");
         uint256 prize = 40 * 10 ** 18; // 40 TRESR < 50 TRESR
@@ -120,7 +116,6 @@ contract VaultTest is Test {
 
     function testClaimCap() public {
         testPayFee();
-        vm.warp(block.timestamp + 3601);
 
         bytes32 sessionId = keccak256("session1");
         uint256 vaultBal = token.balanceOf(address(vault));
@@ -139,29 +134,27 @@ contract VaultTest is Test {
         vm.stopPrank();
     }
 
-    function testClaimCooldown() public {
-        testClaim(); // First claim succeeds
+    function testBackToBackClaims() public {
+        // Two claims in quick succession — no cooldown
+        testPayFee();
 
-        // Try second claim immediately (should fail — cooldown is 1 hour)
-        bytes32 sessionId2 = keccak256("session2");
-        uint256 prize = 100 * 10 ** 18;
-        uint256 keys = 50;
+        // Fund vault with extra tokens for second claim
+        vm.prank(owner);
+        assert(token.transfer(address(vault), 500 * 10 ** 18));
 
-        bytes32 messageHash = keccak256(abi.encodePacked(sessionId2, user, prize, keys));
-        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
+        _signAndClaim(keccak256("session1"), 100 * 10 ** 18, 75);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(oraclePrivateKey, ethSignedMessageHash);
-        bytes memory signature = abi.encodePacked(r, s, v);
-
+        // Pay fee for a second session
         vm.startPrank(user);
-        vm.expectRevert("Claim cooldown active");
-        vault.claim(sessionId2, prize, keys, signature);
+        token.approve(address(vault), 1000 * 10 ** 18);
+        vault.payFee(1000 * 10 ** 18, keccak256("session2"));
         vm.stopPrank();
+
+        _signAndClaim(keccak256("session2"), 100 * 10 ** 18, 50);
     }
 
     function testClaimWithKeys() public {
         testPayFee();
-        vm.warp(block.timestamp + 3601);
 
         bytes32 sessionId = keccak256("session1");
         uint256 prize = 100 * 10 ** 18;
@@ -194,27 +187,6 @@ contract VaultTest is Test {
         // Admin can upgrade
         vm.prank(owner);
         vault.upgradeToAndCall(address(newImpl), "");
-    }
-
-    function testSetClaimCooldown() public {
-        vm.prank(owner);
-        vault.setClaimCooldown(7200); // 2 hours
-        assertEq(vault.claimCooldown(), 7200);
-    }
-
-    function testClaimCooldownUsesVariable() public {
-        // Set cooldown to 30 minutes
-        vm.prank(owner);
-        vault.setClaimCooldown(1800);
-
-        // First claim
-        testPayFee();
-        vm.warp(block.timestamp + 1801);
-        _signAndClaim(keccak256("session1"), 100 * 10 ** 18, 75);
-
-        // Second claim after 30 minutes should work
-        vm.warp(block.timestamp + 1801);
-        _signAndClaim(keccak256("session2"), 100 * 10 ** 18, 75);
     }
 
     function testUpgradePreservesState() public {

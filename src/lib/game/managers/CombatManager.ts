@@ -293,6 +293,7 @@ export class CombatManager {
         const bkb = this.config.entities.boss.knockback;
         this.boss.applyKnockback(player.x, bkb.force, bkb.stun_ms);
         this.addScore(scoring.boss_hit);
+        gameActions.incrementBossHits();
         hit = true;
       }
     }
@@ -422,6 +423,9 @@ export class CombatManager {
   private handleSuperPierce(data: {x: number; y: number; killed: boolean}) {
     const scoring = this.config.scoring;
 
+    // Count every super hit (killed or survived)
+    gameActions.incrementSuperHits();
+
     // Score: full kill points if enemy died, hit points if survived
     if (data.killed) {
       this.addScore(scoring.enemy_kill);
@@ -466,6 +470,8 @@ export class CombatManager {
     const superEffects = this.config.entities.player.super.effects;
 
     this.addScore(scoring.boss_hit);
+    gameActions.incrementBossHits();
+    gameActions.incrementSuperHits();
 
     // Visual explosion at impact point
     this.triggerFlash();

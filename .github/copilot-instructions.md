@@ -2,15 +2,15 @@
 
 TRESR is a decentralized game hosted on the Internet Computer blockchain.
 
-The architecture is Juno's "One Repo, One App" pattern: a single satellite canister hosts both the static Astro frontend and Rust serverless functions.
+The architecture is Juno's "One Repo, One App" pattern: a single satellite canister hosts both the static SvelteKit frontend and Rust serverless functions.
 
 Avalanche C-Chain smart contracts for the token economy.
 
 ## Project Layout
 
 ```text
-src/                          # Astro frontend
-  components/                 # Reusable .astro UI components
+src/                          # SvelteKit frontend
+  components/                 # Reusable .svelte UI components
   layouts/                    # Page layouts
   lib/                        # TypeScript utilities and game logic
   styles/global.css           # Global styles + DaisyUI theme overrides
@@ -27,7 +27,7 @@ bin/                          # Asset processing CLI scripts (TypeScript/bun)
 
 ## Technology Stack
 
-- **Frontend**: Astro + Vanilla TypeScript (no React). DaisyUI + Tailwind CSS v4 for styling.
+- **Frontend**: SvelteKit. DaisyUI + Tailwind CSS v4 for styling.
 - **Backend**: Rust (`ic-cdk 0.19`) compiled to `wasm32-unknown-unknown` via Juno satellite
   - Juno SDK pins to ic-cdk 0.19; do not upgrade satellite's ic-cdk without Juno first upgrading
 - **Smart Contracts**: Solidity via Foundry on Avalanche C-Chain
@@ -37,7 +37,7 @@ bin/                          # Asset processing CLI scripts (TypeScript/bun)
 ## Quick Commands
 
 ```bash
-juno-dev start         # Start emulator + Astro dev server
+juno-dev start         # Start emulator + SvelteKit dev server
 juno-dev stop          # Stop everything
 juno-dev deploy        # Build and deploy to local satellite
 juno-dev lint          # Run linters
@@ -53,9 +53,9 @@ forge test             # Solidity tests
 After editing `config/tresr.yaml`, run `bun run client-config` to regenerate derived TypeScript types.
 Never edit generated files manually.
 
-## TypeScript / Astro Guidelines
+## TypeScript / SvelteKit Guidelines
 
-- **No React**: use vanilla TypeScript + DOM APIs + Astro `<script>` tags. Nano stores for complex shared state.
+- **No React**: use SvelteKit and Svelte components. Nano stores for complex shared state.
 - **Logging**: always use `import {log} from "@/lib/utils/log"`. Never use `console.log/error/warn/debug` directly in `src/` (linter will flag it).
   - `log.warn` and `log.error` trigger toast notifications — use `log.info` inside toast/notification internals to avoid recursion.
 - **TypeScript strict**: no `any` types; fully type all exports and function signatures.
@@ -115,7 +115,7 @@ Use the unified scripts in `bin/`; never create one-off conversion scripts:
 
 Before any commit (all run inside `devenv shell`):
 
-1. `bun run lint` (ESLint + Astro check)
+1. `bun run lint` (ESLint + Svelte check)
 2. `cargo clippy -- -D warnings` (satellite)
 3. `cargo fmt --check` (satellite)
 4. `actionlint` (GitHub Actions)

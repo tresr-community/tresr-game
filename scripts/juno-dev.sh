@@ -40,12 +40,12 @@ function log_success() {
 mkdir -p "$JUNO_LOG_DIR"
 
 # =============================================================================
-# Build: Astro Build (Clean + Hooks + Static Dist)
+# Build: SvelteKit Build (Clean + Hooks + Static Dist)
 # =============================================================================
 
 # Regenerate and bake the client configuration (env vars → static JSON).
 # Called explicitly before lint so type generation is fresh, and optionally
-# skipped inside cmd_astro_build when it has already been run.
+# skipped inside cmd_svelte_build when it has already been run.
 function cmd_prebuild() {
 	log_info "Regenerating client config..."
 	bun run client-config || {
@@ -54,21 +54,22 @@ function cmd_prebuild() {
 	}
 }
 
-# Build the Astro static site.
+# Build the SvelteKit static site.
 # skip_prebuild=true → skip the bun prebuild lifecycle hook (client-config
 # already ran earlier in the same session, e.g. before lint in oneshot).
-function cmd_astro_build() {
-	local skip_prebuild="${1:-false}"
-	log_info "🚀 Clean Astro build..."
-	rm -rf dist node_modules/.vite .astro # Vite/Astro caches
+function cmd_svelte_build() {
+	local mode="${1:-development}"
+	local skip_prebuild="${2:-false}"
+	log_info "🚀 Clean SvelteKit build (mode=$mode)..."
+	rm -rf build node_modules/.vite .svelte-kit # Vite/Svelte caches
 	bun install
 	if [[ $skip_prebuild == "true" ]]; then
-		# client-config already ran; invoke astro directly to avoid a second run.
-		bun x astro build || return 1
+		# client-config already ran; invoke svelte-kit directly to avoid a second run.
+		bun run build --mode "$mode" || return 1
 	else
 		# NOTE: bun automatically runs the `prebuild` lifecycle hook before `build`,
 		# so client-config is regenerated exactly once without an explicit call here.
-		bun run build || return 1
+		bun run build --mode "$mode" || return 1
 	fi
 	log_success "✅ Build done. NEW SW: $(find dist/_astro -name 'sw*' -print -quit 2>/dev/null || echo 'None')"
 }
@@ -137,11 +138,11 @@ function cmd_juno_deploy() {
 	local skip_build="${2:-false}"
 
 	if [[ $skip_build != "true" ]]; then
-		cmd_astro_build
+		cmd_svelte_build "$mode"
 	fi
 
 	log_info "📤 Juno hosting deploy (mode=$mode)..."
-	if ! juno hosting deploy --immediate --mode "$mode"; then
+	if ! SKIP_PREDEPLOY=true juno hosting deploy --immediate --mode "$mode"; then
 		log_error "Deploy failed!"
 		return 1
 	fi
@@ -153,7 +154,7 @@ function cmd_juno_deploy() {
 	fi
 
 	local url
-	url="http://${VITE_DEVELOPMENT_SATELLITE_ID}.localhost:5987/"
+	url="http://${VITE_SATELLITE_ID}.localhost:5987/"
 	log_success "Satellite live: $url"
 	echo "$url" # For piping
 }
@@ -284,7 +285,7 @@ function cmd_test() {
 
 function cmd_cleanup() {
 	log_info "Cleaning artifacts..."
-	rm -rf dist .astro node_modules/.vite .cache || {
+	rm -rf build .svelte-kit node_modules/.vite .cache || {
 		log_warn "One or more artifacts could not be removed."
 	}
 }
@@ -292,7 +293,7 @@ function cmd_cleanup() {
 # Perform all the build steps but don't deploy.
 function cmd_rebuild() {
 	log_info "Full rebuild..."
-	cmd_astro_build || {
+	cmd_svelte_build || {
 		log_error "Build failed."
 		return 1
 	}
@@ -477,7 +478,7 @@ function cmd_setup() {
 		5. Secure the ${MAGENTA}Satellite ID${NC}.
 		6. Update your local configuration (${YELLOW}.env${NC}):
 
-		    ${CYAN}VITE_DEVELOPMENT_SATELLITE_ID=...${NC}
+		    ${CYAN}VITE_SATELLITE_ID=...${NC}
 
 		${RED}======================================${NC}
 		${RED}     Termination Protocol:${NC}
@@ -536,13 +537,13 @@ AGENT_DOCS_DIR="docs/agents"
 # Add new sources here - name will be lowercased for filename
 AGENT_DOC_SOURCES=(
 	"avalanche|https://build.avax.network/llms-full.txt"
-	"astro|https://docs.astro.build/llms-full.txt"
+	"bits-ui|https://bits-ui.com/llms.txt"
 	"cloudflare|https://developers.cloudflare.com/llms.txt"
-	"daisyui|https://daisyui.com/llms.txt"
 	"foundry|https://getfoundry.sh/llms-full.txt"
 	"juno|https://juno.build/llms-full.txt"
 	"oisy|https://docs.oisy.com/llms-full.txt"
 	"reown|https://docs.reown.com/llms-full.txt"
+	"sveltekit|https://svelte.dev/llms-full.txt"
 	"viem|https://viem.sh/llms-full.txt"
 	"wagmi|https://wagmi.sh/llms-full.txt"
 	"xai|https://docs.x.ai/llms.txt"
@@ -627,7 +628,7 @@ function cmd_update() {
 		log_warn "No Cargo.toml found — skipping Rust dependencies"
 	fi
 
-	# ---- Bun (Frontend / Astro) ----
+	# ---- Bun (Frontend / SvelteKit) ----
 	log_info ""
 	log_info "🧁 Updating Bun (frontend) dependencies..."
 
@@ -818,7 +819,7 @@ function usage() {
 	echo -e "  ${GREEN}──────────────────────────────────────────────────────────────${NC}"
 
 	echo -e "\n  ${GREEN}Build${NC}"
-	row "build" "" "Build frontend (Astro) + serverless functions"
+	row "build" "" "Build frontend (SvelteKit) + serverless functions"
 	row "build-functions" "bf" "Build Rust → WASM serverless functions only"
 	row "rebuild" "" "Clean rebuild of the static site"
 
@@ -837,10 +838,10 @@ function usage() {
 	row "nuke-juno" "" "Full reset: stop emulator, remove volumes + caches"
 
 	echo -e "\n  ${GREEN}Quality${NC}"
-	row "lint" "" "Run ESLint / Astro linter"
+	row "lint" "" "Run ESLint / Svelte linter"
 	row "test" "" "Run TypeScript + Rust unit tests"
 	row "typecheck" "tsc" "TypeScript type-check (tsc --noEmit)"
-	row "cleanup" "" "Remove dist, .astro, Vite and build caches"
+	row "cleanup" "" "Remove build, .svelte-kit, Vite and build caches"
 
 	echo -e "\n  ${GREEN}Funding${NC}"
 	row "topup" "fund" "Show instructions to top up satellite cycles"
@@ -858,7 +859,7 @@ case "${1:-help}" in
 
 # Build the static site + serverless functions
 build)
-	cmd_astro_build || {
+	cmd_svelte_build || {
 		log_error "Could not build the static site."
 		exit 1
 	}
@@ -878,7 +879,7 @@ build-functions | bf)
 
 # Deploy serverless functions only
 deploy-functions | df)
-	cmd_functions_deploy "${2:-development}" || {
+	cmd_functions_deploy development || {
 		log_error "Could not deploy serverless functions."
 		exit 2
 	}
@@ -886,7 +887,7 @@ deploy-functions | df)
 
 # Deploy to Juno
 deploy | d)
-	cmd_juno_deploy "${2:-development}" || {
+	cmd_juno_deploy development || {
 		log_error "Could not deploy to Juno."
 		exit 2
 	}
@@ -985,7 +986,7 @@ oneshot | loop)
 	}
 	# Generate client config once — needed by lint (type generation) and build.
 	# We call cmd_prebuild explicitly here so lint has fresh types, then pass
-	# skip_prebuild=true to cmd_astro_build to avoid running it a second time.
+	# skip_prebuild=true to cmd_svelte_build to avoid running it a second time.
 	cmd_prebuild || {
 		log_error "Could not regenerate client config."
 		exit 8
@@ -1003,7 +1004,8 @@ oneshot | loop)
 		exit 20
 	}
 	# skip_prebuild=true: client-config already ran above for lint.
-	cmd_astro_build true || {
+	# Args: mode=development, skip_prebuild=true (client-config already ran above)
+	cmd_svelte_build development true || {
 		log_error "Build failed."
 		exit 9
 	}
@@ -1015,6 +1017,10 @@ oneshot | loop)
 	cmd_functions_deploy development || {
 		log_error "Could not deploy serverless functions."
 		exit 2
+	}
+	cmd_juno_config development || {
+		log_error "Could not apply Juno config."
+		exit 23
 	}
 	;;
 
@@ -1052,7 +1058,7 @@ topup-wallet | fund-wallet)
 
 # Apply Juno satellite config (collections + storage headers) without deploying files
 config)
-	cmd_juno_config "${2:-development}" || {
+	cmd_juno_config development || {
 		log_error "Could not apply Juno config."
 		exit 23
 	}

@@ -144,6 +144,7 @@ inpainted
 interpret
 ipal
 iption
+janky
 jetbrainsmono
 jlumbroso
 johnpapa
@@ -189,10 +190,12 @@ normies
 notific
 notifs
 ntion
+nums
 oisy
 ollerinpaint
 oneshot
 ontal
+onwarn
 openzep
 otherparam
 oxalica
@@ -231,12 +234,14 @@ rlib
 rmz
 rmz_version
 rray
+rrggbb
 rustc
 rustup
 sarif
 sarifv
 scanlines
 scro
+scure
 selfdestruct
 serde
 sharedbackend
@@ -247,6 +252,8 @@ spritesheet
 spritesheets
 squircle
 startswith
+stty
+sveltekit
 synthwave
 tekumura
 temurin
@@ -283,6 +290,5 @@ webps
 worktree
 xhash
 xtampered
-rrggbb
 yoyo
 yzhang

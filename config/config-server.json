@@ -1,19 +1,19 @@
 {
   "juno": {
     "development": {
-      "satellite_id": "${VITE_DEVELOPMENT_SATELLITE_ID}",
-      "orbiter_id": "${VITE_DEVELOPMENT_ORBITER_ID}"
+      "satellite_id": "auamu-4x777-77775-aaaaa-cai",
+      "orbiter_id": "atbka-rp777-77775-aaaaq-cai"
     },
     "staging": {
-      "satellite_id": "${VITE_STAGING_SATELLITE_ID}",
-      "orbiter_id": "${VITE_STAGING_ORBITER_ID}"
+      "satellite_id": "auamu-4x777-77775-aaaaa-cai",
+      "orbiter_id": "atbka-rp777-77775-aaaaq-cai"
     },
     "production": {
-      "satellite_id": "${VITE_PRODUCTION_SATELLITE_ID}",
-      "orbiter_id": "${VITE_PRODUCTION_ORBITER_ID}"
+      "satellite_id": "auamu-4x777-77775-aaaaa-cai",
+      "orbiter_id": "atbka-rp777-77775-aaaaq-cai"
     },
     "admins": [
-      "pegnp-gazih-6vb6n-cze6g-gei4h-y3dlc-i77bm-7ityv-rmome-rshwy-wqe",
+      "5lsg4-u66ij-nal3d-h3cbs-efiac-eye46-w4j6l-ef2x6-thj4e-3m6zt-uae",
       "3n3c2-3pc3z-enxej-thoeh-glav5-ii4fc-itegf-wpru2-erb6e-ivawj-zqe"
     ],
     "collections": {
@@ -73,11 +73,12 @@
       "score_exceeds_maximum",
       "wallet_tampering"
     ],
+    "max_score": 20000,
     "replay": {
       "max_actions": 50000,
       "min_action_gap_ms": 0,
       "min_attack_gap_ms": 200,
-      "grace_ms": 5000,
+      "grace_ms": 3600000,
       "burst_limit_per_100ms": 40,
       "min_actions": 50,
       "attack_per_key_divisor": 100

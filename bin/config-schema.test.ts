@@ -215,6 +215,16 @@ describe("server.anti_cheat", () => {
     const result = ServerConfigSchema.safeParse(serverWith({ban_reasons: []}));
     expect(result.success).toBe(false);
   });
+
+  test("max_score must be a positive integer", () => {
+    const result = ServerConfigSchema.safeParse(serverWith({max_score: 0}));
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(errorPaths(result).some((p) => p.includes("max_score"))).toBe(
+        true
+      );
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -577,9 +587,9 @@ describe("client.gameplay.vault", () => {
     return c;
   }
 
-  test("max_score must be a positive integer", () => {
+  test("payout_max_score must be a positive integer", () => {
     const result = ClientConfigSchema.safeParse(
-      clientWithVault({max_score: 0})
+      clientWithVault({payout_max_score: 0})
     );
     expect(result.success).toBe(false);
   });
@@ -589,32 +599,5 @@ describe("client.gameplay.vault", () => {
       clientWithVault({minimum_cap: -1})
     );
     expect(result.success).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Suite 12: client.daisyui themes
-// ---------------------------------------------------------------------------
-
-describe("client.daisyui", () => {
-  function clientWithDaisyui(patch: Record<string, unknown>) {
-    const c = clone(realClient);
-    c.daisyui = {...(c.daisyui as Record<string, unknown>), ...patch};
-    return c;
-  }
-
-  test("themes must not be empty", () => {
-    const result = ClientConfigSchema.safeParse(
-      clientWithDaisyui({themes: []})
-    );
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(errorPaths(result).some((p) => p.includes("themes"))).toBe(true);
-    }
-  });
-
-  test("themes accepts the real list successfully", () => {
-    const result = ClientConfigSchema.safeParse(realClient);
-    expect(result.success).toBe(true);
   });
 });

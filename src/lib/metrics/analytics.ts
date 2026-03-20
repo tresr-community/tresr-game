@@ -1,9 +1,14 @@
-import {initOrbiter, trackEvent} from "@junobuild/analytics";
+import {initOrbiter, trackEvent as _trackEvent} from "@junobuild/analytics";
 import {JUNO_ENVIRONMENT} from "@/lib/utils/log";
 import {log} from "@/lib/utils/log";
 import {JUNO_EMULATOR_PORT} from "@/lib/config/constants";
 
 const COMPONENT_NAME = "Analytics";
+
+const trackEvent = (params: Parameters<typeof _trackEvent>[0]) => {
+  if (!orbiterAvailable) return;
+  return _trackEvent(params);
+};
 
 let initialized = false;
 let initPromise: Promise<void> | null = null;
@@ -17,6 +22,8 @@ const ensureInit = async () => {
   }
   await initAnalytics();
 };
+
+let orbiterAvailable = false;
 
 export const initAnalytics = async () => {
   if (initialized) return;
@@ -32,21 +39,41 @@ export const initAnalytics = async () => {
       log.debug(COMPONENT_NAME, `VITE_SATELLITE_ID: ${satelliteId}`);
       log.debug(COMPONENT_NAME, `VITE_ORBITER_ID: ${orbiterId}`);
 
+      if (
+        !orbiterId ||
+        orbiterId === "your-production-orbiter-id" ||
+        orbiterId.includes("your-production")
+      ) {
+        log.warn(
+          COMPONENT_NAME,
+          "Orbiter ID not configured. Analytics disabled."
+        );
+        initialized = true;
+        orbiterAvailable = false;
+        return;
+      }
+      orbiterAvailable = true;
+
       const config: {
         container?: string;
         satelliteId?: string;
         orbiterId?: string;
         options: {userAgentParser: boolean; performance: boolean};
       } = {
-        ...(satelliteId && {satelliteId}),
-        ...(orbiterId && {orbiterId}),
+        satelliteId,
+        orbiterId,
         options: {
           userAgentParser: true,
           performance: true,
         },
       };
 
-      if (JUNO_ENVIRONMENT === "development") {
+      const isLocalEmulator =
+        typeof window !== "undefined" &&
+        (window.location.hostname.endsWith("localhost") ||
+          window.location.hostname === "127.0.0.1");
+
+      if (isLocalEmulator) {
         config.container = `http://localhost:${JUNO_EMULATOR_PORT}`;
       }
 

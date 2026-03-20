@@ -1,7 +1,10 @@
 // PWA Utilities: Service Worker Registration and Version Update Handling
 
-import {log, JUNO_ENVIRONMENT} from "../utils/log";
+import {log} from "../utils/log";
 import {trackPwaInstall} from "../metrics/analytics";
+import {notificationManager} from "../notifications";
+import {flushProfileWrites} from "../user/write-queue";
+import {handleSignOut} from "../auth";
 
 const COMPONENT_NAME = "PWA";
 
@@ -179,36 +182,34 @@ class PWA {
       details: "A new version is ready. Click to upgrade.",
     };
 
-    import("../notifications")
-      .then(({notificationManager}) => {
-        const existing = notificationManager
-          .getNotifications()
-          .some((n) => n.data.type === "app_update");
-        if (existing) {
-          log.debug(
-            COMPONENT_NAME,
-            "app_update notification already pending, skipping"
-          );
-          return;
-        }
-        log.info(COMPONENT_NAME, "Dispatching update notification via manager");
-        notificationManager.addNotification(notification);
-      })
-      .catch((err) => {
-        log.warn(
+    try {
+      const existing = notificationManager
+        .getNotifications()
+        .some((n) => n.data.type === "app_update");
+      if (existing) {
+        log.debug(
           COMPONENT_NAME,
-          "NotificationManager import failed, dispatching toast directly:",
-          err
+          "app_update notification already pending, skipping"
         );
-        window.dispatchEvent(
-          new CustomEvent("notification-toast", {
-            detail: {
-              key: "pwa-update-fallback",
-              data: {...notification, timestamp: Date.now()},
-            },
-          })
-        );
-      });
+        return;
+      }
+      log.info(COMPONENT_NAME, "Dispatching update notification via manager");
+      notificationManager.addNotification(notification);
+    } catch (err) {
+      log.warn(
+        COMPONENT_NAME,
+        "NotificationManager import failed, dispatching toast directly:",
+        err
+      );
+      window.dispatchEvent(
+        new CustomEvent("notification-toast", {
+          detail: {
+            key: "pwa-update-fallback",
+            data: {...notification, timestamp: Date.now()},
+          },
+        })
+      );
+    }
   }
 
   /**
@@ -230,11 +231,15 @@ class PWA {
       clearInterval(this.updateCheckInterval);
     }
 
-    const isDev = JUNO_ENVIRONMENT === "development";
-    const INTERVAL_MS = isDev ? 60_000 : 60 * 60_000;
+    const isLocalEmulator =
+      typeof window !== "undefined" &&
+      (window.location.hostname.endsWith("localhost") ||
+        window.location.hostname === "127.0.0.1");
+
+    const INTERVAL_MS = isLocalEmulator ? 60_000 : 60 * 60_000;
     log.info(
       COMPONENT_NAME,
-      `Update check interval: ${isDev ? "60s (dev)" : "1hr"}, build_id: ${BUILD_ID}`
+      `Update check interval: ${isLocalEmulator ? "60s (dev)" : "1hr"}, build_id: ${BUILD_ID}`
     );
 
     this.updateCheckInterval = setInterval(() => {
@@ -375,8 +380,6 @@ class PWA {
     // Dismiss all app_update notifications and wait for Juno persistence
     // before signing out.  Without this the notification reappears after reload.
     try {
-      const {notificationManager} = await import("../notifications");
-      const {flushProfileWrites} = await import("../user/write-queue");
       const updateNotifs = notificationManager
         .getNotifications()
         .filter((n) => n.data.type === "app_update");
@@ -391,19 +394,13 @@ class PWA {
 
     log.info(COMPONENT_NAME, "Clearing auth session...");
 
-    // Clear auth session storage to force clean re-authentication
-    // after the upgrade. Stale Juno delegation identities in IndexedDB
-    // can cause initSatellite() to hang after a SW swap.
-    sessionStorage.removeItem("tresr_auth_mode");
-    sessionStorage.removeItem("tresr_is_guest");
-
-    // Sign out from Juno to clear IndexedDB delegation identity.
-    // Use windowReload: false since we handle navigation ourselves.
+    // Use centralized sign out to cleanly wipe Wagmi, SIWA, and Juno state
+    // before the service worker swap. Prevent the automatic page reload
+    // so we can coordinate it with the skipWaiting controller change below.
     try {
-      const {signOut} = await import("@junobuild/core");
-      await signOut({windowReload: false});
+      await handleSignOut({preventReload: true});
     } catch (err) {
-      log.warn(COMPONENT_NAME, "Juno sign-out during upgrade failed:", err);
+      log.warn(COMPONENT_NAME, "Auth sign-out during upgrade failed:", err);
     }
 
     if (this.registration?.waiting) {

@@ -5,10 +5,11 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   {
     ignores: [
-      "dist",
-      "public/workers",
+      "build",
+      ".svelte-kit",
+      "static/workers",
       "src/declarations",
-      ".astro",
+      ".svelte",
       "src/env.d.ts",
       "**/lib/openzeppelin-contracts/**",
       "**/lib/openzeppelin-contracts-upgradeable/**",

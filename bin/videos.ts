@@ -14,10 +14,10 @@
  *   bun run bin/videos.ts --help
  *
  * Drop MP4 files into:
- *   assets-source/videos/
+ *   static-source/videos/
  *
  * They will be converted to WebM and placed in:
- *   public/assets/videos/
+ *   static/assets/videos/
  *
  * Source files are left untouched.
  * Audio is preserved during conversion.
@@ -33,8 +33,8 @@ const mkdir = promisify(fs.mkdir);
 const stat = promisify(fs.stat);
 
 // ── Paths ───────────────────────────────────────────────────────────
-const SOURCE_DIR = "assets-source/videos/";
-const OUTPUT_DIR = "public/assets/videos/";
+const SOURCE_DIR = "static-source/videos/";
+const OUTPUT_DIR = "static/assets/videos/";
 
 const SOURCE_EXT = ".mp4";
 const OUTPUT_EXT = ".webm";

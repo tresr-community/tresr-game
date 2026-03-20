@@ -41,22 +41,6 @@ export const VaultAbi = [
     stateMutability: "view",
     type: "function",
   },
-  // Cooldown period in seconds
-  {
-    inputs: [],
-    name: "claimCooldown",
-    outputs: [{internalType: "uint256", name: "", type: "uint256"}],
-    stateMutability: "view",
-    type: "function",
-  },
-  // Last claim timestamp per user (seconds since epoch)
-  {
-    inputs: [{internalType: "address", name: "", type: "address"}],
-    name: "lastClaimTime",
-    outputs: [{internalType: "uint256", name: "", type: "uint256"}],
-    stateMutability: "view",
-    type: "function",
-  },
   // Session paid flag — mapping(bytes32 => bool)
   {
     inputs: [{internalType: "bytes32", name: "", type: "bytes32"}],

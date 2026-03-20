@@ -16,8 +16,8 @@ inputs:
     description: "Juno Orbiter ID"
     required: false
     default: ""
-  astro-site-url:
-    description: "Deployed Astro site URL"
+  site-url:
+    description: "Deployed SvelteKit site URL"
     required: true
   siwa-provider-id:
     description: "SIWA provider ID"
@@ -33,6 +33,9 @@ inputs:
     description: "How to determine the version: bump, current, or explicit"
     required: false
     default: "bump"
+  satellite-network:
+    description: "Network the satellite is compiled for: anvil, testnet, or mainnet"
+    required: true
   skip-functions:
     description: "Skip function build/publish (e.g. for bootstrap Pass 2 re-deploy)"
     required: false
@@ -51,12 +54,12 @@ runs:
       shell: bash
       env:
         SATELLITE_ID: ${{ inputs.satellite-id }}
-        ASTRO_SITE_URL: ${{ inputs.astro-site-url }}
+        SITE_URL: ${{ inputs.site-url }}
         SIWA_PROVIDER_ID: ${{ inputs.siwa-provider-id }}
       run: |
         REQUIRED_VARS=(
           SATELLITE_ID
-          ASTRO_SITE_URL
+          SITE_URL
           SIWA_PROVIDER_ID
         )
         for VAR in "${REQUIRED_VARS[@]}";
@@ -82,7 +85,7 @@ runs:
 
         echo "VITE_${PREFIX}_SATELLITE_ID=${{ inputs.satellite-id }}" >> "$GITHUB_ENV"
         echo "VITE_${PREFIX}_ORBITER_ID=${{ inputs.orbiter-id }}" >> "$GITHUB_ENV"
-        echo "VITE_ASTRO_SITE_URL=${{ inputs.astro-site-url }}" >> "$GITHUB_ENV"
+        echo "VITE_SITE_URL=${{ inputs.site-url }}" >> "$GITHUB_ENV"
         echo "VITE_SIWA_PROVIDER_ID=${{ inputs.siwa-provider-id }}" >> "$GITHUB_ENV"
         echo "PUBLIC_WALLETCONNECT_PROJECT_ID=${{ inputs.walletconnect-project-id }}" >> "$GITHUB_ENV"
 
@@ -141,6 +144,12 @@ runs:
         inputs.skip-functions != 'true' &&
         steps.detect_function_changes.outputs.changed == 'true'
       shell: devenv shell --quiet bash -- -e {0}
+      env:
+        # Controls which chain ID, RPC URLs, and vault address are compiled
+        # into the satellite WASM at build time (see src/satellite/build.rs).
+        # Must match the chain the satellite is deployed to, or fee/claim
+        # verification will query the wrong network and return "Receipt not found".
+        SATELLITE_NETWORK: ${{ inputs.satellite-network }}
       run: |
         cargo generate-lockfile
         juno functions build

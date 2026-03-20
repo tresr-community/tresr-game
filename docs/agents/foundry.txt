@@ -26,6 +26,7 @@ Sitemap:
 - [CI Integration](/config/ci): Set up Foundry in GitHub Actions and other CI systems.
 - [Compiler](/config/compiler): Configure the Solidity compiler settings for your Foundry project.
 - [Editor Setup](/config/editors): Configure VS Code, Vim, and other editors for Foundry projects.
+- [MESC](/config/mesc): Use MESC to manage RPC endpoints across all your crypto tools from a single configuration file.
 - [Profiles](/config/profiles): Use profiles to switch between configurations for development, CI, and production.
 - [Testing](/config/testing): Configure testing behavior including fuzz testing and invariant testing.
 - [Building contracts](/forge/build): Compile Solidity contracts with Forge.
@@ -1277,12 +1278,12 @@ $ forge config
 
 ### Key capabilities
 
-| Feature | Description |
-|---------|-------------|
-| **Profiles** | Switch between configurations for development, CI, and production |
-| **Environment variables** | Override settings without modifying files |
-| **Global config** | Share settings across all your projects |
-| **Remappings** | Customize import paths for dependencies |
+| Feature                   | Description                                                       |
+| ------------------------- | ----------------------------------------------------------------- |
+| **Profiles**              | Switch between configurations for development, CI, and production |
+| **Environment variables** | Override settings without modifying files                         |
+| **Global config**         | Share settings across all your projects                           |
+| **Remappings**            | Customize import paths for dependencies                           |
 
 ### Learn more
 
@@ -1296,6 +1297,8 @@ $ forge config
   <Card title="Compiler and optimizer" description="Tune solc settings, via IR, and dynamic test linking." to="/config/reference/solidity-compiler" />
 
   <Card title="Testing configuration" description="Control fuzzing, invariants, and test behavior." to="/config/reference/testing" />
+
+  <Card title="MESC" description="Manage RPC endpoints across all your crypto tools from a single config file." to="/config/mesc" />
 
   <Card title="Configuration Reference" description="Complete reference for all configuration options." to="/config/reference/overview" />
 </Cards>
@@ -3216,6 +3219,118 @@ $ anvil completions fish | source
 :::
 
 After adding completions, restart your shell or source your config file.
+
+## MESC
+
+[MESC](https://github.com/paradigmxyz/mesc) (Multiple Endpoint Shared Configuration) is an open standard for managing RPC endpoint configuration across multiple tools and languages from a single file.
+
+Instead of configuring RPC endpoints separately in every tool (`foundry.toml`, Hardhat config, custom scripts, etc.), MESC lets you define them once and have any MESC-aware tool pick them up automatically.
+
+Foundry has supported MESC since [foundry-rs/foundry#8760](https://github.com/foundry-rs/foundry/pull/8760).
+
+### How Foundry uses MESC
+
+When Foundry resolves an RPC endpoint (e.g. from `--fork-url`, `vm.createFork`, or `cast`), it checks sources in this order:
+
+1. **MESC** — queried first if `MESC_PATH` is set
+2. **`[rpc_endpoints]`** in `foundry.toml` — checked as a fallback
+
+This means MESC endpoint names, chain IDs, and network names all work transparently wherever Foundry accepts an RPC URL.
+
+For example, if your MESC config defines an endpoint named `mainnet`, you can reference it directly:
+
+```bash
+forge test --fork-url mainnet
+cast block-number --rpc-url mainnet
+```
+
+### Setup
+
+#### 1. Install the MESC CLI
+
+```bash
+cargo install mesc_cli
+```
+
+> On some Linux distributions you may need SSL libraries first:
+>
+> ```bash
+> sudo apt-get install pkg-config libssl-dev
+> ```
+
+#### 2. Run interactive setup
+
+```bash
+mesc setup
+```
+
+This creates a `mesc.json` config file and offers to automatically add `MESC_PATH` to your shell config (`~/.bashrc`, `~/.zshrc`, etc.).
+
+#### 3. Set the environment variable (if not done by setup)
+
+```bash
+export MESC_PATH=/path/to/your/mesc.json
+```
+
+Add this to your shell config to make it permanent.
+
+### Configuration file
+
+A minimal `mesc.json` with a local and mainnet endpoint:
+
+```json [mesc.json]
+{
+  "mesc_version": "MESC 1.0",
+  "default_endpoint": "local",
+  "network_defaults": {
+    "1": "mainnet_alchemy",
+    "31337": "local"
+  },
+  "network_names": {},
+  "endpoints": {
+    "local": {
+      "name": "local",
+      "url": "http://localhost:8545",
+      "chain_id": "31337",
+      "endpoint_metadata": {}
+    },
+    "mainnet_alchemy": {
+      "name": "mainnet_alchemy",
+      "url": "https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY",
+      "chain_id": "1",
+      "endpoint_metadata": {}
+    }
+  },
+  "profiles": {},
+  "global_metadata": {}
+}
+```
+
+MESC resolves endpoint references in three ways (tried in order):
+
+1. **Endpoint name** — e.g. `mainnet_alchemy`
+2. **Chain ID** — e.g. `1`
+3. **Network name** — e.g. `mainnet`
+
+### Relationship to `[rpc_endpoints]`
+
+MESC and `[rpc_endpoints]` are complementary. MESC is checked first; if no match is found, Foundry falls back to `[rpc_endpoints]` in `foundry.toml`.
+
+You can continue using `[rpc_endpoints]` as before — MESC simply adds a higher-priority, cross-tool source for endpoint resolution.
+
+```toml [foundry.toml]
+# These are still used as a fallback if MESC is not configured
+# or if an endpoint isn't found in MESC
+[rpc_endpoints]
+local = "http://localhost:8545"
+```
+
+### Further reading
+
+* [MESC Specification](https://github.com/paradigmxyz/mesc/blob/main/SPECIFICATION.md)
+* [MESC Documentation](https://paradigmxyz.github.io/mesc/)
+* [MESC CLI](https://github.com/paradigmxyz/mesc/tree/main/cli)
+* [Foundry PR #8760](https://github.com/foundry-rs/foundry/pull/8760)
 
 ## Profiles
 
@@ -12496,6 +12611,9 @@ Options:
           
           Note that `prune_history` will overwrite `max_persisted_states` to 0.
 
+      --max-transactions <MAX_TRANSACTIONS>
+          Maximum number of transactions in a block
+
       --mixed-mining
           
 
@@ -13452,18 +13570,6 @@ Wallet options - remote:
           TURNKEY_API_PRIVATE_KEY, TURNKEY_ORGANIZATION_ID, TURNKEY_ADDRESS.
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
-
-Wallet options - browser:
-      --browser
-          Use a browser wallet
-
-      --browser-port <PORT>
-          Port for the browser wallet server
-          
-          [default: 9545]
-
-      --browser-disable-open
-          Whether to open the browser for wallet connection
 
 Display options:
       --color <COLOR>
@@ -14979,18 +15085,6 @@ Wallet options - remote:
           TURNKEY_API_PRIVATE_KEY, TURNKEY_ORGANIZATION_ID, TURNKEY_ADDRESS.
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
-
-Wallet options - browser:
-      --browser
-          Use a browser wallet
-
-      --browser-port <PORT>
-          Port for the browser wallet server
-          
-          [default: 9545]
-
-      --browser-disable-open
-          Whether to open the browser for wallet connection
 
 Display options:
       --color <COLOR>
@@ -17559,18 +17653,6 @@ Wallet options - remote:
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
 
-Wallet options - browser:
-      --browser
-          Use a browser wallet
-
-      --browser-port <PORT>
-          Port for the browser wallet server
-          
-          [default: 9545]
-
-      --browser-disable-open
-          Whether to open the browser for wallet connection
-
 Transaction options:
       --gas-limit <GAS_LIMIT>
           Gas limit for the transaction
@@ -19783,18 +19865,6 @@ Wallet options - remote:
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
 
-Wallet options - browser:
-      --browser
-          Use a browser wallet
-
-      --browser-port <PORT>
-          Port for the browser wallet server
-          
-          [default: 9545]
-
-      --browser-disable-open
-          Whether to open the browser for wallet connection
-
 Display options:
       --color <COLOR>
           The color of the log messages
@@ -21541,10 +21611,6 @@ Wallet options - raw:
           
           [default: 0]
 
-      --unlocked
-          Send via `eth_sendTransaction` using the `--from` argument or
-          $ETH_FROM as sender
-
 Wallet options - keystore:
       --keystore <PATH>
           Use the keystore in the given folder or file
@@ -21598,10 +21664,11 @@ Wallet options - remote:
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
 
-Wallet options - browser:
+:
       --browser
           Use a browser wallet
 
+Browser wallet options:
       --browser-port <PORT>
           Port for the browser wallet server
           
@@ -21609,6 +21676,10 @@ Wallet options - browser:
 
       --browser-disable-open
           Whether to open the browser for wallet connection
+
+      --unlocked
+          Send via `eth_sendTransaction` using the `--from` argument or
+          $ETH_FROM as sender
 
 Transaction options:
       --gas-limit <GAS_LIMIT>
@@ -28462,14 +28533,14 @@ Displays an interactive prompt to the user for inserting arbitrary data.
 ### Parameters
 
 | Parameter    | Type     | Description                     |
-|--------------|----------|---------------------------------|
+| ------------ | -------- | ------------------------------- |
 | `promptText` | `string` | The text to display to the user |
 
 ### Returns
 
-| Type      | Description                                  |
-|-----------|----------------------------------------------|
-| `string`  | The user's input (for `prompt` and `promptSecret`) |
+| Type      | Description                                              |
+| --------- | -------------------------------------------------------- |
+| `string`  | The user's input (for `prompt` and `promptSecret`)       |
 | `uint256` | The user's input parsed as uint (for `promptSecretUint`) |
 
 ### Configuration
@@ -28559,6 +28630,10 @@ This cheatcode is meant to be used in scripts, not tests. It also reverts when r
 
 :::note
 Follow the best practices above for testing scripts that use `vm.prompt` and handling timeouts, since scripts might otherwise hang or revert.
+:::
+
+:::note
+When a `forge script` deploys a contract that requires **external library linking**, `vm.prompt` will display the same prompt **twice**. This happens because Foundry runs the script twice internally — once for simulation and once for broadcast — and each run triggers the prompt independently. To work around this, consider passing values as script arguments or reading from environment variables with [`vm.envString`](/reference/cheatcodes/env-string) instead of using `vm.prompt` in scripts that link against external libraries.
 :::
 
 ### Related Cheatcodes
@@ -31064,6 +31139,10 @@ EVM options:
 
       --ffi
           Enable the FFI cheatcode
+
+      --live-logs
+          Whether to show `console.log` outputs in realtime during script/test
+          execution
 
       --always-use-create-2-factory
           Use the create 2 factory in all cases including tests and
@@ -34331,14 +34410,14 @@ Options:
           
           This will be added to the package.description field in Cargo.toml.
           
-          [default: ]
+          [default: ""]
 
       --crate-license <LICENSE>
           The license of the Rust crate to generate.
           
           This will be added to the package.license field in Cargo.toml.
           
-          [default: ]
+          [default: ""]
 
       --module
           Generate the bindings as a module instead of a crate
@@ -35682,6 +35761,10 @@ EVM options:
       --ffi
           Enable the FFI cheatcode
 
+      --live-logs
+          Whether to show `console.log` outputs in realtime during script/test
+          execution
+
       --always-use-create-2-factory
           Use the create 2 factory in all cases including tests and
           non-broadcasting scripts
@@ -36097,6 +36180,10 @@ EVM options:
 
       --ffi
           Enable the FFI cheatcode
+
+      --live-logs
+          Whether to show `console.log` outputs in realtime during script/test
+          execution
 
       --always-use-create-2-factory
           Use the create 2 factory in all cases including tests and
@@ -36821,18 +36908,6 @@ Wallet options - remote:
           TURNKEY_API_PRIVATE_KEY, TURNKEY_ORGANIZATION_ID, TURNKEY_ADDRESS.
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
-
-Wallet options - browser:
-      --browser
-          Use a browser wallet
-
-      --browser-port <PORT>
-          Port for the browser wallet server
-          
-          [default: 9545]
-
-      --browser-disable-open
-          Whether to open the browser for wallet connection
 
 Verifier options:
       --verifier <VERIFIER>
@@ -39054,10 +39129,11 @@ Wallet options - remote:
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
 
-Wallet options - browser:
+:
       --browser
           Use a browser wallet
 
+Browser wallet options:
       --browser-port <PORT>
           Port for the browser wallet server
           
@@ -39108,6 +39184,10 @@ EVM options:
 
       --ffi
           Enable the FFI cheatcode
+
+      --live-logs
+          Whether to show `console.log` outputs in realtime during script/test
+          execution
 
       --always-use-create-2-factory
           Use the create 2 factory in all cases including tests and
@@ -39587,6 +39667,10 @@ EVM options:
 
       --ffi
           Enable the FFI cheatcode
+
+      --live-logs
+          Whether to show `console.log` outputs in realtime during script/test
+          execution
 
       --always-use-create-2-factory
           Use the create 2 factory in all cases including tests and
@@ -40200,6 +40284,10 @@ EVM options:
 
       --ffi
           Enable the FFI cheatcode
+
+      --live-logs
+          Whether to show `console.log` outputs in realtime during script/test
+          execution
 
       --always-use-create-2-factory
           Use the create 2 factory in all cases including tests and
@@ -41526,25 +41614,6 @@ Wallet options - raw:
           
           [default: 0]
 
-      --gas-limit <GAS_LIMIT>
-          Gas limit for the transaction
-          
-          [env: ETH_GAS_LIMIT=]
-
-      --gas-price <GAS_PRICE>
-          Gas price for legacy transactions, or max fee per gas for EIP1559
-          transactions
-          
-          [env: ETH_GAS_PRICE=]
-
-      --priority-gas-price <PRIORITY_GAS_PRICE>
-          Max priority fee per gas for EIP1559 transactions
-          
-          [env: ETH_PRIORITY_GAS_PRICE=]
-
-      --nonce <NONCE>
-          Nonce for the transaction
-
 Wallet options - keystore:
       --keystore <PATH>
           Use the keystore in the given folder or file
@@ -41598,10 +41667,11 @@ Wallet options - remote:
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
 
-Wallet options - browser:
+:
       --browser
           Use a browser wallet
 
+Browser wallet options:
       --browser-port <PORT>
           Port for the browser wallet server
           
@@ -41609,6 +41679,25 @@ Wallet options - browser:
 
       --browser-disable-open
           Whether to open the browser for wallet connection
+
+      --gas-limit <GAS_LIMIT>
+          Gas limit for the transaction
+          
+          [env: ETH_GAS_LIMIT=]
+
+      --gas-price <GAS_PRICE>
+          Gas price for legacy transactions, or max fee per gas for EIP1559
+          transactions
+          
+          [env: ETH_GAS_PRICE=]
+
+      --priority-gas-price <PRIORITY_GAS_PRICE>
+          Max priority fee per gas for EIP1559 transactions
+          
+          [env: ETH_PRIORITY_GAS_PRICE=]
+
+      --nonce <NONCE>
+          Nonce for the transaction
 
 Tempo:
       --tempo.fee-token <FEE_TOKEN>
@@ -41955,25 +42044,6 @@ Wallet options - raw:
           
           [default: 0]
 
-      --gas-limit <GAS_LIMIT>
-          Gas limit for the transaction
-          
-          [env: ETH_GAS_LIMIT=]
-
-      --gas-price <GAS_PRICE>
-          Gas price for legacy transactions, or max fee per gas for EIP1559
-          transactions
-          
-          [env: ETH_GAS_PRICE=]
-
-      --priority-gas-price <PRIORITY_GAS_PRICE>
-          Max priority fee per gas for EIP1559 transactions
-          
-          [env: ETH_PRIORITY_GAS_PRICE=]
-
-      --nonce <NONCE>
-          Nonce for the transaction
-
 Wallet options - keystore:
       --keystore <PATH>
           Use the keystore in the given folder or file
@@ -42027,10 +42097,11 @@ Wallet options - remote:
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
 
-Wallet options - browser:
+:
       --browser
           Use a browser wallet
 
+Browser wallet options:
       --browser-port <PORT>
           Port for the browser wallet server
           
@@ -42038,6 +42109,25 @@ Wallet options - browser:
 
       --browser-disable-open
           Whether to open the browser for wallet connection
+
+      --gas-limit <GAS_LIMIT>
+          Gas limit for the transaction
+          
+          [env: ETH_GAS_LIMIT=]
+
+      --gas-price <GAS_PRICE>
+          Gas price for legacy transactions, or max fee per gas for EIP1559
+          transactions
+          
+          [env: ETH_GAS_PRICE=]
+
+      --priority-gas-price <PRIORITY_GAS_PRICE>
+          Max priority fee per gas for EIP1559 transactions
+          
+          [env: ETH_PRIORITY_GAS_PRICE=]
+
+      --nonce <NONCE>
+          Nonce for the transaction
 
 Tempo:
       --tempo.fee-token <FEE_TOKEN>
@@ -42384,25 +42474,6 @@ Wallet options - raw:
           
           [default: 0]
 
-      --gas-limit <GAS_LIMIT>
-          Gas limit for the transaction
-          
-          [env: ETH_GAS_LIMIT=]
-
-      --gas-price <GAS_PRICE>
-          Gas price for legacy transactions, or max fee per gas for EIP1559
-          transactions
-          
-          [env: ETH_GAS_PRICE=]
-
-      --priority-gas-price <PRIORITY_GAS_PRICE>
-          Max priority fee per gas for EIP1559 transactions
-          
-          [env: ETH_PRIORITY_GAS_PRICE=]
-
-      --nonce <NONCE>
-          Nonce for the transaction
-
 Wallet options - keystore:
       --keystore <PATH>
           Use the keystore in the given folder or file
@@ -42456,10 +42527,11 @@ Wallet options - remote:
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
 
-Wallet options - browser:
+:
       --browser
           Use a browser wallet
 
+Browser wallet options:
       --browser-port <PORT>
           Port for the browser wallet server
           
@@ -42467,6 +42539,25 @@ Wallet options - browser:
 
       --browser-disable-open
           Whether to open the browser for wallet connection
+
+      --gas-limit <GAS_LIMIT>
+          Gas limit for the transaction
+          
+          [env: ETH_GAS_LIMIT=]
+
+      --gas-price <GAS_PRICE>
+          Gas price for legacy transactions, or max fee per gas for EIP1559
+          transactions
+          
+          [env: ETH_GAS_PRICE=]
+
+      --priority-gas-price <PRIORITY_GAS_PRICE>
+          Max priority fee per gas for EIP1559 transactions
+          
+          [env: ETH_PRIORITY_GAS_PRICE=]
+
+      --nonce <NONCE>
+          Nonce for the transaction
 
 Tempo:
       --tempo.fee-token <FEE_TOKEN>
@@ -43069,25 +43160,6 @@ Wallet options - raw:
           
           [default: 0]
 
-      --gas-limit <GAS_LIMIT>
-          Gas limit for the transaction
-          
-          [env: ETH_GAS_LIMIT=]
-
-      --gas-price <GAS_PRICE>
-          Gas price for legacy transactions, or max fee per gas for EIP1559
-          transactions
-          
-          [env: ETH_GAS_PRICE=]
-
-      --priority-gas-price <PRIORITY_GAS_PRICE>
-          Max priority fee per gas for EIP1559 transactions
-          
-          [env: ETH_PRIORITY_GAS_PRICE=]
-
-      --nonce <NONCE>
-          Nonce for the transaction
-
 Wallet options - keystore:
       --keystore <PATH>
           Use the keystore in the given folder or file
@@ -43141,10 +43213,11 @@ Wallet options - remote:
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
 
-Wallet options - browser:
+:
       --browser
           Use a browser wallet
 
+Browser wallet options:
       --browser-port <PORT>
           Port for the browser wallet server
           
@@ -43152,6 +43225,25 @@ Wallet options - browser:
 
       --browser-disable-open
           Whether to open the browser for wallet connection
+
+      --gas-limit <GAS_LIMIT>
+          Gas limit for the transaction
+          
+          [env: ETH_GAS_LIMIT=]
+
+      --gas-price <GAS_PRICE>
+          Gas price for legacy transactions, or max fee per gas for EIP1559
+          transactions
+          
+          [env: ETH_GAS_PRICE=]
+
+      --priority-gas-price <PRIORITY_GAS_PRICE>
+          Max priority fee per gas for EIP1559 transactions
+          
+          [env: ETH_PRIORITY_GAS_PRICE=]
+
+      --nonce <NONCE>
+          Nonce for the transaction
 
 Tempo:
       --tempo.fee-token <FEE_TOKEN>
@@ -44026,18 +44118,6 @@ Wallet options - remote:
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
 
-Wallet options - browser:
-      --browser
-          Use a browser wallet
-
-      --browser-port <PORT>
-          Port for the browser wallet server
-          
-          [default: 9545]
-
-      --browser-disable-open
-          Whether to open the browser for wallet connection
-
 Display options:
       --color <COLOR>
           The color of the log messages
@@ -44769,18 +44849,6 @@ Wallet options - remote:
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
 
-Wallet options - browser:
-      --browser
-          Use a browser wallet
-
-      --browser-port <PORT>
-          Port for the browser wallet server
-          
-          [default: 9545]
-
-      --browser-disable-open
-          Whether to open the browser for wallet connection
-
 Display options:
       --color <COLOR>
           The color of the log messages
@@ -44927,18 +44995,6 @@ Wallet options - remote:
           TURNKEY_API_PRIVATE_KEY, TURNKEY_ORGANIZATION_ID, TURNKEY_ADDRESS.
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
-
-Wallet options - browser:
-      --browser
-          Use a browser wallet
-
-      --browser-port <PORT>
-          Port for the browser wallet server
-          
-          [default: 9545]
-
-      --browser-disable-open
-          Whether to open the browser for wallet connection
 
 Display options:
       --color <COLOR>
@@ -45186,18 +45242,6 @@ Wallet options - remote:
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
 
-Wallet options - browser:
-      --browser
-          Use a browser wallet
-
-      --browser-port <PORT>
-          Port for the browser wallet server
-          
-          [default: 9545]
-
-      --browser-disable-open
-          Whether to open the browser for wallet connection
-
 Display options:
       --color <COLOR>
           The color of the log messages
@@ -45417,18 +45461,6 @@ Wallet options - remote:
           TURNKEY_API_PRIVATE_KEY, TURNKEY_ORGANIZATION_ID, TURNKEY_ADDRESS.
           
           See: [https://docs.turnkey.com/getting-started/quickstart](https://docs.turnkey.com/getting-started/quickstart)
-
-Wallet options - browser:
-      --browser
-          Use a browser wallet
-
-      --browser-port <PORT>
-          Port for the browser wallet server
-          
-          [default: 9545]
-
-      --browser-disable-open
-          Whether to open the browser for wallet connection
 
 Display options:
       --color <COLOR>

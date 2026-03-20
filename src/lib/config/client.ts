@@ -3,41 +3,13 @@
 import type { ConfigTypes } from "../../types/config.ts";
 
 export const config: ConfigTypes = {
-  "daisyui": {
-    "themes": [
-      "abyss",
-      "aqua",
-      "black",
-      "bumblebee",
-      "business",
-      "cmyk",
-      "coffee",
-      "corporate",
-      "cyberpunk",
-      "dark",
-      "dim",
-      "dracula",
-      "fantasy",
-      "forest",
-      "halloween",
-      "lemonade",
-      "light",
-      "luxury",
-      "night",
-      "retro",
-      "sunset",
-      "synthwave",
-      "valentine",
-      "winter"
-    ]
-  },
   "auth": {
     "iid": {
-      "enabled": false,
+      "enabled": true,
       "domain": "id.ai"
     },
     "webauthn": {
-      "enabled": false,
+      "enabled": true,
       "session_ttl_ms": 14400000
     },
     "avalanche": {
@@ -48,7 +20,7 @@ export const config: ConfigTypes = {
     "name": "TRESR Game",
     "description": "Beat up bankers to claim the $TRESR.",
     "tagline": "Collect Keys. Fight Enemies. Claim the $TRESR.",
-    "footer_text": "Powered by Avalanche 🔺",
+    "footer_text": "Powered by ICP ♾️ and Avalanche 🔺",
     "narration_text": {
       "intro": "Yo, I'm Ron Jay — full-time degen, airdrop farmer,\nmeme-coin maniac and diamond-handed legend.\n\nThese suit-wearing bankers think they can gatekeep crypto forever.\n\nThe streets are dead quiet tonight.\n\nBut not for long.\n\nGrab your fists, let's send these clowns to zero!\n"
     },
@@ -102,11 +74,11 @@ export const config: ConfigTypes = {
           "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
+        "tresr_token_contract": "0xe1Fd27F4390DcBE165f4D60DBF821e4B9Bb02dEd",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
-        "vault_contract": "0x9E545E3C0baAB3E08CdfD552C960A1050f373042",
-        "faucet_contract": "0x67d269191c92Caf3cD7723F116c85e6E9bf55933",
+        "vault_contract": "0xefAB0Beb0A557E452b398035eA964948c750b2Fd",
+        "faucet_contract": "0xB377a2EeD7566Ac9fCb0BA673604F9BF875e2Bab",
         "explorer_url": "http://localhost:8545/tx/"
       },
       "testnet": {
@@ -154,7 +126,7 @@ export const config: ConfigTypes = {
     "icp": {
       "evm_rpc": {
         "anvil": {
-          "canister_id": "lm4fb-uh777-77777-aaacq-cai",
+          "canister_id": "kirkt-nh777-77777-aaaeq-cai",
           "rpc_url": "http://host.docker.internal:8545"
         },
         "testnet": {
@@ -427,7 +399,25 @@ export const config: ConfigTypes = {
       "base_delay_ms": 100
     },
     "vault": {
-      "max_score": 20000,
+      "payout_max_score": 15000,
+      "payout_curve": [
+        {
+          "score": 0,
+          "percent": 0
+        },
+        {
+          "score": 5000,
+          "percent": 20
+        },
+        {
+          "score": 10000,
+          "percent": 50
+        },
+        {
+          "score": 15000,
+          "percent": 100
+        }
+      ],
       "minimum_cap": 1000,
       "tiers": {
         "building": 10000,
@@ -894,8 +884,8 @@ export const config: ConfigTypes = {
       "exit_duration": 500
     },
     "audio": {
-      "default_music_volume": 0.75,
-      "default_sfx_volume": 0.5,
+      "default_music_volume": 0.5,
+      "default_sfx_volume": 0.25,
       "crossfade_duration_ms": 2000,
       "crossfade_step_ms": 50,
       "preference_save_debounce_ms": 2000,
@@ -1394,11 +1384,12 @@ export const config: ConfigTypes = {
       "score_exceeds_maximum",
       "wallet_tampering"
     ],
+    "max_score": 20000,
     "replay": {
       "max_actions": 50000,
       "min_action_gap_ms": 0,
       "min_attack_gap_ms": 200,
-      "grace_ms": 5000,
+      "grace_ms": 3600000,
       "burst_limit_per_100ms": 40,
       "min_actions": 50,
       "attack_per_key_divisor": 100
@@ -1425,13 +1416,10 @@ export const config: ConfigTypes = {
     ],
     "components": [
       {
-        "name": "Astro"
-      },
-      {
         "name": "Avalanche Network"
       },
       {
-        "name": "DaisyUI"
+        "name": "Bits UI"
       },
       {
         "name": "Internet Computer Protocol"
@@ -1441,6 +1429,9 @@ export const config: ConfigTypes = {
       },
       {
         "name": "Phaser 3"
+      },
+      {
+        "name": "SvelteKit"
       }
     ],
     "assets": [
@@ -1468,11 +1459,24 @@ export const config: ConfigTypes = {
         "type": "art",
         "subtype": "backgrounds",
         "provider": "Google Gemini Nano Banana"
+      },
+      {
+        "type": "art",
+        "subtype": "videos",
+        "provider": "Google Flow"
       }
     ]
   },
   "changelog": {
     "versions": [
+      {
+        "version": "0.5.0",
+        "date": "2026-03-19",
+        "title": "Notifications",
+        "notes": [
+          "Migration to Svelte"
+        ]
+      },
       {
         "version": "0.4.0",
         "date": "2026-03-15",
@@ -1544,5 +1548,5 @@ export const config: ConfigTypes = {
       }
     ]
   },
-  "configHash": "7cbb74b557fed28e0d0b305403f73cc269aa0c31a73c6f1cca78eee7af4c928b"
+  "configHash": "02328191194371497160f6a60bca7019bf1e1a631829349af0a39bb7d1cb99df"
 };

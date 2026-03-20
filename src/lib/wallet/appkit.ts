@@ -139,21 +139,6 @@ export function getAppKit(): AppKit {
 
   log.info(COMPONENT_NAME, "Initialized successfully");
 
-  // Invalidate the reconnect singleton when the wallet disconnects or the
-  // session expires (e.g. auto-lock). This ensures the next connectWallet()
-  // call starts a fresh handshake rather than trusting stale wagmi state.
-  appKitInstance.subscribeEvents((event) => {
-    const evt = event.data.event;
-    if (evt === "DISCONNECT_SUCCESS") {
-      // Lazy import avoids a circular-dependency between appkit ↔ connection.
-      import("./connection")
-        .then(({resetReconnect}) => resetReconnect())
-        .catch(() => {
-          /* non-critical */
-        });
-    }
-  });
-
   // Remove unused font preload links injected by Reown SDK (suppresses
   // "preloaded but not used" console warnings for KHTeka-Medium.woff2) // cspell:disable-line
   if (typeof document !== "undefined") {
@@ -286,11 +271,13 @@ export function subscribeToProvider(
 
 // Track the active connection attempt for external cancellation.
 // Only one connection attempt can be active at a time.
+// Note: Navigation cleanup is handled by callers via cancelConnectWallet() in
+// SvelteKit beforeNavigate hooks or onDestroy — not registered internally here
+// since this module runs outside Svelte component context.
 let pendingConnect: {
   timeoutId: ReturnType<typeof setTimeout>;
   unsubscribe: () => void;
   reject: (reason: Error) => void;
-  navigationCleanup: (() => void) | null;
 } | null = null;
 
 /**
@@ -302,11 +289,10 @@ let pendingConnect: {
  */
 export function cancelConnectWallet(): void {
   if (!pendingConnect) return;
-  const {timeoutId, unsubscribe, reject, navigationCleanup} = pendingConnect;
+  const {timeoutId, unsubscribe, reject} = pendingConnect;
   pendingConnect = null;
   clearTimeout(timeoutId);
   unsubscribe();
-  if (navigationCleanup) navigationCleanup();
   reject(new Error("Connection cancelled"));
 }
 
@@ -316,11 +302,10 @@ export function cancelConnectWallet(): void {
  */
 function clearPendingConnect(): void {
   if (!pendingConnect) return;
-  const {timeoutId, unsubscribe, navigationCleanup} = pendingConnect;
+  const {timeoutId, unsubscribe} = pendingConnect;
   pendingConnect = null;
   clearTimeout(timeoutId);
   unsubscribe();
-  if (navigationCleanup) navigationCleanup();
 }
 
 /**
@@ -389,20 +374,10 @@ export function connectWallet(): Promise<string> {
       }
     });
 
-    // Register self-cleaning navigation listener so Astro page transitions
-    // automatically cancel the pending connection attempt.
-    let navigationCleanup: (() => void) | null = null;
-    if (typeof document !== "undefined") {
-      const onNavigate = () => cancelConnectWallet();
-      document.addEventListener("astro:before-preparation", onNavigate, {
-        once: true,
-      });
-      navigationCleanup = () =>
-        document.removeEventListener("astro:before-preparation", onNavigate);
-    }
-
-    // Store handles for external cancellation
-    pendingConnect = {timeoutId, unsubscribe, reject, navigationCleanup};
+    // Store handles for external cancellation.
+    // Callers (e.g. +layout.svelte onDestroy, beforeNavigate) should call
+    // cancelConnectWallet() to abort an in-flight connection attempt on navigation.
+    pendingConnect = {timeoutId, unsubscribe, reject};
 
     // Open the modal
     appKit.open().catch((err) => {

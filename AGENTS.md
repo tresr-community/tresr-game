@@ -2,11 +2,11 @@
 
 ## 🤖 Agent Identity & Role
 
-Role: Senior Web3 Game Developer, Juno Architect, Astro Expert & DaisyUI Styling Expert.
+Role: Senior Web3 Game Developer, Juno Architect, SvelteKit Expert & Tailwind CSS / bits-ui Styling Expert.
 
-Objective: Assist in the development, deployment, and optimization of a decentralized game hosted on the Internet Computer blockchain using Juno's serverless platform and Astro framework.
+Objective: Assist in the development, deployment, and optimization of a decentralized game hosted on the Internet Computer blockchain using Juno's serverless platform and SvelteKit framework.
 
-Primary Focus: Hermetic development environments, Juno satellite architecture, Astro component-driven development, DaisyUI UI/UX styling, and serverless Web3 integration.
+Primary Focus: Hermetic development environments, Juno satellite architecture, SvelteKit component-driven development, DaisyUI UI/UX styling, and serverless Web3 integration.
 
 **Critical Reference:**
 
@@ -45,17 +45,16 @@ juno-dev agent-docs
 
 Available documentation:
 
-| Name    | Local File                | Source URL                                     |
-| ------- | ------------------------- | ---------------------------------------------- |
-| Astro   | `docs/agents/astro.txt`   | [LLMs](https://docs.astro.build/llms-full.txt) |
-| DaisyUI | `docs/agents/daisyui.txt` | [LLMs](https://daisyui.com/llms.txt)           |
-| Foundry | `docs/agents/foundry.txt` | [LLMs](https://getfoundry.sh/llms-full.txt)    |
-| Juno    | `docs/agents/juno.txt`    | [LLMs](https://juno.build/llms-full.txt)       |
-| OISY    | `docs/agents/oisy.txt`    | [LLMs](https://docs.oisy.com/llms-full.txt)    |
-| Reown   | `docs/agents/reown.txt`   | [LLMs](https://docs.reown.com/llms-full.txt)   |
-| Viem    | `docs/agents/viem.txt`    | [LLMs](https://viem.sh/llms-full.txt)          |
-| Wagmi   | `docs/agents/wagmi.txt`   | [LLMs](https://wagmi.sh/llms-full.txt)         |
-| xAI     | `docs/agents/xai.txt`     | [LLMs](https://docs.x.ai/llms.txt)             |
+| Name      | Local File                | Source URL                                   |
+| --------- | ------------------------- | -------------------------------------------- |
+| SvelteKit | `docs/agents/svelte.txt`  | [LLMs](https://svelte.dev/docs/llms.txt)     |
+| Foundry   | `docs/agents/foundry.txt` | [LLMs](https://getfoundry.sh/llms-full.txt)  |
+| Juno      | `docs/agents/juno.txt`    | [LLMs](https://juno.build/llms-full.txt)     |
+| OISY      | `docs/agents/oisy.txt`    | [LLMs](https://docs.oisy.com/llms-full.txt)  |
+| Reown     | `docs/agents/reown.txt`   | [LLMs](https://docs.reown.com/llms-full.txt) |
+| Viem      | `docs/agents/viem.txt`    | [LLMs](https://viem.sh/llms-full.txt)        |
+| Wagmi     | `docs/agents/wagmi.txt`   | [LLMs](https://wagmi.sh/llms-full.txt)       |
+| xAI       | `docs/agents/xai.txt`     | [LLMs](https://docs.x.ai/llms.txt)           |
 
 When working on specific features, reference the relevant documentation file for accurate, up-to-date API information.
 
@@ -98,19 +97,20 @@ Ensure all documentation is up-to-date and accurate and error-free.
 
 For diagrams, always use Mermaid over Graphviz or ASCIIDoc.
 
-### Astro
+### SvelteKit
 
-Context: Astro is used for the frontend, providing component-driven development with optimal performance. The project has migrated away from React to Vanilla TypeScript within Astro components.
+Context: SvelteKit is used for the frontend, providing component-driven development with optimal performance.
+
+The project uses as Single-Page Application (SPA) architecture targeting the static adapter for Juno deployments.
 
 Directives:
 
-- **Astro Components**: Use `.astro` files for reusable UI elements.
-- **Vanilla TypeScript**: Logic should be written in standard TypeScript. Avoid React
-  hooks (`useEffect`, `useState`) in favor of vanilla JS event listeners and state
-  management or Astro's `nano stores` if complex state is needed.
-- **Client-Side Scripts**: Use `<script>` tags in `.astro` files for interactivity.
+- **Svelte Components**: Use `.svelte` files for reusable UI elements and pages.
+- **State Management**: Use Svelte's built-in reactivity and nanostores (`@nanostores/svelte`) for complex global state.
+- **Client-Side SPA**: The app relies on SvelteKit routing without Server-Side Rendering (SSR).
+  - Components persist across route navigations, which requires explicit lifecycle management (`onDestroy`) for heavy utilities like Phaser and AudioContext.
 
-Astro LLM documentation is available locally at `docs/agents/astro.txt` (run `juno-dev agent-docs` to download).
+SvelteKit LLM documentation is available locally at `docs/agents/svelte.txt` (run `juno-dev agent-docs` to download).
 
 ### TypeScript
 
@@ -128,7 +128,7 @@ Directives: Use TypeScript for type safety in all codebases where applicable. En
 
 #### Centralized Logging
 
-All TypeScript and Astro browser code **must** use the centralized logging utility
+All TypeScript and Svelte browser code **must** use the centralized logging utility
 (`src/lib/utils/log.ts`) instead of calling `console.log`, `console.error`,
 `console.warn`, `console.debug`, or `console.info` directly.
 
@@ -148,7 +148,7 @@ log.error("Component", "Error message", err); // Also shows error toast
   where a toast would cause recursion (e.g., inside `NotificationManager`
   persistence catch blocks).
 - For one-off toast display without the `log` wrapper, import `showToast` directly from `@/lib/utils/log`.
-- Never use `console.X` in `src/` TypeScript or Astro files — the linter and code reviews will flag this.
+- Never use `console.X` in `src/` TypeScript or Svelte files — the linter and code reviews will flag this.
 
 **Exceptions** (where `console.X` is acceptable):
 
@@ -157,69 +157,66 @@ log.error("Component", "Error message", err); // Also shows error toast
 - `src/integrations/` — Build-time Node.js integration scripts.
 - `bin/` CLI scripts — Node.js tooling that runs outside the browser.
 
-### DaisyUI
+### UI Components: bits-ui + Tailwind CSS v4
 
-Context: The project uses DaisyUI as a Tailwind CSS component library for rapid,
-semantic, and accessible UI development. DaisyUI provides pre-built components
-(e.g., buttons, modals, cards) and utilities that integrate seamlessly with
-Tailwind CSS v4+, enabling consistent, themeable designs without custom CSS.
-
-The project has a valid license for the DaisyUI Blueprint MCP server, which
-enhances AI-assisted styling with real-time previews, component suggestions,
-and theme customization.
+Context: The project uses [bits-ui](https://bits-ui.com) as the headless UI
+primitive library, paired with Tailwind CSS v4 for all styling. bits-ui provides
+unstyled, fully accessible Svelte 5 components (Dialog, DropdownMenu, Tooltip,
+Select, etc.) that are wired directly to your own Tailwind classes — there is no
+pre-built CSS shipped by the library.
 
 Directives:
 
-- **Primary Styling Framework**: Always use DaisyUI components and classes for UI
-  elements instead of raw Tailwind or custom CSS. Prioritize DaisyUI's semantic
-  classes (e.g., `btn`, `card`, `modal`) for buttons, layouts, and interactions.
-- **Theme Integration**: Leverage DaisyUI's built-in themes (e.g., light, dark,
-  cyberpunk, synthwave, retro, neon) for consistency. Customize via CSS variables in
-  `src/styles/global.css` or Tailwind config. Ensure themes align with the game's
-  cyberpunk aesthetic.
-- **Tailwind CSS Foundation**: Underpin DaisyUI with Tailwind utilities (e.g., spacing,
-  colors) but avoid redundant custom styles. Use Tailwind v4's features like improved
-  performance and modern syntax.
-- **Component-Driven Design**: Create reusable DaisyUI-based components in `.astro` files. Follow BEM-like naming but rely on DaisyUI classes for structure.
-- **Accessibility & Semantics**: DaisyUI components are built with accessibility in mind; always use ARIA attributes and semantic HTML when extending them. Test for WCAG compliance.
-- **Performance Optimization**: Minimize custom CSS; let DaisyUI handle heavy lifting. Use Astro's scoped styles sparingly and only for game-specific overrides.
-- **Mobile Responsiveness**: Utilize DaisyUI's responsive utilities (e.g., `btn-sm`, `lg:hidden`) combined with Tailwind breakpoints for mobile-first design.
-- **No Global Styles Overkill**: Avoid bloated CSS; DaisyUI + Tailwind should suffice. For global resets, use Tailwind's base styles.
+- **Headless-first**: Use bits-ui primitives (`Dialog`, `DropdownMenu`,
+  `Tooltip`, `Popover`, `Select`, `Accordion`, etc.) for all interactive UI.
+  Never roll bespoke focus-trap, aria-management, or keyboard-navigation logic
+  by hand.
+- **Style with Tailwind**: Apply Tailwind v4 utility classes directly to bits-ui
+  component elements. Use the `class` prop or spread `{...props}` from the
+  `child` snippet where needed.
+- **Custom Components**: Wrap bits-ui primitives into reusable `.svelte`
+  components in `src/components/ui/` (e.g., `Modal.svelte`, `Button.svelte`).
+  Keep the wrapper thin — expose props for common variants, not every possible
+  bits-ui option.
+- **Accessibility**: bits-ui handles ARIA roles, `aria-expanded`, focus locking,
+  and keyboard navigation automatically. Do not duplicate these manually.
+- **Theming**: Define CSS custom properties in `src/styles/global.css` for
+  colors and design tokens. Reference them via Tailwind's `theme()` or
+  arbitrary values (e.g., `text-[var(--color-primary)]`).
+- **Mobile Responsiveness**: Use Tailwind responsive prefixes (`md:`, `lg:`).
+  Test on mobile via `juno-dev start`.
+- **No global CSS overload**: Keep scoped `<style>` blocks inside `.svelte`
+  files to a minimum; prefer Tailwind utilities.
 
-DaisyUI Best Practices:
+bits-ui Best Practices:
 
-- **Component Usage**: Use classes like `btn btn-primary` for buttons, `card card-compact` for panels, `modal` for dialogs. Customize via modifiers (e.g., `btn-outline`, `btn-ghost`).
-- **Layout Helpers**: Employ `hero`, `stats`, `stack` for game UI layouts (e.g., leaderboards, dashboards).
-- **Forms & Inputs**: Use `input`, `select`, `checkbox` with validation states (e.g., `input-error`).
-- **Interactive Elements**: For animations, use DaisyUI's CSS variables or Tailwind transitions; integrate with Astro scripts for dynamic state.
-- **Theming & Colors**: Define a custom theme in Tailwind config (e.g., cyberpunk palette) and use DaisyUI's theme utilities (e.g., `data-theme="cyberpunk"` on root elements).
-- **Icons & Media**: Integrate icons via Lucide or similar; use DaisyUI's avatar, badge components for game assets.
-- **Avoid Conflicts**: Do not mix DaisyUI with other CSS frameworks (e.g., Bootstrap). Keep styles vanilla for Astro compatibility.
-
-DaisyUI MCP Server Integration:
-
-- The DaisyUI Blueprint MCP server is available. for local use. Refer to the `.mcp.json` for how to start it or via MCP client.
-- Use the MCP server for AI-assisted component generation, theme previews, and code
-  suggestions. Provide component specs (e.g., "Create a cyberpunk-themed modal for
-  claim rewards") and let the server output DaisyUI + Tailwind code.
-- Directives: Always reference local MCP docs if available; generate Mermaid diagrams for UI flows when complex.
+- **Dialog / Modal**: Use `Dialog.Root`, `Dialog.Portal`, `Dialog.Overlay`,
+  `Dialog.Content`, `Dialog.Title`, `Dialog.Close`. Use `forceMount` +
+  `{#snippet child({props, open})}` pattern with `svelte/transition` for
+  animated entry/exit (see `Modal.svelte` for the canonical pattern).
+- **Dropdown**: Use `DropdownMenu.Root`, `.Trigger`, `.Content`, `.Item`.
+- **Transitions**: bits-ui's `forceMount` + child snippet pattern lets you
+  control mount/unmount timing so Svelte transitions (`fade`, `fly`) work
+  correctly without janky flicker.
+- **Avoid re-implementing**: Do not build custom modals, dropdowns, or tooltips
+  from scratch — always check bits-ui for an existing primitive first.
 
 Workflow for Styling:
 
-- Consult `docs/spec.md` for UI/UX requirements before styling.
-- Prototype in Astro components using DaisyUI classes; test in `juno-dev start`.
-- Update `src/styles/global.css` for custom CSS vars or theme overrides.
-- Lint with `juno-dev lint` to ensure clean Tailwind + DaisyUI integration.
-- Document new components in `docs/ui.md` with examples.
+- Consult `docs/spec.md` for UI/UX requirements before building components.
+- Prototype in Svelte using bits-ui primitives + Tailwind classes.
+- Update `src/styles/global.css` for CSS custom properties and theme overrides.
+- Lint with `juno-dev lint` to ensure Tailwind v4 integration is clean.
+- Document new reusable components in `docs/ui.md` with examples.
 
 Common Pitfalls to Avoid:
 
-- Overriding DaisyUI defaults with excessive custom CSS—use modifiers instead.
-- Ignoring responsive design; always test on mobile via `devenv` emulators.
-- Hardcoding colors; rely on theme variables for maintainability.
-- Performance hits from unused DaisyUI classes; enable purging in Tailwind config.
-
-DaisyUI LLM documentation is available locally at `docs/agents/daisyui.txt` (run `juno-dev agent-docs` to download).
+- Do not import DaisyUI — it is not installed in this project.
+- Do not add custom ARIA attributes to elements already managed by bits-ui
+  (this creates attribute conflicts and accessibility regressions).
+- Avoid hardcoding colours; use CSS custom properties defined in `global.css`.
+- Do not forget to pass `{...props}` inside the `child` snippet — dropping it
+  breaks bits-ui's internal wiring (ARIA, event handlers, refs).
 
 ### Internet Computer Protocol (ICP)
 
@@ -318,7 +315,7 @@ Examples:
 
 Context: The project integrates Avalanche C-Chain for $TRESR ERC20 and custom vault contracts (e.g., chest pool).
 
-Solidity development must align with overall architecture (Juno/IC for backend, Astro for frontend) and prioritize security to prevent hacks/loss of funds.
+Solidity development must align with overall architecture (Juno/IC for backend, SvelteKit for frontend) and prioritize security to prevent hacks/loss of funds.
 
 Directives for AI Agents:
 
@@ -350,7 +347,7 @@ Directives for AI Agents:
   - **Immutable Contracts**: Prefer one-time deployable contracts over upgradeable ones. If upgrades are needed (rare), use OpenZeppelin's UUPS proxy with timelock.
   - **RPC and Chains**: For Avalanche, use official/testnet RPCs (e.g., `https://api.avax.network` for mainnet). Handle rate limits and finality checks (12+ blocks).
   - **Error Handling**: Use descriptive revert messages. Log events for off-chain monitoring.
-- **Workflow Integration**: Solidity contracts are separate from Juno Rust/Astro. Update `docs/solidity.md` for all changes.
+- **Workflow Integration**: Solidity contracts are separate from Juno Rust/SvelteKit. Update `docs/solidity.md` for all changes.
   Deploy to testnet first for testing; mainnet requires human approval via GH Actions.
 - **Common Pitfalls to Avoid**: No selfdestruct in main contracts, no tx.origin for auth, no unbounded loops. Always burn-test on local Anvil before testnet.
 - **Documentation**: Update `docs/solidity.md` with setup/deploy guides. Use Mermaid diagrams for contract flows if complex.
@@ -377,9 +374,9 @@ Responsibilities:
 
 Frontend:
 
-- Hosting Astro-built static assets and components.
-- Serving the game UI/UX with component-driven architecture.
-- Client-side interactivity via Astro scripts.
+- Hosting SvelteKit-built static assets and components.
+- Serving the game UI/UX with a Single-Page Application architecture.
+- Client-side interactivity via Svelte primitives.
 - Handling user input and game rendering.
 
 Backend (Serverless Functions):
@@ -396,14 +393,14 @@ Environment: Ensure the shell is inside the devenv shell.
 
 **Preferred Workflow (Helper Script):**
 
-- Start everything: `juno-dev start` (Backgrounds Juno emulator and Astro)
+- Start everything: `juno-dev start` (Backgrounds Juno emulator and Vite/SvelteKit)
 - Stop everything: `juno-dev stop`
 - Check logs: `juno-dev logs`
 
 **Manual Workflow:**
 
 - Start local Juno satellite: `juno dev` or `juno emulator start`
-- Start Astro dev server: `bun run dev`
+- Start Vite dev server: `bun run dev`
 - Build Rust functions: `juno functions build`
 
 Deployment:
@@ -416,18 +413,18 @@ For frontend only updates: `bun run build && juno deploy`
 
 For backend updates: `juno functions build && juno functions upgrade`
 
-Astro Development Best Practices
+SvelteKit Development Best Practices
 
 Component Structure:
 
-- Create reusable .astro components in src/components/
-- Use layouts in src/layouts/ for consistent page structure
+- Create reusable .svelte components in src/components/
+- Route pages go in src/routes/
 - Keep global styles in src/styles/global.css
 - Store constants in src/consts.ts
 
 Interactivity:
 
-- Use standard DOM APIs (`querySelector`, `addEventListener`) in `<script>` tags.
+- Use Svelte's template bindings and event handlers (`on:click`, `bind:this`) instead of manual DOM queries.
 - Import @junobuild/core for Juno integration in client scripts.
 - Ensure type safety with TypeScript.
 
@@ -467,7 +464,7 @@ bun run bin/audio.ts --convert   # Convert all MP3/OPUS to WebM
 bun run bin/audio.ts --help      # Show usage
 ```
 
-- **Source directories**: `assets-source/audio/{music,sfx}/{mp3,opus}/`
+- **Source directories**: `static-source/audio/{music,sfx}/{mp3,opus}/`
 - **Output directories**: `public/assets/audio/{music,sfx}/`
 - **Codec**: libopus for MP3 sources, copy for OPUS sources
 - **Requires**: `ffmpeg` (available in devenv shell)
@@ -481,7 +478,7 @@ bun run bin/videos.ts --convert   # Convert all MP4 to animated WebP
 bun run bin/videos.ts --help      # Show usage
 ```
 
-- **Source directory**: `assets-source/videos/`
+- **Source directory**: `static-source/videos/`
 - **Output directory**: `public/assets/videos/`
 - **Codec**: libwebp (lossy, quality 50, 24 fps, infinite loop)
 - **Audio**: Stripped during conversion
@@ -503,7 +500,7 @@ bun run bin/sprites.ts --help     # Show usage
 
 **Modes:**
 
-- **`--convert`**: Scans `assets-source/sprites/{png,jpg}/{entity}/{action}.{png,jpg}` and converts to
+- **`--convert`**: Scans `static-source/sprites/{png,jpg}/{entity}/{action}.{png,jpg}` and converts to
   `public/assets/sprites/{entity}/{action}.webp` using sharp.
   Skips up-to-date files (mtime comparison). Quality: 85.
 - **`--check`**: Validates that every source sprite has a corresponding WebP output.
@@ -534,8 +531,8 @@ bun run bin/wallpapers.ts --pending  # List keys needing wallpaper generation
 
 **Paths:**
 
-- Source images: `assets-source/wallpapers/{png,jpg}/`
-- Key images: `assets-source/keys/`
+- Source images: `static-source/wallpapers/{png,jpg}/`
+- Key images: `static-source/keys/`
 - WebP output: `public/assets/images/wallpapers/`
 - State file: `assets/images/wallpapers/.progress.json`
 - **Requires**: `sharp` (node dependency)
@@ -544,7 +541,7 @@ bun run bin/wallpapers.ts --pending  # List keys needing wallpaper generation
 
 - **Always use the unified scripts** in `bin/`. Do not create one-off conversion scripts or use raw CLI tools (cwebp, ImageMagick, ffmpeg) directly for batch operations.
 - **Run `--help`** on any script to see current usage if unsure about flags.
-- **Sprite generation workflow**: Generate source PNGs/JPGs into `assets-source/sprites/{png,jpg}/{entity}/`, then run `bun run bin/sprites.ts --convert` to produce WebP output.
+- **Sprite generation workflow**: Generate source PNGs/JPGs into `static-source/sprites/{png,jpg}/{entity}/`, then run `bun run bin/sprites.ts --convert` to produce WebP output.
 - **Wallpaper generation workflow**: Follow the Ralph Loop prompt in `docs/prompts/wallpapers.md`. Use `--sync` before generating, `--update` after generating, `--pending` to check what's left.
 - **Audio conversion**: Place MP3/OPUS files in the appropriate source directories, then run `bun run bin/audio.ts --convert`.
 - **All scripts require devenv shell** for native dependencies. If `sharp` fails to load, ensure you are inside `devenv shell`.

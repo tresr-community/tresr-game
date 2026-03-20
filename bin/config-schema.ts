@@ -31,7 +31,7 @@ const ratio = z.number().min(0).max(1);
 const ms = z.number().nonnegative();
 
 /** A URL string (http/https or localhost) — permissive, validated via z.url(). */
-const urlStr = z.string().url();
+const urlStr = z.url();
 
 // ---------------------------------------------------------------------------
 // Server section
@@ -74,6 +74,7 @@ const AntiCheatSchema = z.object({
   ban_durations_hours: z.array(z.number().positive()).min(1),
   permanent_after_offence: z.number().int().min(1),
   ban_reasons: z.array(z.string().min(1)).min(1),
+  max_score: z.number().int().positive(),
   replay: AntiCheatReplaySchema,
 });
 
@@ -132,7 +133,7 @@ const AppSchema = z.object({
 // ---------------------------------------------------------------------------
 
 const AvalancheEnvSchema = z.object({
-  url: z.string().url({message: "Avalanche env URL must be a valid URL"}),
+  url: z.url({message: "Avalanche env URL must be a valid URL"}),
   fee: z.number().nonnegative(),
   burn_rate: z.number().nonnegative(),
   chain_id: z.number().int().positive(),
@@ -148,7 +149,7 @@ const AvalancheEnvSchema = z.object({
   safe_address: evmAddress.optional(),
   vault_contract: evmAddress,
   faucet_contract: evmAddress.optional(),
-  explorer_url: z.string().url(),
+  explorer_url: z.url(),
 });
 
 const IcpEvmRpcEnvSchema = z.object({
@@ -320,14 +321,67 @@ const EnemyAiWeightsSchema = z.object({
   swarm: z.number().nonnegative(),
 });
 
+const EnemyAiSchema = z.object({
+  weights: EnemyAiWeightsSchema,
+  cautious: z.object({
+    speed_mult: z.number().positive(),
+    preferred_distance: z.number().positive(),
+    group_radius: z.number().positive(),
+    pack_threshold: z.number().positive(),
+    charge_speed_mult: z.number().positive(),
+    strafe_speed_mult: z.number().positive(),
+    strafe_switch_time: z.number().positive(),
+    check_frame_interval: z.number().positive(),
+  }),
+  direct: z.record(z.string(), z.unknown()),
+  erratic: z.object({
+    speed_mult: z.number().positive(),
+    zigzag_frequency: z.number().positive(),
+    zigzag_amplitude: z.number().positive(),
+    jitter_x: z.number().positive(),
+    jitter_y: z.number().positive(),
+  }),
+  flanker: z.object({
+    speed_mult: z.number().positive(),
+    offset: z.number().positive(),
+    switch_time: z.number().positive(),
+    orbit_time: z.number().positive(),
+    lunge_speed_mult: z.number().positive(),
+    lunge_duration: z.number().positive(),
+    recovery_time: z.number().positive(),
+  }),
+  passive: z.object({
+    speed_mult: z.number().positive(),
+    provoked_speed_mult: z.number().positive(),
+    hp_mult: z.number().positive(),
+  }),
+  retardio: z.object({
+    speed_mult: z.number().positive(),
+    jitter_time: z.number().positive(),
+    retarget_time: z.number().positive(),
+    attack_damage: z.number().positive(),
+    attack_cooldown_s: z.number().positive(),
+    rage_tint: z.number().nonnegative(),
+  }),
+  swarm: z.object({
+    speed_mult: z.number().positive(),
+    group_radius: z.number().positive(),
+    speed_bonus_per_ally: z.number().positive(),
+    max_speed_mult: z.number().positive(),
+    rush_threshold: z.number().positive(),
+    rush_tint: z.number().nonnegative(),
+    check_frame_interval: z.number().positive(),
+  }),
+});
+
 const EnemySchema = z.object({
   health: z.number().positive(),
   damage: z.number().nonnegative(),
   speed: z.number().positive(),
-  flee_speed_mult: z.number().positive().optional(),
-  flee_margin_px: z.number().nonnegative().optional(),
-  offscreen_kill_distance_px: z.number().nonnegative().optional(),
-  walk_in_boundary_margin_px: z.number().nonnegative().optional(),
+  flee_speed_mult: z.number().positive(),
+  flee_margin_px: z.number().nonnegative(),
+  offscreen_kill_distance_px: z.number().nonnegative(),
+  walk_in_boundary_margin_px: z.number().nonnegative(),
   knockback: KnockbackSchema,
   hitbox: HitboxSchema,
   combat: z.object({
@@ -335,11 +389,7 @@ const EnemySchema = z.object({
     depth_threshold: z.number().nonnegative(),
     attack_check_ms: ms.positive(),
   }),
-  ai: z
-    .object({
-      weights: EnemyAiWeightsSchema,
-    })
-    .passthrough(), // AI profiles have varying shapes — allow additional keys
+  ai: EnemyAiSchema,
   health_bar: HealthBarSchema,
   animations: z.object({death_delay: ms}).optional(),
   spawner: z
@@ -443,7 +493,13 @@ const VaultTiersSchema = z.object({
 });
 
 const VaultSchema = z.object({
-  max_score: z.number().int().positive(),
+  payout_max_score: z.number().int().positive(),
+  payout_curve: z.array(
+    z.object({
+      score: z.number().int().nonnegative(),
+      percent: z.number().int().nonnegative(),
+    })
+  ),
   minimum_cap: z.number().int().positive(),
   tiers: VaultTiersSchema,
   difficulty_multipliers: z.record(z.string(), z.number().positive()),
@@ -518,19 +574,10 @@ const SpritesSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Client — DaisyUI
-// ---------------------------------------------------------------------------
-
-const DaisyuiSchema = z.object({
-  themes: z.array(z.string().min(1)).min(1),
-});
-
-// ---------------------------------------------------------------------------
 // Top-level client section
 // ---------------------------------------------------------------------------
 
 export const ClientConfigSchema = z.object({
-  daisyui: DaisyuiSchema,
   auth: AuthSchema,
   app: AppSchema,
   blockchain: BlockchainSchema,
