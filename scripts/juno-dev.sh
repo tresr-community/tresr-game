@@ -153,8 +153,9 @@ function cmd_juno_deploy() {
 		return 1
 	fi
 
-	local url
-	url="http://${VITE_SATELLITE_ID}.localhost:5987/"
+	local url satellite_id
+	satellite_id=$(jq -r '.juno.development.satellite_id' config/config-server.json)
+	url="http://${satellite_id}.localhost:5987/"
 	log_success "Satellite live: $url"
 	echo "$url" # For piping
 }
@@ -476,9 +477,9 @@ function cmd_setup() {
 
 		4. Launch your first ${MAGENTA}Satellite${NC} 🛰️.
 		5. Secure the ${MAGENTA}Satellite ID${NC}.
-		6. Update your local configuration (${YELLOW}.env${NC}):
+		6. Update your local configuration (${YELLOW}config/tresr.yaml${NC}) under server.juno.development:
 
-		    ${CYAN}VITE_SATELLITE_ID=...${NC}
+		    ${CYAN}satellite_id: ...${NC}
 
 		${RED}======================================${NC}
 		${RED}     Termination Protocol:${NC}

@@ -25,7 +25,7 @@
         window.location.hostname === "127.0.0.1");
 
     initSatellite({
-      satelliteId: import.meta.env.VITE_SATELLITE_ID,
+      satelliteId: __JUNO_SATELLITE_ID__,
       container: isLocalEmulator ? "http://127.0.0.1:5987" : undefined,
     });
 

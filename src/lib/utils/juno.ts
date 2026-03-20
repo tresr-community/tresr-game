@@ -13,7 +13,7 @@ export async function initializeJunoSatellite() {
       window.location.hostname === "127.0.0.1");
 
   return initSatellite({
-    satelliteId: import.meta.env.VITE_SATELLITE_ID,
+    satelliteId: __JUNO_SATELLITE_ID__,
     container: isLocalEmulator
       ? `http://localhost:${JUNO_EMULATOR_PORT}`
       : undefined,

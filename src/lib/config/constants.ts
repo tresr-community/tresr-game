@@ -24,20 +24,19 @@ export const JUNO_EMULATOR_PORT =
   import.meta.env.VITE_JUNO_EMULATOR_PORT ?? 5987;
 
 // Internet Identity provider
-//  - Development: localhost
+//  - Development: localhost (uses canister ID from tresr.yaml)
 //  - Staging/Production: dynamic (from config.auth.iid.domain, e.g., id.ai)
 export const JUNO_INTERNET_IDENTITY =
   JUNO_ENVIRONMENT === "development"
-    ? `http://${import.meta.env.VITE_INTERNET_IDENTITY_ID}.localhost:${JUNO_EMULATOR_PORT}`
+    ? `http://${__JUNO_II_ID__}.localhost:${JUNO_EMULATOR_PORT}`
     : config.auth.iid.domain;
 log.debug(COMPONENT_NAME, `Juno Internet Identity: ${JUNO_INTERNET_IDENTITY}`);
 
 // SIWA Provider Canister ID (Sign In With Avalanche)
-// In development: use local canister if available, or placeholder
-// In production: use real canister ID
+// Sourced from tresr.yaml via config-server.json
 // Only exported if avalanche auth is enabled in config
 export const JUNO_SIWA_PROVIDER = config.auth.avalanche.enabled
-  ? (import.meta.env.VITE_SIWA_PROVIDER_ID ?? "")
+  ? (__JUNO_SIWA_ID__ ?? "")
   : "";
 log.debug(COMPONENT_NAME, `Juno SIWA Provider: ${JUNO_SIWA_PROVIDER}`);
 

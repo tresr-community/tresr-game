@@ -138,16 +138,21 @@ jobs:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
           skip-push: "true"
 
+      - id: read_juno_config
+        name: Read Juno Config from YAML
+        shell: bash
+        run: |
+          MODE="${{ inputs.environment == 'Mainnet' && 'production' || 'staging' }}"
+          SAT_ID=$(yq -r ".server.juno.${MODE}.satellite_id" config/tresr.yaml)
+          echo "satellite_id=${SAT_ID}" >> "$GITHUB_OUTPUT"
+
       # ── Juno Deploy — Pass 1 (no vault address yet) ───────────────────
       - id: deploy_juno_pass1
         name: Deploy Juno
         uses: ./.github/actions/deploy-juno
         with:
           mode: ${{ inputs.environment == 'Mainnet' && 'production' || 'staging' }}
-          satellite-id: ${{ vars.VITE_SATELLITE_ID }}
-          orbiter-id: ${{ vars.VITE_ORBITER_ID }}
-          site-url: ${{ vars.VITE_SITE_URL }}
-          siwa-provider-id: ${{ vars.VITE_SIWA_PROVIDER_ID }}
+          satellite-id: ${{ steps.read_juno_config.outputs.satellite_id }}
           walletconnect-project-id: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
           satellite-network: ${{ inputs.environment == 'Mainnet' && 'mainnet' || 'testnet' }}
 
@@ -239,10 +244,7 @@ jobs:
         uses: ./.github/actions/deploy-juno
         with:
           mode: ${{ inputs.environment == 'Mainnet' && 'production' || 'staging' }}
-          satellite-id: ${{ vars.VITE_SATELLITE_ID }}
-          orbiter-id: ${{ vars.VITE_ORBITER_ID }}
-          site-url: ${{ vars.VITE_SITE_URL }}
-          siwa-provider-id: ${{ vars.VITE_SIWA_PROVIDER_ID }}
+          satellite-id: ${{ steps.read_juno_config.outputs.satellite_id }}
           walletconnect-project-id: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
           satellite-network: ${{ inputs.environment == 'Mainnet' && 'mainnet' || 'testnet' }}
           skip-functions: "true"

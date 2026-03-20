@@ -198,9 +198,9 @@ jobs:
         name: Generate Release Changelog
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SATELLITE_ID: ${{ vars.VITE_SATELLITE_ID }}
-          ORBITER_ID: ${{ vars.VITE_ORBITER_ID }}
         run: |
+          SATELLITE_ID=$(yq -r '.server.juno.production.satellite_id' config/tresr.yaml)
+          ORBITER_ID=$(yq -r '.server.juno.production.orbiter_id' config/tresr.yaml)
           TAG="${{ steps.validate_tag.outputs.tag }}"
 
           # Get existing release body (has changelog + testnet table)
@@ -267,15 +267,21 @@ jobs:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
           skip-push: "true"
 
+      - id: read_juno_config
+        name: Read Juno Config from YAML
+        shell: bash
+        run: |
+          SAT_ID=$(yq -r '.server.juno.production.satellite_id' config/tresr.yaml)
+          ORB_ID=$(yq -r '.server.juno.production.orbiter_id' config/tresr.yaml)
+          echo "satellite_id=${SAT_ID}" >> "$GITHUB_OUTPUT"
+          echo "orbiter_id=${ORB_ID}" >> "$GITHUB_OUTPUT"
+
       - id: deploy_juno
         name: Deploy Juno
         uses: ./.github/actions/deploy-juno
         with:
           mode: production
-          satellite-id: ${{ vars.VITE_SATELLITE_ID }}
-          orbiter-id: ${{ vars.VITE_ORBITER_ID }}
-          site-url: ${{ vars.VITE_SITE_URL }}
-          siwa-provider-id: ${{ vars.VITE_SIWA_PROVIDER_ID }}
+          satellite-id: ${{ steps.read_juno_config.outputs.satellite_id }}
           walletconnect-project-id: ${{ secrets.PUBLIC_WALLETCONNECT_PROJECT_ID }}
           version: ${{ needs.release.outputs.tag }}
           version-mode: current

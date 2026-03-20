@@ -45,8 +45,11 @@ const JunoCollectionSchema = z.object({
 });
 
 const JunoEnvironmentSchema = z.object({
-  satellite_id: z.string().min(1),
+  internet_identity_id: z.string().min(1).optional(),
   orbiter_id: z.string().min(1),
+  satellite_id: z.string().min(1),
+  site_url: z.string().min(1),
+  siwa_id: z.string().min(1),
 });
 
 const JunoSchema = z.object({

@@ -6,17 +6,22 @@
 ##################################################
 server:
   juno:
-    # Currently using the same variable name as we are using
-    # Environments inside GitHub Actions to differentiate.
     development:
-      satellite_id: "${VITE_SATELLITE_ID}"
-      orbiter_id: "${VITE_ORBITER_ID}"
+      internet_identity_id: rdmx6-jaaaa-aaaaa-aaadq-cai
+      orbiter_id: atbka-rp777-77775-aaaaq-cai
+      satellite_id: auamu-4x777-77775-aaaaa-cai
+      site_url: http://auamu-4x777-77775-aaaaa-cai.localhost:5987/
+      siwa_id: lc6ij-px777-77777-aaadq-cai
     staging:
-      satellite_id: "${VITE_SATELLITE_ID}"
-      orbiter_id: "${VITE_ORBITER_ID}"
+      orbiter_id: m6rzs-iaaaa-aaaal-ai77q-cai
+      satellite_id: trw42-lqaaa-aaaal-asw5q-cai
+      site_url: https://game-testnet.tresr.community
+      siwa_id: ejj2n-kqaaa-aaaad-qjlxq-cai
     production:
-      satellite_id: "${VITE_SATELLITE_ID}"
-      orbiter_id: "${VITE_ORBITER_ID}"
+      orbiter_id: todo
+      satellite_id: todo
+      site_url: https://game.tresr.community
+      siwa_id: todo
     # Admin principals allowed to access the /admin interface and error logs.
     # Add your Internet Identity / SIWA principal text here.
     admins:
