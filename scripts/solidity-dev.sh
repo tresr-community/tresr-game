@@ -15,10 +15,13 @@ export BLUE=$'\033[0;34m'
 
 export FOUNDRY_DISABLE_NIGHTLY_WARNING=true
 
-# Restore terminal scrollback — forge uses the alternate screen buffer for its
-# progress spinner, which disables scrollback if the script exits abnormally.
+# Restore terminal — forge's progress spinner sets scroll regions and uses the
+# alternate screen buffer. If the script exits mid-spinner, the scroll region
+# stays restricted (prompt at top, output stuck below). Reset everything.
 function restore_terminal() {
 	printf '\e[?1049l' 2>/dev/null || true # leave alternate screen buffer
+	printf '\e[r' 2>/dev/null || true      # reset scroll region to full terminal
+	printf '\e[999;1H' 2>/dev/null || true # move cursor to bottom-left
 }
 trap restore_terminal EXIT
 
@@ -151,7 +154,8 @@ function show_help() {
 	echo "Usage: solidity-dev <command> [options]"
 	echo ""
 	echo "Commands:"
-	echo "  check                          Run all Solidity checks (fmt, slither, build, test)"
+	echo "  check                          Run all Solidity checks (fmt, build, slither, test)"
+	echo "  build                          Clean and build all Solidity contracts"
 	echo "  update                         Update Foundry dependencies (forge-std, OpenZeppelin)"
 	echo "  start   [--wallet ADDR]        Start standalone Anvil (chain 31337), fund wallet, tail logs"
 	echo "  stop                           Stop any running Anvil instance"
@@ -172,57 +176,215 @@ function show_help() {
 }
 
 # =============================================================================
-# Update — Update Foundry dependencies via git submodules
+# Solc — Ensure the Solidity compiler is available before building
+# =============================================================================
+# All dependencies are managed by devenv (Nix). The `languages.solidity` option
+# provides `solc` on PATH. We tell forge to use it via FOUNDRY_SOLC so it never
+# downloads its own copy to ~/.local/share/svm/ (those binaries get Nix-patched
+# and break after garbage collection).
+#
+# If running outside devenv (unusual), fall back to clearing any stale svm
+# binaries so forge can re-download.
+
+function ensure_solc() {
+	# If solc is on PATH (provided by devenv), tell forge to use it directly
+	if command -v solc &>/dev/null; then
+		local nix_solc
+		nix_solc=$(command -v solc)
+		export FOUNDRY_SOLC="$nix_solc"
+		local nix_version
+		nix_version=$(solc --version 2>/dev/null | grep -oP 'Version: \K[0-9.]+' || echo "unknown")
+		log_info "Using devenv-provided solc ${GREEN}${nix_version}${NC} (${CYAN}${nix_solc}${NC})"
+		return 0
+	fi
+
+	# Fallback: no solc on PATH — check if svm binary exists and works
+	log_warn "solc not found on PATH (not in devenv shell?)"
+
+	local project_root
+	project_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+	local foundry_toml="${project_root}/contracts/foundry.toml"
+
+	if [[ ! -f $foundry_toml ]]; then
+		return 0
+	fi
+
+	local solc_version
+	solc_version=$(grep -oP "solc_version\s*=\s*'\K[^']+" "$foundry_toml" 2>/dev/null || true)
+	if [[ -z $solc_version ]]; then
+		return 0
+	fi
+
+	local solc_bin="${HOME}/.local/share/svm/${solc_version}/solc-${solc_version}"
+
+	if [[ ! -f $solc_bin ]]; then
+		log_info "solc ${solc_version} not cached — forge will download on first build."
+		return 0
+	fi
+
+	# Test if the svm binary actually runs
+	if "$solc_bin" --version &>/dev/null; then
+		return 0
+	fi
+
+	# Broken binary (stale Nix glibc interpreter) — remove so forge re-downloads
+	log_warn "svm solc ${solc_version} binary is broken (stale Nix interpreter)."
+	log_info "Removing ${CYAN}${solc_bin}${NC} so forge re-downloads..."
+	rm -f "$solc_bin"
+}
+# =============================================================================
+# Update — Pin Foundry submodules to latest stable release tags
 # =============================================================================
 # NOTE: `forge update` does not work in a monorepo where `contracts/` is a
 #       subdirectory because `.gitmodules` lives at the repo root with paths like
 #       `contracts/lib/...`. Forge expects `.gitmodules` in its own root.
-#       We work around this by using `git submodule update` directly.
+#
+# This function fetches all tags for each submodule, finds the latest stable
+# release (filtering out pre-releases like rc/alpha/beta), and checks out that
+# tag. This is the correct approach — never use `git submodule update --remote`
+# which tracks HEAD of the default branch.
+
+# Resolve the latest stable release tag for a submodule.
+# Args: $1 = absolute path to the submodule
+#       $2 = tag prefix filter (e.g. "v" for "v5.6.1", "v1" for "v1.15.0")
+# Outputs the tag name to stdout.
+function latest_stable_tag() {
+	local sub_path="$1"
+	local prefix="${2:-v}"
+
+	git -C "$sub_path" fetch --tags 2>&1
+
+	# List tags matching prefix, exclude pre-releases, sort by semver
+	local tag
+	tag=$(
+		git -C "$sub_path" tag -l "${prefix}*" |
+			grep -vE '[-](rc|alpha|beta|dev|pre)' |
+			sort -V |
+			tail -1
+	)
+
+	if [[ -z $tag ]]; then
+		return 1
+	fi
+
+	echo "$tag"
+}
 
 function run_update() {
-	log_info "Updating Foundry dependencies..."
+	log_info "Updating Foundry dependencies to latest stable releases..."
 
 	local project_root
 	project_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
-	# Submodules to update (paths relative to repo root)
+	# Submodule paths (relative to repo root) and their tag prefix filters
+	# Format: "path|tag_prefix"
 	local deps=(
-		"contracts/lib/forge-std"
-		"contracts/lib/openzeppelin-contracts"
-		"contracts/lib/openzeppelin-contracts-upgradeable"
+		"contracts/lib/forge-std|v"
+		"contracts/lib/openzeppelin-contracts|v5."
+		"contracts/lib/openzeppelin-contracts-upgradeable|v5."
 	)
 
-	for dep in "${deps[@]}"; do
+	local updated=0
+
+	for entry in "${deps[@]}"; do
+		local dep="${entry%%|*}"
+		local prefix="${entry##*|}"
 		local name
 		name=$(basename "$dep")
-		log_info "Updating ${CYAN}${name}${NC}..."
-		git -C "$project_root" submodule update --remote "$dep" || {
-			log_error "Failed to update ${name}"
+		local abs_path="${project_root}/${dep}"
+
+		if [[ ! -d $abs_path ]]; then
+			log_warn "${name} not found at ${dep} — skipping"
+			continue
+		fi
+
+		log_info "Checking ${CYAN}${name}${NC}..."
+
+		# Resolve current tag
+		local current
+		current=$(git -C "$abs_path" describe --tags --exact-match 2>/dev/null || echo "unknown")
+
+		# Resolve latest stable tag
+		local latest
+		if ! latest=$(latest_stable_tag "$abs_path" "$prefix"); then
+			log_warn "No stable tags found for ${name} with prefix '${prefix}'"
+			continue
+		fi
+
+		if [[ $current == "$latest" ]]; then
+			log_info "  ${GREEN}✓${NC} ${name} already at ${GREEN}${latest}${NC}"
+			continue
+		fi
+
+		log_info "  ${YELLOW}${current}${NC} → ${GREEN}${latest}${NC}"
+
+		# Checkout the tag
+		git -C "$abs_path" checkout "$latest" || {
+			log_error "Failed to checkout ${latest} for ${name}"
 			exit 1
 		}
+
+		# Handle nested submodules (e.g. OZ upgradeable references OZ contracts)
+		if [[ -f "${abs_path}/.gitmodules" ]]; then
+			log_info "  Syncing nested submodules for ${CYAN}${name}${NC}..."
+			git -C "$abs_path" submodule update --init --recursive --progress
+		fi
+
+		# Stage the updated submodule pointer
+		git -C "$project_root" add "$dep"
+		((updated++))
 	done
 
-	# Sync nested submodules (openzeppelin has its own sub-deps)
-	log_info "Syncing nested submodules..."
-	git -C "$project_root" submodule update --init --recursive
+	if ((updated == 0)); then
+		log_info "${GREEN}All dependencies are already up to date!${NC}"
+		return 0
+	fi
 
 	# Clean any dirty content inside submodules (build artifacts, etc.)
 	log_info "Cleaning submodule working trees..."
-	git -C "$project_root" submodule foreach --recursive git checkout -- . 2>/dev/null || true
-	git -C "$project_root" submodule foreach --recursive git clean -fdx 2>/dev/null || true
+	git -C "$project_root" submodule foreach --recursive \
+		git clean -fdx || true
 
-	# Regenerate foundry.lock to match new commits
-	log_info "Regenerating ${CYAN}foundry.lock${NC}..."
+	# Verify the build still works with updated deps
+	ensure_solc
+	log_info "Running ${CYAN}forge clean${NC}..."
 	cd "${project_root}/contracts"
 	rm -f foundry.lock
+	forge clean
+	log_info "Running ${CYAN}forge build${NC} to verify updated dependencies..."
 	forge build || {
 		log_error "Forge build failed after update!"
+		log_error "Unstage with: ${CYAN}git checkout contracts/lib${NC}"
 		exit 1
 	}
+	cd "$project_root"
 
-	log_info "${GREEN}Dependencies updated successfully!${NC}"
-	log_info "Review changes with: ${CYAN}git diff contracts/lib${NC}"
-	log_info "Commit with: ${CYAN}git add contracts/lib contracts/foundry.lock && git commit -m 'chore: update foundry deps'${NC}"
+	log_info "${GREEN}${updated} dependency(ies) updated successfully!${NC}"
+	log_info "Review changes: ${CYAN}git diff --cached contracts/lib${NC}"
+	log_info "Commit: ${CYAN}git commit -m 'chore(contracts): update foundry deps'${NC}"
+}
+
+# =============================================================================
+# Build
+# =============================================================================
+
+function run_build() {
+	ensure_solc
+	log_info "Building Solidity contracts..."
+	cd contracts
+	export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
+
+	forge clean
+	forge build \
+		--names \
+		--sizes \
+		--force ||
+		{
+			log_error "Forge build has failed!"
+			exit 1
+		}
+	log_info "${GREEN}Build successful!${NC}"
+	cd ..
 }
 
 # =============================================================================
@@ -230,19 +392,20 @@ function run_update() {
 # =============================================================================
 
 function run_check() {
+	ensure_solc
 	log_info "Running Solidity checks..."
 	cd contracts
 	export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
 
+	# Format check
 	forge fmt || {
 		log_error "Forge format validation has failed!"
 		exit 1
 	}
-	slither . || {
-		log_error "Slither validation has failed!"
-		exit 1
-	}
+
+	# Build first — forge auto-downloads solc via svm, which slither needs
 	forge build \
+		--build-info \
 		--names \
 		--sizes \
 		--force ||
@@ -250,6 +413,14 @@ function run_check() {
 			log_error "Forge build validation has failed!"
 			exit 1
 		}
+
+	# Static analysis (requires build artifacts to exist)
+	slither . || {
+		log_error "Slither validation has failed!"
+		exit 1
+	}
+
+	# Tests
 	forge test \
 		-vvv \
 		--summary \
@@ -1092,6 +1263,9 @@ esac
 case "${1:-}" in
 check)
 	run_check
+	;;
+build)
+	run_build
 	;;
 update)
 	run_update
