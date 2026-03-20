@@ -124,7 +124,7 @@
 
       const connectedAddress = await getHydratedAddress();
       if (connectedAddress) {
-        address = (await connectWallet()).address;
+        address = connectedAddress;
         showStatus("Wallet connected ✓");
       } else {
         showStatus("Connecting wallet...");

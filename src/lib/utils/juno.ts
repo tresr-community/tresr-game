@@ -15,7 +15,7 @@ export async function initializeJunoSatellite() {
   return initSatellite({
     satelliteId: import.meta.env.VITE_SATELLITE_ID,
     container: isLocalEmulator
-      ? `http://${import.meta.env.VITE_SATELLITE_ID}.localhost:${JUNO_EMULATOR_PORT}`
+      ? `http://localhost:${JUNO_EMULATOR_PORT}`
       : undefined,
   });
 }

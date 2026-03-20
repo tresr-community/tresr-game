@@ -2,6 +2,7 @@
   import {onMount, onDestroy} from "svelte";
   import {authStore} from "@/lib/auth/store.svelte";
   import {walletStore} from "@/lib/wallet/store.svelte";
+  import {profileStore} from "@/lib/user/store.svelte";
   import {getConnectedAddress} from "@/lib/wallet/connection";
   import {
     claimFaucet,
@@ -20,6 +21,11 @@
   const isProduction = JUNO_ENVIRONMENT === "production";
   const EMOJI_CONTENT = "🚰";
 
+  // True when a wallet is actively connected via wagmi OR linked in the user profile
+  let hasWallet = $derived(
+    walletStore.value.connected || !!profileStore.value?.evm_wallet
+  );
+
   let isVisible = $state(false);
   let isProcessing = $state(false);
   let cooldownRemaining = $state(0);
@@ -31,12 +37,12 @@
       !isProduction &&
       authStore.value.isAuthenticated &&
       !authStore.value.isGuest &&
-      walletStore.value.connected &&
+      hasWallet &&
       isFaucetDeployed(config)
     ) {
       isVisible = true;
       if (cooldownRemaining <= 0 && !isProcessing) {
-        if (walletStore.value.connected && !isProcessing) {
+        if (hasWallet && !isProcessing) {
           checkInitialCooldown();
         }
       }
@@ -46,12 +52,12 @@
   });
 
   let btnDisabled = $derived(
-    isProcessing || !walletStore.value.connected || cooldownRemaining > 0
+    isProcessing || !hasWallet || cooldownRemaining > 0
   );
   let btnTitle = $derived(
     isProcessing
       ? "Processing..."
-      : !walletStore.value.connected
+      : !hasWallet
         ? "Connecting wallet…"
         : cooldownRemaining > 0
           ? `Cooldown: ${formatCooldownTime(cooldownRemaining)}`
@@ -97,7 +103,11 @@
   }
 
   async function checkInitialCooldown() {
-    if (!walletStore.value.connected || disposed) return;
+    if (
+      (!walletStore.value.connected && !profileStore.value?.evm_wallet) ||
+      disposed
+    )
+      return;
     const address = getConnectedAddress();
     if (!address) return;
     try {
@@ -114,12 +124,29 @@
   async function handleClick() {
     if (isProcessing || disposed || btnDisabled) return;
 
-    if (!walletStore.value.connected) {
+    if (!hasWallet) {
       window.showWarningToast?.("Connect your wallet first 🔗");
       return;
     }
 
-    const address = getConnectedAddress();
+    let address = getConnectedAddress();
+
+    // ICP users with a linked wallet may not have wagmi connected yet.
+    // Connect on-demand so the faucet transaction can proceed.
+    if (!address && profileStore.value?.evm_wallet) {
+      try {
+        const {connectWallet} = await import("@/lib/wallet/connection");
+        const connection = await connectWallet();
+        address = connection.address;
+      } catch (err) {
+        log.warn(COMPONENT_NAME, "Failed to connect wallet for faucet", err);
+        window.showWarningToast?.(
+          "Please connect your wallet and try again 🔗"
+        );
+        return;
+      }
+    }
+
     if (!address) {
       log.warn(COMPONENT_NAME, "No wallet address found");
       return;

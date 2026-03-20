@@ -108,7 +108,13 @@
       if (activeFiltered.length === 0) {
         infoMessage = "No active scores. Play to claim #1!";
       } else {
-        activeItems = activeFiltered.slice(0, 10);
+        activeItems = activeFiltered
+          .sort(
+            (a, b) =>
+              ((b.data as any).active_score || 0) -
+              ((a.data as any).active_score || 0)
+          )
+          .slice(0, 10);
 
         countdownInterval = setInterval(() => {
           currentTime = Date.now();
@@ -166,7 +172,13 @@
       if (validItems.length === 0) {
         infoMessage = "No scores yet. Be the first!";
       } else {
-        alltimeItems = validItems.slice(0, 10);
+        alltimeItems = validItems
+          .sort(
+            (a, b) =>
+              ((b.data as any).high_score || 0) -
+              ((a.data as any).high_score || 0)
+          )
+          .slice(0, 10);
       }
     } catch (err: any) {
       const errMsg = err?.message || String(err);
