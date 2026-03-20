@@ -37,6 +37,9 @@ outputs:
   vault_address:
     description: "Resolved vault proxy address"
     value: ${{ steps.resolve_vault_address.outputs.vault_address }}
+  vault_impl_address:
+    description: "Resolved vault implementation address"
+    value: ${{ steps.resolve_vault_address.outputs.vault_impl_address }}
   mode:
     description: "Vault deploy mode (skip/deploy/upgrade)"
     value: ${{ steps.detect_vault_mode.outputs.mode }}
@@ -310,14 +313,28 @@ runs:
         CONFIG_VAULT="${{ inputs.vault-address }}"
         ZERO="0x0000000000000000000000000000000000000000"
         DEPLOYED_VAULT=""
+        DEPLOYED_IMPL=""
 
+        # Check fresh deploy broadcast
         LATEST="contracts/broadcast/Vault.s.sol/${CHAIN_ID}/run-latest.json"
         if [[ -f "$LATEST" ]]; then
           DEPLOYED_VAULT=$(jq -r \
             '.transactions[] | select(.transactionType == "CREATE" and .contractName == "ERC1967Proxy") | .contractAddress' \
             "$LATEST" 2>/dev/null | head -1)
+          DEPLOYED_IMPL=$(jq -r \
+            '.transactions[] | select(.transactionType == "CREATE" and .contractName == "TresrVault") | .contractAddress' \
+            "$LATEST" 2>/dev/null | head -1)
         fi
 
+        # Check upgrade broadcast (new impl)
+        UPGRADE_LATEST="contracts/broadcast/UpgradeVault.s.sol/${CHAIN_ID}/run-latest.json"
+        if [[ -z "$DEPLOYED_IMPL" && -f "$UPGRADE_LATEST" ]]; then
+          DEPLOYED_IMPL=$(jq -r \
+            '.transactions[] | select(.transactionType == "CREATE") | .contractAddress' \
+            "$UPGRADE_LATEST" 2>/dev/null | head -1)
+        fi
+
+        # Resolve proxy address
         if [[ -n "$DEPLOYED_VAULT" ]]; then
           echo "vault_address=${DEPLOYED_VAULT}" >> "$GITHUB_OUTPUT"
           echo "🔗 Using freshly-deployed vault proxy: ${DEPLOYED_VAULT}"
@@ -327,6 +344,15 @@ runs:
         else
           echo "vault_address=" >> "$GITHUB_OUTPUT"
           echo "No vault deployed this run"
+        fi
+
+        # Resolve implementation address
+        if [[ -n "$DEPLOYED_IMPL" ]]; then
+          echo "vault_impl_address=${DEPLOYED_IMPL}" >> "$GITHUB_OUTPUT"
+          echo "🔗 Vault implementation: ${DEPLOYED_IMPL}"
+        else
+          echo "vault_impl_address=" >> "$GITHUB_OUTPUT"
+          echo "No vault implementation address resolved"
         fi
 
     # ──────────────────────────────────────────────

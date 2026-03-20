@@ -36,6 +36,7 @@ declare module "/config-client.json" {
           tresr_token_contract: string;
           deployer_address: string;
           player_wallet: string;
+          proxy_contract: string;
           vault_contract: string;
           faucet_contract: string;
           explorer_url: string;
@@ -50,6 +51,7 @@ declare module "/config-client.json" {
           tresr_token_contract: string;
           oracle_address: string;
           admin_address: string;
+          proxy_contract: string;
           vault_contract: string;
           faucet_contract: string;
           explorer_url: string;
@@ -64,6 +66,7 @@ declare module "/config-client.json" {
           tresr_token_contract: string;
           oracle_address: string;
           safe_address: string;
+          proxy_contract: string;
           vault_contract: string;
           explorer_url: string;
         };
@@ -810,6 +813,7 @@ declare module "../../../static/config-client.json" {
           tresr_token_contract: string;
           deployer_address: string;
           player_wallet: string;
+          proxy_contract: string;
           vault_contract: string;
           faucet_contract: string;
           explorer_url: string;
@@ -824,6 +828,7 @@ declare module "../../../static/config-client.json" {
           tresr_token_contract: string;
           oracle_address: string;
           admin_address: string;
+          proxy_contract: string;
           vault_contract: string;
           faucet_contract: string;
           explorer_url: string;
@@ -838,6 +843,7 @@ declare module "../../../static/config-client.json" {
           tresr_token_contract: string;
           oracle_address: string;
           safe_address: string;
+          proxy_contract: string;
           vault_contract: string;
           explorer_url: string;
         };

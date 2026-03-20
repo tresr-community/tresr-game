@@ -40,7 +40,7 @@ function getVaultAddress(
 ): `0x${string}` | null {
   const vaultDeployed = isVaultDeployed(config);
   const vaultAddr = config.blockchain.avalanche[env]
-    .vault_contract as `0x${string}`;
+    .proxy_contract as `0x${string}`;
 
   if (
     vaultDeployed &&
@@ -222,7 +222,7 @@ export async function payFeeForGame(
   const extendedClient = walletClient.extend(publicActions);
   const publicClient = getReadClient();
 
-  const vaultAddr = chainConfig.vault_contract as `0x${string}`;
+  const vaultAddr = chainConfig.proxy_contract as `0x${string}`;
   const tokenAddr = chainConfig.tresr_token_contract as `0x${string}`;
   const sid = sessionId as `0x${string}`;
 
@@ -374,7 +374,7 @@ export async function claimWin(
 
   const {request: claimRequest} = await publicClient.simulateContract({
     account: accounts[0],
-    address: chainConfig.vault_contract as `0x${string}`,
+    address: chainConfig.proxy_contract as `0x${string}`,
     abi: VaultAbi,
     functionName: "claim",
     args: [sessionId as `0x${string}`, amount, BigInt(keys), signature],

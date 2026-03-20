@@ -25,6 +25,10 @@ inputs:
     description: "Vault proxy address"
     required: false
     default: ""
+  vault-impl-address:
+    description: "Vault implementation address"
+    required: false
+    default: ""
   workflow-name:
     description: "Name of the calling workflow for the footer"
     required: false
@@ -101,6 +105,7 @@ runs:
           ADMIN="${{ inputs.admin-address }}"
           TOKEN="${{ inputs.token-address }}"
           VAULT="${{ inputs.vault-address }}"
+          VAULT_IMPL="${{ inputs.vault-impl-address }}"
           ZERO="0x0000000000000000000000000000000000000000"
 
           echo ""
@@ -119,9 +124,12 @@ runs:
             echo "| 🪙 **Token** | \`${TOKEN}\` | [View ↗](${EXPLORER}/address/${TOKEN}) |"
           fi
           if [[ "$VAULT" == "$ZERO" || -z "$VAULT" ]]; then
-            echo "| 🏦 **Vault** | \`${VAULT}\` | ⚠️ Not configured |"
+            echo "| 🏦 **Vault (proxy)** | \`${VAULT}\` | ⚠️ Not configured |"
           else
-            echo "| 🏦 **Vault** | \`${VAULT}\` | [View ↗](${EXPLORER}/address/${VAULT}) |"
+            echo "| 🏦 **Vault (proxy)** | \`${VAULT}\` | [View ↗](${EXPLORER}/address/${VAULT}) |"
+          fi
+          if [[ -n "$VAULT_IMPL" && "$VAULT_IMPL" != "$ZERO" ]]; then
+            echo "| 🏦 **Vault (impl)** | \`${VAULT_IMPL}\` | [View ↗](${EXPLORER}/address/${VAULT_IMPL}) |"
           fi
           echo "| 🛡️ **Admin/Safe** | \`${ADMIN}\` | [View ↗](${EXPLORER}/address/${ADMIN}) |"
 

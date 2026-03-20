@@ -69,7 +69,7 @@
       ) {
         const env = getEnvironmentKey();
         contractAddress = config.blockchain.avalanche[env]
-          .vault_contract as `0x${string}`;
+          .proxy_contract as `0x${string}`;
       }
 
       const principalId = user.key;

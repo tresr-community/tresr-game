@@ -38,12 +38,12 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 /**
  * Check whether the vault contract is deployed for the current environment.
- * Returns false when vault_contract is the zero address (not yet deployed).
+ * Returns false when proxy_contract is the zero address (not yet deployed).
  */
 export function isVaultDeployed(cfg: {
-  blockchain: {avalanche: Record<string, {vault_contract: string}>};
+  blockchain: {avalanche: Record<string, {proxy_contract: string}>};
 }): boolean {
   const env = getEnvironmentKey();
-  const addr = cfg.blockchain.avalanche[env]?.vault_contract;
+  const addr = cfg.blockchain.avalanche[env]?.proxy_contract;
   return !!addr && addr !== ZERO_ADDRESS;
 }

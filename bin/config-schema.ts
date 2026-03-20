@@ -150,7 +150,8 @@ const AvalancheEnvSchema = z.object({
   oracle_address: evmAddress.optional(),
   admin_address: evmAddress.optional(),
   safe_address: evmAddress.optional(),
-  vault_contract: evmAddress,
+  proxy_contract: evmAddress,
+  vault_contract: evmAddress.optional(),
   faucet_contract: evmAddress.optional(),
   explorer_url: z.url(),
 });

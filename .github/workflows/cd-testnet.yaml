@@ -339,6 +339,7 @@ jobs:
     outputs:
       token_address: ${{ steps.resolve_token.outputs.token_address }}
       vault_address: ${{ steps.resolve_vault.outputs.vault_address }}
+      vault_impl_address: ${{ steps.resolve_vault.outputs.vault_impl_address }}
       faucet_address: ${{ steps.resolve_token.outputs.faucet_address }}
       deployed: ${{ steps.resolve_vault.outputs.deployed }}
 
@@ -405,6 +406,7 @@ jobs:
           admin-address: ${{ steps.foundry_deploy_setup.outputs.ADMIN_ADDRESS }}
           token-address: ${{ steps.resolve_token.outputs.token_address }}
           vault-address: ${{ steps.resolve_vault.outputs.vault_address }}
+          vault-impl-address: ${{ steps.resolve_vault.outputs.vault_impl_address }}
           workflow-name: cd-testnet
 
   ##################################################
@@ -451,4 +453,5 @@ jobs:
           oracle-address: ${{ needs.deploy-juno.outputs.oracle_address }}
           token-address: ${{ needs.deploy-foundry.outputs.token_address }}
           vault-address: ${{ needs.deploy-foundry.outputs.vault_address }}
+          vault-impl-address: ${{ needs.deploy-foundry.outputs.vault_impl_address }}
           faucet-address: ${{ needs.deploy-foundry.outputs.faucet_address }}

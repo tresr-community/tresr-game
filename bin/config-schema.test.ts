@@ -284,9 +284,9 @@ describe("client.blockchain", () => {
     }
   });
 
-  test("vault_contract must be a valid EVM address", () => {
+  test("proxy_contract must be a valid EVM address", () => {
     const result = ClientConfigSchema.safeParse(
-      clientWithAnvil({vault_contract: "not-an-address"})
+      clientWithAnvil({proxy_contract: "not-an-address"})
     );
     expect(result.success).toBe(false);
   });

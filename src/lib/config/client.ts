@@ -74,11 +74,12 @@ export const config: ConfigTypes = {
           "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0xe1Fd27F4390DcBE165f4D60DBF821e4B9Bb02dEd",
+        "tresr_token_contract": "0x0000000000000000000000000000000000000000",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
-        "vault_contract": "0xefAB0Beb0A557E452b398035eA964948c750b2Fd",
-        "faucet_contract": "0xB377a2EeD7566Ac9fCb0BA673604F9BF875e2Bab",
+        "proxy_contract": "0x0000000000000000000000000000000000000000",
+        "vault_contract": "0x0000000000000000000000000000000000000000",
+        "faucet_contract": "0x0000000000000000000000000000000000000000",
         "explorer_url": "http://localhost:8545/tx/"
       },
       "testnet": {
@@ -95,11 +96,12 @@ export const config: ConfigTypes = {
           "https://game-testnet.tresr.community"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0x72011c2ce21d54e23638e9804917a8608ae4b274",
-        "oracle_address": "0xf2ff695cae8cc886d3c03afd502a35fcee61b66f",
+        "tresr_token_contract": "0x0000000000000000000000000000000000000000",
+        "oracle_address": "0x0000000000000000000000000000000000000000",
         "admin_address": "0x628F3Df70dd2F19e28842c9AB64c64A9700a929e",
-        "vault_contract": "0x1f7d99619c982ef31335a6b2e108830531e0bc51",
-        "faucet_contract": "0xf1aa5ed280270248bc439123ed549268de2e7b93",
+        "proxy_contract": "0x0000000000000000000000000000000000000000",
+        "vault_contract": "0x0000000000000000000000000000000000000000",
+        "faucet_contract": "0x0000000000000000000000000000000000000000",
         "explorer_url": "https://testnet.snowtrace.io/tx/"
       },
       "mainnet": {
@@ -116,9 +118,10 @@ export const config: ConfigTypes = {
           "https://game.tresr.community"
         ],
         "token_ticker": "TRESR",
-        "tresr_token_contract": "0x9913BA363073Ca3e9eA0cD296E36B75aF9E40bef",
+        "tresr_token_contract": "0x0000000000000000000000000000000000000000",
         "oracle_address": "0x0000000000000000000000000000000000000000",
         "safe_address": "0x0e7E7a40A7a70e9A758f4cB46f01bB12Eb6b29c3",
+        "proxy_contract": "0x0000000000000000000000000000000000000000",
         "vault_contract": "0x0000000000000000000000000000000000000000",
         "explorer_url": "https://snowtrace.io/tx/"
       }

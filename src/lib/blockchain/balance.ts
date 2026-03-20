@@ -229,7 +229,7 @@ export async function getTokenBalance(
 export async function getVaultTresrBalance(useCache = true): Promise<bigint> {
   const config = await loadConfigAsync();
   const env = getEnvironmentKey();
-  const vaultAddress = config.blockchain.avalanche[env].vault_contract;
+  const vaultAddress = config.blockchain.avalanche[env].proxy_contract;
   const tokenAddress = config.blockchain.avalanche[env].tresr_token_contract;
 
   return getTokenBalance(vaultAddress, tokenAddress, useCache);

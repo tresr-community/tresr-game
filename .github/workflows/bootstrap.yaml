@@ -215,7 +215,8 @@ jobs:
             echo "|----------|---------|"
             echo "| Oracle   | \`${{ steps.deploy_juno_pass1.outputs.oracle_address }}\` |"
             echo "| Token    | \`${{ steps.resolve_token.outputs.token_address }}\` |"
-            echo "| Vault    | \`${{ steps.resolve_vault.outputs.vault_address }}\` |"
+            echo "| Vault (proxy) | \`${{ steps.resolve_vault.outputs.vault_address }}\` |"
+            echo "| Vault (impl)  | \`${{ steps.resolve_vault.outputs.vault_impl_address }}\` |"
             echo "| Faucet   | \`${{ steps.resolve_token.outputs.faucet_address }}\` |"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -230,6 +231,7 @@ jobs:
           oracle-address: ${{ steps.deploy_juno_pass1.outputs.oracle_address }}
           token-address: ${{ steps.resolve_token.outputs.token_address }}
           vault-address: ${{ steps.resolve_vault.outputs.vault_address }}
+          vault-impl-address: ${{ steps.resolve_vault.outputs.vault_impl_address }}
           faucet-address: ${{ steps.resolve_token.outputs.faucet_address }}
 
       - id: build_hosting
@@ -260,7 +262,8 @@ jobs:
             echo "|-----|-------|"
             echo "| Oracle  | \`${{ steps.deploy_juno_pass1.outputs.oracle_address }}\` |"
             echo "| Token   | \`${{ steps.resolve_token.outputs.token_address }}\` |"
-            echo "| Vault   | \`${{ steps.resolve_vault.outputs.vault_address }}\` |"
+            echo "| Vault (proxy) | \`${{ steps.resolve_vault.outputs.vault_address }}\` |"
+            echo "| Vault (impl)  | \`${{ steps.resolve_vault.outputs.vault_impl_address }}\` |"
             echo "| Faucet  | \`${{ steps.resolve_token.outputs.faucet_address }}\` |"
             echo ""
             echo "A config PR has been opened with all four addresses."

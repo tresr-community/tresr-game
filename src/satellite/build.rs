@@ -125,7 +125,10 @@ struct AvalancheNetwork {
     // The browser still uses blockchain.avalanche.*.rpc_urls via bin/client-config.ts.
     #[serde(default)]
     allowed_origins: Vec<String>,
-    vault_contract: String,
+    proxy_contract: String,
+    #[serde(default)]
+    #[allow(dead_code)]
+    vault_contract: Option<String>,
     tresr_token_contract: String,
     token_ticker: String,
 }
@@ -308,8 +311,8 @@ pub const EVM_RPC_CANISTER_ID: &str = "{evm_rpc_canister_id}";
 /// Avalanche chain ID for the selected network (from client.blockchain.avalanche.{network}.chain_id)
 pub const AVALANCHE_CHAIN_ID: u64 = {chain_id};
 
-/// Vault contract address on Avalanche (from client.blockchain.avalanche.{network}.vault_contract)
-pub const VAULT_CONTRACT_ADDRESS: &str = "{vault_contract}";
+/// Vault proxy contract address on Avalanche (from client.blockchain.avalanche.{network}.proxy_contract)
+pub const VAULT_CONTRACT_ADDRESS: &str = "{proxy_contract}";
 
 /// TRESR token contract address on Avalanche (from client.blockchain.avalanche.{network}.tresr_token_contract)
 pub const TRESR_TOKEN_CONTRACT: &str = "{token_contract}";
@@ -408,7 +411,7 @@ pub const REPLAY_ATTACK_PER_KEY_DIVISOR: u64 = {replay_attack_per_key_divisor};
         payout_curve = payout_curve_str,
         evm_rpc_canister_id = &evm_rpc_net.canister_id,
         chain_id = chain.chain_id,
-        vault_contract = chain.vault_contract,
+        proxy_contract = chain.proxy_contract,
         token_contract = chain.tresr_token_contract,
         token_ticker = chain.token_ticker,
         fee = chain.fee,

@@ -122,7 +122,7 @@ runs:
             echo "::error::Neither safe_address nor admin_address is set for network: ${NETWORK}" >&2
             exit 1
           fi
-          echo "VAULT_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.vault_contract" config/tresr.yaml)"
+          echo "VAULT_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.proxy_contract" config/tresr.yaml)"
           echo "FAUCET_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.faucet_contract" config/tresr.yaml)"
         } >> "$GITHUB_OUTPUT"
 

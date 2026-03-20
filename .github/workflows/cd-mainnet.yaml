@@ -308,6 +308,7 @@ jobs:
 
     outputs:
       vault_address: ${{ steps.resolve_vault.outputs.vault_address }}
+      vault_impl_address: ${{ steps.resolve_vault.outputs.vault_impl_address }}
       deployed: ${{ steps.resolve_vault.outputs.deployed }}
 
     steps:
@@ -362,6 +363,7 @@ jobs:
           admin-address: ${{ steps.foundry_deploy_setup.outputs.ADMIN_ADDRESS }}
           token-address: ${{ steps.foundry_deploy_setup.outputs.TOKEN_ADDRESS }}
           vault-address: ${{ steps.resolve_vault.outputs.vault_address }}
+          vault-impl-address: ${{ steps.resolve_vault.outputs.vault_impl_address }}
           workflow-name: cd-mainnet
 
   ##################################################
@@ -409,3 +411,4 @@ jobs:
           base-ref: ${{ github.event.repository.default_branch }}
           oracle-address: ${{ needs.deploy-juno.outputs.oracle_address }}
           vault-address: ${{ needs.deploy-foundry.outputs.vault_address }}
+          vault-impl-address: ${{ needs.deploy-foundry.outputs.vault_impl_address }}

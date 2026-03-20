@@ -24,6 +24,10 @@ inputs:
     description: "Vault proxy contract address"
     required: false
     default: ""
+  vault-impl-address:
+    description: "Vault implementation contract address (changes on upgrade)"
+    required: false
+    default: ""
   faucet-address:
     description: "Faucet contract address (testnet only)"
     required: false
@@ -63,6 +67,7 @@ runs:
         ORACLE="${{ inputs.oracle-address }}"
         TOKEN="${{ inputs.token-address }}"
         VAULT="${{ inputs.vault-address }}"
+        VAULT_IMPL="${{ inputs.vault-impl-address }}"
         FAUCET="${{ inputs.faucet-address }}"
         ZERO="0x0000000000000000000000000000000000000000"
 
@@ -85,7 +90,8 @@ runs:
 
         [[ -n "$ORACLE" && "$ORACLE" != "$ZERO" ]] && yaml_set oracle_address "$ORACLE"
         [[ -n "$TOKEN"  && "$TOKEN"  != "$ZERO" ]] && yaml_set tresr_token_contract "$TOKEN"
-        [[ -n "$VAULT"  && "$VAULT"  != "$ZERO" ]] && yaml_set vault_contract "$VAULT"
+        [[ -n "$VAULT"  && "$VAULT"  != "$ZERO" ]] && yaml_set proxy_contract "$VAULT"
+        [[ -n "$VAULT_IMPL" && "$VAULT_IMPL" != "$ZERO" ]] && yaml_set vault_contract "$VAULT_IMPL"
         [[ -n "$FAUCET" && "$FAUCET" != "$ZERO" ]] && yaml_set faucet_contract "$FAUCET"
 
     # Run client-config with --stage so it:
@@ -166,6 +172,7 @@ runs:
         ORACLE_FMT=$(_fmt "${{ inputs.oracle-address }}")
         TOKEN_FMT=$(_fmt  "${{ inputs.token-address }}")
         VAULT_FMT=$(_fmt  "${{ inputs.vault-address }}")
+        VAULT_IMPL_FMT=$(_fmt "${{ inputs.vault-impl-address }}")
         FAUCET_FMT=$(_fmt "${{ inputs.faucet-address }}")
 
         BODY=$(cat <<EOF
@@ -175,7 +182,8 @@ runs:
         |---------|-------|
         | Oracle  | ${ORACLE_FMT} |
         | Token   | ${TOKEN_FMT} |
-        | Vault   | ${VAULT_FMT} |
+        | Vault (proxy)  | ${VAULT_FMT} |
+        | Vault (impl)   | ${VAULT_IMPL_FMT} |
         | Faucet  | ${FAUCET_FMT} |
         EOF
         )

@@ -22,7 +22,7 @@
 
   const env = getEnvironmentKey();
   const explorerUrl = config.blockchain.avalanche[env].explorer_url;
-  const vaultAddress = config.blockchain.avalanche[env].vault_contract;
+  const vaultAddress = config.blockchain.avalanche[env].proxy_contract;
 
   let pendingClaims = $derived(
     allClaims.filter((c) => c.data.status === "readyforchain")

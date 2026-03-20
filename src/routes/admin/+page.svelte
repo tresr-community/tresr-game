@@ -167,7 +167,7 @@
     try {
       const env = getEnvironmentKey();
       const vaultAddr = config.blockchain.avalanche[env]
-        .vault_contract as `0x${string}`;
+        .proxy_contract as `0x${string}`;
       if (
         vaultAddr &&
         vaultAddr !== "0x0000000000000000000000000000000000000000"

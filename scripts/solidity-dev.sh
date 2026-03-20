@@ -468,7 +468,7 @@ function fund_wallet() {
 
 	# Read vault address from config (anvil environment)
 	local vault_address
-	vault_address=$(yq -r '.client.blockchain.avalanche.anvil.vault_contract // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
+	vault_address=$(yq -r '.client.blockchain.avalanche.anvil.proxy_contract // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
 	local vault_deployed=false
 	if [[ -n $vault_address && $vault_address != "$ZERO_ADDRESS" ]]; then
 		vault_deployed=true
@@ -805,7 +805,7 @@ function run_deploy_vault() {
 	# Skip if already deployed (existence check). Pass --force to override.
 	# To always redeploy: solidity-dev loop --force
 	local vault_addr
-	vault_addr=$(yq -r '.client.blockchain.avalanche.anvil.vault_contract // ""' "../config/tresr.yaml" 2>/dev/null || echo "")
+	vault_addr=$(yq -r '.client.blockchain.avalanche.anvil.proxy_contract // ""' "../config/tresr.yaml" 2>/dev/null || echo "")
 	local zero="0x0000000000000000000000000000000000000000"
 
 	if [[ $LOOP_MODE == "true" && $FORCE_DEPLOY != "true" && -n $vault_addr && $vault_addr != "$zero" && $vault_addr != "null" ]]; then
@@ -862,8 +862,16 @@ function run_deploy_vault() {
 
 	# Auto-update tresr.yaml with the new proxy address (anvil section only)
 	cd ..
-	yaml_set "vault_contract" "$proxy_address"
-	log_info "Updated ${CYAN}${CONFIG_FILE}${NC} → anvil.vault_contract: ${GREEN}${proxy_address}${NC}"
+	yaml_set "proxy_contract" "$proxy_address"
+	log_info "Updated ${CYAN}${CONFIG_FILE}${NC} → anvil.proxy_contract: ${GREEN}${proxy_address}${NC}"
+
+	# Also update vault_contract (implementation address) from broadcast
+	local impl_address
+	impl_address=$(jq -r '.transactions[] | select(.transactionType == "CREATE" and .contractName == "Vault") | .contractAddress' "$BROADCAST_FILE" 2>/dev/null || echo "")
+	if [[ -n $impl_address ]]; then
+		yaml_set "vault_contract" "$impl_address"
+		log_info "Updated ${CYAN}${CONFIG_FILE}${NC} → anvil.vault_contract: ${GREEN}${impl_address}${NC}"
+	fi
 
 	# Banner
 	cat <<-EOF
@@ -1078,7 +1086,7 @@ function run_balance() {
 
 	# Read vault address from config
 	local vault_address
-	vault_address=$(yq -r '.client.blockchain.avalanche.anvil.vault_contract // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
+	vault_address=$(yq -r '.client.blockchain.avalanche.anvil.proxy_contract // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
 	local vault_label="not deployed"
 	if [[ -n $vault_address && $vault_address != "$ZERO_ADDRESS" ]]; then
 		vault_label=$(query_token_balance "$vault_address")
@@ -1218,7 +1226,7 @@ function run_health() {
 	# ─── 6. Vault ↔ Token cross-check ──────────────────────────────────
 	log_info "[6/6] Verifying vault references correct token..."
 	local vault_address
-	vault_address=$(yq -r '.client.blockchain.avalanche.anvil.vault_contract // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
+	vault_address=$(yq -r '.client.blockchain.avalanche.anvil.proxy_contract // ""' "$CONFIG_FILE" 2>/dev/null || echo "")
 
 	if [[ -n $vault_address && $vault_address != "$ZERO_ADDRESS" && -n $token_address && $token_address != "$ZERO_ADDRESS" ]]; then
 		local vault_token
