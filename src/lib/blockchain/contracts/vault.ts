@@ -313,6 +313,9 @@ export async function payFeeForGame(
     await confirmReceipt(approveHash, {
       timeout: config.gameplay.fee_gate.transaction_timeout_ms,
       component: COMPONENT_NAME,
+      // Approval only needs to be mined before payFee — satellite doesn't
+      // verify it, so 1 confirmation is enough and we skip the 5 s propagation.
+      confirmations: 1,
     });
   } else {
     log.info(

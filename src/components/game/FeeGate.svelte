@@ -23,7 +23,10 @@
   import Modal from "@/components/ui/Modal.svelte";
 
   const COMPONENT_NAME = "FeeGate";
-  const PAYMENT_TIMEOUT_MS = 60_000;
+  // Use the configured fee-gate transaction timeout (default 300 s).
+  // This must be long enough to cover wallet signing + 2 on-chain confirmations
+  // + the 5 s RPC propagation buffer before satellite verification.
+  const PAYMENT_TIMEOUT_MS = config.gameplay.fee_gate.transaction_timeout_ms;
 
   const env = getEnvironmentKey();
   const chainConfig = config.blockchain.avalanche[env];
@@ -179,6 +182,7 @@
       markStep("confirm", "active");
       await confirmReceipt(txHash, {
         component: "FeeGate",
+        timeout: config.gameplay.fee_gate.transaction_timeout_ms,
         onConfirmation: (current, total) => {
           showStatus(`Confirming ${current}/${total} on-chain…`);
         },

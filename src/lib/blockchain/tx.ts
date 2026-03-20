@@ -57,38 +57,28 @@ function buildDirectClient(): PublicClient {
 }
 
 /**
- * Confirm a transaction receipt via direct RPC polling.
- *
- * Creates a viem public client pointed at the configured RPC URL and
- * polls for the receipt. Uses environment-aware confirmation counts:
- * 0 for local/anvil, 1 for testnet/Fuji, and 2 for production/Mainnet.
- *
- * pollingInterval is fixed at 100 ms so that Anvil auto-mined transactions
- * are caught on the very first poll without any env-specific code paths.
- *
- * Throws if the transaction reverts on-chain or if the timeout elapses.
- *
- * @param hash - Transaction hash to confirm
- * @param options.timeout - Timeout in ms (default: 30 000)
- * @param options.component - Component name for log messages
- * @returns The on-chain transaction receipt
- */
-/**
  * Confirm a transaction receipt with per-confirmation progress reporting.
  *
- * On testnet (Fuji) we wait for 3 confirmations so all 3 EVM RPC providers
+ * On testnet (Fuji) we wait for 2 confirmations so all EVM RPC providers
  * used by the satellite (DFINITY EVM RPC canister) have time to index the
  * block before we submit to Juno. One confirmation is often enough for the
  * browser's single RPC but other providers can lag 5–15 s.
  *
+ * Pass `confirmations: 1` for prerequisite transactions (e.g. ERC20 approve)
+ * that don't need satellite-level propagation — this skips both the extra
+ * block wait and the 5 s RPC propagation buffer, saving ~10 s per flow.
+ *
  * @param onConfirmation - Optional callback invoked after each new confirmation.
- *   Receives (current, total) e.g. (1, 3).
+ *   Receives (current, total) e.g. (1, 2).
  */
 export async function confirmReceipt(
   hash: `0x${string}`,
   options?: {
     timeout?: number;
     component?: string;
+    /** Override the default env-based confirmation count. Use 1 for prerequisite
+     *  txs (e.g. ERC20 approve) that don't require satellite RPC propagation. */
+    confirmations?: number;
     onConfirmation?: (current: number, total: number) => void;
   }
 ): Promise<TransactionReceipt> {
@@ -99,9 +89,14 @@ export async function confirmReceipt(
   const component = options?.component ?? COMPONENT_NAME;
 
   const env = getEnvironmentKey();
-  // For Anvil, we wait for 0 confirmations (auto-mine).
-  // For Testnet/Mainnet, we wait   for 2 confirmations.
-  const totalConfirmations = env === "anvil" ? 0 : 2;
+  // Default: 0 for Anvil (auto-mine), 2 for Testnet/Mainnet (satellite needs it).
+  // Callers can override with confirmations: 1 for prerequisite txs (e.g. ERC20
+  // approve) that don't need satellite-level propagation — saves ~10 s per flow.
+  const defaultConfirmations = env === "anvil" ? 0 : 2;
+  const totalConfirmations = options?.confirmations ?? defaultConfirmations;
+  // Only add the RPC propagation buffer when we're doing the full satellite-
+  // verified flow (2+ confirmations). For fast-path approval txs it's wasted time.
+  const needsPropagationDelay = totalConfirmations >= 2;
 
   log.info(
     component,
@@ -169,12 +164,16 @@ export async function confirmReceipt(
 
   // Extra propagation buffer: give lagging RPC nodes time to index the block
   // before the satellite queries them via the EVM RPC canister.
-  const propagationDelayMs = 5_000;
-  log.info(
-    component,
-    `Waiting ${propagationDelayMs}ms for RPC propagation before satellite query…`
-  );
-  await new Promise((r) => setTimeout(r, propagationDelayMs));
+  // Skip for fast-path flows (confirmations: 1) — not needed for txs the
+  // satellite doesn't verify (e.g. ERC20 approve).
+  if (needsPropagationDelay) {
+    const propagationDelayMs = 5_000;
+    log.info(
+      component,
+      `Waiting ${propagationDelayMs}ms for RPC propagation before satellite query…`
+    );
+    await new Promise((r) => setTimeout(r, propagationDelayMs));
+  }
 
   log.info(component, "Confirmed in block", receipt.blockNumber);
   return receipt;
