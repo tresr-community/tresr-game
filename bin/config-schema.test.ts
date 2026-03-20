@@ -601,3 +601,124 @@ describe("client.gameplay.vault", () => {
     expect(result.success).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Suite: server.juno environment fields
+// ---------------------------------------------------------------------------
+
+describe("server.juno environment fields", () => {
+  function serverWithJunoEnv(
+    env: "development" | "staging" | "production",
+    patch: Record<string, unknown>
+  ) {
+    const s = clone(realServer);
+    const juno = s.juno as Record<string, Record<string, unknown>>;
+    juno[env] = {...juno[env], ...patch};
+    return s;
+  }
+
+  // -- satellite_id (required) --
+  test("satellite_id is required", () => {
+    const s = serverWithJunoEnv("development", {});
+    const juno = s.juno as Record<string, Record<string, unknown>>;
+    delete juno.development.satellite_id;
+    const result = ServerConfigSchema.safeParse(s);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(errorPaths(result).some((p) => p.includes("satellite_id"))).toBe(
+        true
+      );
+    }
+  });
+
+  test("satellite_id rejects empty string", () => {
+    const result = ServerConfigSchema.safeParse(
+      serverWithJunoEnv("development", {satellite_id: ""})
+    );
+    expect(result.success).toBe(false);
+  });
+
+  // -- orbiter_id (required) --
+  test("orbiter_id is required", () => {
+    const s = serverWithJunoEnv("staging", {});
+    const juno = s.juno as Record<string, Record<string, unknown>>;
+    delete juno.staging.orbiter_id;
+    const result = ServerConfigSchema.safeParse(s);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(errorPaths(result).some((p) => p.includes("orbiter_id"))).toBe(
+        true
+      );
+    }
+  });
+
+  test("orbiter_id rejects empty string", () => {
+    const result = ServerConfigSchema.safeParse(
+      serverWithJunoEnv("staging", {orbiter_id: ""})
+    );
+    expect(result.success).toBe(false);
+  });
+
+  // -- site_url (required) --
+  test("site_url is required", () => {
+    const s = serverWithJunoEnv("production", {});
+    const juno = s.juno as Record<string, Record<string, unknown>>;
+    delete juno.production.site_url;
+    const result = ServerConfigSchema.safeParse(s);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(errorPaths(result).some((p) => p.includes("site_url"))).toBe(true);
+    }
+  });
+
+  test("site_url rejects empty string", () => {
+    const result = ServerConfigSchema.safeParse(
+      serverWithJunoEnv("production", {site_url: ""})
+    );
+    expect(result.success).toBe(false);
+  });
+
+  // -- siwa_id (required) --
+  test("siwa_id is required", () => {
+    const s = serverWithJunoEnv("development", {});
+    const juno = s.juno as Record<string, Record<string, unknown>>;
+    delete juno.development.siwa_id;
+    const result = ServerConfigSchema.safeParse(s);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(errorPaths(result).some((p) => p.includes("siwa_id"))).toBe(true);
+    }
+  });
+
+  test("siwa_id rejects empty string", () => {
+    const result = ServerConfigSchema.safeParse(
+      serverWithJunoEnv("development", {siwa_id: ""})
+    );
+    expect(result.success).toBe(false);
+  });
+
+  // -- internet_identity_id (optional) --
+  test("internet_identity_id is optional", () => {
+    const s = serverWithJunoEnv("staging", {});
+    const juno = s.juno as Record<string, Record<string, unknown>>;
+    delete juno.staging.internet_identity_id;
+    const result = ServerConfigSchema.safeParse(s);
+    expect(result.success).toBe(true);
+  });
+
+  test("internet_identity_id accepts a valid canister ID", () => {
+    const result = ServerConfigSchema.safeParse(
+      serverWithJunoEnv("staging", {
+        internet_identity_id: "rdmx6-jaaaa-aaaaa-aaadq-cai",
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+
+  test("internet_identity_id rejects empty string when provided", () => {
+    const result = ServerConfigSchema.safeParse(
+      serverWithJunoEnv("development", {internet_identity_id: ""})
+    );
+    expect(result.success).toBe(false);
+  });
+});

@@ -12,16 +12,6 @@ inputs:
   satellite-id:
     description: "Juno satellite canister ID"
     required: true
-  orbiter-id:
-    description: "Juno Orbiter ID"
-    required: false
-    default: ""
-  site-url:
-    description: "Deployed SvelteKit site URL"
-    required: true
-  siwa-provider-id:
-    description: "SIWA provider ID"
-    required: true
   walletconnect-project-id:
     description: "WalletConnect project ID"
     required: true
@@ -54,39 +44,20 @@ runs:
       shell: bash
       env:
         SATELLITE_ID: ${{ inputs.satellite-id }}
-        SITE_URL: ${{ inputs.site-url }}
-        SIWA_PROVIDER_ID: ${{ inputs.siwa-provider-id }}
       run: |
-        REQUIRED_VARS=(
-          SATELLITE_ID
-          SITE_URL
-          SIWA_PROVIDER_ID
-        )
-        for VAR in "${REQUIRED_VARS[@]}";
-        do
-          if [[ -z "${!VAR}" ]];
-          then
-            echo "::error::${VAR} is not set"
-            exit 1
-          fi
-        done
+        if [[ -z "${SATELLITE_ID}" ]]; then
+          echo "::error::SATELLITE_ID is not set"
+          exit 1
+        fi
         echo "All required variables are set"
 
     - id: set_vite_env
-      name: Set VITE Environment Variables
+      name: Set Build Environment Variables
       shell: bash
       run: |
-        MODE="${{ inputs.mode }}"
-        if [[ "$MODE" == "staging" ]]; then
-          PREFIX="STAGING"
-        else
-          PREFIX="PRODUCTION"
-        fi
-
-        echo "VITE_${PREFIX}_SATELLITE_ID=${{ inputs.satellite-id }}" >> "$GITHUB_ENV"
-        echo "VITE_${PREFIX}_ORBITER_ID=${{ inputs.orbiter-id }}" >> "$GITHUB_ENV"
-        echo "VITE_SITE_URL=${{ inputs.site-url }}" >> "$GITHUB_ENV"
-        echo "VITE_SIWA_PROVIDER_ID=${{ inputs.siwa-provider-id }}" >> "$GITHUB_ENV"
+        # Only PUBLIC_WALLETCONNECT_PROJECT_ID still comes from secrets.
+        # All Juno IDs (satellite, orbiter, site_url, siwa) are now read
+        # from config/config-server.json at build time via vite.config.ts.
         echo "PUBLIC_WALLETCONNECT_PROJECT_ID=${{ inputs.walletconnect-project-id }}" >> "$GITHUB_ENV"
 
     - id: cache_bun

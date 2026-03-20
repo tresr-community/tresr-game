@@ -458,8 +458,8 @@ export async function signInWithInternetIdentity(): Promise<void> {
     // For production/staging: pass domain to use id.ai (II 2.0) which supports
     // Internet Identity, Passkeys, Google, Apple, Microsoft.
     const derivationOrigin =
-      JUNO_ENVIRONMENT !== "development" && import.meta.env.VITE_SITE_URL
-        ? {derivationOrigin: import.meta.env.VITE_SITE_URL}
+      JUNO_ENVIRONMENT !== "development" && __JUNO_SITE_URL__
+        ? {derivationOrigin: __JUNO_SITE_URL__}
         : {};
 
     const iiOptions =

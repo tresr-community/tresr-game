@@ -2,6 +2,7 @@ import {defineConfig, loadEnv} from "vite";
 import {sveltekit} from "@sveltejs/kit/vite";
 import {execSync} from "node:child_process";
 import {createRequire} from "node:module";
+import {readFileSync} from "node:fs";
 import juno from "@junobuild/vite-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
@@ -20,9 +21,21 @@ const gitTimestamp = execSync("git log -1 --format=%ct HEAD", {
 }).trim();
 const BUILD_ID = `${gitHash}-${gitTimestamp}`;
 
+// Read Juno environment config from the generated config-server.json.
+// This is the single source of truth — values originate in config/tresr.yaml.
+const serverConfig = JSON.parse(
+  readFileSync("config/config-server.json", "utf8")
+);
+
 // Vite config
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, process.cwd(), "");
+
+  // Resolve the Juno environment to use based on build mode.
+  // Falls back to "development" for unknown modes (e.g. vite dev default).
+  const junoEnvKey =
+    mode === "staging" || mode === "production" ? mode : "development";
+  const junoEnv = serverConfig.juno[junoEnvKey];
 
   return {
     plugins: [
@@ -36,12 +49,12 @@ export default defineConfig(({mode}) => {
     define: {
       "import.meta.env.PACKAGE_VERSION": JSON.stringify(PACKAGE_VERSION),
       "import.meta.env.BUILD_ID": JSON.stringify(BUILD_ID),
-      "import.meta.env.VITE_INTERNET_IDENTITY_ID": JSON.stringify(
-        env.VITE_INTERNET_IDENTITY_ID
-      ),
-      "import.meta.env.VITE_SIWA_PROVIDER_ID": JSON.stringify(
-        env.VITE_SIWA_PROVIDER_ID
-      ),
+      // Juno IDs — sourced from tresr.yaml via config-server.json
+      __JUNO_SATELLITE_ID__: JSON.stringify(junoEnv.satellite_id),
+      __JUNO_ORBITER_ID__: JSON.stringify(junoEnv.orbiter_id),
+      __JUNO_SITE_URL__: JSON.stringify(junoEnv.site_url),
+      __JUNO_SIWA_ID__: JSON.stringify(junoEnv.siwa_id),
+      __JUNO_II_ID__: JSON.stringify(junoEnv.internet_identity_id ?? ""),
       "import.meta.env.PUBLIC_WALLETCONNECT_PROJECT_ID": JSON.stringify(
         env.PUBLIC_WALLETCONNECT_PROJECT_ID ?? ""
       ),

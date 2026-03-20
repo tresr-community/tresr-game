@@ -577,11 +577,12 @@ function run_deploy_vault() {
 	local ANVIL_ORACLE_ADDRESS="0x96E38aFd72Ca03c9794c0CCD2a8405FC47A9F926"
 
 	# Dynamically fetch the oracle address from the local satellite if possible
-	local env_file
-	env_file="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/.env"
-	local satellite_id="${VITE_SATELLITE_ID:-}"
-	if [[ -z $satellite_id && -f $env_file ]]; then
-		satellite_id=$(grep -E "^VITE_SATELLITE_ID=" "$env_file" | cut -d '=' -f2 | tr -d ' "' || true)
+	# Read satellite ID from config-server.json (source of truth: tresr.yaml)
+	local config_json
+	config_json="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/config/config-server.json"
+	local satellite_id=""
+	if [[ -f $config_json ]]; then
+		satellite_id=$(jq -r '.juno.development.satellite_id // ""' "$config_json" 2>/dev/null || true)
 	fi
 
 	if [[ -n $satellite_id ]]; then
@@ -613,7 +614,7 @@ function run_deploy_vault() {
 			fi
 		fi
 	else
-		log_warn "VITE_SATELLITE_ID not found. Using fallback oracle address: ${ANVIL_ORACLE_ADDRESS}"
+		log_warn "Satellite ID not found in config-server.json. Using fallback oracle address: ${ANVIL_ORACLE_ADDRESS}"
 	fi
 
 	assert_anvil_running

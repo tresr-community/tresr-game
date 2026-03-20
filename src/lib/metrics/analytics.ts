@@ -33,11 +33,11 @@ export const initAnalytics = async () => {
     log.debug(COMPONENT_NAME, "Starting initialization...");
 
     try {
-      const satelliteId = import.meta.env.VITE_SATELLITE_ID;
-      const orbiterId = import.meta.env.VITE_ORBITER_ID;
+      const satelliteId = __JUNO_SATELLITE_ID__;
+      const orbiterId = __JUNO_ORBITER_ID__;
 
-      log.debug(COMPONENT_NAME, `VITE_SATELLITE_ID: ${satelliteId}`);
-      log.debug(COMPONENT_NAME, `VITE_ORBITER_ID: ${orbiterId}`);
+      log.debug(COMPONENT_NAME, `Satellite ID: ${satelliteId}`);
+      log.debug(COMPONENT_NAME, `Orbiter ID: ${orbiterId}`);
 
       if (
         !orbiterId ||

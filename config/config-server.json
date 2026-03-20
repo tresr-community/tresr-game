@@ -1,16 +1,23 @@
 {
   "juno": {
     "development": {
+      "internet_identity_id": "rdmx6-jaaaa-aaaaa-aaadq-cai",
+      "orbiter_id": "atbka-rp777-77775-aaaaq-cai",
       "satellite_id": "auamu-4x777-77775-aaaaa-cai",
-      "orbiter_id": "atbka-rp777-77775-aaaaq-cai"
+      "site_url": "http://auamu-4x777-77775-aaaaa-cai.localhost:5987/",
+      "siwa_id": "lc6ij-px777-77777-aaadq-cai"
     },
     "staging": {
-      "satellite_id": "auamu-4x777-77775-aaaaa-cai",
-      "orbiter_id": "atbka-rp777-77775-aaaaq-cai"
+      "orbiter_id": "m6rzs-iaaaa-aaaal-ai77q-cai",
+      "satellite_id": "trw42-lqaaa-aaaal-asw5q-cai",
+      "site_url": "https://game-testnet.tresr.community",
+      "siwa_id": "ejj2n-kqaaa-aaaad-qjlxq-cai"
     },
     "production": {
-      "satellite_id": "auamu-4x777-77775-aaaaa-cai",
-      "orbiter_id": "atbka-rp777-77775-aaaaq-cai"
+      "orbiter_id": "todo",
+      "satellite_id": "todo",
+      "site_url": "https://game.tresr.community",
+      "siwa_id": "todo"
     },
     "admins": [
       "5lsg4-u66ij-nal3d-h3cbs-efiac-eye46-w4j6l-ef2x6-thj4e-3m6zt-uae",
