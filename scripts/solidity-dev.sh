@@ -794,6 +794,7 @@ function run_deploy_vault() {
 
 	cd contracts
 	export FOUNDRY_DISABLE_NIGHTLY_WARNING=1
+	local BROADCAST_FILE="broadcast/Vault.s.sol/${ANVIL_CHAIN_ID}/run-latest.json"
 
 	# Build first to catch compile errors (also produces artifacts for bytecode check)
 	forge build --force || {
