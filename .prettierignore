@@ -5,6 +5,7 @@ static/precache-manifest.json
 static/workers/
 
 # Auto-generated source files
+src/app.html
 src/declarations/
 src/env.d.ts
 src/lib/config/client.ts

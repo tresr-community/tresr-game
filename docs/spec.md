@@ -9,7 +9,7 @@
 - [Architecture](#architecture-hybrid-client-server-with-on-chain-settlement)
   - [Technology Stack](#components-and-technology-stack)
   - [Economy Flow](#economy-flow)
-  - [Data Layer](#data-layer)
+  - [Data Layer](#juno-data-collections)
 - [Phaser Engine Architecture](#phaser-engine-architecture)
   - [Scene Structure](#scene-structure)
   - [Entity System](#entity-system)
@@ -24,7 +24,6 @@
 - [Audio System](#audio-system)
 - [Configuration Pipeline](#configuration-pipeline)
 - [Security Model](#security-model)
-- [Frontend Components](#frontend-components)
 - [UI/UX & Theming](#uiux--theming)
 - [PWA Architecture](#pwa-architecture)
 - [Content Management](#content-management)
@@ -295,7 +294,7 @@ Boss entity (`boss` texture, 120x120 frames). Features:
   - **Charge**: Locks direction toward player, rushes at `speed_mult: 4.0` for `duration_ms: 1000`. Doubled attack range during charge. Higher contact damage (`damage: 20`).
   - **Summon**: Spawns `count: 3` enemies near the boss position from the existing pool. Emits `boss_summon` event handled by MainScene.
 - **Health Bar**: 80x8px, always visible.
-- **HUD Boss Bar**: Separate HUD progress bar with color coding (see [HUD](#frontend-components)).
+- **HUD Boss Bar**: Separate HUD progress bar with color coding (see [HUD](#game-hud--bottom-bar)).
 - **Hitbox**: Circular, config-driven (`gameplay.entities.boss.hitbox`).
 
 #### Key
@@ -861,7 +860,7 @@ Top-right bar: Notification icon -> Theme dropdown (paint palette, real-time hov
 
 ### Game HUD & Bottom Bar
 
-See [HUD](#frontend-components) in Frontend Components.
+See [HUD](#game-hud--bottom-bar) in UI/UX & Theming.
 
 ### Loading Screen
 
@@ -957,7 +956,7 @@ Update logic: Increment on game start/win/loss, check/update highScore on every 
 
 ### Leaderboard
 
-See [LeaderboardModal](#frontend-components) in Frontend Components.
+See [LeaderboardModal](#leaderboard) in UI/UX & Theming.
 
 ## PWA Architecture
 

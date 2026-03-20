@@ -444,4 +444,3 @@ class PWA {
 
 export default PWA;
 export {PWA};
-

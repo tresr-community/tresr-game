@@ -17,8 +17,8 @@ const substitute = (val) => {
     if (!resolved) {
       throw new Error(
         `juno.config.mjs: environment variable '${name}' is not set. ` +
-        `config-server.json still contains placeholder '${match}'. ` +
-        `Run 'direnv reload' or set ${name} before starting the dev server.`
+          `config-server.json still contains placeholder '${match}'. ` +
+          `Run 'direnv reload' or set ${name} before starting the dev server.`
       );
     }
     return resolved;
@@ -103,7 +103,9 @@ export default defineConfig(({mode}) => ({
     // The juno-action Docker image doesn't ship bun so predeploy must be skipped.
     // Locally, juno-dev.sh builds first, so we only run predeploy if SKIP_PREDEPLOY is not set.
     // When we do run it, we must explicitly pass the mode so dev deployments don't get overwritten with prod builds.
-    ...((process.env.CI || process.env.SKIP_PREDEPLOY) ? {} : {predeploy: [`bun run build --mode ${mode}`]}),
+    ...(process.env.CI || process.env.SKIP_PREDEPLOY
+      ? {}
+      : {predeploy: [`bun run build --mode ${mode}`]}),
     collections: junoConfig.collections,
   },
   orbiter: {
@@ -127,9 +129,9 @@ export default defineConfig(({mode}) => ({
     },
     skylab: {
       ports: {
-        server: 5987,         // Pocket IC (local ic0.app replacement)
-        admin: 5999,          // Juno Addmin API
-        console: 5866,        // Juno Admin Console
+        server: 5987, // Pocket IC (local ic0.app replacement)
+        admin: 5999, // Juno Admin API
+        console: 5866, // Juno Admin Console
       },
     },
   },
