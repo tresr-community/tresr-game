@@ -9925,8 +9925,7 @@ This FAQ section covers common questions and solutions for using AppKit. The que
     * **500 MAUs/month:** only authenticated users count toward this, not self-custodial connections
     * **2.5M RPC calls/month:** only applies if you use Reown's built-in RPC
 
-    **Using your own RPC provider?** The RPC threshold above does not apply to you.
-    The only limit that could apply is the general fair-use clause in our ToS. This is aimed at clearly abusive patterns — such as traffic flooding or automated spam — and does not affect normal application usage.
+    **Using your own RPC provider?** The RPC threshold will likely not apply to you. RPC usage may still occur from time to time to fetch users' balances. The only limit that could apply is the general fair use clause in our ToS. If your usage could reasonably be described as a spike attack or sustained automated abuse, that's when it becomes a concern. Normal app traffic is not what this clause is designed for.
   </Accordion>
 </AccordionGroup>
 
@@ -10173,6 +10172,52 @@ AppKit is now multichain. The architecture is designed to support both EVM and n
 
   <Card title="JavaScript" icon="js" href="/appkit/javascript/core/multichain">
     Get started with AppKit Multichain in JavaScript.
+  </Card>
+</CardGroup>
+
+
+# Multiwallet Linking
+Source: https://docs.reown.com/appkit/features/multiwallet-linking
+
+
+
+Multiwallet linking allows your users to connect multiple wallets simultaneously, switch between them seamlessly, and manage the connected wallets directly via your app. It also allows developers to view analytics and build data-driven improvements for wallets using wallet connection history and more.
+
+## Use Cases
+
+With Multiwallet linking you can:
+
+* Manage multiple wallet connections simultaneously
+* Switch between multiple connected wallets
+* Build multi-wallet dashboards or portfolio views
+* Implement wallet comparison features
+* Create advanced wallet and wallet connection management interfaces
+* Display and manage wallet connection history
+* Access the currently active wallet connection
+* Implement wallet-specific features based on the active connection
+* Handle connection state changes with callbacks
+
+## Why use Multiwallet Linking?
+
+* **Build seamless UX**: allow users to connect multiple wallets and choose which wallet to use and when
+* **Deeper insights into user behavior**: with multiwallet linking, users don't need to make 2 profiles to use 2 wallets, removing fragmentation and giving you better insights into user behavior.
+* **Multichain Compatibility**: Multiwallet linking lets you connect Phantom on Solana and Trust on Base for building seamless multichain apps
+
+## Get Started
+
+Multiwallet linking is a paid feature available on Pro and Enterprise plans. Pro and Enterprise customers can enable it via the Reown dashboard toggle and implement it via Hooks, including `useAppKitConnection` & `useAppKitConnections`.
+
+<CardGroup>
+  <Card title="React" icon="react" href="/appkit/react/core/hooks#useappkitconnections">
+    Get started with Multiwallet linking in React
+  </Card>
+
+  <Card title="Next.js" icon="square-n" href="/appkit/next/core/hooks#useappkitconnections">
+    Get started with Multiwallet linking in Next.js
+  </Card>
+
+  <Card title="Vue" icon="vuejs" href="/appkit/vue/core/composables#useappkitconnections">
+    Get started with Multiwallet linking in Vue
   </Card>
 </CardGroup>
 
@@ -16204,7 +16249,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `main.js` file set up the following configuration.
 
-    ```ts theme={null} theme={null}
+    ```ts theme={null}
     import { createAppKit } from '@reown/appkit'
     import { mainnet, arbitrum } from '@reown/appkit/networks'
     import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
@@ -16253,7 +16298,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Reown AppKit use [Viem](https://viem.sh/) networks under the hood, which provide a wide variety of networks for EVM chains. You can find all the networks supported by Viem within the `@reown/appkit/networks` path.
 
-    ```js {2} theme={null} theme={null}
+    ```js {2} theme={null}
     import { createAppKit } from '@reown/appkit'
     import { mainnet, arbitrum, base, scroll, polygon } from '@reown/appkit/networks'
     ```
@@ -16266,7 +16311,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
   <Tab title="Ethers v5">
     In your `main.js` file set up the following configuration.
 
-    ```ts theme={null} theme={null}
+    ```ts theme={null}
     import { createAppKit } from "@reown/appkit";
     import { Ethers5Adapter } from "@reown/appkit-adapter-ethers5";
     import { mainnet, arbitrum } from "@reown/appkit/networks";
@@ -16306,7 +16351,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `main.js` file set up the following configuration.
 
-    ```ts theme={null} theme={null}
+    ```ts theme={null}
     import { createAppKit } from "@reown/appkit";
     import { EthersAdapter } from "@reown/appkit-adapter-ethers";
     import { mainnet, arbitrum } from "@reown/appkit/networks";
@@ -16352,7 +16397,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import { createAppKit } from "@reown/appkit";
     import { SolanaAdapter } from "@reown/appkit-adapter-solana";
     import { solana, solanaTestnet, solanaDevnet } from "@reown/appkit/networks";
@@ -16393,7 +16438,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit'
     import { BitcoinAdapter } from '@reown/appkit-adapter-bitcoin'
@@ -16441,7 +16486,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     ## Bitcoin Provider Interface
 
-    ```ts theme={null} theme={null}
+    ```ts theme={null}
     export interface BitcoinConnector extends ChainAdapterConnector, Provider {
       getAccountAddresses(): Promise<BitcoinConnector.AccountAddress[]>;
       signMessage(params: BitcoinConnector.SignMessageParams): Promise<string>;
@@ -16456,7 +16501,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="SignMessageParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignMessageParams = {
             /**
              * The message to be signed
@@ -16471,7 +16516,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SendTransferParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SendTransferParams = {
             /**
              * The amount to be sent in satoshis
@@ -16486,7 +16531,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignPSBTParams = {
             /**
              * The PSBT to be signed, string base64 encoded
@@ -16522,7 +16567,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="AccountAddress">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type AccountAddress = {
             /**
              * Public address belonging to the account.
@@ -16545,7 +16590,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTResponse">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignPSBTResponse = {
             /**
              * The signed PSBT, string base64 encoded
@@ -16570,7 +16615,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit'
     import { TonAdapter } from '@reown/appkit-adapter-ton'
@@ -16622,7 +16667,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit'
     import { TronAdapter } from '@reown/appkit-adapter-tron'
@@ -16683,19 +16728,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
     <Tabs>
       <Tab title="TronLink">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-tronlink
           ```
         </CodeGroup>
@@ -16703,19 +16748,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="MetaMask">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-metamask-tron
           ```
         </CodeGroup>
@@ -16723,19 +16768,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="Trust Wallet">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-trust
           ```
         </CodeGroup>
@@ -16743,19 +16788,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="OKX Wallet">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-okxwallet
           ```
         </CodeGroup>
@@ -16763,19 +16808,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="BitKeep">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-bitkeep
           ```
         </CodeGroup>
@@ -16783,19 +16828,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="Binance Wallet">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-binance
           ```
         </CodeGroup>
@@ -16810,7 +16855,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     After installing your desired wallet adapters, import and add them to the `walletAdapters` array when creating the TRON adapter:
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import { TronLinkAdapter } from '@tronweb3/tronwallet-adapter-tronlink'
     import { MetaMaskAdapter } from '@tronweb3/tronwallet-adapter-metamask-tron'
     import { TrustAdapter } from '@tronweb3/tronwallet-adapter-trust'
@@ -16844,7 +16889,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     We recommend creating a config file to establish a singleton instance for the Universal Connector:
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import { UniversalConnector } from '@reown/appkit-universal-connector'
 
     export const projectId = import.meta.env.VITE_PROJECT_ID || "b56e18d47c72ab683b10814fe9495694" // this is a public projectId only to use on localhost
@@ -16908,7 +16953,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In de main.js file you can add :
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import { getUniversalConnector } from './config/appKit.js'
 
     async function setup() {
@@ -17078,7 +17123,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     For a practical example of how it works, you can refer to our [lab dApp](https://appkit-lab.reown.com/appkit/?name=solana).
 
-    ```js theme={null} theme={null}
+    ```js theme={null}
     import { PublicKey, LAMPORTS_PER_SOL, Transaction, SystemProgram } from "@solana/web3.js";
 
     import type { Provider } from '@reown/appkit-adapter-solana'
@@ -22741,7 +22786,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     For this example we will create a file called `config/index.tsx` outside our app directory and set up the following configuration
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import { cookieStorage, createStorage, http } from '@wagmi/core'
     import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
     import { mainnet, arbitrum } from '@reown/appkit/networks'
@@ -22772,7 +22817,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Reown AppKit use [Viem](https://viem.sh/) networks under the hood, which provide a wide variety of networks for EVM chains. You can find all the networks supported by Viem within the `@reown/appkit/networks` path.
 
-    ```js {2} theme={null} theme={null}
+    ```js {2} theme={null}
     import { createAppKit } from '@reown/appkit'
     import { mainnet, arbitrum, base, scroll, polygon } from '@reown/appkit/networks'
     ```
@@ -22794,7 +22839,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In this example we will create a file called `context/index.tsx` outside our app directory and set up the following configuration
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     'use client'
 
     import { wagmiAdapter, projectId } from '@/config'
@@ -22850,7 +22895,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     The `initialState` returned by `cookieToInitialState`, contains the optimistic values that will populate the Wagmi's store both on the server and client.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import type { Metadata } from 'next'
     import { Inter } from 'next/font/google'
     import './globals.css'
@@ -22887,7 +22932,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
   <Tab title="Ethers v5">
     In this example we will create a new file called `context/appkit.tsx` outside our app directory and set up the following configuration
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     "use client";
 
     import { createAppKit } from "@reown/appkit/react";
@@ -22925,7 +22970,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Next, in your `app/layout.tsx` or `app/layout.jsx` file, import the custom AppKit component.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import "./globals.css";
 
     import { AppKit } from "../context/appkit";
@@ -22958,7 +23003,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In this example we will create a new file called `context/appkit.tsx` outside our app directory and set up the following configuration
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     "use client";
 
     import { createAppKit } from "@reown/appkit/react";
@@ -22996,7 +23041,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Next, in your `app/layout.tsx` or `app/layout.jsx` file, import the custom AppKit component.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import "./globals.css";
 
     import { AppKit } from "../context/appkit";
@@ -23035,7 +23080,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     // App.tsx
     import { createAppKit } from "@reown/appkit/react";
     import { SolanaAdapter } from "@reown/appkit-adapter-solana/react";
@@ -23081,7 +23126,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit/react'
     import { BitcoinAdapter } from '@reown/appkit-adapter-bitcoin'
@@ -23126,7 +23171,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     ## Bitcoin Provider Interface
 
-    ```ts theme={null} theme={null}
+    ```ts theme={null}
     export interface BitcoinConnector extends ChainAdapterConnector, Provider {
       getAccountAddresses(): Promise<BitcoinConnector.AccountAddress[]>;
       signMessage(params: BitcoinConnector.SignMessageParams): Promise<string>;
@@ -23141,7 +23186,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="SignMessageParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignMessageParams = {
             /**
              * The message to be signed
@@ -23156,7 +23201,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SendTransferParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SendTransferParams = {
             /**
              * The amount to be sent in satoshis
@@ -23171,7 +23216,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignPSBTParams = {
             /**
              * The PSBT to be signed, string base64 encoded
@@ -23207,7 +23252,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="AccountAddress">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type AccountAddress = {
             /**
              * Public address belonging to the account.
@@ -23230,7 +23275,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTResponse">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignPSBTResponse = {
             /**
              * The signed PSBT, string base64 encoded
@@ -23255,7 +23300,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit/react'
     import { TonAdapter } from '@reown/appkit-adapter-ton'
@@ -23307,7 +23352,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     We recommend creating a config file to establish a singleton instance for the Universal Connector:
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import type { AppKitNetwork } from '@reown/appkit/networks'
     import type { CustomCaipNetwork } from '@reown/appkit-common'
     import { UniversalConnector } from '@reown/appkit-universal-connector'
@@ -23355,7 +23400,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In de App.tsx file you can add :
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import { useState, useEffect } from 'react'
     import { getUniversalConnector } from './config' // previous config file
     import { UniversalConnector } from '@reown/appkit-universal-connector'
@@ -23514,7 +23559,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     For a practical example of how it works, you can refer to our [lab dApp](https://appkit-lab.reown.com/appkit/?name=solana).
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import {
       SystemProgram,
       PublicKey,
@@ -27050,7 +27095,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     First, configure your Nuxt application for SSR compatibility by updating your `nuxt.config.ts`:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     export default defineNuxtConfig({
       ssr: false,
       modules: ['@wagmi/vue/nuxt'],
@@ -27064,7 +27109,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Create Nuxt plugins for vue-query and wagmi setup:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     // plugins/1.vue-query.ts
     import { defineNuxtPlugin } from '#imports'
     import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
@@ -27081,7 +27126,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
     })
     ```
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     // plugins/2.wagmi.ts
     import { WagmiPlugin } from '@wagmi/vue'
     import { defineNuxtPlugin } from 'nuxt/app'
@@ -27094,7 +27139,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Create your AppKit configuration:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     // config/appkit.ts
     import { WagmiAdapter } from '@reown/appkit-adapter-wagmi'
     import { mainnet, arbitrum } from '@reown/appkit/networks'
@@ -27111,7 +27156,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Then in your `app.vue` file, set up AppKit:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <script setup lang="ts">
     import { createAppKit } from '@reown/appkit/vue'
     import { wagmiAdapter, networks, projectId } from './config/appkit'
@@ -27153,7 +27198,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     First, configure your `nuxt.config.ts` for SSR compatibility:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     export default defineNuxtConfig({
       ssr: false,
       runtimeConfig: {
@@ -27166,7 +27211,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Then in your `app.vue` file set up the following configuration:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <script setup lang="ts">
     import { createAppKit } from '@reown/appkit/vue'
     import { EthersAdapter } from '@reown/appkit-adapter-ethers'
@@ -27221,7 +27266,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     First, configure your `nuxt.config.ts` for SSR compatibility:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     export default defineNuxtConfig({
       ssr: false,
       runtimeConfig: {
@@ -27234,7 +27279,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Then in your `app.vue` file set up the following configuration:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <script setup lang="ts">
     import { createAppKit } from '@reown/appkit-solana/vue'
     import { SolanaAdapter } from '@reown/appkit-adapter-solana'
@@ -27284,7 +27329,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     First, configure your `nuxt.config.ts` for SSR compatibility:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     export default defineNuxtConfig({
       ssr: false,
       runtimeConfig: {
@@ -27297,7 +27342,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `app.vue` file set up the following configuration:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <script setup lang="ts">
     import { createAppKit } from '@reown/appkit/vue'
     import { BitcoinAdapter } from '@reown/appkit-adapter-bitcoin'
@@ -27344,7 +27389,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     ## Bitcoin Provider Interface
 
-    ```ts theme={null} theme={null}
+    ```ts theme={null}
     export interface BitcoinConnector extends ChainAdapterConnector, Provider {
       getAccountAddresses(): Promise<BitcoinConnector.AccountAddress[]>;
       signMessage(params: BitcoinConnector.SignMessageParams): Promise<string>;
@@ -27359,7 +27404,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="SignMessageParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignMessageParams = {
             /**
              * The message to be signed
@@ -27374,7 +27419,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SendTransferParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SendTransferParams = {
             /**
              * The amount to be sent in satoshis
@@ -27389,7 +27434,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignPSBTParams = {
             /**
              * The PSBT to be signed, string base64 encoded
@@ -27425,7 +27470,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="AccountAddress">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type AccountAddress = {
             /**
              * Public address belonging to the account.
@@ -27448,7 +27493,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTResponse">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignPSBTResponse = {
             /**
              * The signed PSBT, string base64 encoded
@@ -27473,7 +27518,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     First, configure your `nuxt.config.ts` for SSR compatibility:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     export default defineNuxtConfig({
       ssr: false,
       runtimeConfig: {
@@ -27486,7 +27531,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `app.vue` file set up the following configuration:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <script setup lang="ts">
     import { createAppKit } from '@reown/appkit/vue'
     import { TonAdapter } from '@reown/appkit-adapter-ton'
@@ -29695,55 +29740,47 @@ Source: https://docs.reown.com/appkit/payments/overview
 
 
 
-**Reown** is building the payment connective layer for the financial internet, unlocking stablecoin-native flows for any token source: wallets, exchanges or fiat.
+Reown offers a comprehensive Payments toolkit, supporting all levels of users, multiple chains and diverse asset types. Instead of a single rigid flow, Reown provides modular solutions for different financial needs, giving you access to hundreds of millions of users via 600+ wallets and multiple exchanges, with support for EVM, Bitcoin, Solana, Ton and Tron networks.
 
-Today’s payment stack is fragmented. **Reown aims to tie it together**. With one integration using our SDK, platforms can accept value from wherever users hold it and turn it into deposits, purchases, or investments.
+Reown's all-in-one toolkit for creating seamless payment flows includes:
 
-This is **only possible through WalletConnect**, the connective layer that lets any wallet, on any chain, connect to any platform, securely and at scale. Reown transforms this universal access into universal payment rails; powering seamless, secure and globally compliant payments
+1. **Onramps**: Let users buy cryptocurrencies with fiat currencies, like dollars or euros directly in-app.
 
-These solutions provided by Reown give providers access to hundreds of millions of users via 600+ wallets and multiple exchanges, with support for EVM, Bitcoin, and Solana.
+2. **Swaps**: Let users swap coins and tokens seamlessly, directly in-app.
 
-<Frame>
-  <video />
-</Frame>
+3. **Pay with Self Custodial Wallet**: Let users pay with their self custodial wallets like MetaMask, Trust, Ledger, and more. This flow is bundled together with the **Pay with Exchange** flow.
 
-## Current Problems with Payments
+4. **Pay with Exchange**: Let users pay directly from Centralized Exchanges (CEXs) like Binance.
 
-**Users hold value everywhere but businesses are stuck building for each source in isolation.**
+5. **Deposit with Exchange**: Let users deposit funds into their Centralized Exchanges (CEXs) wallets, like Binance, directly in-app.
 
-1. **Fragmented token sources**: Wallets, exchanges, and fiat on-ramps all require separate payment flows.
-2. **UX friction**: Copy-pasting, KYC loops, and gas confusion kill conversion, especially on mobile.
-3. **Feature silos**: Staking, deposits, and investments need distinct integrations, slowing time-to-market.
-
-**As a result, companies either build wallet-only flows or maintain costly parallel stacks. A unifying rail across all capital source is missing.**
-
-## How Reown Solves These Problems
-
-Reown powers modern payment experiences like:
-
-1. **Pay with Self Custodial Wallet**: Let users pay with their self custodial wallets like MetaMask, Trust, Ledger, and more. This flow is bundled together with the **Pay with Exchange** flow.
-
-2. **Pay with Exchange**: Let users pay directly from Centralized Exchanges (CEXs) like Binance.
-
-3. **1-Click Checkout**: Fast, mobile-optimized, self-custodial and crypto native checkout flows (coming soon).
+## Payment feature demos
 
 <Frame>
   <video />
 </Frame>
 
-With **multi-platform SDKs**, **battle-tested infrastructure**, and **exclusive analytics**, AppKit Pay helps payment providers reduce integration time, improve conversion, and stay ahead of the competition—without building from scratch.
-
-***One integration. Infinite reach. Real crypto payments, done right.***
+<Frame>
+  <video />
+</Frame>
 
 ## Get Started
 
 <CardGroup>
+  <Card title="Onramps" icon="cart-plus" href="/appkit/features/onramp">
+    Get started with Reown Onramps.
+  </Card>
+
+  <Card title="Swaps" icon="rotate" href="/appkit/features/swaps">
+    Get started with Reown Swaps.
+  </Card>
+
   <Card title="Pay with Exchange and Self Custodial Wallets" icon="money-check-dollar" href="/appkit/payments/pay-with-exchange">
     Get started with Pay with Exchange and self-custodial wallets.
   </Card>
 
-  <Card title="One-Click Checkout" icon="cart-shopping" href="/appkit/payments/one-click-checkout">
-    Get started with AppKit Pay One-Click Checkout.
+  <Card title="Deposit with Exchange" icon="building-columns" href="/appkit/payments/deposit-with-exchange">
+    Get started with Deposit with Exchange.
   </Card>
 </CardGroup>
 
@@ -34247,6 +34284,401 @@ customRpcUrls: {
 AppKit will prioritize these URLs over the default ones.
 
 
+# Headless
+Source: https://docs.reown.com/appkit/react/core/headless
+
+
+
+<Frame>
+  <img alt="Descriptive alt text" />
+</Frame>
+
+<Note>
+  Headless is available on paid plans only. Contact us [via our form here](https://share.hsforms.com/1_oWa8QkwRXi6oR0nZ_SIxQnxw6s) to get access.
+</Note>
+
+AppKit Headless allows developers to build a fully customizable "Connect" experience powered by AppKit's existing features without using the AppKit modal. Headless exposes wallet discovery, rendering WalletConnect QR codes, and social provider flows via simple hooks and utility functions.
+
+## Installation
+
+Headless requires AppKit to be configured with the `headless` flag. See the [installation](./installation) docs before getting started and make sure you're enabling headless as expected.
+
+```tsx theme={null}
+createAppKit({
+  ...
+  features: {
+    headless: true
+  }
+})
+```
+
+## useAppKitWallets
+
+The essential hook for accessing all types of wallets and methods to build your custom connection user interface.
+
+<CodeGroup>
+  ```tsx useAppKitWallets.tsx theme={null}
+  const { wallets, wcWallets, isFetchingWallets, isFetchingWcUri, isInitialized, wcUri, connectingWallet, page, count, fetchWallets, connect, resetWcUri } =
+    useAppKitWallets()
+  ```
+</CodeGroup>
+
+### Returns
+
+<ResponseField name="wallets" type="WalletItem[]">
+  List of wallets for the initial connect view including WalletConnect wallets and injected wallets
+  together. If the user doesn't have any injected wallets, it'll fill the list with the most ranked
+  WalletConnect wallets.
+</ResponseField>
+
+<ResponseField name="wcWallets" type="WalletItem[]">
+  List of WalletConnect wallets from Wallet Guide API. Useful to display all available WalletConnect
+  wallets in a separate Search Wallets view.
+</ResponseField>
+
+<ResponseField name="isFetchingWallets" type="boolean">
+  Boolean that indicates if WalletConnect wallets are being fetched.
+</ResponseField>
+
+<ResponseField name="isFetchingWcUri" type="boolean">
+  Boolean that indicates if a WalletConnect URI is being fetched.
+</ResponseField>
+
+<ResponseField name="isInitialized" type="boolean">
+  Boolean that indicates if the AppKit is initialized. It's useful to render a fallback UI when the
+  AppKit initializes and detects all injected wallets.
+</ResponseField>
+
+<ResponseField name="wcUri" type="string | undefined">
+  The current WalletConnect URI for QR code display. This is set when connecting to a WalletConnect
+  wallet. Reset with resetWcUri().
+</ResponseField>
+
+<ResponseField name="connectingWallet" type="WalletItem | undefined">
+  The wallet currently being connected to. This is set when a connection is initiated and cleared
+  when it completes or fails. For WalletConnect wallets, resetWcUri() should be called to clear the
+  state.
+</ResponseField>
+
+<ResponseField name="page" type="number">
+  The current page number of WalletConnect wallets.
+</ResponseField>
+
+<ResponseField name="count" type="number">
+  The total number of available WalletConnect wallets based on the AppKit configurations and given
+  parameters.
+</ResponseField>
+
+<ResponseField name="fetchWallets" type="(options?: { page?: number; query?: string; }) => Promise<void>">
+  Function to fetch WalletConnect wallets from the explorer API. Allows you to list, search, and
+  paginate through the wallets.
+</ResponseField>
+
+<ResponseField name="connect" type="(wallet: WalletItem, namespace?: ChainNamespace) => Promise<void>">
+  Function to connect to a wallet. For WalletConnect wallets: initiates WC connection and returns
+  the URI with the `wcUri` state. For injected connectors: triggers the extension/wallet directly.
+</ResponseField>
+
+<ResponseField name="resetWcUri" type="() => void">
+  Function to reset the WC URI. Useful to keep the `connectingWallet` state in sync with the WC URI.
+  Can be called when the QR code is closed.
+</ResponseField>
+
+# Examples
+
+## Build a Connect UI
+
+<Frame>
+  <img alt="Descriptive alt text" />
+</Frame>
+
+The `useAppKitWallets` hook returns a list of injected and WalletConnect wallets that let you render directly in the connect page.
+
+If you configure your AppKit as multi-chain, we suggest rendering a namespace selection component where users should select which namespace to connect when using browser extensions. This could be achieved with the `connectors` array of the `WalletItem`.
+
+If a user selects a WalletConnect wallet, you can show the QR code to the users and let them scan it with their preferred wallets. To handle the QR flows, you can use the `isFetchingWcUri`, `wcUri`, and `resetWcUri` props from the `useAppKitWallets` hook.
+
+<CodeGroup>
+  ```tsx ConnectView.tsx theme={null}
+  import React, { useState } from 'react'
+  import type { WalletItem } from '@reown/appkit'
+  import type { ChainNamespace } from '@reown/appkit/networks'
+  import { useAppKitWallets } from '@reown/appkit/react'
+  import { NamespaceSelectionDialog } from './NamespaceDialog'
+  import { WalletConnectQRDialog } from './WalletConnectQRDialog'
+
+  function ConnectView() {
+    const { wallets, connect } = useAppKitWallets()
+    const [selectedWallet, setSelectedWallet] = useState<WalletItem | null>(null)
+
+    async function handleConnect(wallet: WalletItem, namespace?: ChainNamespace) {
+      await connect(wallet, namespace)
+        .then(() => {
+          toast({ title: 'Connected', status: 'success' })
+        })
+        .catch(() => {
+          toast({ title: 'Connection declined', status: 'error' })
+        })
+    }
+
+    return (
+      <>
+        {wallets.map(wallet => (
+          <WalletListItem
+            key={wallet.id}
+            wallet={wallet}
+            onConnect={() => {
+              if (wallet.connectors.length > 1) {
+                setSelectedWallet(wallet)
+              } else {
+                handleConnect(wallet, wallet.connectors[0]?.chain)
+              }
+            }}
+          />
+        ))}
+        <NamespaceSelectionDialog
+          wallet={selectedWallet}
+          onSelect={handleConnect}
+          onClose={() => setSelectedWallet(null)}
+        />
+        <WalletConnectQRDialog />
+      </>
+    )
+  }
+  ```
+
+  ```tsx WalletListItem.tsx theme={null}
+  export function WalletListItem({ wallet, onConnect }) {
+    const { connectingWallet } = useAppKitWallets()
+
+    return (
+      <button onClick={onConnect}>
+        <img url={wallet.imageUrl} />
+        <span>{wallet.name}</span>
+        {wallet.connectors.map(item => {
+          return <img {item.chainImageUrl} alt={item.chain} />
+        })}
+        {connectingWallet?.id === wallet.id ? "connecting..." : null}
+      </button>
+    )
+  }
+  ```
+
+  ```tsx NamespaceDialog.tsx theme={null}
+  import { ChevronRightIcon } from 'lucide-react'
+  import Image from 'next/image'
+
+  import type { WalletItem } from '@reown/appkit'
+  import type { ChainNamespace } from '@reown/appkit/networks'
+
+  import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle
+  } from '@/components/ui/dialog'
+  import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item'
+
+  interface NamespaceSelectionDialogProps {
+    wallet: WalletItem | null
+    onSelect?: (wallet: WalletItem, namespace: ChainNamespace) => void
+    onClose?: () => void
+  }
+
+  const CHAIN_NAME_MAP: Record<string, string> = {
+    eip155: 'EVM Networks',
+    solana: 'Solana',
+    polkadot: 'Polkadot',
+    bip122: 'Bitcoin',
+    cosmos: 'Cosmos',
+    sui: 'Sui',
+    stacks: 'Stacks',
+    ton: 'TON'
+  }
+
+  export function NamespaceSelectionDialog({
+    wallet,
+    onSelect,
+    onClose
+  }: NamespaceSelectionDialogProps) {
+    if (!wallet) return null
+
+    return (
+      <Dialog open={!!wallet} onOpenChange={open => !open && onClose?.()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Connect to {wallet.name}</DialogTitle>
+            <DialogDescription>
+              {wallet.name} supports multiple chains. Select a chain you want to connect to.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-2">
+            {wallet.connectors.map(connector => (
+              <Item key={connector.chain} onClick={() => onSelect?.(wallet, connector.chain)}>
+                {connector.chainImageUrl && (
+                  <ItemMedia className="rounded-md overflow-hidden w-8 h-8">
+                    <Image
+                      src={connector.chainImageUrl}
+                      alt={connector.chain}
+                      width={32}
+                      height={32}
+                    />
+                  </ItemMedia>
+                )}
+                <ItemContent>
+                  <ItemTitle>{CHAIN_NAME_MAP[connector.chain] || connector.chain}</ItemTitle>
+                </ItemContent>
+                <ItemActions>
+                  <ChevronRightIcon className="size-4" />
+                </ItemActions>
+              </Item>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+  ```
+
+  ```tsx WalletConnectQRDialog.tsx theme={null}
+  import QRCode from 'react-qr-code'
+  import Image from 'next/image'
+  import { Loader2Icon } from 'lucide-react'
+
+  import { useAppKitWallets } from '@reown/appkit/react'
+
+  import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle
+  } from '@/components/ui/dialog'
+
+  export function WalletConnectQRDialog() {
+    const { wcUri, connectingWallet, isFetchingWcUri, resetWcUri } = useAppKitWallets()
+
+    if (!connectingWallet || connectingWallet.isInjected) {
+      return null
+    }
+
+    return (
+      <Dialog
+        open={Boolean(wcUri)}
+        onOpenChange={open => {
+          if (!open) {
+            resetWcUri()
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <Image
+                src={connectingWallet.imageUrl}
+                alt={connectingWallet.name}
+                width={40}
+                height={40}
+                className="rounded-full"
+              />
+              <DialogTitle>Connect to {connectingWallet.name}</DialogTitle>
+            </div>
+            <DialogDescription>
+              Scan the QR code with {connectingWallet.name} to connect to your app.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-6">
+            {isFetchingWcUri ? (
+              <Loader2Icon className="animate-spin size-8" />
+            ) : (
+              <QRCode
+                value={wcUri}
+                size={256}
+                style={{ height: 'auto', maxWidth: '100%', width: 'auto' }}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+  ```
+</CodeGroup>
+
+## Search and Connect to WalletConnect Wallets
+
+<Frame>
+  <img alt="Descriptive alt text" />
+</Frame>
+
+WalletConnect supports 500+ wallets. You can let users search for their own wallets to connect to your app.
+
+<CodeGroup>
+  ```tsx AllWalletsView.tsx theme={null}
+  import React, { useState, useEffect } from 'react'
+  import { useAppKitWallets } from '@reown/appkit/react'
+
+  function AllWalletsView() {
+    const { wcWallets, isFetchingWcUri, isFetchingWallets, fetchWallets, connect, page } =
+      useAppKitWallets()
+    const [inputValue, setInputValue] = useState('')
+    const searchQuery = useDebounceValue(inputValue, 500)
+
+    useEffect(() => {
+      fetchWallets?.()
+    }, [])
+
+    useEffect(() => {
+      if (searchQuery.length > 0) {
+        fetchWallets?.({ query: searchQuery })
+      } else {
+        fetchWallets?.()
+      }
+    }, [searchQuery])
+
+    function handleLoadMore() {
+      if (searchQuery.length > 0) {
+        fetchWallets?.({ page: page + 1, query: searchQuery })
+      } else {
+        fetchWallets?.({ page: page + 1 })
+      }
+    }
+
+    return (
+      <>
+        <input
+          type="text"
+          placeholder="Search wallets..."
+          value={inputValue}
+          onChange={e => setInputValue(e.target.value)}
+        />
+        {isFetchingWallets && <div>Loading wallets...</div>}
+        {wcWallets.map(wallet => {
+          return <WalletListItem key={wallet.id} wallet={wallet} onConnect={connect} />
+        })}
+        <button onClick={handleLoadMore} disabled={isFetchingWallets}>
+          Load More
+        </button>
+      </>
+    )
+  }
+  ```
+</CodeGroup>
+
+## Demo
+
+<Columns>
+  <Card title="Headless Playground" icon="cubes" href="https://appkit-headless.vercel.app">
+    You can check our demo app to play around with an example Headless implementation
+  </Card>
+
+  <Card title="Source code" icon="github" href="https://github.com/reown-com/appkit/tree/main/examples/next-appkit-headless">
+    See the source code of the example Headless implementation.
+  </Card>
+</Columns>
+
+
 # Hooks
 Source: https://docs.reown.com/appkit/react/core/hooks
 
@@ -36112,7 +36544,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called **outside** any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import { createAppKit } from '@reown/appkit/react'
 
     import { WagmiProvider } from 'wagmi'
@@ -36168,7 +36600,7 @@ AppKit providers two different approaches on React to initialize it.
 
     Reown AppKit use [Viem](https://viem.sh/) networks under the hood, which provide a wide variety of networks for EVM chains. You can find all the networks supported by Viem within the `@reown/appkit/networks` path.
 
-    ```js {2} theme={null} theme={null}
+    ```js {2} theme={null}
     import { createAppKit } from '@reown/appkit'
     import { mainnet, arbitrum, base, scroll, polygon } from '@reown/appkit/networks'
     ```
@@ -36185,7 +36617,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import { createAppKit } from "@reown/appkit/react";
     import { Ethers5Adapter } from "@reown/appkit-adapter-ethers5";
     import { mainnet, arbitrum } from "@reown/appkit/networks";
@@ -36229,7 +36661,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import { createAppKit } from "@reown/appkit/react";
     import { EthersAdapter } from "@reown/appkit-adapter-ethers";
     import { arbitrum, mainnet } from "@reown/appkit/networks";
@@ -36282,7 +36714,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     // App.tsx
     import { createAppKit } from "@reown/appkit/react";
     import { SolanaAdapter } from "@reown/appkit-adapter-solana/react";
@@ -36328,7 +36760,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit/react'
     import { BitcoinAdapter } from '@reown/appkit-adapter-bitcoin'
@@ -36373,7 +36805,7 @@ AppKit providers two different approaches on React to initialize it.
 
     ## Bitcoin Provider Interface
 
-    ```ts theme={null} theme={null}
+    ```ts theme={null}
     export interface BitcoinConnector extends ChainAdapterConnector, Provider {
       getAccountAddresses(): Promise<BitcoinConnector.AccountAddress[]>;
       signMessage(params: BitcoinConnector.SignMessageParams): Promise<string>;
@@ -36388,7 +36820,7 @@ AppKit providers two different approaches on React to initialize it.
 
     <Tabs>
       <Tab title="SignMessageParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignMessageParams = {
             /**
              * The message to be signed
@@ -36403,7 +36835,7 @@ AppKit providers two different approaches on React to initialize it.
       </Tab>
 
       <Tab title="SendTransferParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SendTransferParams = {
             /**
              * The amount to be sent in satoshis
@@ -36418,7 +36850,7 @@ AppKit providers two different approaches on React to initialize it.
       </Tab>
 
       <Tab title="SignPSBTParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignPSBTParams = {
             /**
              * The PSBT to be signed, string base64 encoded
@@ -36454,7 +36886,7 @@ AppKit providers two different approaches on React to initialize it.
 
     <Tabs>
       <Tab title="AccountAddress">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type AccountAddress = {
             /**
              * Public address belonging to the account.
@@ -36477,7 +36909,7 @@ AppKit providers two different approaches on React to initialize it.
       </Tab>
 
       <Tab title="SignPSBTResponse">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignPSBTResponse = {
             /**
              * The signed PSBT, string base64 encoded
@@ -36498,7 +36930,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit/react'
     import { TonAdapter } from '@reown/appkit-adapter-ton'
@@ -36547,7 +36979,7 @@ AppKit providers two different approaches on React to initialize it.
 
     On top of your app set up the following configuration, making sure that all functions are called outside any React component to avoid unwanted rerenders.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     // App.tsx
     import { createAppKit } from '@reown/appkit/react'
     import { TronAdapter } from '@reown/appkit-adapter-tron'
@@ -36605,19 +37037,19 @@ AppKit providers two different approaches on React to initialize it.
     <Tabs>
       <Tab title="TronLink">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-tronlink
           ```
         </CodeGroup>
@@ -36625,19 +37057,19 @@ AppKit providers two different approaches on React to initialize it.
 
       <Tab title="MetaMask">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-metamask-tron
           ```
         </CodeGroup>
@@ -36645,19 +37077,19 @@ AppKit providers two different approaches on React to initialize it.
 
       <Tab title="Trust Wallet">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-trust
           ```
         </CodeGroup>
@@ -36665,19 +37097,19 @@ AppKit providers two different approaches on React to initialize it.
 
       <Tab title="OKX Wallet">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-okxwallet
           ```
         </CodeGroup>
@@ -36685,19 +37117,19 @@ AppKit providers two different approaches on React to initialize it.
 
       <Tab title="BitKeep">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-bitkeep
           ```
         </CodeGroup>
@@ -36705,19 +37137,19 @@ AppKit providers two different approaches on React to initialize it.
 
       <Tab title="Binance Wallet">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-binance
           ```
         </CodeGroup>
@@ -36732,7 +37164,7 @@ AppKit providers two different approaches on React to initialize it.
 
     After installing your desired wallet adapters, import and add them to the `walletAdapters` array when creating the TRON adapter:
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import { TronLinkAdapter } from '@tronweb3/tronwallet-adapter-tronlink'
     import { MetaMaskAdapter } from '@tronweb3/tronwallet-adapter-metamask-tron'
     import { TrustAdapter } from '@tronweb3/tronwallet-adapter-trust'
@@ -36766,7 +37198,7 @@ AppKit providers two different approaches on React to initialize it.
 
     We recommend creating a config file to establish a singleton instance for the Universal Connector:
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import type { AppKitNetwork } from '@reown/appkit/networks'
     import type { CustomCaipNetwork } from '@reown/appkit-common'
     import { UniversalConnector } from '@reown/appkit-universal-connector'
@@ -36814,7 +37246,7 @@ AppKit providers two different approaches on React to initialize it.
 
     In de App.tsx file you can add :
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import { useState, useEffect } from 'react'
     import { getUniversalConnector } from './config' // previous config file
     import { UniversalConnector } from '@reown/appkit-universal-connector'
@@ -36973,7 +37405,7 @@ AppKit providers two different approaches on React to initialize it.
 
     For a practical example of how it works, you can refer to our [lab dApp](https://appkit-lab.reown.com/appkit/?name=solana).
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import {
       SystemProgram,
       PublicKey,
@@ -39096,402 +39528,6 @@ This guide focuses on the most common ways Dapps interact with wallets using the
     ```
   </Tab>
 </Tabs>
-
-
-# Headless
-Source: https://docs.reown.com/appkit/react/early-access/headless
-
-
-
-<Frame>
-  <img alt="Descriptive alt text" />
-</Frame>
-
-<Info>
-  💡 Headless is in early-access at the moment and available to limited users. [Contact
-  us](https://share.hsforms.com/1_oWa8QkwRXi6oR0nZ_SIxQnxw6s) to get access.
-</Info>
-
-AppKit Headless allows developers to build a fully customizable "Connect" experience powered by AppKit's existing features without using the AppKit modal. Headless exposes wallet discovery, rendering WalletConnect QR codes, and social provider flows via simple hooks and utility functions.
-
-## Installation
-
-Headless requires AppKit to be configured with the `headless` flag. See the [installation](../core/installation) docs before getting started and make sure you're enabling headless as expected.
-
-```tsx theme={null}
-createAppKit({
-  ...
-  features: {
-    headless: true
-  }
-})
-```
-
-## useAppKitWallets
-
-The essential hook for accessing all types of wallets and methods to build your custom connection user interface.
-
-<CodeGroup>
-  ```tsx useAppKitWallets.tsx theme={null}
-  const { wallets, wcWallets, isFetchingWallets, isFetchingWcUri, isInitialized, wcUri, connectingWallet, page, count, fetchWallets, connect, resetWcUri } =
-    useAppKitWallets()
-  ```
-</CodeGroup>
-
-### Returns
-
-<ResponseField name="wallets" type="WalletItem[]">
-  List of wallets for the initial connect view including WalletConnect wallets and injected wallets
-  together. If the user doesn't have any injected wallets, it'll fill the list with the most ranked
-  WalletConnect wallets.
-</ResponseField>
-
-<ResponseField name="wcWallets" type="WalletItem[]">
-  List of WalletConnect wallets from Wallet Guide API. Useful to display all available WalletConnect
-  wallets in a separate Search Wallets view.
-</ResponseField>
-
-<ResponseField name="isFetchingWallets" type="boolean">
-  Boolean that indicates if WalletConnect wallets are being fetched.
-</ResponseField>
-
-<ResponseField name="isFetchingWcUri" type="boolean">
-  Boolean that indicates if a WalletConnect URI is being fetched.
-</ResponseField>
-
-<ResponseField name="isInitialized" type="boolean">
-  Boolean that indicates if the AppKit is initialized. It's useful to render a fallback UI when the
-  AppKit initializes and detects all injected wallets.
-</ResponseField>
-
-<ResponseField name="wcUri" type="string | undefined">
-  The current WalletConnect URI for QR code display. This is set when connecting to a WalletConnect
-  wallet. Reset with resetWcUri().
-</ResponseField>
-
-<ResponseField name="connectingWallet" type="WalletItem | undefined">
-  The wallet currently being connected to. This is set when a connection is initiated and cleared
-  when it completes or fails. For WalletConnect wallets, resetWcUri() should be called to clear the
-  state.
-</ResponseField>
-
-<ResponseField name="page" type="number">
-  The current page number of WalletConnect wallets.
-</ResponseField>
-
-<ResponseField name="count" type="number">
-  The total number of available WalletConnect wallets based on the AppKit configurations and given
-  parameters.
-</ResponseField>
-
-<ResponseField name="fetchWallets" type="(options?: { page?: number; query?: string; }) => Promise<void>">
-  Function to fetch WalletConnect wallets from the explorer API. Allows you to list, search, and
-  paginate through the wallets.
-</ResponseField>
-
-<ResponseField name="connect" type="(wallet: WalletItem, namespace?: ChainNamespace) => Promise<void>">
-  Function to connect to a wallet. For WalletConnect wallets: initiates WC connection and returns
-  the URI with the `wcUri` state. For injected connectors: triggers the extension/wallet directly.
-</ResponseField>
-
-<ResponseField name="resetWcUri" type="() => void">
-  Function to reset the WC URI. Useful to keep the `connectingWallet` state in sync with the WC URI.
-  Can be called when the QR code is closed.
-</ResponseField>
-
-# Examples
-
-## Build a Connect UI
-
-<Frame>
-  <img alt="Descriptive alt text" />
-</Frame>
-
-The `useAppKitWallets` hook returns a list of injected and WalletConnect wallets that let you render directly in the connect page.
-
-If you configure your AppKit as multi-chain, we suggest rendering a namespace selection component where users should select which namespace to connect when using browser extensions. This could be achieved with the `connectors` array of the `WalletItem`.
-
-If a user selects a WalletConnect wallet, you can show the QR code to the users and let them scan it with their preferred wallets. To handle the QR flows, you can use the `isFetchingWcUri`, `wcUri`, and `resetWcUri` props from the `useAppKitWallets` hook.
-
-<CodeGroup>
-  ```tsx ConnectView.tsx theme={null}
-  import React, { useState } from 'react'
-  import type { WalletItem } from '@reown/appkit'
-  import type { ChainNamespace } from '@reown/appkit/networks'
-  import { useAppKitWallets } from '@reown/appkit/react'
-  import { NamespaceSelectionDialog } from './NamespaceDialog'
-  import { WalletConnectQRDialog } from './WalletConnectQRDialog'
-
-  function ConnectView() {
-    const { wallets, connect } = useAppKitWallets()
-    const [selectedWallet, setSelectedWallet] = useState<WalletItem | null>(null)
-
-    async function handleConnect(wallet: WalletItem, namespace?: ChainNamespace) {
-      await connect(wallet, namespace)
-        .then(() => {
-          toast({ title: 'Connected', status: 'success' })
-        })
-        .catch(() => {
-          toast({ title: 'Connection declined', status: 'error' })
-        })
-    }
-
-    return (
-      <>
-        {wallets.map(wallet => (
-          <WalletListItem
-            key={wallet.id}
-            wallet={wallet}
-            onConnect={() => {
-              if (wallet.connectors.length > 1) {
-                setSelectedWallet(wallet)
-              } else {
-                handleConnect(wallet, wallet.connectors[0]?.chain)
-              }
-            }}
-          />
-        ))}
-        <NamespaceSelectionDialog
-          wallet={selectedWallet}
-          onSelect={handleConnect}
-          onClose={() => setSelectedWallet(null)}
-        />
-        <WalletConnectQRDialog />
-      </>
-    )
-  }
-  ```
-
-  ```tsx WalletListItem.tsx theme={null}
-  export function WalletListItem({ wallet, onConnect }) {
-    const { connectingWallet } = useAppKitWallets()
-
-    return (
-      <button onClick={onConnect}>
-        <img url={wallet.imageUrl} />
-        <span>{wallet.name}</span>
-        {wallet.connectors.map(item => {
-          return <img {item.chainImageUrl} alt={item.chain} />
-        })}
-        {connectingWallet?.id === wallet.id ? "connecting..." : null}
-      </button>
-    )
-  }
-  ```
-
-  ```tsx NamespaceDialog.tsx theme={null}
-  import { ChevronRightIcon } from 'lucide-react'
-  import Image from 'next/image'
-
-  import type { WalletItem } from '@reown/appkit'
-  import type { ChainNamespace } from '@reown/appkit/networks'
-
-  import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle
-  } from '@/components/ui/dialog'
-  import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from '@/components/ui/item'
-
-  interface NamespaceSelectionDialogProps {
-    wallet: WalletItem | null
-    onSelect?: (wallet: WalletItem, namespace: ChainNamespace) => void
-    onClose?: () => void
-  }
-
-  const CHAIN_NAME_MAP: Record<string, string> = {
-    eip155: 'EVM Networks',
-    solana: 'Solana',
-    polkadot: 'Polkadot',
-    bip122: 'Bitcoin',
-    cosmos: 'Cosmos',
-    sui: 'Sui',
-    stacks: 'Stacks',
-    ton: 'TON'
-  }
-
-  export function NamespaceSelectionDialog({
-    wallet,
-    onSelect,
-    onClose
-  }: NamespaceSelectionDialogProps) {
-    if (!wallet) return null
-
-    return (
-      <Dialog open={!!wallet} onOpenChange={open => !open && onClose?.()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Connect to {wallet.name}</DialogTitle>
-            <DialogDescription>
-              {wallet.name} supports multiple chains. Select a chain you want to connect to.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-2">
-            {wallet.connectors.map(connector => (
-              <Item key={connector.chain} onClick={() => onSelect?.(wallet, connector.chain)}>
-                {connector.chainImageUrl && (
-                  <ItemMedia className="rounded-md overflow-hidden w-8 h-8">
-                    <Image
-                      src={connector.chainImageUrl}
-                      alt={connector.chain}
-                      width={32}
-                      height={32}
-                    />
-                  </ItemMedia>
-                )}
-                <ItemContent>
-                  <ItemTitle>{CHAIN_NAME_MAP[connector.chain] || connector.chain}</ItemTitle>
-                </ItemContent>
-                <ItemActions>
-                  <ChevronRightIcon className="size-4" />
-                </ItemActions>
-              </Item>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
-    )
-  }
-  ```
-
-  ```tsx WalletConnectQRDialog.tsx theme={null}
-  import QRCode from 'react-qr-code'
-  import Image from 'next/image'
-  import { Loader2Icon } from 'lucide-react'
-
-  import { useAppKitWallets } from '@reown/appkit/react'
-
-  import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle
-  } from '@/components/ui/dialog'
-
-  export function WalletConnectQRDialog() {
-    const { wcUri, connectingWallet, isFetchingWcUri, resetWcUri } = useAppKitWallets()
-
-    if (!connectingWallet || connectingWallet.isInjected) {
-      return null
-    }
-
-    return (
-      <Dialog
-        open={Boolean(wcUri)}
-        onOpenChange={open => {
-          if (!open) {
-            resetWcUri()
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <Image
-                src={connectingWallet.imageUrl}
-                alt={connectingWallet.name}
-                width={40}
-                height={40}
-                className="rounded-full"
-              />
-              <DialogTitle>Connect to {connectingWallet.name}</DialogTitle>
-            </div>
-            <DialogDescription>
-              Scan the QR code with {connectingWallet.name} to connect to your app.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center justify-center p-6">
-            {isFetchingWcUri ? (
-              <Loader2Icon className="animate-spin size-8" />
-            ) : (
-              <QRCode
-                value={wcUri}
-                size={256}
-                style={{ height: 'auto', maxWidth: '100%', width: 'auto' }}
-              />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-    )
-  }
-  ```
-</CodeGroup>
-
-## Search and Connect to WalletConnect Wallets
-
-<Frame>
-  <img alt="Descriptive alt text" />
-</Frame>
-
-WalletConnect supports 500+ wallets. You can let users search for their own wallets to connect to your app.
-
-<CodeGroup>
-  ```tsx AllWalletsView.tsx theme={null}
-  import React, { useState, useEffect } from 'react'
-  import { useAppKitWallets } from '@reown/appkit/react'
-
-  function AllWalletsView() {
-    const { wcWallets, isFetchingWcUri, isFetchingWallets, fetchWallets, connect, page } =
-      useAppKitWallets()
-    const [inputValue, setInputValue] = useState('')
-    const searchQuery = useDebounceValue(inputValue, 500)
-
-    useEffect(() => {
-      fetchWallets?.()
-    }, [])
-
-    useEffect(() => {
-      if (searchQuery.length > 0) {
-        fetchWallets?.({ query: searchQuery })
-      } else {
-        fetchWallets?.()
-      }
-    }, [searchQuery])
-
-    function handleLoadMore() {
-      if (searchQuery.length > 0) {
-        fetchWallets?.({ page: page + 1, query: searchQuery })
-      } else {
-        fetchWallets?.({ page: page + 1 })
-      }
-    }
-
-    return (
-      <>
-        <input
-          type="text"
-          placeholder="Search wallets..."
-          value={inputValue}
-          onChange={e => setInputValue(e.target.value)}
-        />
-        {isFetchingWallets && <div>Loading wallets...</div>}
-        {wcWallets.map(wallet => {
-          return <WalletListItem key={wallet.id} wallet={wallet} onConnect={connect} />
-        })}
-        <button onClick={handleLoadMore} disabled={isFetchingWallets}>
-          Load More
-        </button>
-      </>
-    )
-  }
-  ```
-</CodeGroup>
-
-## Demo
-
-<Columns>
-  <Card title="Headless Playground" icon="cubes" href="https://appkit-headless.vercel.app">
-    You can check our demo app to play around with an example Headless implementation
-  </Card>
-
-  <Card title="Source code" icon="github" href="https://github.com/reown-com/appkit/tree/main/examples/next-appkit-headless">
-    See the source code of the example Headless implementation.
-  </Card>
-</Columns>
 
 
 # Deposit with Exchange - React
@@ -43003,7 +43039,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Start by importing `createAppKit` from `@reown/appkit` and the necessary chains and WagmiAdapter from `@reown/appkit-adapter-wagmi`.
 
-    ```ts theme={null} theme={null}
+    ```ts theme={null}
     // lib/appkit.ts
     import { browser } from '$app/environment'
     import { createAppKit } from '@reown/appkit'
@@ -43055,7 +43091,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Then import this configuration in your app layout to ensure AppKit is initialized:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <!-- src/routes/+layout.svelte -->
     <script>
       import '$lib/appkit';
@@ -43072,7 +43108,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Start by importing `createAppKit` from `@reown/appkit` and the necessary chains and EthersAdapter from `@reown/appkit-adapter-ethers`.
 
-    ```ts theme={null} theme={null}
+    ```ts theme={null}
     // lib/appkit.ts
     import { browser } from '$app/environment'
     import { createAppKit } from '@reown/appkit'
@@ -43129,7 +43165,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Start by importing `createAppKit` from `@reown/appkit` and the necessary chains and SolanaAdapter from `@reown/appkit-adapter-solana`.
 
-    ```ts theme={null} theme={null}
+    ```ts theme={null}
     // lib/appkit.ts
     import { browser } from '$app/environment'
     import { createAppKit } from '@reown/appkit'
@@ -43182,7 +43218,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Start by importing `createAppKit` from `@reown/appkit` and the necessary chains and BitcoinAdapter from `@reown/appkit-adapter-bitcoin`.
 
-    ```ts theme={null} theme={null}
+    ```ts theme={null}
     // lib/appkit.ts
     import { browser } from '$app/environment'
     import { createAppKit } from '@reown/appkit'
@@ -43235,7 +43271,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Start by importing `createAppKit` from `@reown/appkit` and the necessary chains and TonAdapter from `@reown/appkit-adapter-ton`.
 
-    ```ts theme={null} theme={null}
+    ```ts theme={null}
     // lib/appkit.ts
     import { browser } from '$app/environment'
     import { createAppKit } from '@reown/appkit'
@@ -43343,7 +43379,7 @@ Or use other AppKit web components:
   <Tab title="Wagmi">
     The recommended way to trigger the modal is using the `initializeAppKit` function and web components:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <script lang="ts">
       import { initializeAppKit } from './lib/stores/appkit';
 
@@ -43358,7 +43394,7 @@ Or use other AppKit web components:
 
     You can also trigger the modal programmatically by calling the `open` method from AppKit instance:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <!-- +page.svelte -->
     <script>
       import { appKit } from '$lib/appkit'
@@ -43373,7 +43409,7 @@ Or use other AppKit web components:
 
     You can select the modal's view when calling the `open` function:
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <script>
       import { appKit } from '$lib/appkit'
       
@@ -43394,7 +43430,7 @@ Or use other AppKit web components:
   <Tab title="Ethers">
     You can trigger the modal by calling the `open` method from AppKit instance.
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <!-- +page.svelte -->
     <script>
       import { appKit } from '$lib/appkit'
@@ -43409,7 +43445,7 @@ Or use other AppKit web components:
 
     You can also select the modal's view when calling the `open` function.
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <script>
       import { appKit } from '$lib/appkit'
       
@@ -43430,7 +43466,7 @@ Or use other AppKit web components:
   <Tab title="Solana">
     You can trigger the modal by calling the `open` method from AppKit instance.
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <!-- +page.svelte -->
     <script>
       import { appKit } from '$lib/appkit'
@@ -43445,7 +43481,7 @@ Or use other AppKit web components:
 
     You can also select the modal's view when calling the `open` function.
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <script>
       import { appKit } from '$lib/appkit'
       
@@ -43466,7 +43502,7 @@ Or use other AppKit web components:
   <Tab title="Bitcoin">
     You can trigger the modal by calling the `open` method from AppKit instance.
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <!-- +page.svelte -->
     <script>
       import { appKit } from '$lib/appkit'
@@ -43481,7 +43517,7 @@ Or use other AppKit web components:
 
     You can also select the modal's view when calling the `open` function.
 
-    ```javascript theme={null} theme={null}
+    ```javascript theme={null}
     <script>
       import { appKit } from '$lib/appkit'
       
@@ -43505,7 +43541,7 @@ Or use other AppKit web components:
 
     Web components are global html elements that don't require importing.
 
-    ```svelte theme={null} theme={null}
+    ```svelte theme={null}
     <script lang="ts">
       // Import your AppKit configuration to ensure it's initialized
       import '$lib/appkit';
@@ -53374,7 +53410,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `App.vue` file set up the following configuration
 
-    ```html theme={null} theme={null}
+    ```html theme={null}
     <script lang="ts" setup>
       import { createAppKit } from '@reown/appkit/vue'
       import { arbitrum, mainnet, type AppKitNetwork } from '@reown/appkit/networks'
@@ -53419,7 +53455,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     Reown AppKit use [Viem](https://viem.sh/) networks under the hood, which provide a wide variety of networks for EVM chains. You can find all the networks supported by Viem within the `@reown/appkit/networks` path.
 
-    ```js {2} theme={null} theme={null}
+    ```js {2} theme={null}
     import { createAppKit } from '@reown/appkit/vue'
     import { mainnet, arbitrum, base, scroll, polygon } from '@reown/appkit/networks'
     ```
@@ -53432,7 +53468,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
   <Tab title="Ethers v5">
     In your `App.vue` file set up the following configuration.
 
-    ```html theme={null} theme={null}
+    ```html theme={null}
     <script setup lang="ts">
       import { createAppKit, useAppKit } from "@reown/appkit/vue";
       import { Ethers5Adapter } from "@reown/appkit-adapter-ethers5";
@@ -53482,7 +53518,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `App.vue` file set up the following configuration.
 
-    ```html theme={null} theme={null}
+    ```html theme={null}
     <script setup lang="ts">
       import { createAppKit, useAppKit } from "@reown/appkit/vue";
       import { EthersAdapter } from "@reown/appkit-adapter-ethers";
@@ -53533,7 +53569,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `App.vue` file set up the following configuration.
 
-    ```html theme={null} theme={null}
+    ```html theme={null}
     <script setup lang="ts">
       import { createAppKit, useAppKit } from "@reown/appkit-solana/vue";
       import { SolanaAdapter } from "@reown/appkit-adapter-solana/vue";
@@ -53581,7 +53617,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `App.vue` file set up the following configuration.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     <script setup lang="ts">
 
     import { createAppKit } from '@reown/appkit/react'
@@ -53626,7 +53662,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     ## Bitcoin Provider Interface
 
-    ```ts theme={null} theme={null}
+    ```ts theme={null}
     export interface BitcoinConnector extends ChainAdapterConnector, Provider {
       getAccountAddresses(): Promise<BitcoinConnector.AccountAddress[]>;
       signMessage(params: BitcoinConnector.SignMessageParams): Promise<string>;
@@ -53641,7 +53677,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="SignMessageParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignMessageParams = {
             /**
              * The message to be signed
@@ -53656,7 +53692,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SendTransferParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SendTransferParams = {
             /**
              * The amount to be sent in satoshis
@@ -53671,7 +53707,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTParams">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignPSBTParams = {
             /**
              * The PSBT to be signed, string base64 encoded
@@ -53707,7 +53743,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     <Tabs>
       <Tab title="AccountAddress">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type AccountAddress = {
             /**
              * Public address belonging to the account.
@@ -53730,7 +53766,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
       </Tab>
 
       <Tab title="SignPSBTResponse">
-        ```ts theme={null} theme={null}
+        ```ts theme={null}
           export type SignPSBTResponse = {
             /**
              * The signed PSBT, string base64 encoded
@@ -53757,7 +53793,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `App.vue` file set up the following configuration.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     <script setup lang="ts">
 
     import { createAppKit } from '@reown/appkit/vue'
@@ -53808,7 +53844,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     In your `App.vue` file set up the following configuration.
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     <script setup lang="ts">
 
     import { createAppKit } from '@reown/appkit/vue'
@@ -53866,19 +53902,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
     <Tabs>
       <Tab title="TronLink">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-tronlink
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-tronlink
           ```
         </CodeGroup>
@@ -53886,19 +53922,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="MetaMask">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-metamask-tron
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-metamask-tron
           ```
         </CodeGroup>
@@ -53906,19 +53942,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="Trust Wallet">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-trust
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-trust
           ```
         </CodeGroup>
@@ -53926,19 +53962,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="OKX Wallet">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-okxwallet
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-okxwallet
           ```
         </CodeGroup>
@@ -53946,19 +53982,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="BitKeep">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-bitkeep
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-bitkeep
           ```
         </CodeGroup>
@@ -53966,19 +54002,19 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
       <Tab title="Binance Wallet">
         <CodeGroup>
-          ```bash npm theme={null} theme={null}
+          ```bash npm theme={null}
           npm install @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash Yarn theme={null} theme={null}
+          ```bash Yarn theme={null}
           yarn add @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash Bun theme={null} theme={null}
+          ```bash Bun theme={null}
           bun add @tronweb3/tronwallet-adapter-binance
           ```
 
-          ```bash pnpm theme={null} theme={null}
+          ```bash pnpm theme={null}
           pnpm add @tronweb3/tronwallet-adapter-binance
           ```
         </CodeGroup>
@@ -53993,7 +54029,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     After installing your desired wallet adapters, import and add them to the `walletAdapters` array when creating the TRON adapter:
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import { TronLinkAdapter } from '@tronweb3/tronwallet-adapter-tronlink'
     import { MetaMaskAdapter } from '@tronweb3/tronwallet-adapter-metamask-tron'
     import { TrustAdapter } from '@tronweb3/tronwallet-adapter-trust'
@@ -54152,7 +54188,7 @@ Create a new project on [Reown Dashboard](https://dashboard.reown.com) and obtai
 
     For a practical example of how it works, you can refer to our [lab dApp](https://appkit-lab.reown.com/appkit/?name=solana).
 
-    ```tsx theme={null} theme={null}
+    ```tsx theme={null}
     import { ref } from 'vue';
     import {
       SystemProgram,

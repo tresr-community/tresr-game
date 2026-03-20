@@ -463,40 +463,66 @@ batch_id = batch.batch_id
 
 ## Step 2: Add requests to the batch
 
-With your batch created, you can now add requests to it. Each request is a standard chat completion that will be processed asynchronously.
+With your batch created, you can now add requests to it. Each request will be processed asynchronously.
 
-**With the xAI SDK, adding batch requests is simple:** create `Chat` objects the same way you would for regular chat completions, then pass them as a list. You don't need to construct JSONL files or deal with complex request formats. Just use the familiar `chat.create()` and `chat.append()` pattern you already know.
+**With the xAI SDK, adding batch requests is simple:** use `chat.create()` for text, `image.prepare()` for images, or `video.prepare()` for videos, then pass them as a list. You can also upload a [JSONL file](#jsonl-file-upload) if you prefer.
 
 **Important:** Assign a unique `batch_request_id` to each request. This ID lets you match results back to their original requests, which becomes important when you're processing hundreds or thousands of items. If you don't provide an ID, we generate a UUID for you. Using your own IDs is useful for idempotency (ensuring a request is only processed once) and for linking batch requests to records in your own system.
 
 ```pythonXAI
 from xai_sdk import Client
 from xai_sdk.chat import system, user
+from xai_sdk.tools import web_search, x_search
 
 client = Client()
 
-# Sample data to process
-feedback_items = [
-    {"id": "feedback_001", "text": "The product exceeded my expectations!"},
-    {"id": "feedback_002", "text": "Shipping took way too long."},
-    {"id": "feedback_003", "text": "It works as described, nothing special."},
-]
-
-# Build batch requests using familiar Chat objects
 batch_requests = []
-for item in feedback_items:
-    # Create a Chat exactly like you would for a regular request
-    chat = client.chat.create(
-        model="grok-4.20-beta-latest-non-reasoning",
-        batch_request_id=item["id"],  # Add an ID to track this request
-    )
-    # Append messages the same way as always
-    chat.append(system("Classify the sentiment as positive, negative, or neutral."))
-    chat.append(user(item["text"]))
-    
-    batch_requests.append(chat)
 
-# Pass the list of Chat objects to the batch
+# Chat completion with tools
+chat = client.chat.create(
+    model="grok-4.20-beta-latest-non-reasoning",
+    batch_request_id="chat_001",
+    tools=[web_search(), x_search()],
+)
+chat.append(system("Analyze market sentiment from recent news and posts."))
+chat.append(user("What is the current sentiment around TSLA stock?"))
+batch_requests.append(chat)
+
+# Image generation
+image_req = client.image.prepare(
+    prompt="A sleek modern laptop on a minimalist desk",
+    model="grok-imagine-image",
+    batch_request_id="img_001",
+)
+batch_requests.append(image_req)
+
+# Image edit
+image_edit_req = client.image.prepare(
+    prompt="Add a rainbow in the background",
+    model="grok-imagine-image",
+    image_url="https://picsum.photos/800",
+    batch_request_id="img_edit_001",
+)
+batch_requests.append(image_edit_req)
+
+# Video generation
+video_req = client.video.prepare(
+    prompt="A product rotating on a turntable with dramatic lighting",
+    model="grok-imagine-video",
+    batch_request_id="vid_001",
+)
+batch_requests.append(video_req)
+
+# Video edit
+video_edit_req = client.video.prepare(
+    prompt="Make it slow motion",
+    model="grok-imagine-video",
+    video_url="https://lorem.video/cat_360p_3s",
+    batch_request_id="vid_edit_001",
+)
+batch_requests.append(video_edit_req)
+
+# Add all requests to the batch
 client.batch.add(batch_id=batch.batch_id, batch_requests=batch_requests)
 print(f"Added {len(batch_requests)} requests to batch")
 ```
@@ -614,7 +640,7 @@ When `num_pending` reaches zero, all requests have been processed (either succes
 
 You can retrieve results at any time, even before the entire batch completes. Results are available as soon as individual requests finish processing, so you can start consuming completed results while other requests are still in progress.
 
-Each result is linked to its original request via the `batch_request_id` you assigned earlier. The `result.response` object is the same SDK `Response` you'd get from a regular chat completion, with all the familiar fields: `.content`, `.usage`, `.finish_reason`, and more.
+Each result is linked to its original request via the `batch_request_id` you assigned earlier. For chat completions, use `result.response` which has the familiar fields: `.content`, `.usage`, `.finish_reason`, and more. For image requests, use `result.image_response` which provides `.url`, `.base64`, `.usage`, and `.model`. For video requests, use `result.video_response` which provides `.url`, `.duration`, `.usage`, and `.model`. These are the same response types returned by the regular `client.image.sample()` and `client.video.generate()` methods.
 
 The SDK provides convenient `.succeeded` and `.failed` properties to separate successful responses from errors.
 
@@ -647,12 +673,22 @@ while True:
         break
     pagination_token = page.pagination_token
 
-# Process all results
+# Process results - handle different response types
 print(f"Successfully processed: {len(all_succeeded)} requests")
 for result in all_succeeded:
-    # Access the full Response object
-    print(f"[{result.batch_request_id}] {result.response.content}")
-    print(f"  Tokens used: {result.response.usage.total_tokens}")
+    rid = result.batch_request_id
+    resp = result.proto.response
+
+    if resp.HasField("completion_response"):
+        # Chat completion response
+        print(f"[{rid}] {result.response.content}")
+        print(f"  Tokens used: {result.response.usage.total_tokens}")
+    elif resp.HasField("image_response"):
+        # Image generation response
+        print(f"[{rid}] Image URL: {result.image_response.url}")
+    elif resp.HasField("video_response"):
+        # Video generation response
+        print(f"[{rid}] Video URL: {result.video_response.url}")
 
 if all_failed:
     print(f"\\nFailed: {len(all_failed)} requests")
@@ -833,6 +869,74 @@ cost_usd = batch.cost_breakdown.total_cost_usd_ticks / 1e10
 print("\\nTotal cost: $%.4f" % cost_usd)
 ```
 
+## JSONL File Upload
+
+As an alternative to adding requests via the SDK, you can create batches by uploading a JSONL file. This is useful when generating requests from scripts, pipelines, or external tools.
+
+Each line in the file is a JSON object with four fields: `custom_id` (unique identifier, maps to `batch_request_id`), `method` (always `"POST"`), `url` (API endpoint path), and `body` (the JSON request payload matching the [REST API reference](/developers/rest-api-reference) for that endpoint).
+
+```json
+{"custom_id": "chat-1", "method": "POST", "url": "/v1/chat/completions", "body": {"model": "grok-4-1-fast-reasoning", "messages": [{"role": "user", "content": "Classify this as positive, negative, or neutral: The product exceeded my expectations!"}]}}
+{"custom_id": "search-1", "method": "POST", "url": "/v1/responses", "body": {"model": "grok-4-1-fast-reasoning", "tools": [{"type": "web_search"}, {"type": "x_search"}], "input": [{"role": "user", "content": "What are the latest SpaceX launches?"}]}}
+{"custom_id": "img-1", "method": "POST", "url": "/v1/images/generations", "body": {"model": "grok-imagine-image", "prompt": "A futuristic city skyline at sunset"}}
+{"custom_id": "img-edit-1", "method": "POST", "url": "/v1/images/edits", "body": {"model": "grok-imagine-image", "prompt": "Add a rainbow", "image": {"url": "https://picsum.photos/800", "type": "image_url"}}}
+{"custom_id": "vid-1", "method": "POST", "url": "/v1/videos/generations", "body": {"model": "grok-imagine-video", "prompt": "A rocket launching from Mars"}}
+{"custom_id": "vid-edit-1", "method": "POST", "url": "/v1/videos/edits", "body": {"model": "grok-imagine-video", "prompt": "Make it slow motion", "video": {"url": "https://lorem.video/cat_360p_3s"}}}
+```
+
+You can mix different endpoints in the same file. Each request is routed independently.
+
+Supported `url` values:
+
+| URL | Description |
+|---|---|
+| `/v1/chat/completions` | [Chat completions](/developers/model-capabilities/text/generate-text) |
+| `/v1/responses` | [Model responses](/developers/model-capabilities/text/generate-text) |
+| `/v1/images/generations` | [Image generation](/developers/model-capabilities/images/generation) |
+| `/v1/images/edits` | [Image editing](/developers/model-capabilities/images/generation) |
+| `/v1/videos/generations` | [Video generation](/developers/model-capabilities/video/generation) |
+| `/v1/videos/edits` | [Video editing](/developers/model-capabilities/video/generation) |
+
+Upload the file via the [Files API](/developers/files), then create a batch referencing it:
+
+```pythonXAI
+from xai_sdk import Client
+
+client = Client()
+
+# Upload the JSONL file
+file = client.files.upload(
+    file=open("batch_requests.jsonl", "rb"),
+)
+
+# Create a batch with the file ID
+batch = client.batch.create(
+    batch_name="sentiment_analysis",
+    input_file_id=file.id,
+)
+print(f"Created batch: {batch.batch_id}")
+```
+
+```bash
+# Upload the JSONL file
+curl -X POST https://api.x.ai/v1/files \\
+  -H "Authorization: Bearer $XAI_API_KEY" \\
+  -F file="@batch_requests.jsonl"
+
+# Create a batch with the file ID
+curl -X POST https://api.x.ai/v1/batches \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer $XAI_API_KEY" \\
+  -d '{
+    "name": "sentiment_analysis",
+    "input_file_id": "file-abc123"
+  }'
+```
+
+The file is processed asynchronously in the background. If any line is invalid, the batch is cancelled with an error message. Monitor progress and retrieve results the same way as inline batches.
+
+File-based batches are sealed after creation — you cannot add more requests via `AddBatchRequests`. Maximum file size is **200 MB** with up to **50,000** requests. Each `custom_id` must be unique within the file.
+
 ## Limitations
 
 **Batches**
@@ -844,11 +948,12 @@ print("\\nTotal cost: $%.4f" % cost_usd)
 
 * A batch can contain an **unlimited** number of requests in theory, but extremely large batches (>1,000,000 requests) may be throttled for processing stability.
 * Each individual request that can be added to a batch has a maximum payload size of **25MB**.
-* A team can send up to **100** add-batch-requests API calls every **30 seconds** (this is a rolling limit shared across all batches in the team).
+* A team can send up to **500** add-batch-requests API calls every **30 seconds** (this is a rolling limit shared across all batches in the team).
+* Image and video results contain signed URLs that expire after **1 hour**. Download the media promptly after retrieving results.
 
 ## Tool Use
 
-Both [server-side tools](/developers/guides/tools/overview) and client-side function tools are supported in batch requests.
+Both [server-side tools](/developers/tools/overview) and client-side function tools are supported in batch requests.
 
 * **Server-side tools** (web search, code execution, MCP, etc.) work the same as in the real-time API — they are executed during processing and the final response is returned.
 * **Client-side function tools** are supported: the model returns `tool_calls` in the response for you to handle offline. Multi-turn tool calling requires submitting a new batch request with the tool result messages included in the conversation.
@@ -1838,11 +1943,8 @@ messages=[
 max_tokens=10,
 response_format={ "type": "json_object" },
 seed=123,
-stop=["\n\n"],
 temperature=0.2,
 top_p=0.9,
-tool_choice="auto",
-tools=[],
 user="user",
 )
 print(response)
@@ -2215,16 +2317,6 @@ Please refer to our [Legal Resources](https://x.ai/legal) for our Enterprise Ter
 ### Does xAI sell crypto tokens?
 
 xAI is not affiliated with any cryptocurrency. We are aware of several scam websites that unlawfully use our name and logo.
-
-
-===/developers/faq===
-#### Resources
-
-# FAQ - xAI Console
-
-Frequently asked questions on using the [xAI Console](https://console.x.ai), including creating teams, managing roles, and configuring settings.
-
-You can find details on the following topics:
 
 
 ===/developers/faq/security===
@@ -4557,13 +4649,12 @@ import base64
 import json
 import os
 
-import websockets
+import websockets  # pip install websockets
 
 XAI_API_KEY = os.environ["XAI_API_KEY"]
 
-async def stream_tts(text: str, language: str = "en", voice: str = "eve", codec: str = "mp3"):
+async def multi_turn_tts(language: str = "en", voice: str = "eve", codec: str = "mp3"):
     uri = f"wss://api.x.ai/v1/tts?language={language}&voice={voice}&codec={codec}"
-    audio_chunks: list[bytes] = []
 
     async with websockets.connect(
         uri,
@@ -4603,6 +4694,9 @@ asyncio.run(multi_turn_tts())
 ```
 
 ```javascript customLanguage="javascriptWithoutSDK"
+// npm install ws
+// Node.js 22+ has a built-in WebSocket global — you can skip
+// the "ws" package and remove this import if you're on v22+.
 import WebSocket from "ws";
 
 const apiKey = process.env.XAI_API_KEY;
@@ -5293,7 +5387,7 @@ There are a few message types used in interacting with the models. [Client event
 
 ### Client Events
 
-* **`"session.update"`** - Update session configuration such as system prompt, voice, audio format and search settings
+* **`"session.update"`** - Update session configuration such as system prompt, voice, audio format, tools, and search settings
 
   ```json
   {
@@ -5330,6 +5424,7 @@ There are a few message types used in interacting with the models. [Client event
   |-----------|------|-------------|
   | `instructions` | string | System prompt |
   | `voice` | string | Voice selection: `Eve`, `Ara`, `Rex`, `Sal`, `Leo` (see [Voice Options](#voice-options)) |
+  | `tools` | array | Tools available to the voice agent. Supports `file_search`, `web_search`, `x_search`, `mcp`, and `function` types. See [Using Tools](#using-tools-with-grok-voice-agent-api). |
   | `turn_detection.type` | string | null | `"server_vad"` for automatic detection, `null` for manual text turns |
   | `turn_detection.threshold` | number | optional | VAD activation threshold (0.1–0.9). Higher values require louder audio to trigger. Default: `0.85`. |
   | `turn_detection.silence_duration_ms` | number | optional | How long the user must be silent (in ms) before the server ends the turn (0–10000). Higher values let users pause longer without being cut off. |
@@ -5482,6 +5577,7 @@ The Grok Voice Agent API supports various tools that can be configured in your s
 * **Collections Search (`file_search`)** - Search through your uploaded document collections
 * **Web Search (`web_search`)** - Search the web for current information
 * **X Search (`x_search`)** - Search X (Twitter) for posts and information
+* **Remote MCP Tools (`mcp`)** - Connect to external [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) servers for custom tools
 * **Custom Functions** - Define your own function tools with JSON schemas
 
 ### Configuring Tools in Session
@@ -5568,6 +5664,151 @@ const sessionConfig = {
 };
 ```
 
+### Remote MCP Tools
+
+Use the `mcp` tool type to connect your voice agent to external [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) servers. This lets you extend your voice agent with third-party or custom tools without implementing them as client-side functions — xAI manages the MCP server connection and tool execution on your behalf.
+
+```pythonWithoutSDK
+session_config = {
+    "type": "session.update",
+    "session": {
+        ...
+        "tools": [
+            {
+                "type": "mcp",
+                "server_url": "https://mcp.example.com/mcp",
+                "server_label": "my-tools",
+            },
+        ],
+    },
+}
+```
+
+```javascriptWithoutSDK
+const sessionConfig = {
+    type: "session.update",
+    session: {
+        ...
+        tools: [
+            {
+                type: "mcp",
+                server_url: "https://mcp.example.com/mcp",
+                server_label: "my-tools",
+            },
+        ],
+    },
+};
+```
+
+#### MCP Tool Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `server_url` | Yes | The URL of the MCP server. Only Streaming HTTP and SSE transports are supported. |
+| `server_label` | Yes | A label to identify the server (used for tool call prefixing). |
+| `server_description` | No | A description of what the server provides. |
+| `allowed_tools` | No | List of specific tool names to allow. If omitted, all tools from the server are available. |
+| `authorization` | No | A token set in the `Authorization` header on requests to the MCP server. |
+| `headers` | No | Additional headers to include in requests to the MCP server. |
+
+#### Advanced MCP Configuration
+
+You can restrict which tools are available, provide authentication, and add custom headers:
+
+```pythonWithoutSDK
+session_config = {
+    "type": "session.update",
+    "session": {
+        ...
+        "tools": [
+            {
+                "type": "mcp",
+                "server_url": "https://mcp.example.com/mcp",
+                "server_label": "my-tools",
+                "server_description": "Custom business tools for order management",
+                "allowed_tools": ["lookup_order", "check_inventory"],
+                "authorization": "Bearer your-token-here",
+                "headers": {
+                    "X-Custom-Header": "value"
+                },
+            },
+        ],
+    },
+}
+```
+
+```javascriptWithoutSDK
+const sessionConfig = {
+    type: "session.update",
+    session: {
+        ...
+        tools: [
+            {
+                type: "mcp",
+                server_url: "https://mcp.example.com/mcp",
+                server_label: "my-tools",
+                server_description: "Custom business tools for order management",
+                allowed_tools: ["lookup_order", "check_inventory"],
+                authorization: "Bearer your-token-here",
+                headers: {
+                    "X-Custom-Header": "value",
+                },
+            },
+        ],
+    },
+};
+```
+
+#### Multiple MCP Servers
+
+You can connect to multiple MCP servers simultaneously, each providing different capabilities:
+
+```pythonWithoutSDK
+session_config = {
+    "type": "session.update",
+    "session": {
+        ...
+        "tools": [
+            {
+                "type": "mcp",
+                "server_url": "https://mcp.deepwiki.com/mcp",
+                "server_label": "deepwiki",
+            },
+            {
+                "type": "mcp",
+                "server_url": "https://your-tools.example.com/mcp",
+                "server_label": "custom-tools",
+                "allowed_tools": ["search_database", "format_data"],
+            },
+        ],
+    },
+}
+```
+
+```javascriptWithoutSDK
+const sessionConfig = {
+    type: "session.update",
+    session: {
+        ...
+        tools: [
+            {
+                type: "mcp",
+                server_url: "https://mcp.deepwiki.com/mcp",
+                server_label: "deepwiki",
+            },
+            {
+                type: "mcp",
+                server_url: "https://your-tools.example.com/mcp",
+                server_label: "custom-tools",
+                allowed_tools: ["search_database", "format_data"],
+            },
+        ],
+    },
+};
+```
+
+MCP tools are server-side tools — xAI handles the connection and execution automatically. Unlike custom function tools, you don't need to handle tool call responses in your client code. For more details on MCP tool configuration, see the [Remote MCP Tools](/developers/tools/remote-mcp) guide.
+
 ### Custom Function Tools
 
 You can define custom function tools with JSON schemas to extend your voice agent's capabilities.
@@ -5634,7 +5875,7 @@ const sessionConfig = {
 
 ### Combining Multiple Tools
 
-You can combine multiple tool types in a single session configuration:
+You can combine multiple tool types in a single session configuration, including server-side tools (web search, X search, collections, MCP) and client-side function tools:
 
 ```pythonWithoutSDK
 session_config = {
@@ -5652,6 +5893,11 @@ session_config = {
             },
             {
                 "type": "x_search",
+            },
+            {
+                "type": "mcp",
+                "server_url": "https://mcp.example.com/mcp",
+                "server_label": "my-tools",
             },
             {
                 "type": "function",
@@ -5689,6 +5935,11 @@ const sessionConfig = {
                 type: "x_search",
             },
             {
+                type: "mcp",
+                server_url: "https://mcp.example.com/mcp",
+                server_label: "my-tools",
+            },
+            {
                 type: "function",
                 name: "generate_random_number",
                 description: "Generate a random number",
@@ -5706,7 +5957,7 @@ const sessionConfig = {
 };
 ```
 
-For more details on Collections, see the [Collections API documentation](/developers/rest-api-reference/collections). For search tool parameters and options, see the [Web Search](/developers/tools/web-search) and [X Search](/developers/tools/x-search) guides.
+Server-side tools (web search, X search, collections, and MCP) are executed automatically by xAI — you don't need to handle their responses. Only custom function tools require client-side handling. For more details, see [Collections](/developers/rest-api-reference/collections), [Web Search](/developers/tools/web-search), [X Search](/developers/tools/x-search), and [Remote MCP Tools](/developers/tools/remote-mcp).
 
 ### Handling Function Call Responses
 
@@ -6043,7 +6294,7 @@ MCP tool calls are executed server-side. Unlike custom function tools, you don't
   }
   ```
 
-* `"conversation.item.input_audio_transcription.completed"`: Notify the client the audio transcription for input has been completed.
+* : Notify the client the audio transcription for input has been completed.
 
   ```json
   {
@@ -6716,6 +6967,46 @@ response = requests.post(chat_url, headers=headers, json=payload)
 print(response.json())
 ```
 
+```javascriptOpenAISDK
+import OpenAI, { toFile } from "openai";
+
+const client = new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: "https://api.x.ai/v1",
+});
+
+// Upload a document
+const documentContent = "Quarterly Sales Report - Q4 2024\\n\\n" +
+    "Revenue Summary:\\n" +
+    "- Total Revenue: $5.2M\\n" +
+    "- Year-over-Year Growth: +18%\\n";
+
+const uploadedFile = await client.files.create({
+    file: await toFile(Buffer.from(documentContent), "sales_report.txt"),
+    purpose: "assistants",
+});
+
+// Create a chat with the file
+const response = await client.responses.create({
+    model: "grok-4.20-beta-latest-non-reasoning",
+    input: [
+        {
+            role: "user",
+            content: [
+                { type: "input_text", text: "What was the total revenue in this report?" },
+                { type: "input_file", file_id: uploadedFile.id },
+            ],
+        },
+    ],
+});
+
+const finalAnswer = response.output[response.output.length - 1].content[0].text;
+console.log("Answer: " + finalAnswer);
+
+// Clean up
+await client.files.delete(uploadedFile.id);
+```
+
 ```bash
 # First upload the file
 FILE_ID=$(curl https://api.x.ai/v1/files \\
@@ -6790,6 +7081,54 @@ print(f"\\n\\nUsage: {response.usage}")
 client.files.delete(uploaded_file.id)
 ```
 
+```javascriptOpenAISDK
+import OpenAI, { toFile } from "openai";
+
+const client = new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: "https://api.x.ai/v1",
+});
+
+// Upload a document
+const documentContent = "Product Specifications:\\n" +
+    "- Model: XR-2000\\n" +
+    "- Weight: 2.5 kg\\n" +
+    "- Dimensions: 30cm x 20cm x 10cm\\n" +
+    "- Power: 100W\\n" +
+    "- Features: Wireless connectivity, LCD display, Energy efficient";
+
+const uploadedFile = await client.files.create({
+    file: await toFile(Buffer.from(documentContent), "specs.txt"),
+    purpose: "assistants",
+});
+
+// Stream the response
+const stream = await client.responses.create({
+    model: "grok-4.20-beta-latest-non-reasoning",
+    input: [
+        {
+            role: "user",
+            content: [
+                { type: "input_text", text: "What is the weight of the XR-2000?" },
+                { type: "input_file", file_id: uploadedFile.id },
+            ],
+        },
+    ],
+    stream: true,
+});
+
+for await (const event of stream) {
+    if (event.type === "response.output_text.delta") {
+        process.stdout.write(event.delta);
+    }
+}
+
+console.log();
+
+// Clean up
+await client.files.delete(uploadedFile.id);
+```
+
 ## Multiple File Attachments
 
 Query across multiple documents simultaneously.
@@ -6831,6 +7170,57 @@ print(f"Usage: {response.usage}")
 client.files.delete(file1.id)
 client.files.delete(file2.id)
 client.files.delete(file3.id)
+```
+
+```javascriptOpenAISDK
+import OpenAI, { toFile } from "openai";
+
+const client = new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: "https://api.x.ai/v1",
+});
+
+// Upload multiple documents
+const documents = [
+    { name: "timeline.txt", content: "Document 1: The project started in January 2024." },
+    { name: "budget.txt", content: "Document 2: The project budget is $500,000." },
+    { name: "team.txt", content: "Document 3: The team consists of 5 engineers and 2 designers." },
+];
+
+const uploadedFiles = [];
+for (const doc of documents) {
+    const file = await client.files.create({
+        file: await toFile(Buffer.from(doc.content), doc.name),
+        purpose: "assistants",
+    });
+    uploadedFiles.push(file);
+}
+
+// Create chat with multiple files
+const response = await client.responses.create({
+    model: "grok-4.20-beta-latest-non-reasoning",
+    input: [
+        {
+            role: "user",
+            content: [
+                {
+                    type: "input_text",
+                    text: "Based on these documents, when did the project start, what is the budget, and how many people are on the team?",
+                },
+                ...uploadedFiles.map((f) => ({ type: "input_file", file_id: f.id })),
+            ],
+        },
+    ],
+});
+
+const finalAnswer = response.output[response.output.length - 1].content[0].text;
+console.log("Answer: " + finalAnswer);
+console.log("Documents searched: 3");
+
+// Clean up
+for (const file of uploadedFiles) {
+    await client.files.delete(file.id);
+}
 ```
 
 ## Multi-Turn Conversations with Files
@@ -6890,6 +7280,70 @@ print(f"A3: {response3.content}\\n")
 client.files.delete(uploaded_file.id)
 ```
 
+```javascriptOpenAISDK
+import OpenAI, { toFile } from "openai";
+
+const client = new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: "https://api.x.ai/v1",
+});
+
+// Upload an employee record
+const documentContent = "Employee Information:\\n" +
+    "Name: Alice Johnson\\n" +
+    "Department: Engineering\\n" +
+    "Years of Service: 5\\n" +
+    "Performance Rating: Excellent\\n" +
+    "Skills: Python, Machine Learning, Cloud Architecture\\n" +
+    "Current Project: AI Platform Redesign";
+
+const uploadedFile = await client.files.create({
+    file: await toFile(Buffer.from(documentContent), "employee.txt"),
+    purpose: "assistants",
+});
+
+// First turn: Ask about the employee name
+const response1 = await client.responses.create({
+    model: "grok-4.20-beta-latest-non-reasoning",
+    input: [
+        {
+            role: "user",
+            content: [
+                { type: "input_text", text: "What is the employee's name?" },
+                { type: "input_file", file_id: uploadedFile.id },
+            ],
+        },
+    ],
+});
+console.log("Q1: What is the employee's name?");
+console.log("A1: " + response1.output[response1.output.length - 1].content[0].text + "\\n");
+
+// Second turn: Ask about department (uses previous_response_id for context)
+const response2 = await client.responses.create({
+    model: "grok-4.20-beta-latest-non-reasoning",
+    previous_response_id: response1.id,
+    input: [
+        { role: "user", content: "What department does this employee work in?" },
+    ],
+});
+console.log("Q2: What department does this employee work in?");
+console.log("A2: " + response2.output[response2.output.length - 1].content[0].text + "\\n");
+
+// Third turn: Ask about skills
+const response3 = await client.responses.create({
+    model: "grok-4.20-beta-latest-non-reasoning",
+    previous_response_id: response2.id,
+    input: [
+        { role: "user", content: "What skills does this employee have?" },
+    ],
+});
+console.log("Q3: What skills does this employee have?");
+console.log("A3: " + response3.output[response3.output.length - 1].content[0].text + "\\n");
+
+// Clean up
+await client.files.delete(uploadedFile.id);
+```
+
 ## Combining Files with Other Modalities
 
 You can combine file attachments with images and other content types in a single message.
@@ -6922,6 +7376,52 @@ print(f"\\nUsage: {response.usage}")
 
 # Clean up
 client.files.delete(text_file.id)
+```
+
+```javascriptOpenAISDK
+import OpenAI, { toFile } from "openai";
+
+const client = new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: "https://api.x.ai/v1",
+});
+
+// Upload a text document with cat care information
+const textContent = "Cat Care Guide: Cats require daily grooming, " +
+    "especially long-haired breeds. Regular brushing helps " +
+    "prevent matting and reduces shedding.";
+
+const textFile = await client.files.create({
+    file: await toFile(Buffer.from(textContent), "cat-care.txt"),
+    purpose: "assistants",
+});
+
+// Use both file and image in the same message
+const response = await client.responses.create({
+    model: "grok-4.20-beta-latest-non-reasoning",
+    input: [
+        {
+            role: "user",
+            content: [
+                {
+                    type: "input_text",
+                    text: "Based on the attached care guide, do you have any advice about the pictured cat?",
+                },
+                { type: "input_file", file_id: textFile.id },
+                {
+                    type: "input_image",
+                    image_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Cat03.jpg/1200px-Cat03.jpg",
+                },
+            ],
+        },
+    ],
+});
+
+const analysis = response.output[response.output.length - 1].content[0].text;
+console.log("Analysis: " + analysis);
+
+// Clean up
+await client.files.delete(textFile.id);
 ```
 
 ## Combining Files with Code Execution
@@ -6988,6 +7488,67 @@ print(f"\\n\\nUsage: {response.usage}")
 
 # Clean up
 client.files.delete(data_file.id)
+```
+
+```javascriptOpenAISDK
+import OpenAI, { toFile } from "openai";
+
+const client = new OpenAI({
+    apiKey: process.env.XAI_API_KEY,
+    baseURL: "https://api.x.ai/v1",
+});
+
+// Upload a CSV data file
+const csvContent = "product,region,revenue,units_sold\\n" +
+    "Product A,North,245000,1200\\n" +
+    "Product A,South,189000,950\\n" +
+    "Product A,East,312000,1500\\n" +
+    "Product A,West,278000,1350\\n" +
+    "Product B,North,198000,800\\n" +
+    "Product B,South,156000,650\\n" +
+    "Product B,East,234000,950\\n" +
+    "Product B,West,201000,850\\n" +
+    "Product C,North,167000,700\\n" +
+    "Product C,South,134000,550\\n" +
+    "Product C,East,198000,800\\n" +
+    "Product C,West,176000,725";
+
+const dataFile = await client.files.create({
+    file: await toFile(Buffer.from(csvContent), "sales_data.csv"),
+    purpose: "assistants",
+});
+
+// Create chat with both file attachment and code execution
+const stream = await client.responses.create({
+    model: "grok-4.20-beta-latest-non-reasoning",
+    input: [
+        {
+            role: "user",
+            content: [
+                {
+                    type: "input_text",
+                    text: "Analyze this sales data and calculate: 1) Total revenue by product, " +
+                        "2) Average units sold by region, " +
+                        "3) Which product-region combination has the highest revenue",
+                },
+                { type: "input_file", file_id: dataFile.id },
+            ],
+        },
+    ],
+    tools: [{ type: "code_interpreter" }],
+    stream: true,
+});
+
+for await (const event of stream) {
+    if (event.type === "response.output_text.delta") {
+        process.stdout.write(event.delta);
+    }
+}
+
+console.log();
+
+// Clean up
+await client.files.delete(dataFile.id);
 ```
 
 The model will:
@@ -7172,45 +7733,7 @@ You can provide the source image as:
 
 ## Editing with Multiple Images
 
-You can add up to three images for editing. You can specify the images in the order they are sent in the request. By default, the aspect ratio of the output image follows the first input image. You can override this by setting the `aspect_ratio` parameter to a specific ratio (e.g., `"1:1"`, `"16:9"`).
-
-```python customLanguage="pythonXAI"
-import xai_sdk
-
-client = xai_sdk.Client()
-
-response = client.image.sample(
-    prompt="Add the cat from the first image to the second one.",
-    model="grok-imagine-image",
-    image_urls=[
-        "https://docs.x.ai/assets/api-examples/images/image-edit-1.jpeg",
-        "https://docs.x.ai/assets/api-examples/images/image-edit-2.jpeg",
-    ],
-)
-
-print(response.url)
-```
-
-```bash
-# Using a public URL as the source image
-curl -X POST https://api.x.ai/v1/images/edits \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $XAI_API_KEY" \
-  -d '{
-    "model": "grok-imagine-image",
-    "prompt": "Add the cat from the first image to the second one.",
-    "images": [
-      {
-        "url": "https://docs.x.ai/assets/api-examples/images/image-edit-1.jpeg",
-        "type": "image_url"
-      },
-      {
-        "url": "https://docs.x.ai/assets/api-examples/images/image-edit-2.jpeg",
-        "type": "image_url"
-      }
-    ]
-  }'
-```
+You can add up to 5 images for editing. You can specify the images in the order they are sent in the request. By default, the aspect ratio of the output image follows the first input image. You can override this by setting the `aspect_ratio` parameter to a specific ratio (e.g., `"1:1"`, `"16:9"`).
 
 ## Multi-Turn Editing
 
@@ -8668,13 +9191,13 @@ Make sure to use a reasoning model when working with encrypted thinking content.
 Modify the steps to create a chat client (xAI SDK) or change the request body as following:
 
 ```python customLanguage="pythonXAI"
-chat = client.chat.create(model="grok-4.20-beta-latest-reasoning",
+chat = client.chat.create(model="grok-4.20-reasoning",
         use_encrypted_content=True)
 ```
 
 ```python customLanguage="pythonOpenAISDK"
 response = client.responses.create(
-    model="grok-4.20-beta-latest-reasoning",
+    model="grok-4.20-reasoning",
     input=[
         {"role": "system", "content": "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."},
         {"role": "user", "content": "What is the meaning of life, the universe, and everything?"},
@@ -8685,7 +9208,7 @@ response = client.responses.create(
 
 ```javascript customLanguage="javascriptWithoutSDK"
 const response = await client.responses.create({
-    model: "grok-4.20-beta-latest-reasoning",
+    model: "grok-4.20-reasoning",
     input: [
         {"role": "system", "content": "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."},
         {"role": "user", "content": "What is the meaning of life, the universe, and everything?"},
@@ -8699,7 +9222,7 @@ import { xai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
 
 const { text, reasoning } = await generateText({
-  model: xai.responses('grok-4.20-beta-latest-reasoning'),
+  model: xai.responses('grok-4.20-reasoning'),
   system: "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy.",
   prompt: "What is the meaning of life, the universe, and everything?",
   providerOptions: {
@@ -8719,7 +9242,7 @@ curl https://api.x.ai/v1/responses \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -m 3600 \
   -d '{
-    "model": "grok-4.20-beta-latest-reasoning",
+    "model": "grok-4.20-reasoning",
     "input": [
         {
             "role": "system",
@@ -8931,7 +9454,7 @@ client = Client(
     timeout=3600,
 )
 
-chat = client.chat.create(model="grok-4.20-beta-latest-reasoning", store_messages=True, use_encrypted_content=True)
+chat = client.chat.create(model="grok-4.20-reasoning", store_messages=True, use_encrypted_content=True)
 chat.append(system("You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."))
 chat.append(user("What is the meaning of life, the universe, and everything?"))
 response = chat.sample()
@@ -8969,7 +9492,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4.20-beta-latest-reasoning",
+    model="grok-4.20-reasoning",
     input=[
         {"role": "system", "content": "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy."},
         {"role": "user", "content": "What is the meaning of life, the universe, and everything?"},
@@ -8986,7 +9509,7 @@ print(response.id)
 # New steps
 
 second_response = client.responses.create(
-    model="grok-4.20-beta-latest-reasoning",
+    model="grok-4.20-reasoning",
     input=[
         *response.output,  # Use response.output instead of the stored response
         {"role": "user", "content": "What is the meaning of 42?"},
@@ -9011,7 +9534,7 @@ const client = new OpenAI({
 });
 
 const response = await client.responses.create({
-    model: "grok-4.20-beta-latest-reasoning",
+    model: "grok-4.20-reasoning",
     input: [
         {
             role: "system",
@@ -9031,7 +9554,7 @@ console.log(response);
 console.log(response.id);
 
 const secondResponse = await client.responses.create({
-    model: "grok-4.20-beta-latest-reasoning",
+    model: "grok-4.20-reasoning",
     input: [
         ...response.output,  // Use response.output instead of the stored response
         {"role": "user", "content": "What is the meaning of 42?"},
@@ -9050,7 +9573,7 @@ import { generateText } from 'ai';
 
 // First request with encrypted reasoning content
 const result = await generateText({
-  model: xai.responses('grok-4.20-beta-latest-reasoning'),
+  model: xai.responses('grok-4.20-reasoning'),
   system: "You are Grok, a chatbot inspired by the Hitchhiker's Guide to the Galaxy.",
   prompt: "What is the meaning of life, the universe, and everything?",
   providerOptions: {
@@ -9065,7 +9588,7 @@ console.log(result.text);
 // Continue the conversation using previousResponseId
 // The encrypted content is automatically included when using previousResponseId
 const { text: secondResponse } = await generateText({
-  model: xai.responses('grok-4.20-beta-latest-reasoning'),
+  model: xai.responses('grok-4.20-reasoning'),
   prompt: "What is the meaning of 42?",
   providerOptions: {
     xai: {
@@ -9084,7 +9607,7 @@ curl https://api.x.ai/v1/responses \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -m 3600 \
   -d '{
-    "model": "grok-4.20-beta-latest-reasoning",
+    "model": "grok-4.20-reasoning",
     "input": [
         {
             "role": "system",
@@ -9294,7 +9817,7 @@ Multi-agent research goes beyond single-turn tool use by coordinating a team of 
 
 ## Getting Started
 
-To use Realtime Multi-agent Research, specify `grok-4.20-multi-agent-beta-0309` as the model name in your API requests. This model is optimized for orchestrating multiple agents that collaborate on research tasks.
+To use Realtime Multi-agent Research, specify `grok-4.20-multi-agent` as the model name in your API requests. This model is optimized for orchestrating multiple agents that collaborate on research tasks.
 
 ```python customLanguage="pythonXAI" highlightedLines="9"
 import os
@@ -9305,7 +9828,7 @@ from xai_sdk.tools import web_search, x_search
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4.20-multi-agent-beta-0309",
+    model="grok-4.20-multi-agent",
     tools=[web_search(), x_search()],
     include=["verbose_streaming"],
 )
@@ -9336,7 +9859,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4.20-multi-agent-beta-0309",
+    model="grok-4.20-multi-agent",
     input=[
         {
             "role": "user",
@@ -9362,7 +9885,7 @@ headers = {
     "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}"
 }
 payload = {
-    "model": "grok-4.20-multi-agent-beta-0309",
+    "model": "grok-4.20-multi-agent",
     "input": [
         {
             "role": "user",
@@ -9383,7 +9906,7 @@ curl https://api.x.ai/v1/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -d '{
-  "model": "grok-4.20-multi-agent-beta-0309",
+  "model": "grok-4.20-multi-agent",
   "input": [
     {
       "role": "user",
@@ -9402,7 +9925,7 @@ import { xai } from "@ai-sdk/xai";
 import { generateText } from "ai";
 
 const { text } = await generateText({
-  model: xai.responses("grok-4.20-multi-agent-beta-0309"),
+  model: xai.responses("grok-4.20-multi-agent"),
   prompt:
     "Research the latest breakthroughs in quantum computing and summarize the key findings.",
   tools: {
@@ -9420,7 +9943,7 @@ When you send a request to the multi-agent model, multiple agents are launched t
 
 ### Supported Models
 
-* `grok-4.20-multi-agent-beta-0309`
+* `grok-4.20-multi-agent`
 
 ### Built-in Tools Support
 
@@ -9457,7 +9980,7 @@ from xai_sdk.chat import user
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4.20-multi-agent-beta-0309",
+    model="grok-4.20-multi-agent",
     agent_count=4,
 )
 
@@ -9477,7 +10000,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4.20-multi-agent-beta-0309",
+    model="grok-4.20-multi-agent",
     reasoning={"effort": "low"},
     input=[
         {
@@ -9500,7 +10023,7 @@ headers = {
     "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}"
 }
 payload = {
-    "model": "grok-4.20-multi-agent-beta-0309",
+    "model": "grok-4.20-multi-agent",
     "reasoning": {"effort": "low"},
     "input": [
         {
@@ -9518,7 +10041,7 @@ curl https://api.x.ai/v1/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -d '{
-  "model": "grok-4.20-multi-agent-beta-0309",
+  "model": "grok-4.20-multi-agent",
   "reasoning": {"effort": "low"},
   "input": [
     {
@@ -9534,7 +10057,7 @@ import { xai } from "@ai-sdk/xai";
 import { generateText } from "ai";
 
 const { text } = await generateText({
-  model: xai.responses("grok-4.20-multi-agent-beta-0309"),
+  model: xai.responses("grok-4.20-multi-agent"),
   prompt: "What are the key differences between TCP and UDP?",
   providerOptions: {
     xai: { reasoningEffort: "low" },
@@ -9554,7 +10077,7 @@ from xai_sdk.chat import user
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4.20-multi-agent-beta-0309",
+    model="grok-4.20-multi-agent",
     agent_count=16,
 )
 
@@ -9574,7 +10097,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4.20-multi-agent-beta-0309",
+    model="grok-4.20-multi-agent",
     reasoning={"effort": "high"},
     input=[
         {
@@ -9597,7 +10120,7 @@ headers = {
     "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}"
 }
 payload = {
-    "model": "grok-4.20-multi-agent-beta-0309",
+    "model": "grok-4.20-multi-agent",
     "reasoning": {"effort": "high"},
     "input": [
         {
@@ -9615,7 +10138,7 @@ curl https://api.x.ai/v1/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -d '{
-  "model": "grok-4.20-multi-agent-beta-0309",
+  "model": "grok-4.20-multi-agent",
   "reasoning": {"effort": "high"},
   "input": [
     {
@@ -9631,7 +10154,7 @@ import { xai } from "@ai-sdk/xai";
 import { generateText } from "ai";
 
 const { text } = await generateText({
-  model: xai.responses("grok-4.20-multi-agent-beta-0309"),
+  model: xai.responses("grok-4.20-multi-agent"),
   prompt:
     "Analyze the design trade-offs in modern programming languages: compare Rust's ownership model, Go's simplicity philosophy, and Haskell's pure functional approach. Cover memory safety, concurrency, developer productivity, and ecosystem maturity.",
   providerOptions: {
@@ -9658,7 +10181,7 @@ from xai_sdk.chat import user
 
 client = Client(api_key=os.getenv("XAI_API_KEY"))
 chat = client.chat.create(
-    model="grok-4.20-multi-agent-beta-0309",
+    model="grok-4.20-multi-agent",
     include=["verbose_streaming"],
 )
 
@@ -9688,7 +10211,7 @@ client = OpenAI(
 )
 
 response = client.responses.create(
-    model="grok-4.20-multi-agent-beta-0309",
+    model="grok-4.20-multi-agent",
     input=[
         {
             "role": "user",
@@ -9710,7 +10233,7 @@ headers = {
     "Authorization": f"Bearer {os.getenv('XAI_API_KEY')}"
 }
 payload = {
-    "model": "grok-4.20-multi-agent-beta-0309",
+    "model": "grok-4.20-multi-agent",
     "input": [
         {
             "role": "user",
@@ -9727,7 +10250,7 @@ curl https://api.x.ai/v1/responses \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $XAI_API_KEY" \
   -d '{
-  "model": "grok-4.20-multi-agent-beta-0309",
+  "model": "grok-4.20-multi-agent",
   "input": [
     {
       "role": "user",
@@ -9742,7 +10265,7 @@ import { xai } from "@ai-sdk/xai";
 import { generateText } from "ai";
 
 const { text } = await generateText({
-  model: xai.responses("grok-4.20-multi-agent-beta-0309"),
+  model: xai.responses("grok-4.20-multi-agent"),
   prompt:
     "Compare the major approaches to distributed consensus in computer science: Paxos, Raft, and Byzantine fault tolerance. Analyze the trade-offs in safety guarantees, performance, and implementation complexity.",
 });
@@ -11262,6 +11785,7 @@ The response includes a `status` field with one of these values:
 | `pending` | Video is still being generated |
 | `done` | Video is ready |
 | `expired` | Request has expired |
+| `failed` | Video generation failed |
 
 Response (when complete):
 
@@ -11546,6 +12070,9 @@ while True:
     elif result.status == deferred_pb2.DeferredStatus.EXPIRED:
         print("Request expired")
         break
+    elif result.status == deferred_pb2.DeferredStatus.FAILED:
+        print("Video generation failed")
+        break
     elif result.status == deferred_pb2.DeferredStatus.PENDING:
         print("Still processing...")
         time.sleep(5)
@@ -11589,6 +12116,9 @@ while True:
     elif data["status"] == "expired":
         print("Request expired")
         break
+    elif data["status"] == "failed":
+        print("Video generation failed")
+        break
     else:
         print("Still processing...")
         time.sleep(5)
@@ -11625,6 +12155,9 @@ while (true) {
     } else if (data.status === "expired") {
         console.log("Request expired");
         break;
+    } else if (data.status === "failed") {
+        console.log("Video generation failed");
+        break;
     } else {
         console.log("Still processing...");
         await new Promise(resolve => setTimeout(resolve, 5000));
@@ -11657,6 +12190,59 @@ The available status values are:
 | `deferred_pb2.DeferredStatus.PENDING` | Video is still being generated |
 | `deferred_pb2.DeferredStatus.DONE` | Video is ready |
 | `deferred_pb2.DeferredStatus.EXPIRED` | Request has expired |
+| `deferred_pb2.DeferredStatus.FAILED` | Video generation failed |
+
+## Error Handling
+
+When using the SDK's `generate()` method, video generation failures are raised as a `VideoGenerationError` exception. This exception includes a `code` and `message` describing what went wrong. Import it from `xai_sdk.video`:
+
+```python customLanguage="pythonXAI"
+import os
+import xai_sdk
+from xai_sdk.video import VideoGenerationError
+
+client = xai_sdk.Client(api_key=os.getenv("XAI_API_KEY"))
+
+try:
+    response = client.video.generate(
+        prompt="A cat lounging in a sunbeam, tail gently swishing",
+        model="grok-imagine-video",
+        duration=5,
+    )
+    print(response.url)
+except VideoGenerationError as e:
+    print(f"Error code: {e.code}")
+    print(f"Error message: {e.message}")
+```
+
+The `VideoGenerationError` exception has the following attributes:
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `code` | `str` | An error code identifying the failure reason |
+| `message` | `str` | A human-readable message describing the failure |
+
+You can combine this with `TimeoutError` handling for comprehensive error coverage:
+
+```python customLanguage="pythonXAI"
+import os
+import xai_sdk
+from xai_sdk.video import VideoGenerationError
+
+client = xai_sdk.Client(api_key=os.getenv("XAI_API_KEY"))
+
+try:
+    response = client.video.generate(
+        prompt="A cat lounging in a sunbeam, tail gently swishing",
+        model="grok-imagine-video",
+        duration=5,
+    )
+    print(response.url)
+except VideoGenerationError as e:
+    print(f"Generation failed [{e.code}]: {e.message}")
+except TimeoutError:
+    print("Generation timed out — try increasing the timeout or simplifying the prompt")
+```
 
 ## Response Details
 
@@ -11703,56 +12289,6 @@ For full pricing details on the `grok-imagine-video` model, see the [model page]
 * [API Reference](/developers/rest-api-reference) — Full endpoint documentation
 
 
-===/developers/models/realtime-api===
-#### Models and Pricing
-
-# Realtime API
-
-The Voice Agent API enables real-time voice conversations over WebSocket, billed at a flat rate per minute of connection time. Supports function calling with web search, X search, collections, and custom functions.
-
-## At a glance
-
-| | Details |
-|---|---|
-| **Modalities** | Text, Audio → Text, Audio |
-| **Pricing** | $0.05 / min ($3.00 / hr) |
-| **Region** | us-east-1 |
-
-## Pricing
-
-| | Details |
-|---|---|
-| **Per minute** | $0.05 / min ($3.00 / hr) |
-
-When using the Voice Agent API with tools such as function calling, web search, X search, or collections, you will be charged for tool invocations in addition to the per-minute voice session cost. See [Tool Invocation Costs](/developers/models#tool-invocation-costs) for tool pricing details.
-
-## Rate Limits
-
-| | Details |
-|---|---|
-| **Concurrent sessions** | 100 per team |
-| **Max session duration** | 30 minutes |
-
-## Capabilities
-
-* Function calling
-* Web search
-* X search
-* Collections search
-
-## Availability
-
-| | Details |
-|---|---|
-| **Cluster** | us-east-1 |
-
-## Documentation
-
-* [Voice Agent Guide](/developers/model-capabilities/audio/voice-agent) — Getting started with real-time voice conversations
-* [API Reference](/developers/rest-api-reference/inference/voice) — WebSocket endpoint reference
-* [Models and Pricing](/developers/models#voice-api-pricing) — Full pricing overview
-
-
 ===/developers/models/text-to-speech===
 #### Models and Pricing
 
@@ -11760,21 +12296,19 @@ When using the Voice Agent API with tools such as function calling, web search, 
 
 The Text to Speech API converts text into natural speech, billed per input character. Supports multiple voices, streaming and batch output, in MP3, WAV, PCM, μ-law, and A-law formats.
 
-The Text to Speech API is currently in **beta**. Pricing and rate limits may change when the API becomes generally available.
-
 ## At a glance
 
 | | Details |
 |---|---|
 | **Modalities** | Text → Audio |
-| **Pricing** | $4.20 / 1M characters (Beta Pricing) |
+| **Pricing** | $4.20 / 1M characters |
 | **Region** | us-east-1 |
 
 ## Pricing
 
 | | Details |
 |---|---|
-| **Per 1M characters** | $4.20 / 1M characters (Beta Pricing) |
+| **Per 1M characters** | $4.20 / 1M characters |
 
 ## Rate Limits
 
@@ -11799,7 +12333,7 @@ The Text to Speech API is currently in **beta**. Pricing and rate limits may cha
 ## Documentation
 
 * [Text to Speech Guide](/developers/model-capabilities/audio/text-to-speech) — Getting started with text to speech
-* [API Reference](/developers/rest-api-reference/inference/text-to-speech) — TTS endpoint reference
+* [API Reference](/developers/rest-api-reference/inference/voice#text-to-speech) — Text to Speech endpoint reference
 * [Models and Pricing](/developers/models#voice-api-pricing) — Full pricing overview
 
 
@@ -11812,33 +12346,21 @@ An overview of our models' capabilities and their associated pricing.
 
 | Model | Modalities | Capabilities | Context | Rate Limits | Pricing [in (cached in) / out] |
 | --- | --- | --- | --- | --- | --- |
-| grok-4.20-multi-agent-beta-0309 | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
-| grok-4.20-multi-agent-beta-0309 | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
-| grok-4.20-beta-0309-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
-| grok-4.20-beta-0309-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
-| grok-4.20-beta-0309-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
-| grok-4.20-beta-0309-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
+| grok-4.20-0309-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
+| grok-4.20-0309-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
+| grok-4.20-0309-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
+| grok-4.20-0309-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
 | grok-4-1-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-1-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-1-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-1-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
 | grok-4-1-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 4M TPM, 480 RPM | $0.20 ($0.05) / $0.50 |
-| grok-code-fast-1 | text → text | functions, structured, reasoning | 256,000 | 2M TPM, 2,125 RPM | $0.20 ($0.02) / $1.50 |
-| grok-code-fast-1 | text → text | functions, structured, reasoning | 256,000 | 2M TPM, 2,125 RPM | $0.20 ($0.02) / $1.50 |
-| grok-4-0709 | text, image → text | functions, structured, reasoning | 256,000 | 20M TPM, 500 RPM | $3.00 ($0.75) / $15.00 |
-| grok-4-0709 | text, image → text | functions, structured, reasoning | 256,000 | 20M TPM, 500 RPM | $3.00 ($0.75) / $15.00 |
-| grok-3 | text → text | functions, structured | 131,072 | 4M TPM, 900 RPM | $3.00 ($0.75) / $15.00 |
-| grok-3 | text → text | functions, structured | 131,072 | 4M TPM, 900 RPM | $3.00 ($0.75) / $15.00 |
-| grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 4M TPM, 1,450 RPM | $0.30 ($0.07) / $0.50 |
-| grok-3-mini | text → text | functions, structured, reasoning | 131,072 | 4M TPM, 1,450 RPM | $0.30 ($0.07) / $0.50 |
-| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 10M TPM, 620 RPM | $0.20 ($0.05) / $0.50 |
-| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
-| grok-4-fast-reasoning | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $0.20 ($0.05) / $0.50 |
-| grok-4-fast-non-reasoning | text, image → text | functions, structured | 2,000,000 | 10M TPM, 620 RPM | $0.20 ($0.05) / $0.50 |
-| grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
+| grok-4.20-multi-agent-0309 | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
+| grok-4.20-multi-agent-0309 | text, image → text | functions, structured, reasoning | 2,000,000 | 4M TPM, 607 RPM | $2.00 ($0.20) / $6.00 |
 | grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
 | grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
 | grok-imagine-image | text, image → image | - | - | 300 RPM | $0.02/image |
+| grok-imagine-image-pro | text, image → image | - | - | 30 RPM | $0.07/image |
 | grok-imagine-video | text, image, video → video | - | - | 60 RPM | $0.050/sec |
 | grok-imagine-video | text, image, video → video | - | - | 60 RPM | $0.050/sec |
 
@@ -11895,7 +12417,7 @@ The [Batch API](/developers/advanced-api-usage/batch-api) lets you process large
 
 The 50% discount applies to all token types — input tokens, output tokens, cached tokens, and reasoning tokens. To see batch pricing for a specific model, visit the model's detail page and toggle **"Show batch API pricing"**.
 
-Batch API pricing applies to text and language models only. Image and video generation models are not supported in the Batch API. See [Batch API documentation](/developers/advanced-api-usage/batch-api) for full details, limitations, and usage examples.
+The 50% batch discount applies to text and language models only. Image and video generation are supported in the Batch API but are billed at standard rates. See [Batch API documentation](/developers/advanced-api-usage/batch-api) for full details.
 
 ## Voice API Pricing
 
@@ -11908,23 +12430,21 @@ The [Voice Agent API](/developers/model-capabilities/audio/voice-agent) enables 
 | **Pricing** | $0.05 / minute ($3.00 / hour) |
 | **Concurrent sessions** | 100 per team |
 | **Max session duration** | 30 minutes |
-| **Capabilities** | Function calling (web search, X search, collections, custom functions) |
+| **Capabilities** | Function calling (web search, X search, collections, MCP, custom functions) |
 
-When using the Voice Agent API with tools such as function calling, web search, X search, or collections, you will be charged for the tool invocations in addition to the per-minute voice session cost. See [Tool Invocation Costs](#tool-invocation-costs) above for tool pricing details.
+When using the Voice Agent API with tools such as function calling, web search, X search, collections, or MCP, you will be charged for the tool invocations in addition to the per-minute voice session cost. See [Tool Invocation Costs](#tool-invocation-costs) above for tool pricing details.
 
 For more details on how to get started, see the [Voice Agent API documentation](/developers/model-capabilities/audio/voice-agent).
 
-### Text to Speech API (Beta)
+### Text to Speech API
 
 The [Text to Speech API](/developers/model-capabilities/audio/text-to-speech) converts text into natural speech, billed per input character.
 
 | | Details |
 |---|---|
-| **Pricing** | $4.20 / 1M characters (Beta Pricing)|
+| **Pricing** | $4.20 / 1M characters |
 | **Concurrent requests** | 100 per team |
 | **Capabilities** | Multiple voices, streaming and batch output, MP3 / WAV / PCM / μ-law / A-law formats |
-
-The Text to Speech API is currently in **beta**. Pricing and rate limits may change when the API becomes generally available.
 
 ## Usage Guidelines Violation Fee
 
@@ -12037,6 +12557,56 @@ The caching is automatically enabled for all requests without user input. You ca
 For details on the pricing, please refer to the pricing table above, or on [xAI Console](https://console.x.ai).
 
 
+===/developers/models/voice-agent-api===
+#### Models and Pricing
+
+# Voice Agent API
+
+The Voice Agent API enables real-time voice conversations over WebSocket, billed at a flat rate per minute of connection time. Supports function calling with web search, X search, collections, and custom functions.
+
+## At a glance
+
+| | Details |
+|---|---|
+| **Modalities** | Text, Audio → Text, Audio |
+| **Pricing** | $0.05 / min ($3.00 / hr) |
+| **Region** | us-east-1 |
+
+## Pricing
+
+| | Details |
+|---|---|
+| **Per minute** | $0.05 / min ($3.00 / hr) |
+
+When using the Voice Agent API with tools such as function calling, web search, X search, or collections, you will be charged for tool invocations in addition to the per-minute voice session cost. See [Tool Invocation Costs](/developers/models#tool-invocation-costs) for tool pricing details.
+
+## Rate Limits
+
+| | Details |
+|---|---|
+| **Concurrent sessions** | 100 per team |
+| **Max session duration** | 30 minutes |
+
+## Capabilities
+
+* Function calling
+* Web search
+* X search
+* Collections search
+
+## Availability
+
+| | Details |
+|---|---|
+| **Cluster** | us-east-1 |
+
+## Documentation
+
+* [Voice Agent Guide](/developers/model-capabilities/audio/voice-agent) — Getting started with real-time voice conversations
+* [API Reference](/developers/rest-api-reference/inference/voice) — WebSocket endpoint reference
+* [Models and Pricing](/developers/models#voice-api-pricing) — Full pricing overview
+
+
 ===/developers/provisioned-throughput===
 #### Enterprise
 
@@ -12072,12 +12642,12 @@ Each unit costs **$10.00 per day** and provides a fixed amount of tokens per min
 | grok-4-fast-non-reasoning | 31,500 | 12,500 |
 | grok-4-fast-reasoning | 31,500 | 12,500 |
 | grok-4-fast-reasoning | 31,500 | 12,500 |
-| grok-4.20-beta-0309-non-reasoning | 3,000 | 700 |
-| grok-4.20-beta-0309-non-reasoning | 3,000 | 700 |
-| grok-4.20-beta-0309-reasoning | 3,000 | 700 |
-| grok-4.20-beta-0309-reasoning | 3,000 | 700 |
-| grok-4.20-multi-agent-beta-0309 | 3,000 | 700 |
-| grok-4.20-multi-agent-beta-0309 | 3,000 | 700 |
+| grok-4.20-0309-non-reasoning | 3,000 | 700 |
+| grok-4.20-0309-non-reasoning | 3,000 | 700 |
+| grok-4.20-0309-reasoning | 3,000 | 700 |
+| grok-4.20-0309-reasoning | 3,000 | 700 |
+| grok-4.20-multi-agent-0309 | 3,000 | 700 |
+| grok-4.20-multi-agent-0309 | 3,000 | 700 |
 | grok-code-fast-1 | 31,500 | 4,000 |
 | grok-code-fast-1 | 31,500 | 4,000 |
 
@@ -12718,14 +13288,21 @@ Stay up to date with the latest changes to the xAI API.
 
 # March 2026
 
+### Batch API supports Image and Video generation
+
+The [Batch API](/developers/advanced-api-usage/batch-api) now supports [image generation](/developers/model-capabilities/images/generation), [image editing](/developers/model-capabilities/images/generation), and [video generation](/developers/model-capabilities/video/generation) in addition to chat completions. Both [server-side tools](/developers/tools/overview) and client-side function tools are also now supported in batch requests. Image and video URLs in batch results expire after 1 hour.
+
+### Batch API JSONL file upload
+
+You can now create batches by uploading a [JSONL file](/developers/advanced-api-usage/batch-api#jsonl-file-upload) via the Files API. Supports all batch endpoints including chat, image, and video in a single file.
+
 ### Provisioned Throughput is available
 
 Enterprise customers can now purchase dedicated API capacity with guaranteed tokens per minute. [Learn more](/developers/provisioned-throughput).
 
-### Grok 4.20 Beta and Grok 4.20 Multi-agent Beta are available
+### Grok 4.20 and Grok 4.20 Multi-agent are live
 
-* You can now use Grok 4.20 Beta in the xAI Enterprise API.
-* Grok 4.20 Multi-agent Beta can be accessed through the xAI Enterprise API. For more details, check out the [docs](/developers/model-capabilities/text/multi-agent)
+* For more details on Grok 4.20 Multi-agent, check out the [docs](/developers/model-capabilities/text/multi-agent)
 
 # January 2026
 
@@ -14207,47 +14784,6 @@ The base for all routes is at `https://api.x.ai`. For all routes, you have to au
 * [Batches](/developers/rest-api-reference/inference/batches)
 * [Other](/developers/rest-api-reference/inference/other)
 * [Legacy & Deprecated](/developers/rest-api-reference/inference/legacy)
-
-
-===/developers/rest-api-reference/inference/text-to-speech===
-#### Inference API
-
-# Voice
-
-***
-
-## POST /v1/tts
-
-API endpoint for POST requests to /v1/tts.
-
-```
-Method: POST
-Path: /v1/tts
-```
-
-***
-
-***
-
-## GET /v1/tts/voices
-
-API endpoint for GET requests to /v1/tts/voices.
-
-```
-Method: GET
-Path: /v1/tts/voices
-```
-
-***
-
-## GET /v1/tts/voices/\{voice\_id}
-
-API endpoint for GET requests to /v1/tts/voices/\{voice\_id}.
-
-```
-Method: GET
-Path: /v1/tts/voices/{voice_id}
-```
 
 
 ===/developers/rest-api-reference/inference/videos===
@@ -17260,7 +17796,7 @@ Remote MCP Tools allow Grok to connect to external MCP (Model Context Protocol) 
 
 ## SDK Support
 
-Remote MCP tools are supported in the xAI native SDK and the OpenAI compatible Responses API.
+Remote MCP tools are supported in the xAI native SDK, the OpenAI compatible Responses API, and the [Voice Agent API](/developers/model-capabilities/audio/voice-agent#remote-mcp-tools).
 
 The `require_approval` and `connector_id` parameters in the OpenAI Responses API are not currently supported.
 
@@ -17271,11 +17807,11 @@ To use remote MCP tools, you need to configure the connection to your MCP server
 | Parameter | Required | Description |
 |-----------|-------------------|-------------|
 | `server_url` | Yes | The URL of the MCP server to connect to. Only Streaming HTTP and SSE transports are supported. |
-| `server_label` | No | A label to identify the server (used for tool call prefixing) |
+| `server_label` | Yes | A label to identify the server (used for tool call prefixing) |
 | `server_description` | No | A description of what the server provides |
-| `allowed_tool_names` | No | List of specific tool names to allow (empty allows all) |
+| `allowed_tools` | No | List of specific tool names to allow (empty allows all). The xAI native SDK uses the parameter name `allowed_tool_names`. |
 | `authorization` | No | A token that will be set in the Authorization header on requests to the MCP server |
-| `extra_headers` | No | Additional headers to include in requests |
+| `headers` | No | Additional headers to include in requests. The xAI native SDK uses the parameter name `extra_headers`. |
 
 ### Basic MCP Tool Usage
 
@@ -17400,11 +17936,11 @@ curl https://api.x.ai/v1/responses \\
 
 ## Tool Enablement and Access Control
 
-When you configure a Remote MCP Tool without specifying `allowed_tool_names`, all tool definitions exposed by the MCP server are automatically injected into the model's context. This means the model gains access to every tool that the MCP server provides, allowing it to use any of them during the conversation.
+When you configure a Remote MCP Tool without specifying `allowed_tools`, all tool definitions exposed by the MCP server are automatically injected into the model's context. This means the model gains access to every tool that the MCP server provides, allowing it to use any of them during the conversation.
 
-For example, if an MCP server exposes 10 different tools and you don't specify `allowed_tool_names`, all 10 tool definitions will be available to the model. The model can then choose to call any of these tools based on the user's request and the tool descriptions.
+For example, if an MCP server exposes 10 different tools and you don't specify `allowed_tools`, all 10 tool definitions will be available to the model. The model can then choose to call any of these tools based on the user's request and the tool descriptions.
 
-Use the `allowed_tool_names` parameter to selectively enable only specific tools from an MCP server. This can give you several key benefits:
+Use the `allowed_tools` parameter to selectively enable only specific tools from an MCP server. This can give you several key benefits:
 
 * **Better Performance**: Reduce context overhead by limiting tool definitions the model needs to consider
 * **Reduced Risk**: For example, restrict access to tools that only perform read-only operations to prevent the model from modifying data
@@ -17439,7 +17975,7 @@ Each server can provide different capabilities - documentation tools, API integr
 ## Best Practices
 
 * **Provide clear server metadata**: Use descriptive `server_label` and `server_description` when configuring multiple MCP servers to help the model understand each server's purpose and select the right tools
-* **Filter tools appropriately**: Use `allowed_tool_names` to restrict access to only necessary tools, especially when servers have many tools since the model must keep all available tool definitions in context
+* **Filter tools appropriately**: Use `allowed_tools` to restrict access to only necessary tools, especially when servers have many tools since the model must keep all available tool definitions in context
 * **Use secure connections**: Always use HTTPS URLs and implement proper authentication mechanisms on your MCP server
 * **Provide Examples**: While the model can generally figure out what tools to use based on the tool descriptions and the user request it may help to provide examples in the prompt
 
@@ -18900,32 +19436,46 @@ support queries.
 
 Automate user provisioning and deprovisioning by integrating System for Cross-domain Identity Management (SCIM) with your Identity Provider (IdP). Follow these steps to set up SCIM effectively.
 
-### Step 1: Configure Groups in Your IdP
+### Step 1: Configure directory sync in your IdP
 
 1. On the `/organization` page, click "Setup SCIM".
-2. Follow the IdP-specific steps provided to sync your groups.
-3. Create as many groups as needed in your IdP—typically named something like `xai-admin`, `xai-supergrok-heavy`, `xai-supergrok`, or whatever fits your organizational structure.
-   This step ensures your groups are ready for mapping and synchronization with xAI.
+2. Follow the IdP-specific steps provided to connect your directory.
+3. Create groups in your IdP that correspond to how you want to organize access in xAI—for example, `xai-engineering`, `xai-data-science`, or whatever fits your organizational structure.
 
-### Step 2: Map Groups to Roles in xAI
+This step ensures your directory is synced and your groups are ready for mapping.
 
-Map your IdP groups to the available roles in xAI.
+### Step 2: Create roles
 
-* The out-of-the-box roles include Admin, SuperGrok Heavy, SuperGrok, and Member (the default role assigned to users without any specified group).
-* If you require more granular roles beyond these, contact your xAI representative to explore custom setup options—these standard roles are usually sufficient for most organizations.
-  This mapping aligns your IdP groups with xAI's role-based access controls.
+Define the roles your organization needs directly in the xAI console.
 
-### Step 3: Map Roles to Teams, Permissions, and Licenses
+* Click **"Create Role"** to add a new role. Each role gets a name, a slug (used as a unique identifier), and an optional description.
+* Create as many roles as you need to match your organizational structure—there is no limit.
+* **Drag to reorder** roles by priority. Higher-priority roles take precedence when a user belongs to multiple groups.
+* The **Member** role is always present at the bottom of the list as the default role assigned to users without any specified group.
 
-Assign your mapped roles to appropriate resources.
+You can also create and reorder roles later from the Provisioning tab on the organization page.
 
-* Map roles to teams (usually just one primary team, but you may have more).
-* Assign any relevant permissions.
-* Typically, associate a license with the role.
+### Step 3: Map groups to roles
+
+Map your IdP groups to the roles you created in the previous step.
+
+1. On this step, click **"Assign Groups"** to open the management portal at **sso.x.ai**.
+2. Click **"Configure role assignment"** to set up group-to-role mappings.
+3. For each IdP group, select the corresponding xAI role.
+
+This mapping aligns your IdP groups with xAI's role-based access controls so that users are automatically assigned the correct role when provisioned.
+
+### Step 4: Configure roles with teams, permissions, and licenses
+
+Assign your roles to the appropriate resources.
+
+* **Teams:** Map each role to one or more console teams.
+* **Permissions:** Assign the access control lists (ACLs) each role should have.
+* **Licenses:** Associate the appropriate product license (e.g., Grok Business) with the role.
 
 This step customizes access and entitlements based on your organizational needs.
 
-### Step 4: Preview and Activate SCIM
+### Step 5: Preview and activate SCIM
 
 Before finalizing, review the changes.
 
@@ -18938,6 +19488,14 @@ This verification ensures a smooth transition.
 &#x20;SCIM is very disruptive. Users might lose or gain access to resources
 they did not have before. Notify your organization that you are undergoing this transition and
 **verify everything is correct during the preview stage before proceeding.**
+
+### Managing roles after activation
+
+After SCIM is activated, you can continue to manage roles from the **Provisioning** tab on the organization page:
+
+* **Create new roles** using the "Create Role" button in the SCIM Roles section header.
+* **Reorder role priority** using the "Reorder Priority" button.
+* **Configure roles** by clicking the overflow menu on any role to update its teams, permissions, and licenses.
 
 ## Need Help?
 
