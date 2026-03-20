@@ -180,11 +180,12 @@
   }
 
   async function handleLoginClick() {
+    // Block all interaction during maintenance (functions not deployed / config mismatch)
+    if (isMaintenance) {
+      maintenanceInfoModalOpen = true;
+      return;
+    }
     if (isAuthenticated) {
-      if (isMaintenance) {
-        maintenanceInfoModalOpen = true;
-        return;
-      }
       if (isGuest) {
         const isGuestRateLimited = await getGuestRateLimit();
         if (isGuestRateLimited()) {
@@ -247,7 +248,7 @@
     }, POLL_INTERVAL_MS);
   }
 
-  // Effect to check maintenance on auth change
+  // Check maintenance on mount (before login is offered) AND on auth change
   $effect(() => {
     if (isAuthenticated) {
       checkMaintenanceStatus();
@@ -255,6 +256,9 @@
   });
 
   onMount(() => {
+    // Pre-login maintenance check — detects undeployed functions / config mismatch
+    checkMaintenanceStatus();
+
     window.addEventListener("tresr:auth-progress", onAuthProgress);
     window.addEventListener("auth-modal:open", handleAuthModalOpen);
 
