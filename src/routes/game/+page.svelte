@@ -261,6 +261,11 @@
     } else {
       log.info(COMPONENT_NAME, "Landscape detected, resuming MainScene");
       if (mainScene.scene.isPaused()) mainScene.scene.resume();
+      // Re-request fullscreen on landscape entry — orientation change is
+      // considered a user gesture on Chrome Android, so this often works.
+      if (!document.fullscreenElement) {
+        requestFullscreen();
+      }
     }
   });
 
