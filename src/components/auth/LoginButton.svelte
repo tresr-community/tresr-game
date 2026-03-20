@@ -292,9 +292,10 @@
       ? 'animate-pulse bg-[#10b981] text-black shadow-[0_0_20px_rgba(16,185,129,0.5)]'
       : ''}
       {isMaintenance ? 'bg-[#facc15] text-black opacity-60' : ''}"
+    title={isMaintenance ? "Systems initializing — check back shortly!" : ""}
   >
     {#if isMaintenance}
-      UPGRADING
+      NOT READY
     {:else if isAuthenticated}
       <span class="flex flex-col items-center leading-tight">
         <span>START</span>
@@ -522,9 +523,9 @@
 </Modal>
 
 <!-- Maintenance Info Dialog -->
-<Modal bind:open={maintenanceInfoModalOpen} title="Upgrading">
+<Modal bind:open={maintenanceInfoModalOpen} title="Not Ready">
   <p class="py-4 text-center text-sm text-white/70">
-    The game is currently being upgraded, check back soon!
+    The arcade is being set up. Come back again soon!
   </p>
   {#snippet footer()}
     <button

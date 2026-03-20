@@ -8,11 +8,7 @@
   import Footer from "@/components/user/Footer.svelte";
   import {config} from "@/lib/config/client";
   import {onMount} from "svelte";
-  import {
-    vaultStatus,
-    openLeaderboard,
-    openHowToPlay,
-  } from "@/lib/stores/ui.svelte";
+  import {openLeaderboard, openHowToPlay} from "@/lib/stores/ui.svelte";
 
   const appName = config.app.name;
   const timeLimitMinutes = Math.floor(config.gameplay.time_limit_seconds / 60);
@@ -20,8 +16,6 @@
   const LAST_WALLPAPER_KEY = "tresr_last_wallpaper";
   let wallpaperBgUrl = $state("");
   let isWallpaperReady = $state(false);
-  let vaultLocked = $state(false);
-  let loginContent = "LOGIN";
 
   function selectWallpaper() {
     const wallpapers = config.assets.wallpapers;
@@ -51,10 +45,6 @@
   function handleManualClick() {
     openHowToPlay.open();
   }
-
-  $effect(() => {
-    if (vaultStatus.current) vaultLocked = vaultStatus.current.locked;
-  });
 
   onMount(() => {
     const wallpaper = selectWallpaper();
@@ -110,16 +100,8 @@
         <div
           class="mt-6 flex w-full shrink-0 flex-col items-center gap-6 md:mt-10 md:gap-8"
         >
-          <div
-            class="relative z-10 flex shrink-0 flex-col gap-2"
-            style={vaultLocked ? "opacity: 0.5;" : ""}
-          >
+          <div class="relative z-10 flex shrink-0 flex-col gap-2">
             <LoginButton />
-            {#if vaultLocked}
-              <div
-                class="pointer-events-auto absolute inset-0 z-10 block cursor-not-allowed"
-              ></div>
-            {/if}
           </div>
 
           <div
