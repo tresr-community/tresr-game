@@ -320,7 +320,7 @@
 </div>
 
 <!-- Login Modal -->
-<Modal bind:open={loginModalOpen} title="Acknowledge Identity">
+<Modal bind:open={loginModalOpen} title="Acknowledge Identity" mobileFull>
   <div
     class="mb-4 flex w-full rounded-md border border-white/10 bg-black/40 p-1"
   >
@@ -466,7 +466,7 @@
 </Modal>
 
 <!-- PassKey Registration Modal -->
-<Modal bind:open={registerModalOpen} title="Register PassKey">
+<Modal bind:open={registerModalOpen} title="Register PassKey" mobileFull>
   <div class="mt-4 flex flex-col gap-2">
     <label
       class="text-[10px] font-bold tracking-widest text-white/50 uppercase"
@@ -507,6 +507,7 @@
   title="Session Limit Reached"
   closeOnEscape={false}
   closeOnOutsideClick={false}
+  mobileFull
 >
   <p class="py-4 text-center text-sm text-white/70">
     You've used all your free guest sessions for today. Come back tomorrow or
@@ -523,7 +524,7 @@
 </Modal>
 
 <!-- Maintenance Info Dialog -->
-<Modal bind:open={maintenanceInfoModalOpen} title="Not Ready">
+<Modal bind:open={maintenanceInfoModalOpen} title="Not Ready" mobileFull>
   <p class="py-4 text-center text-sm text-white/70">
     The arcade is being set up. Come back again soon!
   </p>

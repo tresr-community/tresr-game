@@ -129,7 +129,9 @@ export class Enemy extends BaseEntity {
         return enemy.resolutionScale;
       },
       get attackRange() {
-        return enemy._attackRange;
+        // Multiply by resolutionScale so AI attack checks stay proportional to
+        // the canvas size — raw config values are in design-space (720 px) pixels.
+        return enemy._attackRange * enemy.resolutionScale;
       },
       get hp() {
         return enemy.hp;
@@ -349,8 +351,7 @@ export class Enemy extends BaseEntity {
     groundY: number,
     rng: Phaser.Math.RandomDataGenerator,
     walkInTargetX: number,
-    textureKey: string,
-    aiOverride?: string
+    textureKey: string
   ) {
     this._rng = rng;
     this.setActive(true);
@@ -432,23 +433,7 @@ export class Enemy extends BaseEntity {
       | "erratic"
       | "passive"
       | "retardio";
-    let aiType: AITypeKeys;
-    if (
-      aiOverride &&
-      [
-        "direct",
-        "flanker",
-        "cautious",
-        "swarm",
-        "erratic",
-        "passive",
-        "retardio",
-      ].includes(aiOverride)
-    ) {
-      aiType = aiOverride as AITypeKeys;
-    } else {
-      aiType = selectRandomAIType(this.config, this._rng) as AITypeKeys;
-    }
+    const aiType = selectRandomAIType(this.config, this._rng) as AITypeKeys;
     this.behavior = createBehavior(aiType);
     this.behavior.onSpawn(this._ctx);
 

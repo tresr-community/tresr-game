@@ -288,7 +288,7 @@
   });
 </script>
 
-<Modal bind:open title="Player Profile">
+<Modal bind:open title="Player Profile" mobileFull>
   {#if isLoading}
     <div class="py-10 text-center">
       <div
@@ -576,8 +576,11 @@
   bind:open={walletLinkOpen}
   closeOnOutsideClick={false}
   closeOnEscape={false}
+  mobileFull
 >
-  <div class="flex flex-col items-center justify-center py-8">
+  <div
+    class="flex min-h-[50vh] flex-1 flex-col items-center justify-center py-8"
+  >
     <div
       class="border-primary h-12 w-12 animate-spin rounded-full border-4 border-t-transparent"
     ></div>

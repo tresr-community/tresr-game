@@ -10,6 +10,8 @@ declare global {
       details?: string,
       errorId?: string
     ) => void;
+    // Info-level toast + confetti — for wins, rewards, and hype moments.
+    showConfettiToast: (message: string, details?: string) => void;
   }
 }
 

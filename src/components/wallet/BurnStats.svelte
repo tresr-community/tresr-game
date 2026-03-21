@@ -19,10 +19,10 @@
 
   let isDeployed = isVaultDeployed(config);
 
-  let fees = "0";
-  let rewarded = "0";
-  let burned = "0";
-  let isLoaded = false;
+  let fees = $state("0");
+  let rewarded = $state("0");
+  let burned = $state("0");
+  let isLoaded = $state(false);
 
   const formatWeiAbbr = (weiStr: string) => {
     const num = parseFloat(weiStr.replace(/,/g, ""));

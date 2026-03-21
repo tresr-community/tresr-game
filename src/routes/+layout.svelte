@@ -84,6 +84,28 @@
       PwaRegistration.getInstance().destroy();
     };
   });
+
+  async function enterFullscreenLandscape() {
+    try {
+      // Step 1: go fullscreen (requires user gesture — this button IS that gesture)
+      if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        const el = document.documentElement as any;
+        if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+      }
+    } catch {
+      // Fullscreen blocked (e.g. iOS Safari in some contexts) — fall through
+    }
+
+    try {
+      // Step 2: lock orientation to landscape (only works after fullscreen on most browsers)
+      const orientation = screen.orientation as any;
+      if (orientation?.lock) await orientation.lock("landscape");
+    } catch {
+      // iOS Safari doesn't support orientation lock — user must rotate manually
+    }
+  }
 </script>
 
 <Header />
@@ -98,12 +120,20 @@
   >
     <div class="animate-bounce text-7xl">📱</div>
     <p class="font-display text-primary text-3xl font-bold tracking-wide">
-      ROTATE YOUR DEVICE
+      READY TO PLAY?
     </p>
     <p class="max-w-xs text-lg opacity-60">
-      This game is best played in landscape mode.
+      Tap below to enter fullscreen landscape mode.
     </p>
-    <div class="mt-4 animate-pulse text-5xl">↻</div>
+    <button
+      onclick={enterFullscreenLandscape}
+      class="bg-primary hover:bg-primary/90 mt-2 rounded-md px-8 py-3 text-base font-bold tracking-widest text-black uppercase shadow-[0_0_20px_var(--color-primary)] transition-all hover:scale-[1.02] active:scale-95"
+    >
+      ⛶ Play Fullscreen
+    </button>
+    <p class="max-w-xs text-sm opacity-30">
+      or rotate your device to landscape
+    </p>
   </div>
 {/if}
 

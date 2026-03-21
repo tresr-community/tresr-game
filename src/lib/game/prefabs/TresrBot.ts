@@ -214,9 +214,13 @@ export class TresrBot extends BaseEntity {
     }
 
     // AI Priority: special → melee → chase → follow → idle
-    const enemiesInSpecialRange = this.countEnemiesInRadius(
-      botConfig.special.radius
-    );
+    const rs = this.resolutionScale;
+    // Scale all distance thresholds — config values are in design-space pixels.
+    const scaledSpecialRadius = botConfig.special.radius * rs;
+    const scaledAttackRange = botConfig.combat.attack_range * rs;
+    const scaledFollowDist = botConfig.combat.follow_distance * rs;
+    const enemiesInSpecialRange =
+      this.countEnemiesInRadius(scaledSpecialRadius);
 
     // 1. Special attack
     if (
@@ -235,13 +239,13 @@ export class TresrBot extends BaseEntity {
       );
 
       if (
-        dist < botConfig.combat.attack_range &&
+        dist < scaledAttackRange &&
         now - this.attackCooldown >= botConfig.combat.attack_cooldown_ms
       ) {
         this.attack(now);
       }
       // 3. Chase
-      else if (dist >= botConfig.combat.attack_range) {
+      else if (dist >= scaledAttackRange) {
         this.moveToward(
           this.target.x,
           this.target.groundY,
@@ -258,7 +262,7 @@ export class TresrBot extends BaseEntity {
         this.owner.x,
         this.owner.groundY
       );
-      if (distToOwner > botConfig.combat.follow_distance) {
+      if (distToOwner > scaledFollowDist) {
         this.moveToward(
           this.owner.x,
           this.owner.groundY,
@@ -405,6 +409,7 @@ export class TresrBot extends BaseEntity {
     this.scene.events.emit("bot_special");
 
     // AoE damage to all enemies within radius
+    const scaledRadius = botConfig.special.radius * this.resolutionScale;
     if (this.enemyGroup) {
       for (const child of this.enemyGroup.getChildren()) {
         const enemy = child as Enemy;
@@ -415,7 +420,7 @@ export class TresrBot extends BaseEntity {
           enemy.x,
           enemy.groundY
         );
-        if (dist <= botConfig.special.radius) {
+        if (dist <= scaledRadius) {
           enemy.takeDamage(botConfig.special.damage);
         }
       }
@@ -429,7 +434,7 @@ export class TresrBot extends BaseEntity {
         this.boss.x,
         this.boss.groundY
       );
-      if (dist <= botConfig.special.radius) {
+      if (dist <= scaledRadius) {
         this.boss.takeDamage(botConfig.special.damage);
       }
     }
@@ -445,7 +450,7 @@ export class TresrBot extends BaseEntity {
     this.specialRing.setDepth(this.depth + 1);
     this.specialRingTween = this.scene.tweens.add({
       targets: this.specialRing,
-      radius: botConfig.special.radius,
+      radius: scaledRadius,
       alpha: 0,
       duration: 400,
       onComplete: () => {

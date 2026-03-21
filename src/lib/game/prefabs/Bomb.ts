@@ -134,6 +134,11 @@ export class Bomb extends BaseEntity {
 
   private explode() {
     const scene = this.scene;
+    // Scale the explosion radius to the current canvas resolution.
+    // explosionRadius is defined at the reference resolution; resolutionScale
+    // adjusts it proportionally so phones don't get a disproportionately
+    // large blast area.
+    const scaledRadius = this.explosionRadius * this.resolutionScale;
 
     // Snap to ground for the explosion visual
     this.y = this.groundY;
@@ -142,14 +147,14 @@ export class Bomb extends BaseEntity {
     const explosion = scene.add.circle(
       this.x,
       this.groundY,
-      this.explosionRadius * 0.2,
+      scaledRadius * 0.2,
       0xff6600,
       0.5
     );
     explosion.setDepth(1000);
     scene.tweens.add({
       targets: explosion,
-      radius: this.explosionRadius,
+      radius: scaledRadius,
       alpha: 0,
       duration: 300,
       onComplete: () => explosion.destroy(),
@@ -163,7 +168,7 @@ export class Bomb extends BaseEntity {
     scene.events.emit("bomb_explosion", {
       x: this.x,
       y: this.groundY,
-      radius: this.explosionRadius,
+      radius: scaledRadius,
       damage: this.damage,
     });
 

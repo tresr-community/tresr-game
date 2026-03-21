@@ -39,7 +39,12 @@ export function createBehavior(aiType: EnemyAIType): AIBehavior {
 
 /**
  * Weighted random selection of an AI type from config weights.
- * Falls back to "direct" when total weight is zero.
+ *
+ * Weights are validated at build time by the Zod schema (EnemyAiWeightsSchema)
+ * to ensure they sum to exactly 100. This function is intentionally lenient at
+ * runtime — it normalises by totalWeight so any non-zero distribution works,
+ * and falls back to "direct" if all weights are zero (should never happen in
+ * a correctly configured build).
  */
 export function selectRandomAIType(
   config: ConfigTypes,
@@ -65,5 +70,5 @@ export function selectRandomAIType(
     if (roll <= 0) return type;
   }
 
-  return "direct"; // fallback
+  return "direct"; // fallback (unreachable with valid weights)
 }

@@ -1,6 +1,6 @@
 <script lang="ts">
   import {onDestroy} from "svelte";
-  import {listDocs} from "@junobuild/core";
+  import {listDocs, getDoc} from "@junobuild/core";
   import PWA from "@/lib/pwa";
   import {log} from "@/lib/utils/log";
   import {trackModalOpen} from "@/lib/metrics/analytics";
@@ -27,6 +27,7 @@
   let infoMessage = $state("");
 
   let countdownInterval: ReturnType<typeof setInterval> | null = null;
+  let globalExpiresAt = $state<number | null>(null);
   let currentTime = $state(Date.now());
   let disposed = false;
 
@@ -42,9 +43,14 @@
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    if (minutes > 0) return `${minutes}m`;
-    return "<1m";
+    const seconds = totalSeconds % 60;
+
+    // Always format with leading zeros for a stable clock display
+    const h = hours > 0 ? `${hours}h ` : "";
+    const m = `${minutes.toString().padStart(2, "0")}m `;
+    const s = `${seconds.toString().padStart(2, "0")}s`;
+
+    return `${h}${m}${s}`;
   }
 
   async function openLeaderboardModal() {
@@ -70,6 +76,7 @@
     isError = false;
     infoMessage = "";
     activeItems = [];
+    globalExpiresAt = null;
 
     if (countdownInterval !== null) {
       clearInterval(countdownInterval);
@@ -87,38 +94,45 @@
     }, 10000);
 
     try {
-      const {items} = await listDocs({
+      const doc = await getDoc({
         collection: "scores",
-        filter: {
-          order: {desc: true, field: "active_score" as any},
-          paginate: {limit: 50},
-        },
+        key: "prize_timer",
       });
 
       if (disposed) return;
       const now = Date.now();
 
-      const activeFiltered = items.filter((item) => {
-        const entry = item.data as any;
-        const expiresAt = entry?.expires_at as number | undefined;
-        const activeScore = entry?.active_score as number | undefined;
-        return expiresAt && expiresAt > now && activeScore && activeScore > 0;
-      });
-
-      if (activeFiltered.length === 0) {
+      if (!doc || !doc.data) {
         infoMessage = "No active scores. Play to claim #1!";
       } else {
-        activeItems = activeFiltered
-          .sort(
-            (a, b) =>
-              ((b.data as any).active_score || 0) -
-              ((a.data as any).active_score || 0)
-          )
-          .slice(0, 10);
+        const timerData = doc.data as any;
+        const expiresAt = timerData.expires_at
+          ? Number(timerData.expires_at)
+          : 0;
+        const topScores = timerData.top_scores || [];
 
-        countdownInterval = setInterval(() => {
-          currentTime = Date.now();
-        }, 60000);
+        if (expiresAt > now) {
+          globalExpiresAt = expiresAt;
+
+          if (topScores.length > 0) {
+            // Map to match the existing UI template expectations
+            activeItems = topScores.slice(0, 10).map((scoreEntry: any) => ({
+              data: {
+                nickname: scoreEntry.nickname,
+                avatar_url: scoreEntry.avatar_url,
+                active_score: scoreEntry.score,
+              },
+            }));
+          } else {
+            infoMessage = "No active scores. Play to claim #1!";
+          }
+
+          countdownInterval = setInterval(() => {
+            currentTime = Date.now();
+          }, 1000); // 1-second update for a smoother top-level countdown
+        } else {
+          infoMessage = "No active scores. Play to claim #1!";
+        }
       }
     } catch (err: any) {
       const errMsg = err?.message || String(err);
@@ -167,10 +181,12 @@
 
       if (disposed) return;
 
-      const validItems = items.filter((item) => item.key !== "top_scorer");
+      const validItems = items.filter(
+        (item) => item.key !== "top_scorer" && item.key !== "prize_timer"
+      );
 
       if (validItems.length === 0) {
-        infoMessage = "No scores yet. Be the first!";
+        infoMessage = "No scores yet — play and become the first legend!";
       } else {
         alltimeItems = validItems
           .sort(
@@ -208,7 +224,12 @@
   });
 </script>
 
-<Modal bind:open title="🏆 DEGENERATE HALL OF FAME" maxWidth="max-w-2xl">
+<Modal
+  bind:open
+  title="🏆 DEGENERATE HALL OF FAME"
+  maxWidth="max-w-2xl"
+  mobileFull
+>
   <div
     class="mb-4 flex w-full rounded-md border border-white/10 bg-black/40 p-1"
   >
@@ -231,6 +252,22 @@
       ALL TIME
     </button>
   </div>
+
+  {#if currentTab === "active" && globalExpiresAt && !isLoading && !isError}
+    <div
+      class="border-primary/20 bg-primary/5 mb-4 rounded-md border p-3 text-center"
+    >
+      <p class="text-primary/80 text-xs font-bold tracking-widest uppercase">
+        Consolation Prize Ends In
+      </p>
+      <p class="text-primary mt-1 font-mono text-2xl font-bold">
+        {formatCountdown(globalExpiresAt - currentTime)}
+      </p>
+      <p class="mt-2 text-[10px] tracking-wider text-white/50 uppercase">
+        Awarded to #1 if the boss isn't defeated!
+      </p>
+    </div>
+  {/if}
 
   {#if isLoading}
     <div class="flex flex-col items-center justify-center py-10">
@@ -266,7 +303,7 @@
             <th class="px-3 py-2.5">Agent</th>
             <th class="px-3 py-2.5 text-right">Score</th>
             {#if currentTab === "active"}
-              <th class="px-3 py-2.5 text-right">Expires</th>
+              <th class="px-3 py-2.5 text-right"></th>
             {:else}
               <th class="hidden px-3 py-2.5 text-right sm:table-cell">Date</th>
             {/if}
@@ -314,9 +351,9 @@
               </td>
               {#if currentTab === "active"}
                 <td
-                  class="px-3 py-3 text-right font-mono text-xs text-white/60 uppercase"
+                  class="px-3 py-3 text-right font-mono text-xs text-white/60"
                 >
-                  {formatCountdown((item.data.expires_at || 0) - currentTime)}
+                  <!-- Empty column instead of individual expires -->
                 </td>
               {:else}
                 <td

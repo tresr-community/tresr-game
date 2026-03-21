@@ -30,6 +30,7 @@
   title="Access Denied"
   closeOnEscape={false}
   closeOnOutsideClick={false}
+  mobileFull
 >
   <p class="py-2 opacity-70">
     Your account has been temporarily suspended due to a tamper detection

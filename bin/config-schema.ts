@@ -315,15 +315,33 @@ const PlayerSchema = z.object({
 });
 
 /** Enemy AI profile schemas — only cautious, erratic, etc. have fields; direct is empty. */
-const EnemyAiWeightsSchema = z.object({
-  cautious: z.number().nonnegative(),
-  direct: z.number().nonnegative(),
-  erratic: z.number().nonnegative(),
-  flanker: z.number().nonnegative(),
-  passive: z.number().nonnegative(),
-  retardio: z.number().nonnegative(),
-  swarm: z.number().nonnegative(),
-});
+const EnemyAiWeightsSchema = z
+  .object({
+    cautious: z.number().nonnegative(),
+    direct: z.number().nonnegative(),
+    erratic: z.number().nonnegative(),
+    flanker: z.number().nonnegative(),
+    passive: z.number().nonnegative(),
+    retardio: z.number().nonnegative(),
+    swarm: z.number().nonnegative(),
+  })
+  .refine(
+    (w) =>
+      Math.round(
+        w.cautious +
+          w.direct +
+          w.erratic +
+          w.flanker +
+          w.passive +
+          w.retardio +
+          w.swarm
+      ) === 100,
+    {
+      message:
+        "Enemy AI weights must sum to exactly 100 (they represent percentages). " +
+        "Check gameplay.entities.enemy.ai.weights in tresr.yaml.",
+    }
+  );
 
 const EnemyAiSchema = z.object({
   weights: EnemyAiWeightsSchema,
@@ -340,24 +358,31 @@ const EnemyAiSchema = z.object({
   direct: z.record(z.string(), z.unknown()),
   erratic: z.object({
     speed_mult: z.number().positive(),
-    zigzag_frequency: z.number().positive(),
-    zigzag_amplitude: z.number().positive(),
-    jitter_x: z.number().positive(),
-    jitter_y: z.number().positive(),
+    drift_rate: z.number().positive(),
+    mean_reversion: z.number().positive(),
+    speed_variance: z.number().min(0).max(1),
   }),
   flanker: z.object({
     speed_mult: z.number().positive(),
     offset: z.number().positive(),
     switch_time: z.number().positive(),
     orbit_time: z.number().positive(),
+    orbit_time_variance: z.number().min(0).max(1),
     lunge_speed_mult: z.number().positive(),
     lunge_duration: z.number().positive(),
+    lunge_tint: z.number().nonnegative(),
     recovery_time: z.number().positive(),
+    recovery_lateral_bias: z.number().min(0).max(2),
   }),
   passive: z.object({
     speed_mult: z.number().positive(),
     provoked_speed_mult: z.number().positive(),
     hp_mult: z.number().positive(),
+    provoked_tint: z.number().nonnegative(),
+    provoke_delay: z.number().nonnegative(),
+    forgiveness_time: z.number().nonnegative(),
+    wander_frequency: z.number().positive(),
+    wander_amplitude: z.number().nonnegative(),
   }),
   retardio: z.object({
     speed_mult: z.number().positive(),
@@ -369,11 +394,15 @@ const EnemyAiSchema = z.object({
   }),
   swarm: z.object({
     speed_mult: z.number().positive(),
+    scared_speed_mult: z.number().positive(),
     group_radius: z.number().positive(),
     speed_bonus_per_ally: z.number().positive(),
     max_speed_mult: z.number().positive(),
     rush_threshold: z.number().positive(),
     rush_tint: z.number().nonnegative(),
+    scared_tint: z.number().nonnegative(),
+    flee_radius: z.number().positive(),
+    cohesion_weight: z.number().positive(),
     check_frame_interval: z.number().positive(),
   }),
 });

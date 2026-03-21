@@ -603,6 +603,75 @@ describe("client.gameplay.vault", () => {
 });
 
 // ---------------------------------------------------------------------------
+// Suite 12: client.gameplay.entities.enemy.ai.weights — sum must equal 100
+// ---------------------------------------------------------------------------
+
+describe("client.gameplay.entities.enemy.ai.weights", () => {
+  function clientWithWeights(weights: Record<string, number>) {
+    const c = clone(realClient);
+    const gp = c.gameplay as Record<string, unknown>;
+    const ent = gp.entities as Record<string, unknown>;
+    const enemy = ent.enemy as Record<string, unknown>;
+    const ai = enemy.ai as Record<string, unknown>;
+    ai.weights = weights;
+    return c;
+  }
+
+  const validWeights = {
+    cautious: 0,
+    direct: 100,
+    erratic: 0,
+    flanker: 0,
+    passive: 0,
+    retardio: 0,
+    swarm: 0,
+  };
+
+  test("weights summing to 100 are accepted", () => {
+    const result = ClientConfigSchema.safeParse(
+      clientWithWeights(validWeights)
+    );
+    expect(result.success).toBe(true);
+  });
+
+  test("weights summing to 101 are rejected", () => {
+    const result = ClientConfigSchema.safeParse(
+      clientWithWeights({...validWeights, direct: 101})
+    );
+    expect(result.success).toBe(false);
+  });
+
+  test("weights summing to 99 are rejected", () => {
+    const result = ClientConfigSchema.safeParse(
+      clientWithWeights({...validWeights, direct: 99})
+    );
+    expect(result.success).toBe(false);
+  });
+
+  test("weights summing to 0 are rejected", () => {
+    const result = ClientConfigSchema.safeParse(
+      clientWithWeights({...validWeights, direct: 0})
+    );
+    expect(result.success).toBe(false);
+  });
+
+  test("equal split (25+25+25+25=100) is accepted", () => {
+    const result = ClientConfigSchema.safeParse(
+      clientWithWeights({
+        cautious: 25,
+        direct: 25,
+        erratic: 25,
+        flanker: 25,
+        passive: 0,
+        retardio: 0,
+        swarm: 0,
+      })
+    );
+    expect(result.success).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Suite: server.juno environment fields
 // ---------------------------------------------------------------------------
 

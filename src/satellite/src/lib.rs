@@ -78,18 +78,7 @@ use types::{
 /// Populated lazily on first call from a persisted datastore document, and updated
 /// (with write-through) when new higher scores are written.
 ///
-/// Previously this used a full `list_docs_store` scan on cold start which exceeded
-/// the 40B instruction limit (IC0522) as the leaderboard grew.
-#[derive(Clone)]
-struct TopScorerCache {
-    key: String,
-    score: u64,
-    scored_at: u64,
-    _expires_at: u64,
-    owner: candid::Principal,
-}
-
-/// Serializable version of TopScorerCache for datastore persistence.
+/// Legacy Serializable version of TopScorerCache for data migration.
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
 struct TopScorerCacheDoc {
@@ -97,23 +86,20 @@ struct TopScorerCacheDoc {
     score: u64,
     scored_at: u64,
     expires_at: u64,
-    /// Principal stored as text for JSON serialization
     owner_principal: String,
 }
 
-/// Three-state cache for the top active scorer.
+/// Three-state cache for the global prize timer and top active scores.
 #[derive(Clone)]
-enum TopScorerState {
+enum PrizeTimerState {
     /// Cold start — cache not yet loaded from datastore
     Cold,
-    /// Cache loaded, but no active top scorer exists
-    Empty,
-    /// Cached active top scorer
-    Active(TopScorerCache),
+    /// Cached global timer and active top scores
+    Active(types::PrizeTimerDoc),
 }
 
 thread_local! {
-    static TOP_SCORER: RefCell<TopScorerState> = const { RefCell::new(TopScorerState::Cold) };
+    static PRIZE_TIMER: RefCell<PrizeTimerState> = const { RefCell::new(PrizeTimerState::Cold) };
 }
 
 // =============================================================================
@@ -979,7 +965,7 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
         if claim.claim_type == "consolation" {
             // --- Consolation claim: skip game session validation ---
             // Resolve the actual user principal from the claim data.
-            // When triggered from resolve_expired_top_score, context.caller is
+            // When triggered from resolve_expired_prize_timer, context.caller is
             // admin_caller() — the real user is stored in claim.user_principal.
             let caller_text = context.caller.to_text();
             let user_principal_text = claim.user_principal.as_deref().unwrap_or(&caller_text);
@@ -1194,6 +1180,42 @@ async fn on_claim_created(context: OnSetDocContext) -> Result<(), String> {
 
         update_claim_doc(&context, &claim).await?;
 
+        // Reset the 24h consolation window. The golden rule is:
+        // "if nobody claims the vault prize within 24h of the last claim, award
+        // consolation to the current #1 scorer." Resetting here on on-chain
+        // confirmation (not on boss defeat) ensures the timer is only reset
+        // when a win is definitive.
+        let now_ms = time() / 1_000_000;
+        let new_consolation_window_end = now_ms + config::SCORE_TTL_HOURS * 3_600_000;
+
+        // Fully reset the timer and clear all active scores
+        let new_timer = types::PrizeTimerDoc {
+            current_round_start: now_ms,
+            expires_at: new_consolation_window_end,
+            top_scores: vec![],
+        };
+
+        PRIZE_TIMER.with(|cell| *cell.borrow_mut() = PrizeTimerState::Active(new_timer.clone()));
+
+        if let Err(e) = persist_prize_timer(&new_timer) {
+            logging::log_error(
+                "Consolation",
+                &format!(
+                    "Failed to persist consolation reset on claim (non-fatal): {}",
+                    e
+                ),
+            );
+        }
+
+        logging::log_info(
+            "Consolation",
+            &format!(
+                "Consolation window reset to {} and active scores cleared after successful claim by {}",
+                new_consolation_window_end,
+                context.caller.to_text()
+            ),
+        );
+
         logging::log_info(
             "Claims",
             &format!(
@@ -1337,40 +1359,98 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
     let caller_key = context.caller.to_text();
     let now_ms = time() / 1_000_000;
 
-    // Read caller's user profile for nickname
+    // Read existing scores entry FIRST so the nickname fallback below can reference it.
+    let existing_lb_doc = get_doc_store(context.caller, "scores".to_string(), caller_key.clone())?;
+    let existing_lb_version = existing_lb_doc.as_ref().and_then(|d| d.version);
+    let existing =
+        existing_lb_doc.and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
+
+    // Read caller's user profile for nickname. If the profile write and the game session
+    // write race (both fired concurrently from the client), the profile may not be visible
+    // yet. Fall back to the *existing* leaderboard nickname to prevent the "Unknown Agent"
+    // regression where a blank/missing profile silently overwrites a correct name.
     let user_doc = get_doc_store(context.caller, "users".to_string(), caller_key.clone())?;
     let (nickname, avatar_url) = match user_doc {
         Some(ref doc) => {
             let profile: UserProfile = decode_doc_data(&doc.data)?;
             (profile.nickname, profile.preferences.avatar_url)
         }
-        None => ("Unknown".to_string(), None),
+        None => {
+            let fallback_name = existing
+                .as_ref()
+                .map(|e: &LeaderboardEntry| e.nickname.clone())
+                .filter(|n| !n.is_empty())
+                .unwrap_or_else(|| "Unknown Agent".to_string());
+            let fallback_avatar = existing.as_ref().and_then(|e| e.avatar_url.clone());
+            (fallback_name, fallback_avatar)
+        }
     };
 
-    // Read existing scores entry (keep raw Doc for version)
-    let existing_lb_doc = get_doc_store(context.caller, "scores".to_string(), caller_key.clone())?;
+    // Before processing the new score, resolve the previous round if its timer expired.
+    // This will reset the PRIZE_TIMER global cache.
+    if let Err(e) = resolve_expired_prize_timer().await {
+        logging::log_error(
+            "Consolation",
+            &format!("resolve_expired_prize_timer failed (non-fatal): {}", e),
+        );
+    }
 
-    let existing_lb_version = existing_lb_doc.as_ref().and_then(|d| d.version);
-    let existing =
-        existing_lb_doc.and_then(|doc| decode_doc_data::<LeaderboardEntry>(&doc.data).ok());
+    // Load fresh prize timer (should be reset if it just expired)
+    let timer_state = PRIZE_TIMER.with(|cell| cell.borrow().clone());
+    let mut timer = match timer_state {
+        PrizeTimerState::Active(t) => t,
+        PrizeTimerState::Cold => {
+            load_persisted_prize_timer()?.unwrap_or_else(|| types::PrizeTimerDoc {
+                current_round_start: now_ms,
+                expires_at: now_ms + config::SCORE_TTL_HOURS * 3_600_000,
+                top_scores: vec![],
+            })
+        }
+    };
 
     let prev_high = existing.as_ref().map_or(0, |e| e.high_score);
     let prev_won = existing.as_ref().map_or(0, |e| e.games_won);
 
+    let existing_active = existing.as_ref().map_or(0, |e| e.active_score);
+    let existing_scored_at = existing.as_ref().and_then(|e| e.scored_at).unwrap_or(0);
+
+    // Check if the user's previously recorded active score is from an old globally expired round
+    let is_new_round_for_user = existing_scored_at < timer.current_round_start;
+    let new_score_is_better = session.score > existing_active;
+
+    // The user's new active score completely replaces the old one if the old one
+    // was from a previous round. Otherwise it only replaces if it's strictly better.
+    let (new_active_score, new_active_session) = if is_new_round_for_user || new_score_is_better {
+        (session.score, Some(context.data.key.clone()))
+    } else {
+        (
+            existing_active,
+            existing.as_ref().and_then(|e| e.session_id.clone()),
+        )
+    };
+
+    logging::log_info(
+        "Scores",
+        &format!(
+            "[Scores] session_score={} existing_active={} is_new_round={} → new_active={}",
+            session.score, existing_active, is_new_round_for_user, new_active_score
+        ),
+    );
+
     // Update scores entry with active score
     let entry = LeaderboardEntry {
-        nickname,
-        avatar_url,
+        nickname: nickname.clone(),
+        avatar_url: avatar_url.clone(),
         high_score: prev_high.max(session.score),
         games_won: if session.boss_defeated {
             prev_won + 1
         } else {
             prev_won
         },
-        active_score: session.score,
+        active_score: new_active_score,
         scored_at: Some(now_ms),
-        expires_at: Some(now_ms + config::SCORE_TTL_HOURS * 3_600_000),
-        session_id: Some(context.data.key.clone()),
+        expires_at: Some(timer.expires_at), // Kept for legacy compatibility
+        session_id: new_active_session.clone(),
     };
 
     let leaderboard_doc = SetDoc {
@@ -1386,417 +1466,389 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
         leaderboard_doc,
     )?;
 
-    let new_expires = now_ms + config::SCORE_TTL_HOURS * 3_600_000;
-    logging::log_info(
-        "Scores",
-        &format!(
-            "[Scores] Updated collection scores for user {} with score={}, nickname={}, expires_at={}",
-            caller_key, session.score, entry.nickname, new_expires
-        ),
-    );
-
-    // Update the top scorer cache if this score beats the current top
-    let new_cache = TopScorerCache {
-        key: caller_key.clone(),
-        score: session.score,
-        scored_at: now_ms,
-        _expires_at: new_expires,
-        owner: context.caller,
-    };
-    let should_update = TOP_SCORER.with(|cell| {
-        let cache = cell.borrow();
-        match &*cache {
-            TopScorerState::Cold => true,
-            TopScorerState::Empty => true,
-            TopScorerState::Active(c) => {
-                session.score > c.score || (session.score == c.score && now_ms < c.scored_at)
-            }
-        }
-    });
-    if should_update {
-        TOP_SCORER.with(|cell| *cell.borrow_mut() = TopScorerState::Active(new_cache.clone()));
-        // Write-through to datastore for cold-start recovery (best-effort).
-        // A failure here is non-fatal: the cache persists in memory and will
-        // retry on the next game completion.
-        if let Err(e) = persist_top_scorer_cache(&new_cache) {
+    if session.boss_defeated {
+        // Boss defeated — immediately reset the active leaderboard and restart
+        // the 24-hour consolation window. The spec states: "when any player wins
+        // the game, the active leaderboard is reset and the timer restarts."
+        // We reset here (on game session completion) rather than waiting for the
+        // on-chain claim confirmation, so the frontend reflects the reset instantly.
+        let new_timer = types::PrizeTimerDoc {
+            current_round_start: now_ms,
+            expires_at: now_ms + config::SCORE_TTL_HOURS * 3_600_000,
+            top_scores: vec![],
+        };
+        PRIZE_TIMER.with(|cell| *cell.borrow_mut() = PrizeTimerState::Active(new_timer.clone()));
+        if let Err(e) = persist_prize_timer(&new_timer) {
             logging::log_error(
                 "Scores",
-                &format!("Failed to persist top scorer cache (non-fatal): {}", e),
-            );
-        }
-    }
-
-    // Any boss kill resets the 24h consolation timer — even if the score
-    // isn't a new top. The goal: "if nobody kills the boss in 24h, award
-    // consolation to the current #1."
-    if session.boss_defeated && !should_update {
-        let refreshed = TOP_SCORER.with(|cell| {
-            let mut cache = cell.borrow_mut();
-            if let TopScorerState::Active(ref mut c) = *cache {
-                c._expires_at = new_expires;
-                Some(c.clone())
-            } else {
-                None
-            }
-        });
-        if let Some(ref c) = refreshed {
-            if let Err(e) = persist_top_scorer_cache(c) {
-                logging::log_error(
-                    "Scores",
-                    &format!(
-                        "Failed to persist refreshed consolation timer (non-fatal): {}",
-                        e
-                    ),
-                );
-            }
-            logging::log_info(
-                "Consolation",
                 &format!(
-                    "Boss defeated by {} — consolation timer reset to {}",
-                    caller_key, new_expires
+                    "Failed to persist prize timer reset on boss win (non-fatal): {}",
+                    e
                 ),
             );
         }
-    }
-
-    // Resolve any expired top scores (consolation prize).
-    // Non-fatal: consolation logic must not crash the leaderboard update.
-    if let Err(e) = resolve_expired_top_score().await {
-        logging::log_error(
-            "Consolation",
-            &format!("resolve_expired_top_score failed (non-fatal): {}", e),
+        logging::log_info(
+            "Scores",
+            &format!(
+                "[Scores] Active leaderboard reset — boss defeated by {}",
+                caller_key
+            ),
         );
+
+        // Zero out the winner's per-user active_score so their next session in
+        // the new round is treated as a fresh score. Without this, scored_at and
+        // current_round_start are both set to the same now_ms, causing
+        // is_new_round_for_user = (scored_at < current_round_start) = false,
+        // which preserves the old winning score on the active leaderboard.
+        let reset_entry = LeaderboardEntry {
+            active_score: 0,
+            scored_at: Some(0),
+            expires_at: Some(new_timer.expires_at),
+            session_id: None,
+            ..entry
+        };
+
+        // Re-read the current version since we already wrote to this doc above.
+        let reset_version =
+            get_doc_store(context.caller, "scores".to_string(), caller_key.clone())?
+                .and_then(|d| d.version);
+
+        let reset_doc = SetDoc {
+            data: encode_doc_data(&reset_entry)?,
+            description: Some("Reset active score after boss win".to_string()),
+            version: reset_version,
+        };
+        set_doc_store(
+            context.caller,
+            "scores".to_string(),
+            caller_key.clone(),
+            reset_doc,
+        )?;
+    } else if new_active_score > 0 {
+        // Death — update the active leaderboard with the player's highest score
+        // for the current 24h window.
+        let mut found = false;
+        for sc in timer.top_scores.iter_mut() {
+            if sc.key == caller_key {
+                sc.score = new_active_score;
+                sc.session_id = new_active_session.clone().unwrap_or_default();
+                sc.nickname = Some(nickname.clone());
+                sc.avatar_url = avatar_url.clone();
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            timer.top_scores.push(types::ActiveScoreEntry {
+                key: caller_key.clone(),
+                principal: context.caller.to_text(),
+                nickname: Some(nickname),
+                avatar_url,
+                score: new_active_score,
+                session_id: new_active_session.unwrap_or_default(),
+            });
+        }
+
+        // Sort descending and truncate to top 50
+        timer.top_scores.sort_by(|a, b| b.score.cmp(&a.score));
+        if timer.top_scores.len() > 50 {
+            timer.top_scores.truncate(50);
+        }
+
+        PRIZE_TIMER.with(|cell| *cell.borrow_mut() = PrizeTimerState::Active(timer.clone()));
+
+        // Write-through to datastore
+        if let Err(e) = persist_prize_timer(&timer) {
+            logging::log_error(
+                "Scores",
+                &format!("Failed to persist prize timer cache (non-fatal): {}", e),
+            );
+        }
     }
 
     Ok(())
 }
 
-/// Check if the top active score has expired and award a consolation prize if so.
-/// Uses a thread-local cache to avoid full leaderboard scans on every call.
-/// On cold start, loads from a persisted datastore document (single read) instead
-/// of scanning the entire leaderboard collection (IC0522 fix).
-async fn resolve_expired_top_score() -> Result<(), String> {
+/// Check if the global prize timer has expired and award a consolation prize to the top active scorer.
+/// Resets the global prize timer for the next 24-hour round.
+async fn resolve_expired_prize_timer() -> Result<(), String> {
     let now_ms = time() / 1_000_000;
 
     // Check or populate the cache
-    let cached = TOP_SCORER.with(|cell| cell.borrow().clone());
-    let cached = match cached {
-        TopScorerState::Active(c) => c,
-        TopScorerState::Empty => return Ok(()), // Cache loaded, no active top scorer
-        TopScorerState::Cold => {
-            // Cold start: load from persisted datastore document (O(1) read)
-            let top = load_persisted_top_scorer()?;
-            TOP_SCORER.with(|cell| {
-                *cell.borrow_mut() = match &top {
-                    Some(t) => TopScorerState::Active(t.clone()),
-                    None => TopScorerState::Empty,
-                };
-            });
-            match top {
+    let timer_state = PRIZE_TIMER.with(|cell| cell.borrow().clone());
+    let mut timer = match timer_state {
+        PrizeTimerState::Active(c) => c,
+        PrizeTimerState::Cold => {
+            let loaded = load_persisted_prize_timer()?;
+            match loaded {
                 Some(t) => t,
-                None => return Ok(()), // No persisted top scorer
+                None => return Ok(()), // No persisted timer yet
             }
         }
     };
 
-    let winner_key = cached.key;
-    let winner_principal = cached.owner;
+    if timer.expires_at == 0 || now_ms < timer.expires_at {
+        // Not expired yet
+        PRIZE_TIMER.with(|cell| *cell.borrow_mut() = PrizeTimerState::Active(timer.clone()));
+        return Ok(());
+    }
 
-    // Fetch the actual scores doc to get the current entry
-    let winner_doc = get_doc_store(winner_principal, "scores".to_string(), winner_key.clone())?;
+    let mut winner_found = false;
 
-    let winner_entry: LeaderboardEntry = match winner_doc {
-        Some(ref doc) => decode_doc_data(&doc.data)?,
-        None => {
-            // Entry was deleted; clear cache and return
-            TOP_SCORER.with(|cell| *cell.borrow_mut() = TopScorerState::Empty);
-            clear_persisted_top_scorer_cache();
-            return Ok(());
+    // Find the first eligible winner in the top scores array
+    for candidate in &timer.top_scores {
+        let winner_key = &candidate.key;
+        let winner_principal = candid::Principal::from_text(&candidate.principal)
+            .unwrap_or_else(|_| candid::Principal::anonymous());
+
+        let winner_profile_doc =
+            get_doc_store(winner_principal, "users".to_string(), winner_key.clone())?;
+
+        let mut winner_profile: UserProfile = match winner_profile_doc {
+            Some(ref doc) => decode_doc_data(&doc.data)?,
+            None => continue, // Skip if profile missing
+        };
+        let winner_profile_version = winner_profile_doc.as_ref().and_then(|d| d.version);
+
+        if check_ban(&winner_profile).is_err() {
+            logging::log_warn(
+                "Consolation",
+                &format!("Skipped consolation for banned user {}", winner_key),
+            );
+            continue;
         }
-    };
 
-    // Verify the cached entry is still the top (check expiry field still matches)
-    let actual_expires = winner_entry.expires_at.unwrap_or(0);
-    if actual_expires == 0 || winner_entry.active_score == 0 {
-        // Entry was already cleared; invalidate cache and return
-        TOP_SCORER.with(|cell| *cell.borrow_mut() = TopScorerState::Empty);
-        clear_persisted_top_scorer_cache();
-        return Ok(());
-    }
+        if winner_profile.stats.total_games_played < config::CONSOLATION_PRIZE_MIN_GAMES {
+            logging::log_warn(
+                "Consolation",
+                &format!(
+                    "Skipped consolation for {}: only {} games played (min {})",
+                    winner_key,
+                    winner_profile.stats.total_games_played,
+                    config::CONSOLATION_PRIZE_MIN_GAMES
+                ),
+            );
+            continue;
+        }
 
-    if actual_expires >= now_ms {
-        return Ok(()); // Not expired yet
-    }
+        // We have a valid winner!
+        let vault_balance = match evm_rpc::get_vault_balance().await {
+            Ok(bal) => bal,
+            Err(e) => {
+                logging::log_error(
+                    "Consolation",
+                    &format!("Failed to get vault balance for consolation prize: {}", e),
+                );
+                // Cannot proceed cleanly, retry next time
+                return Ok(());
+            }
+        };
 
-    // Check if winner is banned
-    let winner_profile_doc =
-        get_doc_store(winner_principal, "users".to_string(), winner_key.clone())?;
+        let consolation_amount =
+            (vault_balance as u128 * config::CONSOLATION_PRIZE_PERCENT as u128) / 100;
 
-    let mut winner_profile: UserProfile = match winner_profile_doc {
-        Some(ref doc) => decode_doc_data(&doc.data)?,
-        None => return Ok(()), // No profile found
-    };
-    let winner_profile_version = winner_profile_doc.as_ref().and_then(|d| d.version);
+        let claim_key = format!("consolation_{}_{}", winner_key, now_ms);
+        let expiration_ms = config::CONSOLATION_PRIZE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
 
-    if check_ban(&winner_profile).is_err() {
-        // Banned user — clear their expires_at and skip
-        clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
-        TOP_SCORER.with(|cell| *cell.borrow_mut() = TopScorerState::Empty);
-        clear_persisted_top_scorer_cache();
-        logging::log_warn(
-            "Consolation",
-            &format!("Skipped consolation for banned user {}", winner_key),
-        );
-        return Ok(());
-    }
+        let claim = ClaimRequest {
+            amount: consolation_amount,
+            status: ClaimStatus::Pending,
+            signature: None,
+            tx_hash: None,
+            game_session_id: candidate.session_id.clone(),
+            keys_collected: 0,
+            error: None,
+            claim_type: "consolation".to_string(),
+            expires_at: Some(now_ms + expiration_ms),
+            user_principal: Some(winner_principal.to_text()),
+        };
 
-    // Require minimum games played before awarding consolation prize
-    if winner_profile.stats.total_games_played < config::CONSOLATION_PRIZE_MIN_GAMES {
-        clear_leaderboard_expiry(&winner_key, &winner_entry, winner_principal)?;
-        logging::log_warn(
+        let claim_doc = SetDoc {
+            data: encode_doc_data(&claim)?,
+            description: Some("Consolation prize for #1 active score".to_string()),
+            version: None,
+        };
+
+        set_doc_store(
+            admin_caller(),
+            "audit".to_string(),
+            claim_key.clone(),
+            claim_doc,
+        )?;
+
+        // Add notification to winner's profile
+        let notification = serde_json::json!({
+            "key": format!("consolation_{}", now_ms),
+            "data": {
+                "type": "consolation_prize",
+                "message": format!("You earned a {} TRESR consolation prize! Your #1 active score expired.", consolation_amount),
+                "urgency": "urgent",
+                "timestamp": now_ms,
+            }
+        });
+
+        const MAX_NOTIFICATIONS: usize = 25;
+        let notifications = match &winner_profile.notifications {
+            Some(serde_json::Value::Array(arr)) => {
+                let mut new_arr = arr.clone();
+                new_arr.push(notification);
+                if new_arr.len() > MAX_NOTIFICATIONS {
+                    let start = new_arr.len() - MAX_NOTIFICATIONS;
+                    new_arr = new_arr.split_off(start);
+                }
+                serde_json::Value::Array(new_arr)
+            }
+            _ => serde_json::Value::Array(vec![notification]),
+        };
+        winner_profile.notifications = Some(notifications);
+
+        let profile_doc = SetDoc {
+            data: encode_doc_data(&winner_profile)?,
+            description: Some("Consolation prize notification added".to_string()),
+            version: winner_profile_version,
+        };
+
+        set_doc_store(
+            admin_caller(),
+            "users".to_string(),
+            winner_key.clone(),
+            profile_doc,
+        )?;
+
+        logging::log_info(
             "Consolation",
             &format!(
-                "Skipped consolation for {}: only {} games played (min {})",
-                winner_key,
-                winner_profile.stats.total_games_played,
-                config::CONSOLATION_PRIZE_MIN_GAMES
+                "Consolation prize of {} awarded to user {} (claim: {})",
+                consolation_amount, winner_key, claim_key
             ),
         );
-        return Ok(());
+
+        winner_found = true;
+        break; // Only award one consolation prize per round
     }
 
-    // Calculate consolation amount (dynamically 1% of vault balance)
-    let vault_balance = match evm_rpc::get_vault_balance().await {
-        Ok(bal) => bal,
-        Err(e) => {
-            logging::log_error(
-                "Consolation",
-                &format!("Failed to get vault balance for consolation prize: {}", e),
-            );
-            // Rather than crash, we can safely return here. The active scorer cache
-            // won't be cleared, so it will simply retry on the next game loop/check.
-            return Ok(());
-        }
-    };
-    let consolation_amount =
-        (vault_balance as u128 * config::CONSOLATION_PRIZE_PERCENT as u128) / 100;
+    if !winner_found && !timer.top_scores.is_empty() {
+        logging::log_warn(
+            "Consolation",
+            "No eligible winners found in the top scores array.",
+        );
+    }
 
-    // Create consolation claim
-    let claim_key = format!("consolation_{}_{}", winner_key, now_ms);
-    let session_id = winner_entry.session_id.clone().unwrap_or_default();
+    // Reset the prize timer for a new 24-hour round!
+    timer.current_round_start = now_ms;
+    timer.expires_at = now_ms + config::SCORE_TTL_HOURS * 3_600_000;
+    timer.top_scores.clear();
 
-    // Calculate expiration deadline for consolation prizes
-    let expiration_ms = config::CONSOLATION_PRIZE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
-    let expires_at_ms = now_ms + expiration_ms;
+    PRIZE_TIMER.with(|cell| *cell.borrow_mut() = PrizeTimerState::Active(timer.clone()));
 
-    let claim = ClaimRequest {
-        amount: consolation_amount,
-        status: ClaimStatus::Pending,
-        signature: None,
-        tx_hash: None,
-        game_session_id: session_id,
-        keys_collected: 0,
-        error: None,
-        claim_type: "consolation".to_string(),
-        expires_at: Some(expires_at_ms),
-        // Store the winner's principal so on_claim_created can look up their
-        // profile (context.caller will be admin_caller, not the user).
-        user_principal: Some(winner_principal.to_text()),
-    };
-
-    let claim_doc = SetDoc {
-        data: encode_doc_data(&claim)?,
-        description: Some("Consolation prize for expired #1 active score".to_string()),
-        version: None,
-    };
-
-    // Write to audit with claim_ prefix — this triggers the on_set_doc hook
-    // which dispatches to on_claim_created (existing machinery handles consolation
-    // claims, generates signature, and manages the claim lifecycle).
-    // Using admin_caller() so the claim is owned by admin — users cannot modify
-    // audit records after creation (preserves audit trail).
-    // This follows the client→hook pattern documented in data-storage.md.
-    set_doc_store(
-        admin_caller(),
-        "audit".to_string(),
-        claim_key.clone(),
-        claim_doc,
-    )?;
-
-    // Clear winner's expires_at to prevent double-award
-    clear_leaderboard_expiry(&winner_key, &winner_entry, admin_caller())?;
-
-    // Add notification to winner's profile
-    let notification = serde_json::json!({
-        "key": format!("consolation_{}", now_ms),
-        "data": {
-            "type": "consolation_prize",
-            "message": format!("You earned a {} TRESR consolation prize! Your #1 active score expired.", consolation_amount),
-            "urgency": "urgent",
-            "timestamp": now_ms,
-        }
-    });
-
-    // Append to existing notifications array, capping at most recent entries (ticket #190).
-    const MAX_NOTIFICATIONS: usize = 25;
-    let notifications = match &winner_profile.notifications {
-        Some(serde_json::Value::Array(arr)) => {
-            let mut new_arr = arr.clone();
-            new_arr.push(notification);
-            // Keep only the most recent MAX_NOTIFICATIONS entries
-            if new_arr.len() > MAX_NOTIFICATIONS {
-                let start = new_arr.len() - MAX_NOTIFICATIONS;
-                new_arr = new_arr.split_off(start);
-            }
-            serde_json::Value::Array(new_arr)
-        }
-        _ => serde_json::Value::Array(vec![notification]),
-    };
-    winner_profile.notifications = Some(notifications);
-
-    let profile_doc = SetDoc {
-        data: encode_doc_data(&winner_profile)?,
-        description: Some("Consolation prize notification added".to_string()),
-        version: winner_profile_version,
-    };
-
-    set_doc_store(
-        admin_caller(),
-        "users".to_string(),
-        winner_key.clone(),
-        profile_doc,
-    )?;
-
-    // Invalidate cache so next call re-discovers the new top scorer
-    TOP_SCORER.with(|cell| *cell.borrow_mut() = TopScorerState::Empty);
-    clear_persisted_top_scorer_cache();
-
-    logging::log_info(
-        "Consolation",
-        &format!(
-            "Consolation prize of {} awarded to user {} (claim: {})",
-            consolation_amount, winner_key, claim_key
-        ),
-    );
+    if let Err(e) = persist_prize_timer(&timer) {
+        logging::log_error(
+            "Scores",
+            &format!("Failed to persist reset prize timer: {}", e),
+        );
+    }
 
     Ok(())
 }
 
-/// Load the persisted top scorer cache from the datastore.
-/// Returns None if no cache document exists (no one has scored yet).
-/// This is an O(1) single-document read, replacing the previous O(N) full scan.
-fn load_persisted_top_scorer() -> Result<Option<TopScorerCache>, String> {
+/// Load the persisted prize timer cache from the datastore.
+/// Returns None if no cache document exists.
+fn load_persisted_prize_timer() -> Result<Option<types::PrizeTimerDoc>, String> {
     let admin = admin_caller();
-    let doc = get_doc_store(admin, "scores".to_string(), "top_scorer".to_string())
+    let doc = get_doc_store(admin, "scores".to_string(), "prize_timer".to_string())
         .ok()
         .flatten();
 
     match doc {
-        None => Ok(None),
-        Some(doc) => {
-            let cached: TopScorerCacheDoc = decode_doc_data(&doc.data)?;
-            // A zeroed-out doc (from clear_persisted_top_scorer_cache) means "no top scorer"
-            if cached.score == 0 && cached.key.is_empty() {
-                return Ok(None);
+        None => {
+            // Check legacy top_scorer doc for migration
+            let legacy_doc = get_doc_store(admin, "scores".to_string(), "top_scorer".to_string())
+                .ok()
+                .flatten();
+            if let Some(legacy) = legacy_doc
+                && let Ok(cached) = decode_doc_data::<TopScorerCacheDoc>(&legacy.data)
+                && cached.score > 0
+                && !cached.key.is_empty()
+            {
+                return Ok(Some(types::PrizeTimerDoc {
+                    current_round_start: cached.scored_at,
+                    expires_at: cached.expires_at,
+                    top_scores: vec![types::ActiveScoreEntry {
+                        key: cached.key,
+                        principal: cached.owner_principal,
+                        nickname: Some("Legacy Player".to_string()),
+                        avatar_url: None,
+                        score: cached.score,
+                        session_id: "".to_string(),
+                    }],
+                }));
             }
-            let owner = candid::Principal::from_text(&cached.owner_principal)
-                .map_err(|e| format!("Invalid principal in top scorer cache: {}", e))?;
-            Ok(Some(TopScorerCache {
-                key: cached.key,
-                score: cached.score,
-                scored_at: cached.scored_at,
-                _expires_at: cached.expires_at,
-                owner,
-            }))
+            Ok(None)
+        }
+        Some(doc) => {
+            let cached: types::PrizeTimerDoc = decode_doc_data(&doc.data)?;
+            Ok(Some(cached))
         }
     }
 }
 
-/// Persist the top scorer cache to the datastore for cold-start recovery.
-/// Uses the `scores` collection with key `top_scorer`.
-fn persist_top_scorer_cache(cache: &TopScorerCache) -> Result<(), String> {
+/// Persist the prize timer cache to the datastore.
+/// Uses the `scores` collection with key `prize_timer`.
+fn persist_prize_timer(timer: &types::PrizeTimerDoc) -> Result<(), String> {
     let admin = admin_caller();
 
-    let existing_version = get_doc_store(admin, "scores".to_string(), "top_scorer".to_string())
+    let existing_version = get_doc_store(admin, "scores".to_string(), "prize_timer".to_string())
         .ok()
         .flatten()
         .and_then(|d| d.version);
 
-    let cache_doc = TopScorerCacheDoc {
-        key: cache.key.clone(),
-        score: cache.score,
-        scored_at: cache.scored_at,
-        expires_at: cache._expires_at,
-        owner_principal: cache.owner.to_text(),
-    };
-
     let doc = SetDoc {
-        data: encode_doc_data(&cache_doc)?,
-        description: Some("Persisted top scorer cache".to_string()),
+        data: encode_doc_data(timer)?,
+        description: Some("Persisted global prize timer".to_string()),
         version: existing_version,
     };
 
-    set_doc_store(admin, "scores".to_string(), "top_scorer".to_string(), doc)?;
+    set_doc_store(admin, "scores".to_string(), "prize_timer".to_string(), doc)?;
+
+    // Attempt to clear legacy top_scorer if it still exists
+    let _ = clear_legacy_top_scorer();
 
     logging::log_info(
         "Scores",
         &format!(
-            "[Scores] Updated collection scores (top_scorer cache) with key={}, score={}",
-            cache.key, cache.score
+            "[Scores] Updated collection scores (prize_timer) round={} expires={} top_players={}",
+            timer.current_round_start,
+            timer.expires_at,
+            timer.top_scores.len()
         ),
     );
     Ok(())
 }
 
-/// Clear the persisted top scorer cache (e.g., after consolation prize awarded).
-fn clear_persisted_top_scorer_cache() {
-    // Write an empty/zeroed entry rather than deleting, to avoid needing delete_doc_store
+fn clear_legacy_top_scorer() -> Result<(), String> {
     let admin = admin_caller();
     let existing_version = get_doc_store(admin, "scores".to_string(), "top_scorer".to_string())
         .ok()
         .flatten()
         .and_then(|d| d.version);
 
-    let empty = TopScorerCacheDoc {
-        key: String::new(),
-        score: 0,
-        scored_at: 0,
-        expires_at: 0,
-        owner_principal: ic_cdk::api::canister_self().to_text(),
-    };
+    if existing_version.is_some() {
+        let empty = TopScorerCacheDoc {
+            key: String::new(),
+            score: 0,
+            scored_at: 0,
+            expires_at: 0,
+            owner_principal: ic_cdk::api::canister_self().to_text(),
+        };
 
-    let doc = SetDoc {
-        data: encode_doc_data(&empty).unwrap_or_default(),
-        description: Some("Top scorer cache cleared".to_string()),
-        version: existing_version,
-    };
+        let doc = SetDoc {
+            data: encode_doc_data(&empty).unwrap_or_default(),
+            description: Some("Top scorer cache cleared (legacy)".to_string()),
+            version: existing_version,
+        };
 
-    let _ = set_doc_store(admin, "scores".to_string(), "top_scorer".to_string(), doc);
-}
-
-/// Clear the expires_at on a scores entry to prevent re-processing.
-fn clear_leaderboard_expiry(
-    key: &str,
-    entry: &LeaderboardEntry,
-    owner: candid::Principal,
-) -> Result<(), String> {
-    // Fetch existing doc version for optimistic concurrency
-    let existing_version = get_doc_store(owner, "scores".to_string(), key.to_string())
-        .ok()
-        .flatten()
-        .and_then(|d| d.version);
-
-    let mut cleared = entry.clone();
-    cleared.expires_at = None;
-
-    let doc = SetDoc {
-        data: encode_doc_data(&cleared)?,
-        description: Some("Active score expired — cleared".to_string()),
-        version: existing_version,
-    };
-
-    set_doc_store(owner, "scores".to_string(), key.to_string(), doc)?;
-
+        let _ = set_doc_store(admin, "scores".to_string(), "top_scorer".to_string(), doc);
+    }
     Ok(())
 }
 

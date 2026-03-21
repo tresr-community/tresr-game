@@ -218,11 +218,11 @@ export class SpawnManager {
         }
 
         // Just a normal spawn
-        this.spawnEnemy(false);
+        this.spawnEnemy();
         break;
       }
       case "burst": {
-        this.spawnEnemy(false);
+        this.spawnEnemy();
         this.burstRemaining--;
         if (this.burstRemaining <= 0) {
           this.directorMode = "normal";
@@ -232,7 +232,7 @@ export class SpawnManager {
         break;
       }
       case "limo": {
-        this.spawnEnemy(true);
+        this.spawnEnemy();
         this.limoRemaining--;
         if (this.limoRemaining <= 0) {
           this.directorMode = "normal";
@@ -245,7 +245,7 @@ export class SpawnManager {
       case "breather": {
         // Breather finished, back to normal!
         this.directorMode = "normal";
-        this.spawnEnemy(false); // First guy back
+        this.spawnEnemy(); // First guy back
         break;
       }
     }
@@ -253,7 +253,7 @@ export class SpawnManager {
     this.scheduleNextEnemySpawn(nextDelay);
   }
 
-  spawnEnemy(forcePassive: boolean = false) {
+  spawnEnemy() {
     if (this.getPhase() !== "survival" || !this.enemies || !this.player) return;
 
     // Spawn off-screen and walk in from left or right edge
@@ -273,9 +273,7 @@ export class SpawnManager {
       "sprites_config"
     ) as SpritesConfig;
     const enemyCount = spritesConfig.enemies.count;
-    const enemyVariant = forcePassive
-      ? this.rng.integerInRange(1, enemyCount)
-      : this.rng.integerInRange(1, enemyCount);
+    const enemyVariant = this.rng.integerInRange(1, enemyCount);
     const textureKey = `enemy_${enemyVariant}_idle`;
 
     // Lazy-load enemy variant sprites on first spawn
@@ -286,19 +284,9 @@ export class SpawnManager {
         // Hide immediately — group.get() makes the sprite visible at its old
         // pool position. spawn() will reveal it after setup is complete.
         enemy.setVisible(false);
-        // We override AI weights logic via explicit passing or let the prefab handle it if unforced.
-        const forcedAiOverride = forcePassive ? "passive" : undefined;
-        enemy.spawn(
-          spawnX,
-          groundY,
-          this.rng,
-          walkInTargetX,
-          textureKey,
-          forcedAiOverride
-        );
+        // AI type is always selected from weighted config — no hardcoded overrides.
+        enemy.spawn(spawnX, groundY, this.rng, walkInTargetX, textureKey);
         // Set target AFTER spawn() so it is never cleared by the pool-reset inside spawn().
-        // spawn() does not clear _target anymore — see Enemy.ts — but this ordering
-        // is kept explicit so the intent is clear.
         enemy.setTarget(this.player);
         const enemyScale = SpriteManager.getScaleFactor(
           spritesConfig,

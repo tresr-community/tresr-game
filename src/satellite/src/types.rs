@@ -351,6 +351,28 @@ pub struct LeaderboardEntry {
     pub session_id: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct ActiveScoreEntry {
+    pub key: String,       // User profile key
+    pub principal: String, // User principal
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nickname: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub avatar_url: Option<String>,
+    pub score: u64,
+    pub session_id: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+pub struct PrizeTimerDoc {
+    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
+    pub current_round_start: u64,
+    #[serde(default, deserialize_with = "deserialize_flexible_u64")]
+    pub expires_at: u64,
+    #[serde(default)]
+    pub top_scores: Vec<ActiveScoreEntry>,
+}
+
 // =============================================================================
 // Fee Request (stored in "fees" collection)
 // =============================================================================

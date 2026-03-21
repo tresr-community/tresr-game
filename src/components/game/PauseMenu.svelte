@@ -114,6 +114,7 @@
   bind:open
   title="Mission Paused"
   closeOnEscape={true}
+  mobileFull
   onOpenChange={(isOpen) => {
     if (!isOpen && !showQuitConfirm) handleResume();
   }}

@@ -229,11 +229,11 @@ client:
           - http://auamu-4x777-77775-aaaaa-cai.localhost:5987
           - http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987
         token_ticker: "tRON"
-        tresr_token_contract: "0x8F4ec854Dd12F1fe79500a1f53D0cbB30f9b6134"
+        tresr_token_contract: "0xe039608E695D21aB11675EBBA00261A0e750526c"
         deployer_address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-        proxy_contract: "0xdFdE6B33f13de2CA1A75A6F7169f50541B14f75b"
+        proxy_contract: "0x56fC17a65ccFEC6B7ad0aDe9BD9416CB365B9BE8"
         vault_contract: "0x0000000000000000000000000000000000000000"
-        faucet_contract: "0x12Bcb546bC60fF39F1Adfc7cE4605d5Bd6a6A876"
+        faucet_contract: "0x3C15538ED063e688c8DF3d571Cb7a0062d2fB18D"
         player_wallet: "0xb81749c72db5b5209098f2bd45a7a0293925da13"
         explorer_url: "http://localhost:8545/tx/"
       testnet:
@@ -525,34 +525,48 @@ client:
           #   - Charges straight at the player with no special movement.
           #   - Simple but effective in groups. Bread and butter enemy.
           direct: {}
-          # Erratic
-          #   - Snakes toward the player with continuous sine-wave zigzag.
-          #   - Visibly weaves side-to-side — hard to track and predict.
+          # Erratic ("Drunk Walk")
+          #   - Brownian angular noise: heading drifts randomly each frame.
+          #   - Mean-reversion gently pulls heading back toward the player.
+          #   - Speed fluctuates randomly for organic stop-and-lurch feel.
+          #   - Never repeats — genuinely unpredictable unlike a sine zigzag.
           erratic:
             speed_mult: 1.2
-            zigzag_frequency: 1.5 # Sine oscillations per second
-            zigzag_amplitude: 1.5 # Radians of lateral swing
-            jitter_x: 80
-            jitter_y: 40
+            drift_rate: 8.0 # Angular noise magnitude (rad/s) — higher = more erratic
+            mean_reversion: 3.0 # How strongly heading snaps back toward player (per second)
+            speed_variance: 0.4 # Speed fluctuation range (0–1) — 0.4 = ±40% speed variation
           # Flanker
           #   - Orbits the player at a set radius, then lunges in to attack.
-          #   - Creates a circling-then-striking pattern that feels distinct.
+          #   - Three-phase cycle: orbiting → lunging → recovering → orbiting…
+          #   - Orbit time is randomised per cycle to prevent predictability.
+          #   - Tints on lunge as a visual telegraph for player fairness.
+          #   - Retreats diagonally to reposition rather than backing straight away.
           flanker:
             speed_mult: 1.1
             offset: 200 # Orbit radius (px)
             switch_time: 3 # Seconds between flank direction switches
-            orbit_time: 2.0 # Seconds to orbit before lunging
+            orbit_time: 2.0 # Base seconds to orbit before lunging
+            orbit_time_variance: 0.3 # ±30% randomisation on orbit_time per cycle
             lunge_speed_mult: 2.5 # Speed multiplier during lunge dash
-            lunge_duration: 0.3 # Seconds of lunge dash
+            lunge_duration: 1.5 # Max seconds of lunge (ends early when attack lands)
+            lunge_tint: 0xffaa00 # Orange tint flash when lunge begins (0 = disabled)
             recovery_time: 0.8 # Seconds to back off after attacking
+            recovery_lateral_bias: 0.6 # Lateral repositioning during retreat (0 = straight back, 1 = 45°)
           # Passive ("The Banker")
           #   - Walks slowly across the screen, minding its own business.
           #   - Only attacks if the player hits it first (return fire mode).
           #   - Higher HP, better loot — a risk/reward choice for the player.
+          #   - Brief stun on first hit, then chases with increased speed.
+          #   - Calms down after forgiveness_time without being hit again.
           passive:
             speed_mult: 0.5
             provoked_speed_mult: 1.3
             hp_mult: 1.5
+            provoked_tint: 0xff4444 # Red tint when provoked (0 = disabled)
+            provoke_delay: 0.4 # Seconds of stun before chasing after first hit
+            forgiveness_time: 5.0 # Seconds without damage before calming down (0 = never)
+            wander_frequency: 0.8 # Y-axis sine wander oscillations per second
+            wander_amplitude: 15 # Y-axis wander range in pixels
           # Retardio
           #   - Rare, chaotic enemy that attacks OTHER enemies.
           #   - Walks around erratically punching bankers. Can be killed.
@@ -568,18 +582,22 @@ client:
           #   - When rush_threshold allies are nearby, triggers the "hulk" green rush.
           swarm:
             speed_mult: 1.0
+            scared_speed_mult: 0.6 # Speed when alone/scared
             group_radius: 150
             speed_bonus_per_ally: 0.15
             max_speed_mult: 2.0
             rush_threshold: 3 # Allies needed for coordinated rush
             rush_tint: 0x00ff88 # Green glow when rushing
+            scared_tint: 0x8888ff # Blue-ish tint when scared/alone
+            flee_radius: 180 # Flee from player when closer than this (when scared)
+            cohesion_weight: 0.7 # How strongly scared enemies seek each other
             check_frame_interval: 10 # Frames between AI checks
-          weights:
-            cautious: 10
-            direct: 20
-            erratic: 20
-            flanker: 20
-            passive: 10
+          weights: # All weights must add up to 100.
+            cautious: 15
+            direct: 15
+            erratic: 15
+            flanker: 15
+            passive: 20
             retardio: 10
             swarm: 10
         health_bar:
@@ -618,7 +636,7 @@ client:
           bob_duration: 600 # Duration of bob cycle (ms)
           despawn_ms: 8000 # Auto-despawn time (ms)
       boss:
-        health: 50 # TODO: Revert after testing.
+        health: 1000
         damage: 25
         speed: 150
         knockback:
@@ -636,7 +654,6 @@ client:
           speed: 3 # Speed at which boss descends from above
           start_y: -100
           threshold_ratio: 0.903 # groundY ratio at which boss starts fighting (650/720)
-        # TODO: This needs improvements.
         # Boss enters Phase 2 (enrage) when HP drops below the threshold
         phases:
           enrage_threshold: 0.5 # HP percentage to trigger Phase 2 (50%)

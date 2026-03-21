@@ -38,6 +38,7 @@
 
   onDestroy(() => {
     if (unsubNotifications) unsubNotifications();
+    clearNotifTimer();
   });
 
   function handleClearAll() {
@@ -53,9 +54,31 @@
   function isSnoozed(n: NotificationDoc) {
     return n.data.snoozeUntil && n.data.snoozeUntil > Date.now();
   }
+  /** Auto-dismiss: close dropdown after 5 s; hovering over it pauses the countdown */
+  const AUTO_CLOSE_MS = 5000;
+  let open = false;
+  let notifTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function resetNotifTimer() {
+    if (notifTimer) clearTimeout(notifTimer);
+    notifTimer = setTimeout(() => {
+      open = false;
+    }, AUTO_CLOSE_MS);
+  }
+  function clearNotifTimer() {
+    if (notifTimer) {
+      clearTimeout(notifTimer);
+      notifTimer = null;
+    }
+  }
+  function handleNotifOpenChange(newOpen: boolean) {
+    open = newOpen;
+    if (newOpen) resetNotifTimer();
+    else clearNotifTimer();
+  }
 </script>
 
-<DropdownMenu.Root>
+<DropdownMenu.Root bind:open onOpenChange={handleNotifOpenChange}>
   <DropdownMenu.Trigger
     class="flex h-12 w-12 items-center justify-center rounded-full transition-colors hover:bg-white/10"
     aria-label="Notifications"
@@ -90,6 +113,8 @@
     class="border-primary/20 z-50 mt-2 w-80 rounded-xl border bg-black/80 shadow-xl backdrop-blur-md outline-none"
     sideOffset={8}
     align="end"
+    onmouseenter={clearNotifTimer}
+    onmouseleave={resetNotifTimer}
   >
     <div
       class="flex items-center justify-between border-b border-white/10 p-4 pb-2"

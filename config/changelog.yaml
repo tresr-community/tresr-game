@@ -1,5 +1,20 @@
 ---
 versions:
+  - version: "0.6.0"
+    date: "2026-03-21"
+    title: "Enemy AI"
+    notes:
+      - "Update Enemy AI (cautious)"
+      - "Update Enemy AI (direct)"
+      - "Update Enemy AI (erratic)"
+      - "Update Enemy AI (flanker)"
+      - "Update Enemy AI (passive)"
+      - "Update Enemy AI (retardio)"
+      - "Update Enemy AI (swarm)"
+      - "Improve Mobile support for Svelte modals"
+      - "Add confetti toasts"
+      - "Improve transaction verification logic"
+
   - version: "0.5.0"
     date: "2026-03-19"
     title: "Notifications"

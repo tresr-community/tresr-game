@@ -9,8 +9,29 @@ while true; do
 
 	RUN_LOOP=true
 
-	echo "##################################"
+	echo "Staging changed files..."
+	git add --all || {
+		echo "Failed to stage files"
+		exit 1
+	}
+
+	echo "####################################################################"
 	echo "Starting Juno development loop..."
+	echo "####################################################################"
+
+	echo "##################################"
+	echo "Updating Solidity Contracts..."
+	echo "##################################"
+
+	if [ "$RUN_LOOP" = true ]; then
+		solidity-dev loop || {
+			RUN_LOOP=false
+			echo "Solidity Contracts deployment has failed, will retry loop..."
+		}
+	fi
+
+	echo "##################################"
+	echo "Updating Frontend..."
 	echo "##################################"
 
 	if [ "$RUN_LOOP" = true ]; then
@@ -25,9 +46,9 @@ while true; do
 		VERSION=$(cat package.json | jq -r .version)
 	fi
 
-	echo "##################################"
+	echo "####################################################################"
 	echo "Completed loop for version $VERSION. Waiting for next iteration..."
-	echo "##################################"
+	echo "####################################################################"
 
 	read -rp "Press Enter to start next loop..."
 

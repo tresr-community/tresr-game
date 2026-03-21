@@ -1,4 +1,3 @@
-import Phaser from "phaser";
 import type {
   AIBehavior,
   EnemyContext,
@@ -11,6 +10,11 @@ import {findNearestEnemy} from "./shared";
  * Retardio AI: chaotic enemy that attacks OTHER enemies.
  * Walks around erratically punching non-retardio enemies.
  * Re-targets periodically or when target dies.
+ *
+ * Improvements:
+ * - Filters out other retardios when picking targets
+ * - Smooth wander movement (no Y stutter between jitter ticks)
+ * - Uses screen-space math consistent with other AIs
  */
 export class RetardioBehavior implements AIBehavior {
   readonly type = "retardio" as const;
@@ -21,6 +25,10 @@ export class RetardioBehavior implements AIBehavior {
   private jitterOffset: {x: number; y: number} = {x: 0, y: 0};
   private jitterTimer: number = 0;
 
+  /** Current wander direction (angle in radians), persisted between ticks
+   *  so groundY moves smoothly instead of only on jitter-tick frames. */
+  private wanderAngle: number = 0;
+
   onSpawn(ctx: EnemyContext): void {
     const retardioConfig = ctx.config.gameplay.entities.enemy.ai.retardio;
     ctx.speed = ctx.baseSpeed * retardioConfig.speed_mult;
@@ -29,6 +37,7 @@ export class RetardioBehavior implements AIBehavior {
     this.attackTimer = 0;
     this.jitterOffset = {x: 0, y: 0};
     this.jitterTimer = 0;
+    this.wanderAngle = ctx.x < ctx.cameraWidth / 2 ? 0 : Math.PI;
     ctx.clearTint();
   }
 
@@ -60,7 +69,7 @@ export class RetardioBehavior implements AIBehavior {
     if (this.retardioTarget) {
       const targetGY = this.retardioTarget.groundY;
 
-      // Add erratic jitter (bug fix: use hardcoded values instead of erratic config)
+      // Add erratic jitter to movement direction
       if (this.jitterTimer > jitterTime) {
         this.jitterOffset = {
           x: (ctx.rng.frac() - 0.5) * 80,
@@ -71,12 +80,7 @@ export class RetardioBehavior implements AIBehavior {
 
       const dx = this.retardioTarget.x - ctx.x;
       const dy = targetGY - ctx.groundY;
-      const dist = Phaser.Math.Distance.Between(
-        ctx.x,
-        ctx.groundY,
-        this.retardioTarget.x,
-        targetGY
-      );
+      const dist = Math.sqrt(dx * dx + dy * dy);
       ctx.setFlipX(dx < 0);
 
       if (dist < ctx.attackRange) {
@@ -97,11 +101,11 @@ export class RetardioBehavior implements AIBehavior {
         const moveDirX = dx + this.jitterOffset.x;
         const moveDirY = dy + this.jitterOffset.y;
         const moveAngle = Math.atan2(moveDirY, moveDirX);
+        const moveSpeed = ctx.speed * ctx.resolutionScale;
 
-        ctx.setVelocityX(Math.cos(moveAngle) * ctx.speed * ctx.resolutionScale);
+        ctx.setVelocityX(Math.cos(moveAngle) * moveSpeed);
         ctx.setVelocityY(0);
-        ctx.groundY +=
-          Math.sin(moveAngle) * ctx.speed * ctx.resolutionScale * dt;
+        ctx.groundY += Math.sin(moveAngle) * moveSpeed * dt;
 
         if (ctx.walkableArea) {
           const clamped = ctx.walkableArea.clampToWalkable(ctx.x, ctx.groundY);
@@ -114,16 +118,18 @@ export class RetardioBehavior implements AIBehavior {
       return {action: "handled"};
     }
 
-    // No enemies nearby — wander erratically
-    if (this.jitterTimer > jitterTime) {
-      const wanderAngle = ctx.rng.frac() * Math.PI * 2;
-      ctx.setFlipX(Math.cos(wanderAngle) < 0);
-      ctx.setVelocityX(Math.cos(wanderAngle) * ctx.speed * ctx.resolutionScale);
-      // Update groundY instead of relying solely on pure horizontal movement over time
-      ctx.groundY +=
-        Math.sin(wanderAngle) * ctx.speed * ctx.resolutionScale * dt;
-      this.jitterTimer = 0;
+    // No enemies nearby — walk straight across the screen.
+    // Direction set on spawn (like passive), only reverses at screen edges.
+    const edgeMargin = 100 * ctx.resolutionScale;
+    if (ctx.x < edgeMargin) {
+      this.wanderAngle = 0; // Force rightward
+    } else if (ctx.x > ctx.cameraWidth - edgeMargin) {
+      this.wanderAngle = Math.PI; // Force leftward
     }
+
+    const moveSpeed = ctx.speed * ctx.resolutionScale;
+    ctx.setFlipX(Math.cos(this.wanderAngle) < 0);
+    ctx.setVelocityX(Math.cos(this.wanderAngle) * moveSpeed);
     ctx.setVelocityY(0);
 
     if (ctx.walkableArea) {

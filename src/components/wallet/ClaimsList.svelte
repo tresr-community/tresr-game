@@ -7,6 +7,7 @@
   import {VaultAbi} from "@/lib/blockchain/abi/vault";
   import {config} from "@/lib/config/client";
   import {getEnvironmentKey} from "@/lib/blockchain/networks/chain";
+  import {confirmReceipt} from "@/lib/blockchain/tx";
   import {log} from "@/lib/utils/log";
   import Card from "@/components/ui/Card.svelte";
   import Button from "@/components/ui/Button.svelte";
@@ -124,6 +125,11 @@
       });
 
       log.info(COMPONENT_NAME, `Tx Hash: ${txHash}`);
+
+      // Wait for on-chain confirmation BEFORE celebrating — the toast was
+      // appearing as soon as the tx was submitted (not confirmed).
+      log.info(COMPONENT_NAME, "Awaiting on-chain confirmation...");
+      await confirmReceipt(txHash, {component: COMPONENT_NAME});
 
       claimDoc.data.status = "processing";
       claimDoc.data.tx_hash = txHash;

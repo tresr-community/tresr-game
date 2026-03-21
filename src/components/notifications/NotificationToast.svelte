@@ -5,6 +5,7 @@
   import Alert from "@/components/ui/Alert.svelte";
   import Button from "@/components/ui/Button.svelte";
   import {getExplorerUrl} from "@/lib/blockchain/networks/display";
+  import {confettiTrigger} from "@/lib/stores/ui.svelte";
 
   interface Toast {
     id: string;
@@ -132,6 +133,16 @@
         details,
         errorId,
       } as any);
+    };
+
+    window.showConfettiToast = (message: string, details?: string) => {
+      notificationManager.addNotification({
+        message,
+        urgency: "none",
+        type: "info",
+        details,
+      } as any);
+      confettiTrigger.fire({});
     };
   });
 

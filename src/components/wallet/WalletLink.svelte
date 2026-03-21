@@ -44,6 +44,20 @@
     | "linked"
     | "connect" = $state("unauthenticated");
   let dropdownOpen = $state(false);
+  /** Auto-dismiss: close wallet dropdown after 5 s; pause on hover */
+  let walletTimer: ReturnType<typeof setTimeout> | null = null;
+  const AUTO_CLOSE_MS = 5000;
+  $effect(() => {
+    if (!dropdownOpen) return;
+    const t = setTimeout(() => {
+      dropdownOpen = false;
+    }, AUTO_CLOSE_MS);
+    walletTimer = t;
+    return () => {
+      clearTimeout(t);
+      if (walletTimer === t) walletTimer = null;
+    };
+  });
 
   let balanceDisplay = $state("0.00");
   let addressDisplay = $state("");
@@ -307,6 +321,7 @@
   onDestroy(() => {
     disposed = true;
     if (cooldownTimer) clearInterval(cooldownTimer);
+    if (walletTimer) clearTimeout(walletTimer);
     document.removeEventListener(
       "tresr:blockchain-syncing",
       handleBlockchainSyncing
@@ -327,6 +342,17 @@
     class="border-primary/20 z-50 mt-2 w-72 rounded-xl border bg-black/80 p-4 shadow-xl backdrop-blur-md outline-none"
     sideOffset={8}
     align="end"
+    onmouseenter={() => {
+      if (walletTimer) {
+        clearTimeout(walletTimer);
+        walletTimer = null;
+      }
+    }}
+    onmouseleave={() => {
+      walletTimer = setTimeout(() => {
+        dropdownOpen = false;
+      }, AUTO_CLOSE_MS);
+    }}
   >
     {#if currentState === "unauthenticated"}
       <div>

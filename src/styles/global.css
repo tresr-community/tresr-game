@@ -82,6 +82,51 @@
   --radius-lg: 0.75rem;
 }
 
+/* ── Phone-fullscreen modal ──────────────────────────────────────────────────
+   .modal-full makes a modal fill the entire viewport on any phone
+   (portrait OR landscape, any resolution). On tablets and desktops it
+   reverts to a centered card. Uses plain CSS so it is never affected by
+   Tailwind's class-name scanner or template-literal interpolation issues.
+   "Phone" = viewport height < 500 px (landscape) OR width < 768 px (portrait).
+   Both conditions are guaranteed to fail on tablets / desktops.
+   -------------------------------------------------------------------------- */
+.modal-full {
+  /* Phone default: edge-to-edge */
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  max-width: none;
+  border-radius: 0;
+  border-width: 0;
+  transform: none;
+  pointer-events: auto;
+}
+
+@media (min-height: 500px) and (min-width: 768px) {
+  /* Tablet / desktop: centered card */
+  .modal-full {
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    max-width: 32rem; /* max-w-lg default */
+    height: auto;
+    max-height: 90dvh;
+    border-radius: 0.75rem;
+    border-width: 2px;
+    border-style: solid;
+    border-color: color-mix(in oklch, var(--color-primary) 50%, transparent);
+  }
+
+  /* Wide variant for modals that need more room (max-w-2xl) */
+  .modal-full.modal-full-wide {
+    max-width: 42rem;
+  }
+}
+
 @layer base {
   :root, :root[data-theme="synthwave"] {
     --cv-primary: hsl(280 100% 60%);

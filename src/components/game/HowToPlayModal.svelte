@@ -56,7 +56,7 @@
   }
 </script>
 
-<Modal bind:open title="HOW TO PLAY" maxWidth="max-w-2xl">
+<Modal bind:open title="HOW TO PLAY" maxWidth="max-w-2xl" mobileFull>
   <div
     class="prose prose-invert prose-sm prose-headings:text-xl prose-h2:my-4 prose-p:my-2 prose-ul:my-0 prose-ol:my-0 prose-li:my-1 marker:text-primary max-w-none leading-snug break-words text-white/80"
   >
