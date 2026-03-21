@@ -26,6 +26,7 @@
   let showLostHighScore = $state(false);
 
   let isClaimInProgress = $state(false);
+  let isGuest = $state(false);
 
   let lastClaimAuth: [bigint, Uint8Array | number[]] | null = $state(null);
   let unsubState: () => void;
@@ -152,6 +153,7 @@
       if (state.phase === "victory") {
         if (!openVictory) {
           const auth = getAuthState();
+          isGuest = auth.isGuest;
           if (auth.isGuest) {
             victoryRewardText = "No rewards for normies.";
           } else if (lastClaimAuth) {
@@ -188,7 +190,9 @@
   mobileFull
 >
   <p class="py-2 text-center text-sm opacity-70 sm:py-4 sm:text-base">
-    The Bankers have been regulated. Claim your reward Degen.
+    {isGuest
+      ? "The Bankers have been regulated. Nice work Normie!"
+      : "The Bankers have been regulated. Claim your reward Degen."}
   </p>
 
   <div
@@ -281,25 +285,27 @@
 
   {#snippet footer()}
     <div class="flex w-full flex-col gap-2">
-      <button
-        onclick={handleClaimClick}
-        disabled={isClaimInProgress || !lastClaimAuth}
-        class="bg-primary hover:bg-primary/90 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 font-bold tracking-widest text-black uppercase shadow-[0_0_15px_var(--color-primary)] transition-all hover:scale-[1.02] active:scale-95 disabled:pointer-events-none disabled:opacity-50"
-      >
-        {#if isClaimInProgress}
-          <div
-            class="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent"
-          ></div>
-          Claiming...
-        {:else if !lastClaimAuth}
-          <div
-            class="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent"
-          ></div>
-          Authorizing...
-        {:else}
-          Claim $TRESR
-        {/if}
-      </button>
+      {#if !isGuest}
+        <button
+          onclick={handleClaimClick}
+          disabled={isClaimInProgress || !lastClaimAuth}
+          class="bg-primary hover:bg-primary/90 flex w-full items-center justify-center gap-2 rounded-md px-4 py-2 font-bold tracking-widest text-black uppercase shadow-[0_0_15px_var(--color-primary)] transition-all hover:scale-[1.02] active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+        >
+          {#if isClaimInProgress}
+            <div
+              class="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent"
+            ></div>
+            Claiming...
+          {:else if !lastClaimAuth}
+            <div
+              class="h-4 w-4 animate-spin rounded-full border-2 border-black border-t-transparent"
+            ></div>
+            Authorizing...
+          {:else}
+            Claim $TRESR
+          {/if}
+        </button>
+      {/if}
       <button
         onclick={handleHome}
         class="w-full rounded-md border border-white/10 bg-white/5 px-4 py-2 font-bold tracking-widest text-white/70 uppercase transition-colors hover:bg-white/10 hover:text-white"

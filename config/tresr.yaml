@@ -636,7 +636,7 @@ client:
           bob_duration: 600 # Duration of bob cycle (ms)
           despawn_ms: 8000 # Auto-despawn time (ms)
       boss:
-        health: 50 # TODO: Revert after testing.
+        health: 1000
         damage: 25
         speed: 150
         knockback:
@@ -654,7 +654,6 @@ client:
           speed: 3 # Speed at which boss descends from above
           start_y: -100
           threshold_ratio: 0.903 # groundY ratio at which boss starts fighting (650/720)
-        # TODO: This needs improvements.
         # Boss enters Phase 2 (enrage) when HP drops below the threshold
         phases:
           enrage_threshold: 0.5 # HP percentage to trigger Phase 2 (50%)
