@@ -48,7 +48,7 @@ runs:
       name: Switch to PR branch
       shell: bash
       run: |
-        BRANCH="chore/update-${{ inputs.environment }}-contract-address"
+        BRANCH="fix/update-${{ inputs.environment }}-contract-address"
         BASE_REF="${{ inputs.base-ref }}"
 
         # Fetch the latest remote HEAD for the base branch
@@ -136,8 +136,8 @@ runs:
         GH_TOKEN: ${{ inputs.github-token }}
       shell: bash
       run: |
-        BRANCH="chore/update-${{ inputs.environment }}-contract-address"
-        TITLE="chore: update ${{ inputs.environment }} contract addresses"
+        BRANCH="fix/update-${{ inputs.environment }}-contract-address"
+        TITLE="fix: update ${{ inputs.environment }} contract addresses"
         BASE_REF="${{ inputs.base-ref }}"
 
         git config user.name  "github-actions[bot]"
