@@ -980,7 +980,6 @@ setup)
 
 # A one-shot clean, check, build, and deploy loop.
 oneshot | loop)
-	clear
 	cmd_cleanup || {
 		log_error "Could not clean artifacts."
 		exit 8

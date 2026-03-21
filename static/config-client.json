@@ -70,12 +70,12 @@
           "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0x8F4ec854Dd12F1fe79500a1f53D0cbB30f9b6134",
+        "tresr_token_contract": "0xe039608E695D21aB11675EBBA00261A0e750526c",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
-        "proxy_contract": "0xdFdE6B33f13de2CA1A75A6F7169f50541B14f75b",
+        "proxy_contract": "0x56fC17a65ccFEC6B7ad0aDe9BD9416CB365B9BE8",
         "vault_contract": "0x0000000000000000000000000000000000000000",
-        "faucet_contract": "0x12Bcb546bC60fF39F1Adfc7cE4605d5Bd6a6A876",
+        "faucet_contract": "0x3C15538ED063e688c8DF3d571Cb7a0062d2fB18D",
         "explorer_url": "http://localhost:8545/tx/"
       },
       "testnet": {
@@ -582,13 +582,13 @@
         },
         "ai": {
           "weights": {
-            "cautious": 0,
-            "direct": 100,
-            "erratic": 0,
-            "flanker": 0,
-            "passive": 0,
-            "retardio": 0,
-            "swarm": 0
+            "cautious": 15,
+            "direct": 15,
+            "erratic": 15,
+            "flanker": 15,
+            "passive": 20,
+            "retardio": 10,
+            "swarm": 10
           },
           "cautious": {
             "speed_mult": 0.7,
@@ -603,24 +603,31 @@
           "direct": {},
           "erratic": {
             "speed_mult": 1.2,
-            "zigzag_frequency": 1.5,
-            "zigzag_amplitude": 1.5,
-            "jitter_x": 80,
-            "jitter_y": 40
+            "drift_rate": 8,
+            "mean_reversion": 3,
+            "speed_variance": 0.4
           },
           "flanker": {
             "speed_mult": 1.1,
             "offset": 200,
             "switch_time": 3,
             "orbit_time": 2,
+            "orbit_time_variance": 0.3,
             "lunge_speed_mult": 2.5,
-            "lunge_duration": 0.3,
-            "recovery_time": 0.8
+            "lunge_duration": 1.5,
+            "lunge_tint": 16755200,
+            "recovery_time": 0.8,
+            "recovery_lateral_bias": 0.6
           },
           "passive": {
             "speed_mult": 0.5,
             "provoked_speed_mult": 1.3,
-            "hp_mult": 1.5
+            "hp_mult": 1.5,
+            "provoked_tint": 16729156,
+            "provoke_delay": 0.4,
+            "forgiveness_time": 5,
+            "wander_frequency": 0.8,
+            "wander_amplitude": 15
           },
           "retardio": {
             "speed_mult": 1.1,
@@ -632,11 +639,15 @@
           },
           "swarm": {
             "speed_mult": 1,
+            "scared_speed_mult": 0.6,
             "group_radius": 150,
             "speed_bonus_per_ally": 0.15,
             "max_speed_mult": 2,
             "rush_threshold": 3,
             "rush_tint": 65416,
+            "scared_tint": 8947967,
+            "flee_radius": 180,
+            "cohesion_weight": 0.7,
             "check_frame_interval": 10
           }
         },
@@ -1469,6 +1480,23 @@
   "changelog": {
     "versions": [
       {
+        "version": "0.6.0",
+        "date": "2026-03-21",
+        "title": "Enemy AI",
+        "notes": [
+          "Update Enemy AI (cautious)",
+          "Update Enemy AI (direct)",
+          "Update Enemy AI (erratic)",
+          "Update Enemy AI (flanker)",
+          "Update Enemy AI (passive)",
+          "Update Enemy AI (retardio)",
+          "Update Enemy AI (swarm)",
+          "Improve Mobile support for Svelte modals",
+          "Add confetti toasts",
+          "Improve transaction verification logic"
+        ]
+      },
+      {
         "version": "0.5.0",
         "date": "2026-03-19",
         "title": "Notifications",
@@ -1547,5 +1575,5 @@
       }
     ]
   },
-  "configHash": "cde58d20236139c9ac894705177ce64ea7c03658ad5e0670cddc70ba588cec07"
+  "configHash": "6576c0b5ae07aad7e76504c3545f68fbf2df44f6f6d074855da7b1380fbd47e6"
 }

@@ -70,6 +70,7 @@ export function countNearbyAllies(ctx: EnemyContext, radius: number): number {
 /**
  * Calculate the center of mass of nearby allies and a separation vector.
  * Used by swarm behavior for cohesion and separation.
+ * Uses screen-space distance (matching chaseTarget pattern — no 2.5D division).
  */
 export function getNearbyAlliesCenter(
   ctx: EnemyContext,
@@ -86,11 +87,10 @@ export function getNearbyAlliesCenter(
     const ally = child as unknown as GroupMemberView;
     if (ally._self === ctx._self || !ally.active || ally.hp <= 0) continue;
 
-    // Check 2.5D distance
+    // Screen-space distance (no 2.5D division)
     const dx = ally.x - ctx.x;
     const dy = ally.groundY - ctx.groundY;
-    const dyCorrected = dy / 0.4;
-    const dist = Math.sqrt(dx * dx + dyCorrected * dyCorrected);
+    const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist <= radius) {
       cx += ally.x;
@@ -101,7 +101,7 @@ export function getNearbyAlliesCenter(
       if (dist < separationRadius && dist > 0.1) {
         // Push away from ally
         sx -= dx / dist;
-        sy -= dyCorrected / dist;
+        sy -= dy / dist;
       }
     }
   }
@@ -112,8 +112,9 @@ export function getNearbyAlliesCenter(
 }
 
 /**
- * Find the nearest living enemy.
- * Used by retardio behavior.
+ * Find the nearest living non-retardio enemy that is on-screen.
+ * Used by retardio behavior — retardios should punch other enemy types,
+ * not fight each other. Skips enemies still walking in from the edge.
  */
 export function findNearestEnemy(
   ctx: EnemyContext
@@ -121,10 +122,19 @@ export function findNearestEnemy(
   if (!ctx.enemyGroup) return undefined;
   let nearest: GroupMemberView | undefined;
   let nearestDist = Infinity;
+  // Only target enemies that are well within the screen
+  const minX = ctx.cameraWidth * 0.1;
+  const maxX = ctx.cameraWidth * 0.9;
   for (const child of ctx.enemyGroup.getChildren()) {
     const e = child as unknown as GroupMemberView;
     if (e._self === ctx._self || !e.active || e.hp <= 0) continue;
-    const d = Phaser.Math.Distance.Between(ctx.x, ctx.groundY, e.x, e.groundY);
+    // Skip other retardios — they should target non-retardio enemies
+    if (e.aiTypeName === "retardio") continue;
+    // Skip enemies still near the screen edge (walking in)
+    if (e.x < minX || e.x > maxX) continue;
+    const dx = ctx.x - e.x;
+    const dy = ctx.groundY - e.groundY;
+    const d = Math.sqrt(dx * dx + dy * dy);
     if (d < nearestDist) {
       nearestDist = d;
       nearest = e;
