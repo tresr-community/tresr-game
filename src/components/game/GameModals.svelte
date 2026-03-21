@@ -27,6 +27,7 @@
 
   let isClaimInProgress = $state(false);
   let isGuest = $state(false);
+  let isSaving = $state(false);
 
   let lastClaimAuth: [bigint, Uint8Array | number[]] | null = $state(null);
   let unsubState: () => void;
@@ -150,6 +151,7 @@
     document.addEventListener("tresr:claim-auth", handleClaimAuth);
 
     unsubState = gameState.subscribe((state) => {
+      isSaving = state.isSaving;
       if (state.phase === "victory") {
         if (!openVictory) {
           const auth = getAuthState();
@@ -308,9 +310,17 @@
       {/if}
       <button
         onclick={handleHome}
-        class="w-full rounded-md border border-white/10 bg-white/5 px-4 py-2 font-bold tracking-widest text-white/70 uppercase transition-colors hover:bg-white/10 hover:text-white"
+        disabled={isSaving}
+        class="w-full rounded-md border border-white/10 bg-white/5 px-4 py-2 font-bold tracking-widest text-white/70 uppercase transition-colors hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:opacity-50"
       >
-        Return Home
+        {#if isSaving}
+          <div
+            class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/70 border-t-transparent"
+          ></div>
+          Saving...
+        {:else}
+          Return Home
+        {/if}
       </button>
     </div>
   {/snippet}
@@ -404,15 +414,31 @@
     <div class="flex w-full flex-col gap-2">
       <button
         onclick={handleRetry}
+        disabled={isSaving}
         class="flex w-full items-center justify-center gap-2 rounded-md bg-[#ef4444] px-4 py-2 font-bold tracking-widest text-white uppercase shadow-[0_0_15px_rgba(239,68,68,0.4)] transition-all hover:scale-[1.02] hover:bg-[#dc2626] active:scale-95 disabled:pointer-events-none disabled:opacity-50"
       >
-        Retry Mission
+        {#if isSaving}
+          <div
+            class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+          ></div>
+          Saving...
+        {:else}
+          Retry Mission
+        {/if}
       </button>
       <button
         onclick={handleHome}
-        class="w-full rounded-md border border-[#ef4444]/30 bg-[#ef4444]/10 px-4 py-2 font-bold tracking-widest text-[#fca5a5] uppercase transition-colors hover:bg-[#ef4444]/20"
+        disabled={isSaving}
+        class="w-full rounded-md border border-[#ef4444]/30 bg-[#ef4444]/10 px-4 py-2 font-bold tracking-widest text-[#fca5a5] uppercase transition-colors hover:bg-[#ef4444]/20 disabled:pointer-events-none disabled:opacity-50"
       >
-        Abort
+        {#if isSaving}
+          <div
+            class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#fca5a5] border-t-transparent"
+          ></div>
+          Saving...
+        {:else}
+          Abort
+        {/if}
       </button>
     </div>
   {/snippet}

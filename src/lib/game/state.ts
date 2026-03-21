@@ -33,6 +33,7 @@ export interface GameState {
   superHits: number;
   phase: "survival" | "boss" | "victory" | "lost";
   isPaused: boolean;
+  isSaving: boolean;
   configTampered: boolean;
   criticalError: string | null;
   superCharge: number;
@@ -52,6 +53,7 @@ const INITIAL_STATE: GameState = {
   superHits: 0,
   phase: "survival",
   isPaused: false,
+  isSaving: false,
   configTampered: false,
   criticalError: null,
   superCharge: 0,
@@ -130,6 +132,11 @@ export const gameActions = {
 
   setPaused(paused: boolean) {
     store.setKey("isPaused", paused);
+  },
+
+  /** Mark that async saves (profile + session) are in-flight */
+  setSaving(saving: boolean) {
+    store.setKey("isSaving", saving);
   },
 
   /** Increment enemy kill counter (ticket #181) */

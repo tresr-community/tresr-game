@@ -1,13 +1,7 @@
 <script lang="ts">
   import {onMount, onDestroy} from "svelte";
   import {getAuthState} from "@/lib/auth";
-  import {
-    getUserProfile,
-    saveUserProfile,
-    createDefaultProfile,
-    genNickName,
-    enqueueProfileWrite,
-  } from "@/lib/user";
+  import {getUserProfile, genNickName, enqueueProfileWrite} from "@/lib/user";
   import {uploadAvatar} from "@/lib/user/avatar";
   import Modal from "@/components/ui/Modal.svelte";
   import {
@@ -97,24 +91,24 @@
           currentProfile = doc.data;
           currentVersion = doc.version;
           if (!currentProfile.nickname) {
-            currentProfile.nickname = genNickName();
-            const savedDoc = await saveUserProfile(
-              auth.user.key,
-              currentProfile,
-              currentVersion
-            );
-            currentVersion = savedDoc.version;
-            currentProfile = savedDoc.data;
+            await enqueueProfileWrite(auth.user.key, (profile) => ({
+              ...profile,
+              nickname: genNickName(),
+            }));
+            const refreshed = await getUserProfile(auth.user.key);
+            if (refreshed) {
+              currentProfile = refreshed.data;
+              currentVersion = refreshed.version;
+            }
           }
         } else {
-          currentProfile = createDefaultProfile(auth.user.key);
-          const savedDoc = await saveUserProfile(
-            auth.user.key,
-            currentProfile,
-            undefined
-          );
-          currentVersion = savedDoc.version;
-          currentProfile = savedDoc.data;
+          // Create default profile via the write queue (prevents race with store.svelte.ts)
+          await enqueueProfileWrite(auth.user.key, (profile) => profile);
+          const refreshed = await getUserProfile(auth.user.key);
+          if (refreshed) {
+            currentProfile = refreshed.data;
+            currentVersion = refreshed.version;
+          }
         }
       }
 

@@ -17,6 +17,7 @@ describe("GameStateManager", () => {
       expect(state.enemiesKilled).toBe(0);
       expect(state.phase).toBe("survival");
       expect(state.isPaused).toBe(false);
+      expect(state.isSaving).toBe(false);
       expect(state.configTampered).toBe(false);
       expect(state.superCharge).toBe(0);
       expect(state.bossHp).toBe(0);
@@ -160,6 +161,23 @@ describe("GameStateManager", () => {
     });
   });
 
+  describe("isSaving", () => {
+    test("defaults to false", () => {
+      expect(gameState.get().isSaving).toBe(false);
+    });
+
+    test("setSaving(true) sets it to true", () => {
+      gameActions.setSaving(true);
+      expect(gameState.get().isSaving).toBe(true);
+    });
+
+    test("setSaving(false) sets it back to false", () => {
+      gameActions.setSaving(true);
+      gameActions.setSaving(false);
+      expect(gameState.get().isSaving).toBe(false);
+    });
+  });
+
   describe("enemiesKilled", () => {
     test("incrementEnemiesKilled adds 1", () => {
       gameActions.incrementEnemiesKilled();
@@ -280,6 +298,7 @@ describe("GameStateManager", () => {
       expect(state.keys).toBe(0);
       expect(state.phase).toBe("survival");
       expect(state.isPaused).toBe(false);
+      expect(state.isSaving).toBe(false);
       expect(state.superCharge).toBe(0);
       expect(state.bossHp).toBe(0);
       expect(state.bossMaxHp).toBe(0);
