@@ -1398,6 +1398,7 @@ export class MainScene extends Phaser.Scene {
       return;
     }
 
+    gameActions.setSaving(true);
     try {
       // Build length-prefixed binary payload (ticket #164):
       // [4 bytes input length][inputs][configHash][4 bytes seed length][seed]
@@ -1484,6 +1485,8 @@ export class MainScene extends Phaser.Scene {
       }
     } catch {
       log.error(COMPONENT_NAME, "Failed to authorize claim");
+    } finally {
+      gameActions.setSaving(false);
     }
   }
 
@@ -1600,28 +1603,34 @@ export class MainScene extends Phaser.Scene {
 
     // Save stats — uses centralized write queue
     if (auth.isAuthenticated && auth.user) {
+      gameActions.setSaving(true);
       try {
-        const score = BigInt(this.score);
-        await enqueueProfileWrite(auth.user.key, (profile) => ({
-          ...profile,
-          stats: {
-            ...profile.stats,
-            total_games_played:
-              BigInt(profile.stats.total_games_played ?? 0) + 1n,
-            total_games_lost: BigInt(profile.stats.total_games_lost ?? 0) + 1n,
-            high_score:
-              score > BigInt(profile.stats.high_score ?? 0)
-                ? score
-                : BigInt(profile.stats.high_score ?? 0),
-          },
-        }));
-        log.info(COMPONENT_NAME, "Loss stats saved to Juno.");
-      } catch (err) {
-        log.error(COMPONENT_NAME, "Failed to save loss stats:", err);
-      }
+        try {
+          const score = BigInt(this.score);
+          await enqueueProfileWrite(auth.user.key, (profile) => ({
+            ...profile,
+            stats: {
+              ...profile.stats,
+              total_games_played:
+                BigInt(profile.stats.total_games_played ?? 0) + 1n,
+              total_games_lost:
+                BigInt(profile.stats.total_games_lost ?? 0) + 1n,
+              high_score:
+                score > BigInt(profile.stats.high_score ?? 0)
+                  ? score
+                  : BigInt(profile.stats.high_score ?? 0),
+            },
+          }));
+          log.info(COMPONENT_NAME, "Loss stats saved to Juno.");
+        } catch (err) {
+          log.error(COMPONENT_NAME, "Failed to save loss stats:", err);
+        }
 
-      // Save game session for leaderboard active score tracking
-      await this.saveGameSession(false);
+        // Save game session for leaderboard active score tracking
+        await this.saveGameSession(false);
+      } finally {
+        gameActions.setSaving(false);
+      }
     }
   }
 

@@ -11,8 +11,8 @@ import {log} from "../utils/log";
 
 const COMPONENT_NAME = "Avatar";
 
-/** Max raw file size before processing (256 KB) */
-export const AVATAR_MAX_FILE_SIZE = 256 * 1024;
+/** Max raw file size before processing (2 MB) */
+export const AVATAR_MAX_FILE_SIZE = 2 * 1024 * 1024;
 
 /** Output dimensions (square) */
 const AVATAR_SIZE = 256;
