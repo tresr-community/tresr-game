@@ -98,20 +98,28 @@
 
   let headerIcons: HTMLDivElement;
 
+  // Reactively check admin status whenever auth state changes.
+  // Must be a reactive $effect (not in startup()) because SIWA login completes
+  // AFTER startup() returns — the one-shot check always saw isAuthenticated=false.
+  $effect(() => {
+    if (isAuthenticated && !isGuest) {
+      getErrors()
+        .then((r) => {
+          isAdmin = "Ok" in r;
+        })
+        .catch(() => {
+          isAdmin = false;
+        });
+    } else {
+      isAdmin = false;
+    }
+  });
+
   async function startup() {
     log.info(COMPONENT_NAME, "startup running");
     await initAuth();
     await notificationManager.init();
     await initializeJunoSatellite();
-
-    if (isAuthenticated && !isGuest) {
-      try {
-        const result = await getErrors();
-        isAdmin = "Ok" in result;
-      } catch {
-        isAdmin = false;
-      }
-    }
   }
 
   function handleAuthBtnClick() {

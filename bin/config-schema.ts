@@ -182,7 +182,7 @@ const BlockchainSchema = z.object({
 // ---------------------------------------------------------------------------
 
 const WalletSchema = z.object({
-  faucet_cooldown_hours: z.number().positive(),
+  faucet_cooldown_hours: z.number().nonnegative(),
   balance_refresh_cooldown_ms: ms,
   vault_poll_interval_ms: ms,
   connect_timeout_ms: ms,

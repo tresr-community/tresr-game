@@ -306,7 +306,7 @@ client:
             - https://avalanche-c-chain-rpc.publicnode.com
             - https://avalanche.drpc.org
   wallet:
-    faucet_cooldown_hours: 24
+    faucet_cooldown_hours: 0
     balance_refresh_cooldown_ms: 30000
     vault_poll_interval_ms: 60000 # Vault balance background polling interval
     connect_timeout_ms: 300000 # AppKit connect wallet timeout (5 mins)

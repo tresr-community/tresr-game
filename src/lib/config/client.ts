@@ -152,7 +152,7 @@ export const config: ConfigTypes = {
     }
   },
   "wallet": {
-    "faucet_cooldown_hours": 24,
+    "faucet_cooldown_hours": 0,
     "balance_refresh_cooldown_ms": 30000,
     "vault_poll_interval_ms": 60000,
     "connect_timeout_ms": 300000,

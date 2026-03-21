@@ -13,7 +13,6 @@ contract TresrFaucetTest is Test {
     address user = makeAddr("user");
 
     function setUp() public {
-        // Warp past zero so cooldown logic works (lastDripTime defaults to 0)
         vm.warp(1 days + 1);
 
         vm.startPrank(owner);
@@ -47,6 +46,10 @@ contract TresrFaucetTest is Test {
     }
 
     function testCooldownEnforcement() public {
+        // Set a cooldown to test enforcement
+        vm.prank(owner);
+        faucet.setCooldown(24 hours);
+
         vm.prank(user);
         faucet.drip();
 
@@ -56,6 +59,10 @@ contract TresrFaucetTest is Test {
     }
 
     function testCooldownExpires() public {
+        // Set a cooldown to test expiry
+        vm.prank(owner);
+        faucet.setCooldown(24 hours);
+
         vm.prank(user);
         faucet.drip();
 
@@ -64,6 +71,16 @@ contract TresrFaucetTest is Test {
         vm.prank(user);
         faucet.drip();
         assertEq(token.balanceOf(user), 2000e18);
+    }
+
+    function testNoCooldownAllowsUnlimitedDrips() public {
+        // Default cooldown is 0 — drip multiple times immediately
+        vm.startPrank(user);
+        faucet.drip();
+        faucet.drip();
+        faucet.drip();
+        vm.stopPrank();
+        assertEq(token.balanceOf(user), 3000e18);
     }
 
     function testBalanceCapEnforcement() public {

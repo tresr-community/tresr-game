@@ -7,8 +7,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title TresrFaucet
- * @dev Rate-limited faucet for RonToken.
- *      Configurable drip amount and cooldown, with a balance cap
+ * @dev Faucet for RonToken.
+ *      Configurable drip amount with a balance cap
  *      to prevent hoarding.
  */
 contract TresrFaucet is Ownable {
@@ -17,7 +17,7 @@ contract TresrFaucet is Ownable {
     IERC20 public immutable token;
 
     uint256 public dripAmount = 1000e18; // 1000 tokens per claim
-    uint256 public cooldown = 24 hours; // 1 claim per 24h
+    uint256 public cooldown; // No cooldown by default
     uint256 public constant MAX_DRIP_BALANCE = 10_000e18; // Don't drip if user > 10k
 
     mapping(address => uint256) public lastDripTime;
@@ -33,11 +33,13 @@ contract TresrFaucet is Ownable {
 
     function drip() external {
         // slither-disable-next-line timestamp
-        require(block.timestamp >= lastDripTime[msg.sender] + cooldown, "Cooldown active");
+        if (cooldown > 0) {
+            require(block.timestamp >= lastDripTime[msg.sender] + cooldown, "Cooldown active");
+            lastDripTime[msg.sender] = block.timestamp;
+        }
         require(token.balanceOf(msg.sender) < MAX_DRIP_BALANCE, "Balance too high");
         require(token.balanceOf(address(this)) >= dripAmount, "Faucet empty");
 
-        lastDripTime[msg.sender] = block.timestamp;
         token.safeTransfer(msg.sender, dripAmount);
         emit Drip(msg.sender, dripAmount);
     }

@@ -123,13 +123,24 @@ async function doWrite(
       const isVersionConflict =
         e instanceof Error && e.message.includes("version_outdated_or_future");
 
-      if (isVersionConflict && attempt < MAX_ATTEMPTS - 1) {
+      // IC agent sometimes returns a valid HTTP 200 / "replied" response but
+      // fails to decode the reply from the certificate tree.  The call has
+      // actually succeeded server-side, so a fresh getDoc + setDoc resolves it.
+      const isCertificateUndefined =
+        e instanceof Error && e.message.includes("Call was returned undefined");
+
+      const isRetryable = isVersionConflict || isCertificateUndefined;
+
+      if (isRetryable && attempt < MAX_ATTEMPTS - 1) {
         const base = BASE_DELAY_MS * Math.pow(2, attempt);
         const backoff = Math.round(base * (0.75 + Math.random() * 0.5)); // ±25% jitter
+        const reason = isVersionConflict
+          ? "Version conflict"
+          : "IC certificate decode error";
         const logFn = attempt === 0 ? log.debug : log.warn;
         logFn(
           COMPONENT_NAME,
-          `Version conflict (attempt ${attempt + 1}/${MAX_ATTEMPTS}), ` +
+          `${reason} (attempt ${attempt + 1}/${MAX_ATTEMPTS}), ` +
             `retrying in ${backoff}ms...`,
           principal,
           e instanceof Error ? e.message : ""

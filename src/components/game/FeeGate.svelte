@@ -26,7 +26,7 @@
   const COMPONENT_NAME = "FeeGate";
   // Use the configured fee-gate transaction timeout (default 300 s).
   // This must be long enough to cover wallet signing + 2 on-chain confirmations
-  // + the 5 s RPC propagation buffer before satellite verification.
+  // + the 2 s RPC propagation buffer before satellite verification.
   const PAYMENT_TIMEOUT_MS = config.gameplay.fee_gate.transaction_timeout_ms;
 
   const env = getEnvironmentKey();
@@ -251,13 +251,19 @@
       markStep("confirm", "active");
       showStatus("Verifying transaction on satellite...");
 
-      const POLL_INTERVAL_MS = 1500;
+      const POLL_INTERVAL_MS = 500;
       const POLL_TIMEOUT_MS = 90_000;
       const deadline = Date.now() + POLL_TIMEOUT_MS;
 
       let feeStatus = "pending";
+      let isFirstPoll = true;
       while (Date.now() < deadline) {
-        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+        // Skip the initial sleep — the satellite on_set_doc hook runs
+        // synchronously so the status may already be "verified".
+        if (!isFirstPoll) {
+          await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+        }
+        isFirstPoll = false;
         const feeDoc = await getDoc({
           collection: "audit",
           key: `fee_${txHash}`,

@@ -167,7 +167,7 @@ export async function confirmReceipt(
   // Skip for fast-path flows (confirmations: 1) — not needed for txs the
   // satellite doesn't verify (e.g. ERC20 approve).
   if (needsPropagationDelay) {
-    const propagationDelayMs = 5_000;
+    const propagationDelayMs = 2_000;
     log.info(
       component,
       `Waiting ${propagationDelayMs}ms for RPC propagation before satellite query…`
