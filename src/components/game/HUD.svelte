@@ -66,11 +66,24 @@
       curBossHp = Math.max(0, state.bossHp);
       curBossMaxHp = state.bossMaxHp;
     });
+
+    window.addEventListener("tresr:music-open", handleMusicOpen);
   });
 
   onDestroy(() => {
     if (unsubState) unsubState();
+    window.removeEventListener(
+      "tresr:music-open",
+      handleMusicOpen as EventListener
+    );
   });
+
+  function handleMusicOpen() {
+    // Pause the game when the mobile fullscreen music player opens mid-session
+    if (phase === "survival" || phase === "boss") {
+      gameActions.togglePause();
+    }
+  }
 
   function handlePauseClick(e: Event) {
     gameActions.togglePause();
@@ -164,15 +177,26 @@
         {/if}
         <!-- Super Charge Radial Ring -->
         <div
-          class="hud-desktop:p-2 hud-desktop:px-3 flex flex-col items-center p-1 px-2"
+          class="hud-desktop:p-2 hud-desktop:px-3 flex flex-col items-center justify-center p-1 px-2"
         >
           <div
-            class="hud-desktop:text-[10px] text-center text-[8px] uppercase opacity-50"
+            class="hud-super-label-section hud-desktop:text-[10px] text-center text-[8px] uppercase opacity-50"
           >
-            <span class="hud-emoji">⚡</span><span class="hud-label">Super</span
+            Super
+          </div>
+          <!-- Mobile-only lightning emoji indicator (hidden on desktop) -->
+          <div class="hud-super-mobile flex items-center justify-center">
+            <span
+              class={`text-xl leading-none select-none ${superRingPulse ? "super-ready" : "super-charging"}`}
+              role="progressbar"
+              aria-valuenow={Math.round(pct * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              title={`Super: ${Math.round(pct * 100)}%`}>⚡</span
             >
           </div>
-          <div class="flex items-center justify-center">
+          <!-- Desktop SVG radial ring (hidden on mobile) -->
+          <div class="hud-super-desktop flex items-center justify-center">
             <!-- SVG radial super-charge ring -->
             <div
               class={`relative flex items-center justify-center ${superRingPulse ? "animate-pulse" : ""}`}
@@ -326,6 +350,48 @@
 </div>
 
 <style>
+  /* Super label: hidden on mobile (big emoji is enough), visible on desktop */
+  .hud-super-label-section {
+    display: none;
+  }
+
+  /* Mobile: show lightning emoji, hide SVG ring */
+  .hud-super-mobile {
+    display: flex;
+  }
+  .hud-super-desktop {
+    display: none;
+  }
+
+  /* Charging: grey/dim */
+  .super-charging {
+    opacity: 0.25;
+    filter: grayscale(1);
+    transition:
+      opacity 0.3s ease,
+      filter 0.3s ease;
+  }
+
+  /* Ready: gold with breathing glow */
+  .super-ready {
+    opacity: 1;
+    filter: none;
+    animation: super-breathe 1.4s ease-in-out infinite;
+  }
+
+  @keyframes super-breathe {
+    0%,
+    100% {
+      filter: drop-shadow(0 0 4px #facc15) drop-shadow(0 0 8px #f59e0b);
+      transform: scale(1);
+    }
+    50% {
+      filter: drop-shadow(0 0 10px #facc15) drop-shadow(0 0 20px #f59e0b)
+        drop-shadow(0 0 4px #fbbf24);
+      transform: scale(1.15);
+    }
+  }
+
   .hud-emoji {
     display: inline;
   }
@@ -334,6 +400,18 @@
   }
 
   @media (min-height: 520px) {
+    /* Desktop: hide emoji indicator, show SVG ring */
+    .hud-super-mobile {
+      display: none;
+    }
+    .hud-super-desktop {
+      display: flex;
+    }
+    /* Restore super section label on desktop */
+    .hud-super-label-section {
+      display: block;
+    }
+
     .hud-emoji {
       display: none;
     }

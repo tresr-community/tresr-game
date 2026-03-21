@@ -315,15 +315,33 @@ const PlayerSchema = z.object({
 });
 
 /** Enemy AI profile schemas — only cautious, erratic, etc. have fields; direct is empty. */
-const EnemyAiWeightsSchema = z.object({
-  cautious: z.number().nonnegative(),
-  direct: z.number().nonnegative(),
-  erratic: z.number().nonnegative(),
-  flanker: z.number().nonnegative(),
-  passive: z.number().nonnegative(),
-  retardio: z.number().nonnegative(),
-  swarm: z.number().nonnegative(),
-});
+const EnemyAiWeightsSchema = z
+  .object({
+    cautious: z.number().nonnegative(),
+    direct: z.number().nonnegative(),
+    erratic: z.number().nonnegative(),
+    flanker: z.number().nonnegative(),
+    passive: z.number().nonnegative(),
+    retardio: z.number().nonnegative(),
+    swarm: z.number().nonnegative(),
+  })
+  .refine(
+    (w) =>
+      Math.round(
+        w.cautious +
+          w.direct +
+          w.erratic +
+          w.flanker +
+          w.passive +
+          w.retardio +
+          w.swarm
+      ) === 100,
+    {
+      message:
+        "Enemy AI weights must sum to exactly 100 (they represent percentages). " +
+        "Check gameplay.entities.enemy.ai.weights in tresr.yaml.",
+    }
+  );
 
 const EnemyAiSchema = z.object({
   weights: EnemyAiWeightsSchema,

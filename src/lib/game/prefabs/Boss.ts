@@ -86,9 +86,9 @@ export class Boss extends BaseEntity {
     this.target = target;
   }
 
-  /** Get current effective attack range (larger during charge) */
+  /** Get current effective attack range (larger during charge), scaled to canvas. */
   public getAttackRange(): number {
-    return this.attackRange;
+    return this.attackRange * this.resolutionScale;
   }
 
   /** Get current contact damage (scaled by phase multiplier) */
@@ -199,7 +199,7 @@ export class Boss extends BaseEntity {
       this.anims.isPlaying &&
       this.anims.currentAnim?.key === this.animKeys.attack;
 
-    if (dist < this.baseAttackRange) {
+    if (dist < this.getAttackRange()) {
       if (!isAttacking) {
         this.play(this.animKeys.attack, true);
       }
@@ -289,7 +289,9 @@ export class Boss extends BaseEntity {
       this.scene.events.emit("boss_ground_pound", {
         x: this.x,
         y: this.groundY,
-        radius: bossConfig.attacks.ground_pound.radius,
+        // Scale radius to current canvas resolution so the AoE matches the
+        // visual ring size on mobile (config values are in design-space pixels).
+        radius: bossConfig.attacks.ground_pound.radius * this.resolutionScale,
         damage: bossConfig.attacks.ground_pound.damage * this.damageMult,
       });
     }

@@ -1,12 +1,11 @@
 <script lang="ts">
-  import {onMount, onDestroy} from "svelte";
+  import {onDestroy} from "svelte";
   import {authStore} from "@/lib/auth/store.svelte";
   import {walletStore} from "@/lib/wallet/store.svelte";
   import {profileStore} from "@/lib/user/store.svelte";
   import {getConnectedAddress} from "@/lib/wallet/connection";
   import {
     claimFaucet,
-    getFaucetCooldownStatus,
     getFaucetDripAmount,
     isFaucetDeployed,
   } from "@/lib/blockchain/faucet";
@@ -21,105 +20,49 @@
   const isProduction = JUNO_ENVIRONMENT === "production";
   const EMOJI_CONTENT = "🚰";
 
-  // True when a wallet is actively connected via wagmi OR linked in the user profile
+  // True when the user's ICP profile has a linked EVM wallet, OR a SIWA wallet
+  // session is live. We deliberately do NOT use walletStore.value.connected alone
+  // here — a stale wagmi reconnect from a previous browser session (different
+  // account) would incorrectly make this true for a new user with no linked wallet,
+  // causing the faucet button to appear greyed-out/disabled.
   let hasWallet = $derived(
-    walletStore.value.connected || !!profileStore.value?.evm_wallet
+    !!profileStore.value?.evm_wallet || walletStore.value.connected
   );
 
   let isVisible = $state(false);
   let isProcessing = $state(false);
-  let cooldownRemaining = $state(0);
-  let cooldownInterval: ReturnType<typeof setInterval> | null = null;
   let disposed = false;
 
   $effect(() => {
+    // Only show the faucet when the user's profile has an evm_wallet linked.
+    // - SIWA users: their login wallet is stored as evm_wallet ✓
+    // - ICP users who linked a wallet: evm_wallet is set ✓
+    // - ICP users with a stale wagmi reconnect from a previous session: evm_wallet
+    //   is undefined → button stays hidden ✓
+    const profileLinkedWallet = !!profileStore.value?.evm_wallet;
+
     if (
       !isProduction &&
       authStore.value.isAuthenticated &&
       !authStore.value.isGuest &&
-      hasWallet &&
+      profileLinkedWallet &&
       isFaucetDeployed(config)
     ) {
       isVisible = true;
-      if (cooldownRemaining <= 0 && !isProcessing) {
-        if (hasWallet && !isProcessing) {
-          checkInitialCooldown();
-        }
-      }
     } else {
       isVisible = false;
     }
   });
 
-  let btnDisabled = $derived(
-    isProcessing || !hasWallet || cooldownRemaining > 0
-  );
+  let btnDisabled = $derived(isProcessing || !hasWallet);
   let btnTitle = $derived(
     isProcessing
       ? "Processing..."
       : !hasWallet
         ? "Connecting wallet…"
-        : cooldownRemaining > 0
-          ? `Cooldown: ${formatCooldownTime(cooldownRemaining)}`
-          : "Claim test tokens"
+        : "Claim test tokens"
   );
   let btnContent = $derived(isProcessing ? "" : EMOJI_CONTENT);
-
-  function formatCooldownTime(seconds: number): string {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return m > 0 ? `${m}m ${s}s` : `${s}s`;
-  }
-
-  function startCooldownTick() {
-    stopCooldownTick();
-    if (cooldownRemaining <= 0) return;
-    cooldownInterval = setInterval(() => {
-      if (disposed) {
-        stopCooldownTick();
-        return;
-      }
-      cooldownRemaining = Math.max(0, cooldownRemaining - 1);
-      if (cooldownRemaining <= 0) {
-        stopCooldownTick();
-      }
-    }, 1000);
-  }
-
-  function stopCooldownTick() {
-    if (cooldownInterval) {
-      clearInterval(cooldownInterval);
-      cooldownInterval = null;
-    }
-  }
-
-  function setCooldownState(seconds: number) {
-    cooldownRemaining = seconds;
-    if (seconds <= 0) {
-      stopCooldownTick();
-      return;
-    }
-    startCooldownTick();
-  }
-
-  async function checkInitialCooldown() {
-    if (
-      (!walletStore.value.connected && !profileStore.value?.evm_wallet) ||
-      disposed
-    )
-      return;
-    const address = getConnectedAddress();
-    if (!address) return;
-    try {
-      const status = await getFaucetCooldownStatus(address);
-      if (disposed) return;
-      if (!status.canClaim) {
-        setCooldownState(status.remainingSeconds);
-      }
-    } catch {
-      // Silently fail
-    }
-  }
 
   async function handleClick() {
     if (isProcessing || disposed || btnDisabled) return;
@@ -155,24 +98,6 @@
     isProcessing = true;
 
     try {
-      const status = await getFaucetCooldownStatus(address);
-      if (disposed) return;
-      if (!status.canClaim) {
-        log.warn(
-          COMPONENT_NAME,
-          `Faucet on cooldown: ${formatCooldownTime(status.remainingSeconds)}`
-        );
-        setCooldownState(status.remainingSeconds);
-        isProcessing = false;
-        return;
-      }
-    } catch (err) {
-      log.error(COMPONENT_NAME, "Failed to check cooldown", err);
-      isProcessing = false;
-      return;
-    }
-
-    try {
       await claimFaucet();
 
       let amountDisplay = "tokens";
@@ -192,14 +117,6 @@
 
       clearCachedBalance(address);
       balanceRefreshTick.tick();
-
-      try {
-        const status = await getFaucetCooldownStatus(address);
-        if (disposed) return;
-        if (!status.canClaim) setCooldownState(status.remainingSeconds);
-      } catch {
-        // Non-critical
-      }
     } catch (err: any) {
       const message = err?.message || String(err);
 
@@ -227,8 +144,6 @@
         window.showWarningToast?.(
           "Sorry degen, you already have too many tokens 🤑"
         );
-      else if (message.includes("Cooldown active"))
-        window.showWarningToast?.("Hold up — faucet is on cooldown ⏳");
       else if (message.includes("Faucet empty"))
         window.showWarningToast?.("Faucet is dry — no tokens left 🏜️");
       else if (message.includes("not broadcast to the network"))
@@ -250,7 +165,6 @@
 
   onDestroy(() => {
     disposed = true;
-    stopCooldownTick();
   });
 </script>
 

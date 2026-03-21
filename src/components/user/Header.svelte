@@ -24,6 +24,75 @@
   let currentUrgency: "none" | "non-urgent" | "urgent" = $state("none");
   let isAdmin = $state(false);
 
+  /** Phone detection for fullscreen music (phones get fullscreen, tablets get large dropdown, desktop gets mini). Uses 896px to cover phone landscape. Touch devices get bigger targets via CSS. */
+  let isMobile = $state(
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 896px)").matches
+      : false
+  );
+  let isMusicOpen = $state(false);
+
+  function handleMusicClick() {
+    isMusicOpen = true;
+    // Let HUD.svelte know so it can pause the game if in-session
+    window.dispatchEvent(new CustomEvent("tresr:music-open"));
+  }
+
+  /** Dropdown auto-dismiss — 5 s, paused on hover */
+  const DROP_CLOSE_MS = 5000;
+  let musicDropOpen = $state(false);
+  let musicDropTimer: ReturnType<typeof setTimeout> | null = null;
+  let guestDropOpen = $state(false);
+  let guestDropTimer: ReturnType<typeof setTimeout> | null = null;
+
+  $effect(() => {
+    if (!musicDropOpen) return;
+    const t = setTimeout(() => {
+      musicDropOpen = false;
+    }, DROP_CLOSE_MS);
+    musicDropTimer = t;
+    return () => {
+      clearTimeout(t);
+      if (musicDropTimer === t) musicDropTimer = null;
+    };
+  });
+  $effect(() => {
+    if (!guestDropOpen) return;
+    const t = setTimeout(() => {
+      guestDropOpen = false;
+    }, DROP_CLOSE_MS);
+    guestDropTimer = t;
+    return () => {
+      clearTimeout(t);
+      if (guestDropTimer === t) guestDropTimer = null;
+    };
+  });
+
+  function resetMusicTimer() {
+    if (musicDropTimer) clearTimeout(musicDropTimer);
+    musicDropTimer = setTimeout(() => {
+      musicDropOpen = false;
+    }, DROP_CLOSE_MS);
+  }
+  function clearMusicTimer() {
+    if (musicDropTimer) {
+      clearTimeout(musicDropTimer);
+      musicDropTimer = null;
+    }
+  }
+  function resetGuestTimer() {
+    if (guestDropTimer) clearTimeout(guestDropTimer);
+    guestDropTimer = setTimeout(() => {
+      guestDropOpen = false;
+    }, DROP_CLOSE_MS);
+  }
+  function clearGuestTimer() {
+    if (guestDropTimer) {
+      clearTimeout(guestDropTimer);
+      guestDropTimer = null;
+    }
+  }
+
   let isAuthenticated = $derived(authStore.value.isAuthenticated);
   let isGuest = $derived(authStore.value.isGuest);
 
@@ -72,6 +141,16 @@
   onMount(() => {
     void startup();
 
+    // Track phone breakpoint for music (phones <896px get fullscreen; tablets/desktop use dropdown). Touch devices get larger UI via CSS.
+    const mobileMql = window.matchMedia(`(max-width: 1023px)`);
+    isMobile = mobileMql.matches;
+    const onMobileChange = (e: MediaQueryListEvent) => {
+      isMobile = e.matches;
+      // Close fullscreen overlay when switching to desktop
+      if (!e.matches) isMusicOpen = false;
+    };
+    mobileMql.addEventListener("change", onMobileChange);
+
     const desktopMql = window.matchMedia(`(min-width: 1024px)`);
     isExpanded = desktopMql.matches;
     desktopMql.addEventListener("change", handleBreakpointChange);
@@ -89,6 +168,7 @@
     });
 
     return () => {
+      mobileMql.removeEventListener("change", onMobileChange);
       desktopMql.removeEventListener("change", handleBreakpointChange);
       document.removeEventListener("click", handleToolbarClickOutside);
       unsubToggleNotifications();
@@ -119,23 +199,60 @@
       <WalletLink />
       <FaucetButton />
 
-      <DropdownMenu.Root>
-        <DropdownMenu.Trigger
+      <!-- Music trigger: fullscreen on phones, dropdown on tablets/desktop -->
+
+      {#if !isMobile}
+        <!-- Desktop: dropdown as before -->
+        <DropdownMenu.Root bind:open={musicDropOpen}>
+          <DropdownMenu.Trigger
+            class="flex h-12 w-12 items-center justify-center rounded-full text-xl transition-colors hover:bg-white/10"
+            title="Music Player"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              class="text-primary h-5 w-5 drop-shadow-[0_0_6px_var(--color-primary)]"
+            >
+              <path
+                d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"
+              />
+            </svg>
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Content
+            class="z-[60] outline-none"
+            sideOffset={8}
+            align="end"
+            onmouseenter={clearMusicTimer}
+            onmouseleave={resetMusicTimer}
+          >
+            <MusicPlayer />
+          </DropdownMenu.Content>
+        </DropdownMenu.Root>
+      {:else}
+        <!-- Mobile: single tap opens fullscreen overlay -->
+        <button
+          onclick={handleMusicClick}
           class="flex h-12 w-12 items-center justify-center rounded-full text-xl transition-colors hover:bg-white/10"
-          title="Music Player">🎵</DropdownMenu.Trigger
+          aria-label="Open Music Player"
+          title="Music Player"
         >
-        <DropdownMenu.Content
-          class="z-[60] outline-none"
-          sideOffset={8}
-          align="end"
-        >
-          <MusicPlayer />
-        </DropdownMenu.Content>
-      </DropdownMenu.Root>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            class="text-primary h-5 w-5 drop-shadow-[0_0_6px_var(--color-primary)]"
+          >
+            <path
+              d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"
+            />
+          </svg>
+        </button>
+      {/if}
 
       {#if !isAuthenticated || isGuest}
         <!-- Profile: Guest -->
-        <DropdownMenu.Root>
+        <DropdownMenu.Root bind:open={guestDropOpen}>
           <DropdownMenu.Trigger
             class="flex h-12 w-12 items-center justify-center rounded-full text-xl transition-colors hover:bg-white/10"
             title="Profile (Guest)">👤</DropdownMenu.Trigger
@@ -144,6 +261,8 @@
             class="border-primary/20 z-[60] mt-2 w-72 rounded-xl border bg-black/80 p-4 shadow-xl backdrop-blur-md outline-none"
             sideOffset={8}
             align="end"
+            onmouseenter={clearGuestTimer}
+            onmouseleave={resetGuestTimer}
           >
             <h3 class="text-lg font-bold text-white">Profile</h3>
             <div class="mb-2 text-xs text-white/50">Unavailable</div>
@@ -206,6 +325,53 @@
     </Button>
   </div>
 </header>
+
+{#if isMusicOpen}
+  <!-- Phone fullscreen music overlay (moved outside header pill to avoid max-w-0 clipping) -->
+  <div
+    class="fixed inset-0 z-[200] flex flex-col bg-black/95 backdrop-blur-md"
+    style="padding-top: max(1rem, var(--safe-top)); padding-bottom: max(1rem, var(--safe-bottom));"
+  >
+    <div
+      class="flex shrink-0 items-center justify-between border-b border-white/10 px-4 py-3"
+    >
+      <h2 class="font-bold text-white">🎵 Music Player</h2>
+      <button
+        onclick={() => (isMusicOpen = false)}
+        class="flex h-10 w-10 items-center justify-center rounded-full text-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+        aria-label="Close music player">✕</button
+      >
+    </div>
+    <div class="flex min-h-0 flex-1 overflow-y-auto px-4 md:px-0">
+      <div
+        class="mx-auto flex w-full max-w-2xl flex-col pt-1 pb-4 sm:pt-2 sm:pb-8"
+      >
+        <MusicPlayer isFullscreen={true} />
+      </div>
+    </div>
+    <div
+      class="flex shrink-0 animate-bounce items-center justify-center gap-1 py-2"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-3 w-3 text-white/30"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        ><path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M19 9l-7 7-7-7"
+        /></svg
+      >
+      <span
+        class="font-mono text-[10px] tracking-widest text-white/30 uppercase"
+        >Scroll</span
+      >
+    </div>
+  </div>
+{/if}
 
 <!-- <NotificationToast /> is handled globally in layout -->
 

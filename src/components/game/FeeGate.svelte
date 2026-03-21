@@ -20,6 +20,7 @@
   import {log} from "@/lib/utils/log";
   import {trackFeePaid, trackError} from "@/lib/metrics/analytics";
   import {reportError} from "@/lib/utils/error-reporter";
+  import {profileStore} from "@/lib/user/store.svelte";
   import Modal from "@/components/ui/Modal.svelte";
 
   const COMPONENT_NAME = "FeeGate";
@@ -52,6 +53,17 @@
   let stepFeeState: "none" | "active" | "done" | "error" = $state("none");
   let stepConfirmState: "none" | "active" | "done" | "error" = $state("none");
 
+  // Element refs for auto-scroll
+  let stepEls: Record<string, HTMLLIElement | null> = {
+    wallet: null,
+    balance: null,
+    approve: null,
+    fee: null,
+    confirm: null,
+  };
+  // Status message element — scrolled into view on every status update
+  let statusEl: HTMLDivElement | null = null;
+
   let paymentInProgress = false;
   let paymentTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
@@ -66,6 +78,12 @@
     statusMessage = message;
     isStatusError = isError;
     isStatusVisible = true;
+    // Always scroll to the status line so users can see feedback —
+    // errors on mobile were invisible without this; on desktop it
+    // also helps follow the flow automatically.
+    requestAnimationFrame(() => {
+      statusEl?.scrollIntoView({behavior: "smooth", block: "nearest"});
+    });
   }
 
   function hideStatus() {
@@ -97,6 +115,11 @@
     if (step === "approve") stepApproveState = state;
     if (step === "fee") stepFeeState = state;
     if (step === "confirm") stepConfirmState = state;
+
+    // Scroll the active/changing step into view (mobile + desktop)
+    requestAnimationFrame(() => {
+      stepEls[step]?.scrollIntoView({behavior: "smooth", block: "nearest"});
+    });
   }
 
   async function handlePayClick() {
@@ -139,6 +162,27 @@
         open = true;
       }
       markStep("wallet", "done");
+
+      // Guard: connected wallet must match the address registered in the user's profile.
+      // A mismatch means the user has the wrong wallet active — abort before any spend.
+      const profileWallet = profileStore.value?.evm_wallet;
+      if (
+        profileWallet &&
+        address.toLowerCase() !== profileWallet.toLowerCase()
+      ) {
+        markStep("wallet", "error");
+        showStatus(
+          `Wrong wallet connected. Expected …${profileWallet.slice(-6)} but got …${address.slice(-6)}. Switch wallets and try again.`,
+          true
+        );
+        paymentInProgress = false;
+        btnPayDisabled = false;
+        isPaySpinnerVisible = false;
+        payLabelText = "APE IN";
+        isBtnAbortHidden = false;
+        clearPaymentTimeout();
+        return;
+      }
 
       markStep("balance", "active");
       showStatus("Checking balance...");
@@ -324,6 +368,7 @@
   title="Entry Fee Required"
   closeOnEscape={false}
   closeOnOutsideClick={false}
+  mobileFull
 >
   <div
     class="my-4 flex w-full flex-col gap-px overflow-hidden rounded-md border border-white/10 bg-white/10 shadow-inner"
@@ -346,6 +391,7 @@
       class="flex w-full flex-col gap-3 text-left font-mono text-xs tracking-tight sm:text-sm"
     >
       <li
+        bind:this={stepEls.wallet}
         class={`flex items-center gap-3 ${getStepColorClass(stepWalletState).split(" ")[0]}`}
       >
         <div
@@ -356,6 +402,7 @@
         Connect wallet
       </li>
       <li
+        bind:this={stepEls.balance}
         class={`flex items-center gap-3 ${getStepColorClass(stepBalanceState).split(" ")[0]}`}
       >
         <div
@@ -366,6 +413,7 @@
         Check balance
       </li>
       <li
+        bind:this={stepEls.approve}
         class={`flex items-center gap-3 ${getStepColorClass(stepApproveState).split(" ")[0]}`}
       >
         <div
@@ -376,6 +424,7 @@
         Approve token spend
       </li>
       <li
+        bind:this={stepEls.fee}
         class={`flex items-center gap-3 ${getStepColorClass(stepFeeState).split(" ")[0]}`}
       >
         <div
@@ -386,6 +435,7 @@
         Pay fee to vault
       </li>
       <li
+        bind:this={stepEls.confirm}
         class={`flex items-center gap-3 ${getStepColorClass(stepConfirmState).split(" ")[0]}`}
       >
         <div
@@ -400,6 +450,7 @@
 
   <!-- Status messages -->
   <div
+    bind:this={statusEl}
     class="my-2 rounded-md bg-black/30 p-3 text-center font-mono text-xs tracking-wider sm:my-3 sm:text-sm {isStatusError
       ? 'text-[#ef4444]'
       : 'text-white/70'}"

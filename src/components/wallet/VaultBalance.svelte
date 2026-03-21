@@ -8,26 +8,18 @@
   import {shortenAddress} from "@/lib/blockchain/networks/display";
   import {getReadClient} from "@/lib/blockchain/tx";
   import {getVaultCurrentBalance} from "@/lib/blockchain/contracts/vault";
-  import {
-    subscribeToConnection,
-    getConnectedAddress,
-  } from "@/lib/wallet/connection";
   import {config} from "@/lib/config/client";
   import {log} from "@/lib/utils/log";
-  import {subscribeToAuth} from "@/lib/auth";
   import {
     getVaultTier,
     formatVaultDisplay,
   } from "@/lib/blockchain/vault-status";
   import {VaultAbi} from "@/lib/blockchain/abi/vault";
+  import {getConnectedAddress} from "@/lib/wallet/connection";
+  import {profileStore} from "@/lib/user/store.svelte";
   import Card from "@/components/ui/Card.svelte";
   import Badge from "@/components/ui/Badge.svelte";
-  import Alert from "@/components/ui/Alert.svelte";
-  import {
-    balanceRefreshTick,
-    confettiTrigger,
-    vaultStatus,
-  } from "@/lib/stores/ui.svelte";
+  import {balanceRefreshTick, vaultStatus} from "@/lib/stores/ui.svelte";
 
   const COMPONENT_NAME = "VaultBalance";
   if (!config.wallet?.vault_poll_interval_ms)
@@ -37,12 +29,10 @@
 
   const REFRESH_INTERVAL_MS = config.wallet.vault_poll_interval_ms;
   const MAX_CONSECUTIVE_ERRORS = 3;
-  const WIN_TOAST_DURATION_MS = 8_000;
 
   const env = getEnvironmentKey();
   const ticker = config.blockchain.avalanche[env].token_ticker;
 
-  let isVisible = $state(false);
   let balanceDisplay = $state("--");
   let difficulty = $state({
     tier: "locked",
@@ -65,18 +55,15 @@
       | "secondary"
   );
 
-  let winToastVisible = $state(false);
-  let winToastText = $state("");
-
   let interval: ReturnType<typeof setInterval> | null = null;
-  let winToastTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  let walletConnected = $state(false);
-  let isAuthenticatedNonGuest = $state(false);
-  let connectedAddress: string | null = $state(null);
   let consecutiveErrors = $state(0);
   let disposed = false;
   let unwatchClaim: (() => void) | null = null;
+
+  /** Deduplicate Claim events across watcher reconnects / component remounts. */
+  const MAX_SEEN_SESSIONS = 20;
+  const seenSessionIds = new Set<string>();
 
   function updateDifficultyBadge(balanceWei: bigint) {
     if (disposed) return;
@@ -91,20 +78,40 @@
     });
   }
 
-  function showWinToast(user: string, amountWei: bigint) {
+  function showWinToast(sessionId: string, user: string, amountWei: bigint) {
     if (disposed) return;
 
+    // Deduplicate: skip events we've already shown
+    if (seenSessionIds.has(sessionId)) return;
+    seenSessionIds.add(sessionId);
+    // Evict oldest entries to cap memory
+    if (seenSessionIds.size > MAX_SEEN_SESSIONS) {
+      const first = seenSessionIds.values().next().value;
+      if (first) seenSessionIds.delete(first);
+    }
+
     const amountDisplay = formatVaultDisplay(amountWei);
-    const shortAddr = shortenAddress(user);
-    winToastText = `🏆 ${shortAddr} just won ${amountDisplay} $${ticker}!`;
-    winToastVisible = true;
+    const myAddress = getConnectedAddress();
+    const isSelf =
+      !!myAddress && user.toLowerCase() === myAddress.toLowerCase();
 
-    confettiTrigger.fire({});
+    let message: string;
+    if (isSelf) {
+      const nickname = profileStore.value?.nickname;
+      const who = nickname || "You";
+      message = `🎉 ${who} just won ${amountDisplay} $${ticker}!`;
+      log.info(COMPONENT_NAME, `Self-win: ${amountDisplay} $${ticker}`);
+    } else {
+      const shortAddr = shortenAddress(user);
+      message = `🏆 ${shortAddr} just won ${amountDisplay} $${ticker}!`;
+      log.info(
+        COMPONENT_NAME,
+        `FOMO: ${shortAddr} won ${amountDisplay} $${ticker}`
+      );
+    }
 
-    if (winToastTimeout) clearTimeout(winToastTimeout);
-    winToastTimeout = setTimeout(() => {
-      winToastVisible = false;
-    }, WIN_TOAST_DURATION_MS);
+    // Route through the notification toast system with confetti
+    window.showConfettiToast?.(message);
 
     updateBalance();
   }
@@ -128,13 +135,21 @@
         eventName: "Claim",
         onLogs: (logs) => {
           for (const l of logs) {
-            const args = l.args as {user?: string; amount?: bigint} | undefined;
+            const args = l.args as
+              | {
+                  sessionId?: string;
+                  user?: string;
+                  amount?: bigint;
+                }
+              | undefined;
             if (args?.user && args?.amount) {
+              const sid =
+                args.sessionId ?? l.transactionHash ?? crypto.randomUUID();
               log.info(
                 COMPONENT_NAME,
                 `Claim detected: ${args.user} won ${args.amount}`
               );
-              showWinToast(args.user, args.amount);
+              showWinToast(sid, args.user, args.amount);
             }
           }
         },
@@ -153,7 +168,7 @@
   }
 
   async function updateBalance() {
-    if (disposed || !connectedAddress) return;
+    if (disposed) return;
     if (!isVaultDeployed(config)) {
       balanceDisplay = "--";
       return;
@@ -192,58 +207,17 @@
     stopWatchingClaims();
   }
 
-  function evaluatePolling() {
-    if (isAuthenticatedNonGuest) {
-      isVisible = true;
-      if (walletConnected) {
-        consecutiveErrors = 0;
-        startPolling();
-      } else {
-        stopPolling();
-        balanceDisplay = "--";
-        showDifficulty = false;
-      }
-    } else {
-      isVisible = false;
-      stopPolling();
-    }
-  }
-
   function handleVisibilityChange() {
     if (document.visibilityState === "visible" && interval) {
       updateBalance();
     }
   }
 
-  let unsubAuth: (() => void) | null = null;
-  let unsubWallet: (() => void) | null = null;
-
   onMount(() => {
-    // Eager check — if already connected (e.g., after redirect), start immediately
-    const addr = getConnectedAddress();
-    if (addr) {
-      walletConnected = true;
-      connectedAddress = addr;
+    // Vault balance is a public read — always poll, no wallet needed.
+    if (isVaultDeployed(config) && isRpcAvailable()) {
+      startPolling();
     }
-
-    unsubAuth = subscribeToAuth((state) => {
-      isAuthenticatedNonGuest = state.isAuthenticated && !state.isGuest;
-
-      if (isAuthenticatedNonGuest && !unsubWallet) {
-        unsubWallet = subscribeToConnection((connected, address) => {
-          walletConnected = connected;
-          connectedAddress = connected && address ? address : null;
-          evaluatePolling();
-        });
-      } else if (!isAuthenticatedNonGuest && unsubWallet) {
-        unsubWallet();
-        unsubWallet = null;
-        walletConnected = false;
-        connectedAddress = null;
-      }
-
-      evaluatePolling();
-    });
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
@@ -257,14 +231,11 @@
   onDestroy(() => {
     disposed = true;
     stopPolling();
-    if (unsubAuth) unsubAuth();
-    if (unsubWallet) unsubWallet();
     document.removeEventListener("visibilitychange", handleVisibilityChange);
-    if (winToastTimeout) clearTimeout(winToastTimeout);
   });
 </script>
 
-{#if isVisible}
+{#if isVaultDeployed(config)}
   <Card variant="bordered" class="border-warning/30 h-full">
     <div class="flex h-full flex-col items-center justify-center p-4">
       <div class="mb-2 font-mono text-xs whitespace-nowrap opacity-70">
@@ -279,7 +250,7 @@
       {/if}
 
       <div class="text-warning mb-1 text-3xl font-bold">
-        {#if balanceDisplay === "--" && walletConnected && !isOffline}
+        {#if balanceDisplay === "--" && !isOffline}
           <span class="animate-pulse">...</span>
         {:else}
           {balanceDisplay}
@@ -292,14 +263,4 @@
       </div>
     </div>
   </Card>
-{/if}
-
-{#if winToastVisible}
-  <div
-    class="animate-in fade-in slide-in-from-top-4 pointer-events-none fixed top-4 right-0 left-0 z-[9999] flex justify-center transition-all duration-500"
-  >
-    <Alert variant="success" class="shadow-2xl">
-      <span class="font-mono text-sm font-bold">{winToastText}</span>
-    </Alert>
-  </div>
 {/if}

@@ -15,6 +15,8 @@
     closeOnEscape?: boolean;
     closeOnOutsideClick?: boolean;
     maxWidth?: string;
+    /** On small (mobile) screens, expand the modal to fill the full viewport */
+    mobileFull?: boolean;
   };
 
   let {
@@ -29,7 +31,13 @@
     closeOnEscape = true,
     closeOnOutsideClick = true,
     maxWidth = "max-w-lg",
+    mobileFull = false,
   }: Props = $props();
+
+  // Derived: wide variant needed on tablet/desktop for modals using max-w-2xl or larger
+  const wideModal = $derived(
+    mobileFull && ["max-w-2xl", "max-w-3xl", "max-w-4xl"].includes(maxWidth)
+  );
 
   function handleOpenChange(state: boolean) {
     if (onOpenChange) onOpenChange(state);
@@ -67,11 +75,15 @@
           <div
             {...props}
             transition:fly={{duration: 250, y: 15}}
-            class="fixed top-[50%] left-[50%] z-[101] flex w-[95%] flex-col sm:w-full {maxWidth} border-primary/50 max-h-[90dvh] translate-x-[-50%] translate-y-[-50%] gap-0 border-y-2 bg-[#0d0d12] p-6 shadow-[0_0_50px_-12px_rgba(180,50,250,0.3)] sm:rounded-xl sm:border-x-2"
+            class={mobileFull
+              ? `modal-full${wideModal ? " modal-full-wide" : ""} border-primary/50 fixed z-[101] flex flex-col gap-0 border-solid
+                 bg-[#0d0d12] p-6
+                 shadow-[0_0_50px_-12px_rgba(180,50,250,0.3)]`
+              : `fixed top-[50%] left-[50%] z-[101] flex w-[95%] flex-col sm:w-full ${maxWidth} border-primary/50 max-h-[90dvh] translate-x-[-50%] translate-y-[-50%] gap-0 border-y-2 bg-[#0d0d12] p-6 shadow-[0_0_50px_-12px_rgba(180,50,250,0.3)] sm:rounded-xl sm:border-x-2`}
           >
             {#if title}
               <div
-                class="mb-4 flex shrink-0 flex-col space-y-2 pr-10 text-center"
+                class="mb-4 flex shrink-0 flex-col space-y-2 px-10 text-center"
               >
                 <Dialog.Title
                   class="text-2xl font-black tracking-widest text-white uppercase italic drop-shadow-[0_0_8px_var(--color-primary)]"

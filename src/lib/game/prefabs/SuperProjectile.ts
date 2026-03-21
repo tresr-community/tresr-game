@@ -127,8 +127,13 @@ export class SuperProjectile extends Phaser.Physics.Arcade.Sprite {
   private checkCollisions() {
     // Use cached config
     const hitboxConfig = this.config.gameplay.entities.player.super.hitbox;
-    const hitRadius = hitboxConfig.hit_radius;
-    const depthThreshold = hitboxConfig.depth_threshold;
+    const resScale =
+      (this.scene?.registry?.get("resolution_scale") as number) || 1;
+    // Scale hit distances to canvas resolution — config values are in design-space
+    // (720 px) pixels; without this, the projectile has a disproportionately large
+    // hit-box on smaller mobile canvases.
+    const hitRadius = hitboxConfig.hit_radius * resScale;
+    const depthThreshold = hitboxConfig.depth_threshold * resScale;
 
     // Pierce through enemies — damage each one once
     if (this.enemyGroup) {
@@ -145,6 +150,16 @@ export class SuperProjectile extends Phaser.Physics.Arcade.Sprite {
         if (hDist < hitRadius && dDist < depthThreshold) {
           this.piercedEnemies.add(enemy);
           enemy.takeDamage(this.damage);
+
+          // Debug: confirm hit detection is reaching here
+          // If you see this log but no VFX → rendering issue
+          // If you don't see this log → collision check mismatch
+          import("@/lib/utils/log").then(({log}) =>
+            log.debug(
+              "SuperProjectile",
+              `Pierce hit enemy at (${enemy.x.toFixed(0)}, ${enemy.y.toFixed(0)}) hDist=${hDist.toFixed(1)} hitRadius=${hitRadius.toFixed(1)}`
+            )
+          );
 
           // Emit pierce event for VFX and scoring (per-enemy)
           this.scene.events.emit("super_pierce", {

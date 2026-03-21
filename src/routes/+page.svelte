@@ -85,12 +85,12 @@
     >
       <div class="flex max-w-3xl flex-col items-center">
         <h1
-          class="font-display text-primary mb-2 text-5xl font-black tracking-tighter drop-shadow-[0_0_10px_rgba(var(--color-primary),0.8)] sm:mb-3 sm:text-6xl md:text-7xl lg:text-8xl"
+          class="font-display text-primary mb-1 text-5xl font-black tracking-tighter drop-shadow-[0_0_10px_rgba(var(--color-primary),0.8)] sm:mb-2 sm:text-6xl md:text-7xl lg:text-8xl"
         >
           {appName}
         </h1>
         <p
-          class="border-secondary/20 my-2 rounded-lg border bg-black/50 px-3 py-1 font-mono text-xs tracking-widest uppercase backdrop-blur sm:my-3 sm:px-4 sm:py-1.5 sm:text-sm md:my-6 md:text-xl lg:text-2xl"
+          class="border-secondary/20 mt-1 mb-3 rounded-lg border bg-black/50 px-3 py-1 font-mono text-[10px] tracking-widest uppercase backdrop-blur sm:mb-4 sm:px-4 sm:py-1.5 sm:text-xs md:mb-6 md:text-sm lg:text-xl"
         >
           <span class="text-info">COLLECT KEYS.</span>{" "}
           <span class="text-error">FIGHT ENEMIES.</span>{" "}
@@ -98,9 +98,9 @@
         </p>
 
         <div
-          class="mt-6 flex w-full shrink-0 flex-col items-center gap-6 md:mt-10 md:gap-8"
+          class="mt-2 flex w-full shrink-0 flex-col items-center gap-4 md:mt-4 md:gap-6"
         >
-          <div class="relative z-10 flex shrink-0 flex-col gap-2">
+          <div class="relative z-10 flex shrink-0 flex-col gap-1">
             <LoginButton />
           </div>
 

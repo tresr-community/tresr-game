@@ -24,6 +24,7 @@
   title="Under Maintenance"
   closeOnEscape={false}
   closeOnOutsideClick={false}
+  mobileFull
 >
   <p class="py-2 opacity-70">
     We're deploying an update. Check back soon — no funds are at risk during

@@ -163,47 +163,6 @@ export async function claimFaucet(): Promise<`0x${string}`> {
 }
 
 /**
- * Get the faucet cooldown status for a user.
- *
- * @param userAddress - The user's wallet address
- * @returns Cooldown info: remaining seconds (0 = can claim) and whether they can claim
- */
-export async function getFaucetCooldownStatus(
-  userAddress: string
-): Promise<{remainingSeconds: number; canClaim: boolean}> {
-  const cfg = await loadConfigAsync();
-  const env = getEnvironmentKey();
-  const chainConfig = cfg.blockchain.avalanche[env];
-  const faucetAddress = (
-    chainConfig as AvalancheEnvConfig & {faucet_contract?: string}
-  ).faucet_contract as `0x${string}` | undefined;
-  if (!faucetAddress || faucetAddress === ZERO_ADDRESS) {
-    throw new Error("Faucet contract is not deployed for this environment.");
-  }
-
-  const publicClient = getReadClient();
-
-  const lastDripTime = await publicClient.readContract({
-    address: faucetAddress,
-    abi: FaucetAbi,
-    functionName: "lastDripTime",
-    args: [userAddress as `0x${string}`],
-  });
-
-  if (lastDripTime === 0n) {
-    return {remainingSeconds: 0, canClaim: true};
-  }
-
-  const cooldownSeconds = cfg.wallet.faucet_cooldown_hours * 3600;
-
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  const nextClaimTime = Number(lastDripTime) + cooldownSeconds;
-  const remaining = Math.max(0, nextClaimTime - nowSeconds);
-
-  return {remainingSeconds: remaining, canClaim: remaining === 0};
-}
-
-/**
  * Get the faucet drip amount per claim.
  *
  * @returns Drip amount in wei

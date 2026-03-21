@@ -735,6 +735,16 @@ export class Preloader extends Phaser.Scene {
       }
       log.info(COMPONENT_NAME, "Narration skipped by user");
       this.removeSkipPrompt();
+      // Force-finish both audio AND typewriter on user-initiated skip
+      this.typewriterDone = true;
+      if (this.typewriterTimer) {
+        this.typewriterTimer.destroy();
+        this.typewriterTimer = undefined;
+      }
+      if (this.domTypewriterTimeoutId) {
+        clearTimeout(this.domTypewriterTimeoutId);
+        this.domTypewriterTimeoutId = undefined;
+      }
       this.stopNarration();
     };
 
@@ -804,11 +814,16 @@ export class Preloader extends Phaser.Scene {
    * Stop narration that is already playing (or pending).
    * Used when the user's saved preference says narration is disabled,
    * but audio was started eagerly to preserve the autoplay gesture window.
+   *
+   * IMPORTANT: We only stop the AUDIO here. The typewriter (subtitle text)
+   * and loader animation continue so the user still sees the intro sequence.
+   * They can "Tap to skip" once assets are loaded, just like with narration on.
    */
   private stopNarration() {
-    // Set flags immediately so checkReadyForTransition can proceed
+    // Mark audio as done (no voice to wait for)
     this.introFinished = true;
-    this.typewriterDone = true;
+    // NOTE: we do NOT set typewriterDone = true here — let the typewriter
+    // run its course so the user still sees subtitles.
 
     const cleanupAudio = () => {
       if (this.introAudio) {
@@ -839,10 +854,25 @@ export class Preloader extends Phaser.Scene {
       cleanupAudio();
     }
 
-    if (this.typewriterTimer) {
-      this.typewriterTimer.destroy();
-      this.typewriterTimer = undefined;
+    // Remove the "playing" event listener SYNCHRONOUSLY to prevent a race
+    // condition: if cleanupAudio runs async (after introPlayPromise settles),
+    // the still-attached handler could fire and start a SECOND typewriter.
+    if (this.introPlayingHandler && this.introAudio) {
+      this.introAudio.removeEventListener("playing", this.introPlayingHandler);
+      this.introPlayingHandler = null;
     }
+
+    // Start typewriter silently if it hasn't started yet.
+    // The "playing" event listener (now removed above) will never fire,
+    // so we kick the typewriter off manually.
+    if (
+      !this.typewriterDone &&
+      !this.typewriterTimer &&
+      !this.domTypewriterTimeoutId
+    ) {
+      this.startTypewriter(); // uses default charDelay
+    }
+
     window.dispatchEvent(new Event("tresr:narration-complete"));
   }
 

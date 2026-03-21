@@ -9,6 +9,12 @@ while true; do
 
 	RUN_LOOP=true
 
+	echo "Staging changed files..."
+	git add --all || {
+		echo "Failed to stage files"
+		exit 1
+	}
+
 	echo "##################################"
 	echo "Starting Juno development loop..."
 	echo "##################################"

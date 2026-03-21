@@ -42,6 +42,13 @@ export const getGameConfig = (
     input: {
       gamepad: true,
       activePointers: isMobile ? 3 : 2,
+      // Capture touch events as non-passive so Phaser can call
+      // preventDefault() without the browser warning about passive listeners.
+      // Without this, every jump button press produces:
+      // "Unable to preventDefault inside passive event listener invocation."
+      touch: {
+        capture: true,
+      },
       // Prevent right-click context menu on mobile
       mouse: {
         preventDefaultDown: true,

@@ -178,13 +178,18 @@ export class CombatManager {
     const now = this.scene.time.now;
     const cooldownMs = this.config.combat.enemy_damage_cooldown_ms;
     const pkb = this.config.entities.player.knockback;
+    // Scale all distance thresholds to current canvas resolution.
+    // Config values are in design-space pixels (720 px reference height).
+    const rs = (this.scene.registry.get("resolution_scale") as number) || 1;
 
     // Check enemy attack damage — only when enemy is in attack animation
     // and within range on BOTH axes (horizontal + depth) separately.
     if (this.spawnManager.enemies) {
-      const enemyAttackRange = this.config.entities.enemy.combat.attack_range;
+      const enemyAttackRange =
+        this.config.entities.enemy.combat.attack_range * rs;
       const enemyDamage = this.config.entities.enemy.damage;
-      const depthThreshold = this.config.entities.enemy.combat.depth_threshold;
+      const depthThreshold =
+        this.config.entities.enemy.combat.depth_threshold * rs;
 
       this.spawnManager.enemies.getChildren().forEach((child) => {
         const enemy = child as Enemy;
@@ -221,10 +226,10 @@ export class CombatManager {
     if (this.boss && this.boss.active && this.boss.hp > 0) {
       if (now - this.lastBossDamageTime < cooldownMs) return;
 
-      const bossAttackRange = this.boss.getAttackRange();
+      const bossAttackRange = this.boss.getAttackRange(); // already scaled
       const bossDamage = this.boss.getContactDamage();
       const bossDepthThreshold =
-        this.config.entities.boss.combat.contact_depth_threshold;
+        this.config.entities.boss.combat.contact_depth_threshold * rs;
 
       const hDist = Math.abs(this.player.x - this.boss.x);
       const dDist = Math.abs(this.player.groundY - this.boss.groundY);
@@ -244,8 +249,10 @@ export class CombatManager {
     const playerConfig = this.config.entities.player;
     const scoring = this.config.scoring;
     const playerScale = player.scaleX;
-    const reach = playerConfig.combat.reach * playerScale;
-    const attackRange = playerConfig.combat.attack_range;
+    const reach = playerConfig.combat.reach * playerScale; // already scaled
+    // Scale attack thresholds — config values are in design-space pixels.
+    const rs = (this.scene.registry.get("resolution_scale") as number) || 1;
+    const attackRange = playerConfig.combat.attack_range * rs;
     const playerDamage = playerConfig.damage;
 
     const attackX = player.flipX ? player.x - reach : player.x + reach;
@@ -280,8 +287,9 @@ export class CombatManager {
     // Check boss hit (use groundY for 2.5D depth-plane distance)
     if (this.boss && this.boss.active && this.boss.hp > 0) {
       const bossRange =
-        this.config.entities.boss.combat.attack_range +
-        this.config.combat.boss_melee_range_bonus;
+        (this.config.entities.boss.combat.attack_range +
+          this.config.combat.boss_melee_range_bonus) *
+        rs;
       const dist = Phaser.Math.Distance.Between(
         attackX,
         attackY,
@@ -433,26 +441,76 @@ export class CombatManager {
       this.addScore(scoring.super_hit);
     }
 
-    // Fire burst VFX at pierce point
-    const burst = this.scene.add.circle(data.x, data.y, 6, 0xff6600, 0.9);
-    burst.setDepth(1000);
+    log.debug(
+      COMPONENT_NAME,
+      `Super pierce VFX at (${data.x.toFixed(0)}, ${data.y.toFixed(0)}) killed=${data.killed}`
+    );
+
+    // Golden blast radius VFX — mirrors the bomb's red ring but in gold.
+    // Create the three rings at their final size for hardware scaling
+    const rs = (this.scene.registry.get("resolution_scale") as number) || 1;
+    const innerFinal = 40 * rs;
+    const midFinal = 70 * rs;
+    const outerFinal = 120 * rs;
+
+    // 1. Outer shockwave (Amber)
+    const outerRadiusCircle = this.scene.add.circle(
+      data.x,
+      data.y,
+      outerFinal,
+      0xffa500, // Amber
+      0.4
+    );
+    outerRadiusCircle.setDepth(15);
+    outerRadiusCircle.setScale(0.1);
+
     this.scene.tweens.add({
-      targets: burst,
-      radius: 24,
+      targets: outerRadiusCircle,
+      scale: 1, // Tween up to normal size
       alpha: 0,
-      duration: 200,
-      onComplete: () => burst.destroy(),
+      duration: 350,
+      ease: "Quad.easeOut",
+      onComplete: () => outerRadiusCircle.destroy(),
     });
 
-    // Inner white-hot core
-    const core = this.scene.add.circle(data.x, data.y, 3, 0xffcc00, 1);
-    core.setDepth(1001);
+    // 2. Middle impact (Gold)
+    const midRadiusCircle = this.scene.add.circle(
+      data.x,
+      data.y,
+      midFinal,
+      0xffd700, // Gold
+      0.7
+    );
+    midRadiusCircle.setDepth(16);
+    midRadiusCircle.setScale(0.1);
+
     this.scene.tweens.add({
-      targets: core,
-      radius: 10,
+      targets: midRadiusCircle,
+      scale: 1,
+      alpha: 0,
+      duration: 250,
+      ease: "Quad.easeOut",
+      onComplete: () => midRadiusCircle.destroy(),
+    });
+
+    // 3. Inner core (White/Bright Yellow)
+    const innerRadiusCircle = this.scene.add.circle(
+      data.x,
+      data.y,
+      innerFinal,
+      0xffffe0, // Light Goldenrod Yellow
+      1.0
+    );
+    innerRadiusCircle.setDepth(17);
+    innerRadiusCircle.setScale(0.1);
+
+    this.scene.tweens.add({
+      targets: innerRadiusCircle,
+      scale: 1,
       alpha: 0,
       duration: 150,
-      onComplete: () => core.destroy(),
+      ease: "Quad.easeIn",
+      onComplete: () => innerRadiusCircle.destroy(),
     });
 
     this.playSound("punch");
@@ -468,6 +526,7 @@ export class CombatManager {
   }) {
     const scoring = this.config.scoring;
     const superEffects = this.config.entities.player.super.effects;
+    const rs = (this.scene.registry.get("resolution_scale") as number) || 1;
 
     this.addScore(scoring.boss_hit);
     gameActions.incrementBossHits();
@@ -476,23 +535,36 @@ export class CombatManager {
     // Visual explosion at impact point
     this.triggerFlash();
 
-    // Expanding ring VFX at impact
+    // Outer golden shockwave ring
     const initialRadius = superEffects.explosion_initial_radius;
     const expandDuration = superEffects.explosion_expand_duration;
     const ring = this.scene.add.circle(
       data.x,
       data.y,
       initialRadius,
-      0xffff00,
+      0xffd700,
       0.5
     );
-    ring.setDepth(1000);
+    ring.setDepth(999);
     this.scene.tweens.add({
       targets: ring,
-      radius: 80,
+      radius: 100 * rs,
       alpha: 0,
       duration: expandDuration,
+      ease: "Quad.easeOut",
       onComplete: () => ring.destroy(),
+    });
+
+    // Inner white-hot core flash
+    const core = this.scene.add.circle(data.x, data.y, 10 * rs, 0xffffff, 1);
+    core.setDepth(1002);
+    this.scene.tweens.add({
+      targets: core,
+      radius: 40 * rs,
+      alpha: 0,
+      duration: 220,
+      ease: "Quad.easeOut",
+      onComplete: () => core.destroy(),
     });
 
     log.info(COMPONENT_NAME, "Super projectile hit boss!");
@@ -791,7 +863,8 @@ export class CombatManager {
       this.chest.groundY
     );
 
-    const chestRange = this.config.entities.chest.combat.interact_range;
+    const rs = (this.scene.registry.get("resolution_scale") as number) || 1;
+    const chestRange = this.config.entities.chest.combat.interact_range * rs;
     if (dist < chestRange) {
       if (this.chest.open()) {
         this.playSound("open_treasure_chest");

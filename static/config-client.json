@@ -582,13 +582,13 @@
         },
         "ai": {
           "weights": {
-            "cautious": 10,
-            "direct": 20,
-            "erratic": 20,
-            "flanker": 20,
-            "passive": 10,
-            "retardio": 10,
-            "swarm": 10
+            "cautious": 0,
+            "direct": 100,
+            "erratic": 0,
+            "flanker": 0,
+            "passive": 0,
+            "retardio": 0,
+            "swarm": 0
           },
           "cautious": {
             "speed_mult": 0.7,
@@ -1547,5 +1547,5 @@
       }
     ]
   },
-  "configHash": "02328191194371497160f6a60bca7019bf1e1a631829349af0a39bb7d1cb99df"
+  "configHash": "cde58d20236139c9ac894705177ce64ea7c03658ad5e0670cddc70ba588cec07"
 }
