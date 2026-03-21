@@ -78,17 +78,36 @@ export default defineConfig(({mode}) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
-            // Phaser game engine is the only dep that is truly isolated —
-            // it is only loaded on the /game route and has no shared deps
-            // with the wallet or ICP stacks.
-            //
-            // All other node_modules (WalletConnect, wagmi, viem, @noble,
-            // @dfinity, @junobuild, ic-siwa, etc.) are intentionally left to
-            // Vite's automatic code splitting. Manually grouping interdependent
-            // libs (wallet ↔ ICP ↔ crypto primitives) causes Rollup circular
-            // chunk cycles that produce TDZ errors at runtime.
+            // Group large dependency trees into stable named chunks to
+            // reduce the total number of output files. Fewer files means
+            // fewer ICP canister update calls during Juno deploy, which
+            // avoids "Call was returned undefined" failures from IC
+            // rate-limiting / message limits.
+
+            // Phaser game engine — only loaded on the /game route
             if (id.includes("phaser")) {
               return "vendor-phaser";
+            }
+
+            // Wallet / Web3 stack (WalletConnect, wagmi, viem, noble crypto)
+            if (
+              id.includes("@walletconnect") ||
+              id.includes("@reown") ||
+              id.includes("wagmi") ||
+              id.includes("viem") ||
+              id.includes("@noble")
+            ) {
+              return "vendor-wallet";
+            }
+
+            // ICP / Juno stack (dfinity, junobuild, icp-sdk, ic-siwa)
+            if (
+              id.includes("@dfinity") ||
+              id.includes("@junobuild") ||
+              id.includes("@icp-sdk") ||
+              id.includes("ic-siwa")
+            ) {
+              return "vendor-icp";
             }
           },
         },
