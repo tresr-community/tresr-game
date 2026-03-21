@@ -70,12 +70,12 @@
           "http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:5987"
         ],
         "token_ticker": "tRON",
-        "tresr_token_contract": "0xe039608E695D21aB11675EBBA00261A0e750526c",
+        "tresr_token_contract": "0xa62835D1A6bf5f521C4e2746E1F51c923b8f3483",
         "deployer_address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
         "player_wallet": "0xb81749c72db5b5209098f2bd45a7a0293925da13",
-        "proxy_contract": "0x56fC17a65ccFEC6B7ad0aDe9BD9416CB365B9BE8",
+        "proxy_contract": "0xd710a67624Ad831683C86a48291c597adE30F787",
         "vault_contract": "0x0000000000000000000000000000000000000000",
-        "faucet_contract": "0x3C15538ED063e688c8DF3d571Cb7a0062d2fB18D",
+        "faucet_contract": "0xC32609C91d6B6b51D48f2611308FEf121B02041f",
         "explorer_url": "http://localhost:8545/tx/"
       },
       "testnet": {

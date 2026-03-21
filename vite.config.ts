@@ -89,15 +89,13 @@ export default defineConfig(({mode}) => {
               return "vendor-phaser";
             }
 
-            // Wallet / Web3 stack (WalletConnect, wagmi, viem, noble crypto)
-            if (
-              id.includes("@walletconnect") ||
-              id.includes("@reown") ||
-              id.includes("wagmi") ||
-              id.includes("viem") ||
-              id.includes("@noble")
-            ) {
-              return "vendor-wallet";
+            // Core crypto / EVM runtime (viem, noble crypto)
+            // These are statically imported and safe to consolidate.
+            // Leave wagmi, @walletconnect, @reown in Vite auto-split —
+            // @wagmi/connectors dynamically imports providers from those
+            // packages and manual chunking breaks the lazy resolution.
+            if (id.includes("viem") || id.includes("@noble")) {
+              return "vendor-crypto";
             }
 
             // ICP / Juno stack (dfinity, junobuild, icp-sdk, ic-siwa)
