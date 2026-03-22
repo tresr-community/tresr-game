@@ -142,12 +142,6 @@ runs:
       with:
         args: hosting deploy --mode ${{ inputs.mode }}
 
-    - id: deploy_storage
-      name: Deploy Juno Storage
-      uses: junobuild/juno-action@main
-      with:
-        args: run --src bin/juno-storage.ts --mode ${{ inputs.mode }} -- deploy
-
     - id: prune_storage
       name: Prune Juno Storage
       uses: junobuild/juno-action@main
