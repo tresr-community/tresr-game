@@ -57,7 +57,7 @@ jobs:
           {
             echo "RPC_URL=$(yq ".client.blockchain.avalanche.${NETWORK}.rpc_urls[0]" config/tresr.yaml)"
             echo "TOKEN_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.tresr_token_contract" config/tresr.yaml)"
-            echo "VAULT_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.vault_contract" config/tresr.yaml)"
+            echo "VAULT_ADDRESS=$(yq ".client.blockchain.avalanche.${NETWORK}.proxy_contract" config/tresr.yaml)"
           } >> "$GITHUB_OUTPUT"
 
       - id: validate_config
