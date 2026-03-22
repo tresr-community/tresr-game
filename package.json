@@ -35,7 +35,7 @@
     "@junobuild/core": "5.2.2",
     "@reown/appkit": "1.8.19",
     "@reown/appkit-adapter-wagmi": "1.8.19",
-    "@tanstack/query-core": "5.91.0",
+    "@tanstack/query-core": "5.91.2",
     "@types/seedrandom": "3.0.8",
     "@wagmi/core": "3.4.0",
     "bits-ui": "2.16.3",
