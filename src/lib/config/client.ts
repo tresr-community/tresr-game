@@ -162,7 +162,7 @@ export const config: ConfigTypes = {
   "assets": {
     "music": [
       "Analog Ghosts",
-      "Arcade Assasian",
+      "Arcade Assassin",
       "Binary Bleed",
       "Cyber Victory",
       "Cybernetic Funk",
