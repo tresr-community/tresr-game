@@ -56,7 +56,7 @@
     "simple-cbor": "0.4.1",
     "tailwind-merge": "3.5.0",
     "unified": "11.0.5",
-    "viem": "2.47.5",
+    "viem": "2.47.6",
     "yaml": "2.8.3"
   },
   "devDependencies": {
