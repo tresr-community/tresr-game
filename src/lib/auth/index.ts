@@ -19,12 +19,12 @@ import {
 } from "@junobuild/core";
 import {initializeJunoSatellite} from "@/lib/utils/juno";
 import {SiwaClient, type SiwaIdentity} from "ic-siwa";
-import type {Identity} from "@dfinity/agent";
+import type {Identity} from "@icp-sdk/core/agent";
 import {
   IdbStorage,
   KEY_STORAGE_KEY,
   KEY_STORAGE_DELEGATION,
-} from "@dfinity/auth-client";
+} from "@icp-sdk/auth/client";
 import {JUNO_ENVIRONMENT, log} from "@/lib/utils/log";
 import {
   JUNO_INTERNET_IDENTITY,
@@ -65,7 +65,7 @@ export function getIdentity(): Identity | null {
 
 /**
  * Helper to get the satellite configuration for Juno calls.
- * Bridges the type gap between @dfinity/agent Identity and Juno's expected type.
+ * Bridges the type gap between @icp-sdk/core/agent Identity and Juno's expected type.
  * Returns 'any' to bypass strict type checking at call sites due to package mismatch.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -26,11 +26,8 @@
     "postinstall": "bun run postinstall:copy-auth"
   },
   "dependencies": {
-    "@dfinity/agent": "3.4.3",
-    "@dfinity/auth-client": "3.4.3",
-    "@dfinity/candid": "3.4.3",
-    "@dfinity/identity": "3.4.3",
-    "@dfinity/principal": "3.4.3",
+    "@icp-sdk/auth": "latest",
+    "@icp-sdk/core": "^5.1.0",
     "@junobuild/analytics": "0.2.12",
     "@junobuild/core": "5.2.2",
     "@reown/appkit": "1.8.19",
