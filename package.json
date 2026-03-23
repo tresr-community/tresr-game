@@ -19,6 +19,7 @@
     "audio": "bun run bin/audio.ts",
     "sprites": "bun run bin/sprites.ts",
     "wallpapers": "bun run bin/wallpapers.ts",
+    "storage": "bun run bin/juno-storage.ts",
     "videos": "bun run bin/videos.ts",
     "test": "bun test ./bin/config-schema.test.ts",
     "test:config": "bun test ./bin/config-schema.test.ts",
@@ -59,8 +60,8 @@
   "devDependencies": {
     "@eslint/js": "10.0.1",
     "@icp-sdk/bindgen": "0.2.3",
-    "@junobuild/cli": "file:/home/mahdtech/Sync/Projects/Forks/cli",
-    "@junobuild/config": "file:/home/mahdtech/Sync/Projects/Forks/juno-js/packages/config",
+    "@junobuild/cli": "0.14.3",
+    "@junobuild/config": "2.15.0",
     "@junobuild/vite-plugin": "4.7.1",
     "@sveltejs/adapter-static": "3.0.10",
     "@sveltejs/kit": "2.55.0",

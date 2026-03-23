@@ -113,11 +113,6 @@ export default defineConfig(({mode}) => ({
         })
       ),
     },
-    // Storage deploy: derive mappings from YAML storage collections with a `source` field.
-    // Collections without `source` (e.g. avatars) are user-uploaded and excluded from deploy.
-    deploy: (junoConfig.collections?.storage ?? [])
-      .filter((c) => c.source)
-      .map(({source, collection}) => ({source, collection})),
   },
   orbiter: {
     ids: {

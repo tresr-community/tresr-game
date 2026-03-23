@@ -1,4 +1,3 @@
-Assasian
 Clippy
 DRPC
 FOMO
@@ -119,6 +118,7 @@ filecom
 filecomplete
 freefall
 frontmatter
+fullpath
 fuser
 gatekeep
 getrandom

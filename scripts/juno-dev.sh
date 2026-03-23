@@ -137,7 +137,7 @@ function cmd_juno_config() {
 function cmd_juno_storage_deploy() {
 	local mode="${1:-development}"
 	log_info "📦 Juno storage deploy (mode=$mode)..."
-	if ! juno storage deploy --mode "$mode"; then
+	if ! juno run --src bin/juno-storage.ts --mode "$mode" -- deploy; then
 		log_error "Storage deploy failed!"
 		return 1
 	fi
@@ -170,7 +170,7 @@ function cmd_juno_prune() {
 	local mode="${1:-development}"
 	log_info "🗑️  Pruning stale assets (mode=$mode)..."
 
-	if ! juno storage prune --mode "$mode"; then
+	if ! juno run --src bin/juno-storage.ts --mode "$mode" -- prune; then
 		log_error "Storage prune failed!"
 		return 1
 	fi
