@@ -1632,6 +1632,20 @@ async fn resolve_expired_prize_timer() -> Result<(), String> {
         }
 
         // We have a valid winner!
+        let wallet_addr = match &winner_profile.evm_wallet {
+            Some(w) if !w.is_empty() => w.clone(),
+            _ => {
+                logging::log_warn(
+                    "Consolation",
+                    &format!(
+                        "Skipped consolation for {}: no linked EVM wallet",
+                        winner_key
+                    ),
+                );
+                continue;
+            }
+        };
+
         let vault_balance = match evm_rpc::get_vault_balance().await {
             Ok(bal) => bal,
             Err(e) => {
@@ -1650,10 +1664,30 @@ async fn resolve_expired_prize_timer() -> Result<(), String> {
         let claim_key = format!("consolation_{}_{}", winner_key, now_ms);
         let expiration_ms = config::CONSOLATION_PRIZE_EXPIRATION_DAYS * 24 * 60 * 60 * 1000;
 
+        // Generate signature inline so the claim is immediately claimable
+        let signature = match generate_claim_signature(
+            &candidate.session_id,
+            &wallet_addr,
+            consolation_amount,
+            0,
+        )
+        .await
+        {
+            Ok(sig) => sig,
+            Err(e) => {
+                logging::log_error(
+                    "Consolation",
+                    &format!("Failed to generate signature for {}: {}", winner_key, e),
+                );
+                // Cannot proceed cleanly, retry next time
+                return Ok(());
+            }
+        };
+
         let claim = ClaimRequest {
             amount: consolation_amount,
-            status: ClaimStatus::Pending,
-            signature: None,
+            status: ClaimStatus::ReadyForChain,
+            signature: Some(signature),
             tx_hash: None,
             game_session_id: candidate.session_id.clone(),
             keys_collected: 0,
@@ -1669,9 +1703,11 @@ async fn resolve_expired_prize_timer() -> Result<(), String> {
             version: None,
         };
 
+        // Write to "claims" collection with winner's principal as caller
+        // so the user can read it via listDocs({collection: "claims"})
         set_doc_store(
-            admin_caller(),
-            "audit".to_string(),
+            winner_principal,
+            "claims".to_string(),
             claim_key.clone(),
             claim_doc,
         )?;
@@ -2542,6 +2578,20 @@ fn extract_config_hash(payload: &[u8]) -> Result<String, String> {
 #[unsafe(no_mangle)]
 fn juno_on_init_random_seed() {
     logging::log_info("Satellite", "RNG seeded — custom loggers ready");
+
+    // Schedule hourly consolation prize check.
+    // ICP canister timers are internal async callbacks, NOT update/query calls.
+    // Cost is trivial — just reads a cached timestamp. Real work (EVM RPC,
+    // signature generation) only happens when the 24h timer actually expires.
+    ic_cdk_timers::set_timer_interval(std::time::Duration::from_secs(3600), || async {
+        if let Err(e) = resolve_expired_prize_timer().await {
+            logging::log_error(
+                "Timer",
+                &format!("Hourly consolation prize check failed: {}", e),
+            );
+        }
+    });
+    logging::log_info("Satellite", "Hourly consolation prize timer scheduled");
 }
 
 // =============================================================================
