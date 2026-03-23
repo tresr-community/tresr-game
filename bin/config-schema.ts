@@ -42,6 +42,8 @@ const JunoCollectionSchema = z.object({
   read: z.enum(["public", "managed", "private"]),
   write: z.enum(["public", "managed", "private"]),
   memory: z.enum(["stable", "heap"]),
+  /** Optional local source directory for `juno storage deploy`. */
+  source: z.string().min(1).optional(),
 });
 
 const JunoEnvironmentSchema = z.object({

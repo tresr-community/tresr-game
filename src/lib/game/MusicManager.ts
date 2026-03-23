@@ -356,7 +356,7 @@ class MusicManager {
       this.startCrossfade();
     }
 
-    this.audio.src = `/assets/audio/music/${track}.webm`;
+    this.audio.src = `/audio/music/${track}.webm`;
 
     const stateUpdate: Partial<ReturnType<typeof gameState.get>["music"]> = {
       currentTrack: track,

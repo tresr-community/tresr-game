@@ -980,7 +980,7 @@ export class MainScene extends Phaser.Scene {
         sfx.startsWith(prefix)
       );
       if (isDeferred) {
-        this.load.audio(sfx, `/assets/audio/sfx/${sfx}.webm`);
+        this.load.audio(sfx, `/audio/sfx/${sfx}.webm`);
         queued++;
       }
     }

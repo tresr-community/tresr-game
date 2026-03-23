@@ -58,7 +58,7 @@ const divider = () => console.log(`${TAG} ${c.dim}${"─".repeat(50)}${c.reset}`
 // ── Paths ───────────────────────────────────────────────────────────
 const projectRoot = path.resolve(process.cwd());
 const sourceBase = path.join(projectRoot, "static-source/images/sprites");
-const destBase = path.join(projectRoot, "static/assets/images/sprites");
+const destBase = path.join(projectRoot, "storage/images/sprites");
 const SPRITES_DIR = destBase;
 
 const WEBP_QUALITY = 85;
@@ -1272,7 +1272,7 @@ ${c.bold}Source Paths:${c.reset}
   Chromakey src:  static-source/images/sprites/{entity}/*.png|jpg (skips still.*)
 
 ${c.bold}Output:${c.reset}
-  WebP sheets:    static/assets/images/sprites/{entity}/{action}.webp
+  WebP sheets:    storage/images/sprites/{entity}/{action}.webp
   Chromakey out:  static-source/images/sprites/{entity}/{action}.png (transparent)
 `);
 }

@@ -81,7 +81,7 @@ function parseMode(): Mode {
 const projectRoot = path.resolve(process.cwd());
 const sourceDir = path.join(projectRoot, "static-source/images/wallpapers");
 const keysDir = path.join(projectRoot, "static-source/images/keys");
-const webpDir = path.join(projectRoot, "static/assets/images/wallpapers");
+const webpDir = path.join(projectRoot, "storage/images/wallpapers");
 const progressPath = path.join(sourceDir, ".progress.json");
 
 // ── State ───────────────────────────────────────────────────────────

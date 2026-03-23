@@ -791,3 +791,79 @@ describe("server.juno environment fields", () => {
     expect(result.success).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Suite: server.juno.collections.storage — source field
+// ---------------------------------------------------------------------------
+
+describe("server.juno.collections.storage source field", () => {
+  function serverWithStorageCollections(
+    storage: Array<Record<string, unknown>>
+  ) {
+    const s = clone(realServer);
+    const juno = s.juno as Record<string, unknown>;
+    const collections = juno.collections as Record<string, unknown>;
+    collections.storage = storage;
+    return s;
+  }
+
+  const baseCollection = {
+    collection: "test",
+    read: "public",
+    write: "managed",
+    memory: "stable",
+  };
+
+  test("real YAML has source on audio/images/videos collections", () => {
+    const result = ServerConfigSchema.safeParse(realServer);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const juno = result.data.juno;
+      const withSource = juno.collections.storage.filter((c) => c.source);
+      expect(withSource.length).toBe(3);
+      expect(withSource.map((c) => c.collection).sort()).toEqual([
+        "audio",
+        "images",
+        "videos",
+      ]);
+    }
+  });
+
+  test("source is optional — avatars collection omits it", () => {
+    const result = ServerConfigSchema.safeParse(realServer);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      const avatars = result.data.juno.collections.storage.find(
+        (c) => c.collection === "avatars"
+      );
+      expect(avatars).toBeDefined();
+      expect(avatars?.source).toBeUndefined();
+    }
+  });
+
+  test("source accepts a valid path string", () => {
+    const result = ServerConfigSchema.safeParse(
+      serverWithStorageCollections([
+        {...baseCollection, source: "storage/audio"},
+      ])
+    );
+    expect(result.success).toBe(true);
+  });
+
+  test("source rejects empty string", () => {
+    const result = ServerConfigSchema.safeParse(
+      serverWithStorageCollections([{...baseCollection, source: ""}])
+    );
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(errorPaths(result).some((p) => p.includes("source"))).toBe(true);
+    }
+  });
+
+  test("collection without source is valid", () => {
+    const result = ServerConfigSchema.safeParse(
+      serverWithStorageCollections([baseCollection])
+    );
+    expect(result.success).toBe(true);
+  });
+});

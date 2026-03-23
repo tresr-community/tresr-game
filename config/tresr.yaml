@@ -64,12 +64,33 @@ server:
           write: "managed"
           memory: "stable"
       storage:
+        # Avatars
+        #   - Public user-uploaded avatar images
+        - collection: "avatars"
+          read: "public"
+          write: "managed"
+          memory: "stable"
+        # Audio
+        #   - Game audio assets (music, sfx, narration)
+        - collection: "audio"
+          read: "public"
+          write: "managed"
+          memory: "stable"
+          source: "storage/audio"
         # Images
-        #   - Public images like Avatars
+        #   - Game image assets (sprites, wallpapers)
         - collection: "images"
           read: "public"
           write: "managed"
           memory: "stable"
+          source: "storage/images"
+        # Videos
+        #   - Game video assets (stage intros, loader)
+        - collection: "videos"
+          read: "public"
+          write: "managed"
+          memory: "stable"
+          source: "storage/videos"
   anti_cheat:
     # Scores above this value are mathematically impossible and trigger immediate bans.
     max_score: 20000
@@ -313,9 +334,9 @@ client:
     tx_timeout_ms: 60000 # Tx receipt timeout (60 s; Fuji needs headroom over 30 s)
     tx_polling_interval_ms: 1000 # Direct RPC tx polling interval
   # Assets are auto-populated at build time by bin/client-config.ts.
-  # Wallpapers: scanned from public/assets/images/wallpapers/wallpaper_*.webp
-  # Music: scanned from public/assets/audio/music/*.webm
-  # SFX: scanned from public/assets/audio/sfx/*.webm
+  # Wallpapers: scanned from storage/images/wallpapers/wallpaper_*.webp
+  # Music: scanned from storage/audio/music/*.webm
+  # SFX: scanned from storage/audio/sfx/*.webm
   # These empty arrays serve as schema placeholders only.
   assets:
     wallpapers: []
@@ -823,7 +844,7 @@ client:
       crossfade_step_ms: 50 # Interval between volume steps during crossfade (ms)
       preference_save_debounce_ms: 2000 # Debounce delay before persisting volume prefs (ms)
       # sfx_variants are auto-detected at build time by bin/client-config.ts
-      # from the SFX files scanned in public/assets/audio/sfx/.
+      # from the SFX files scanned in storage/audio/sfx/.
       # Files follow naming convention: {type}_{number}.webm (contiguous from 1).
       # Adding/removing files automatically updates variant counts on rebuild.
       sfx_variants: {}
@@ -851,7 +872,7 @@ client:
       spinner:
         y_offset: -60
       video:
-        path: /assets/videos/loader.webp
+        path: /videos/loader.webp
         # Scale relative to canvas height (0.0–1.0). 0.4 = 40% of screen height.
         scale: 0.4
         y_offset: -60
@@ -873,42 +894,42 @@ client:
           frames: 6
           frameRate: 6
           repeat: -1
-          path: /assets/images/sprites/hero/idle.webp
+          path: /images/sprites/hero/idle.webp
           frameWidth: 512
           frameHeight: 512
         - name: walk
           frames: 6
           frameRate: 8
           repeat: -1
-          path: /assets/images/sprites/hero/walk.webp
+          path: /images/sprites/hero/walk.webp
           frameWidth: 512
           frameHeight: 512
         - name: jump
           frames: 6
           frameRate: 10
           repeat: 0
-          path: /assets/images/sprites/hero/jump.webp
+          path: /images/sprites/hero/jump.webp
           frameWidth: 512
           frameHeight: 512
         - name: attack
           frames: 6
           frameRate: 10
           repeat: 0
-          path: /assets/images/sprites/hero/attack.webp
+          path: /images/sprites/hero/attack.webp
           frameWidth: 512
           frameHeight: 512
         - name: hurt
           frames: 4
           frameRate: 8
           repeat: 0
-          path: /assets/images/sprites/hero/hurt.webp
+          path: /images/sprites/hero/hurt.webp
           frameWidth: 512
           frameHeight: 512
         - name: super
           frames: 6
           frameRate: 12
           repeat: 0
-          path: /assets/images/sprites/hero/super.webp
+          path: /images/sprites/hero/super.webp
           frameWidth: 512
           frameHeight: 512
     # Super Attack Projectile (spinning coin hadouken)
@@ -919,7 +940,7 @@ client:
           frames: 5
           frameRate: 15
           repeat: -1
-          path: /assets/images/sprites/super/spin.webp
+          path: /images/sprites/super/spin.webp
           frameWidth: 256
           frameHeight: 256
     # Boss character
@@ -930,35 +951,35 @@ client:
           frames: 8
           frameRate: 6
           repeat: -1
-          path: /assets/images/sprites/boss/idle.webp
+          path: /images/sprites/boss/idle.webp
           frameWidth: 400
           frameHeight: 500
         - name: walk
           frames: 8
           frameRate: 8
           repeat: -1
-          path: /assets/images/sprites/boss/walk.webp
+          path: /images/sprites/boss/walk.webp
           frameWidth: 400
           frameHeight: 516
         - name: jump
           frames: 8
           frameRate: 10
           repeat: 0
-          path: /assets/images/sprites/boss/jump.webp
+          path: /images/sprites/boss/jump.webp
           frameWidth: 400
           frameHeight: 700
         - name: attack
           frames: 8
           frameRate: 10
           repeat: 0
-          path: /assets/images/sprites/boss/attack.webp
+          path: /images/sprites/boss/attack.webp
           frameWidth: 400
           frameHeight: 500
         - name: hurt
           frames: 8
           frameRate: 8
           repeat: 0
-          path: /assets/images/sprites/boss/hurt.webp
+          path: /images/sprites/boss/hurt.webp
           frameWidth: 400
           frameHeight: 500
     # Businessmen enemies (templated for 5 variants)
@@ -972,35 +993,35 @@ client:
           frames: 6
           frameRate: 6
           repeat: -1
-          pathTemplate: /assets/images/sprites/enemy_{i}/idle.webp
+          pathTemplate: /images/sprites/enemy_{i}/idle.webp
           frameWidth: 512
           frameHeight: 512
         - name: walk
           frames: 6
           frameRate: 8
           repeat: -1
-          pathTemplate: /assets/images/sprites/enemy_{i}/walk.webp
+          pathTemplate: /images/sprites/enemy_{i}/walk.webp
           frameWidth: 512
           frameHeight: 512
         - name: jump
           frames: 6
           frameRate: 10
           repeat: 0
-          pathTemplate: /assets/images/sprites/enemy_{i}/jump.webp
+          pathTemplate: /images/sprites/enemy_{i}/jump.webp
           frameWidth: 512
           frameHeight: 512
         - name: attack
           frames: 6
           frameRate: 10
           repeat: 0
-          pathTemplate: /assets/images/sprites/enemy_{i}/attack.webp
+          pathTemplate: /images/sprites/enemy_{i}/attack.webp
           frameWidth: 512
           frameHeight: 512
         - name: hurt
           frames: 4
           frameRate: 8
           repeat: 0
-          pathTemplate: /assets/images/sprites/enemy_{i}/hurt.webp
+          pathTemplate: /images/sprites/enemy_{i}/hurt.webp
           frameWidth: 512
           frameHeight: 512
     # TRESR-BOT companion (AI ally spawned from powerup pickup)
@@ -1011,28 +1032,28 @@ client:
           frames: 6
           frameRate: 6
           repeat: -1
-          path: /assets/images/sprites/tresr_bot/idle.webp
+          path: /images/sprites/tresr_bot/idle.webp
           frameWidth: 512
           frameHeight: 512
         - name: walk
           frames: 6
           frameRate: 8
           repeat: -1
-          path: /assets/images/sprites/tresr_bot/walk.webp
+          path: /images/sprites/tresr_bot/walk.webp
           frameWidth: 512
           frameHeight: 512
         - name: attack
           frames: 6
           frameRate: 10
           repeat: 0
-          path: /assets/images/sprites/tresr_bot/attack.webp
+          path: /images/sprites/tresr_bot/attack.webp
           frameWidth: 512
           frameHeight: 512
         - name: special
           frames: 6
           frameRate: 10
           repeat: 0
-          path: /assets/images/sprites/tresr_bot/special.webp
+          path: /images/sprites/tresr_bot/special.webp
           frameWidth: 512
           frameHeight: 512
     # Items (per-animation sheets)
@@ -1044,7 +1065,7 @@ client:
             frames: 5
             frameRate: 4
             repeat: -1
-            path: /assets/images/sprites/key/idle.webp
+            path: /images/sprites/key/idle.webp
             frameWidth: 256
             frameHeight: 256
       bomb:
@@ -1054,7 +1075,7 @@ client:
             frames: 5
             frameRate: 10
             repeat: -1
-            path: /assets/images/sprites/bomb/idle.webp
+            path: /images/sprites/bomb/idle.webp
             frameWidth: 256
             frameHeight: 256
       loader:
@@ -1064,7 +1085,7 @@ client:
             frames: 5
             frameRate: 8
             repeat: -1
-            path: /assets/images/sprites/loader/idle.webp
+            path: /images/sprites/loader/idle.webp
             frameWidth: 256
             frameHeight: 256
       chest:
@@ -1074,21 +1095,21 @@ client:
             frames: 5
             frameRate: 8
             repeat: -1
-            path: /assets/images/sprites/chest/idle.webp
+            path: /images/sprites/chest/idle.webp
             frameWidth: 512
             frameHeight: 512
           - name: open
             frames: 5
             frameRate: 8
             repeat: 0
-            path: /assets/images/sprites/chest/open.webp
+            path: /images/sprites/chest/open.webp
             frameWidth: 512
             frameHeight: 512
           - name: close
             frames: 5
             frameRate: 8
             repeat: 0
-            path: /assets/images/sprites/chest/close.webp
+            path: /images/sprites/chest/close.webp
             frameWidth: 512
             frameHeight: 512
       health_1:
@@ -1098,7 +1119,7 @@ client:
             frames: 4
             frameRate: 6
             repeat: -1
-            path: /assets/images/sprites/health_1/idle.webp
+            path: /images/sprites/health_1/idle.webp
             frameWidth: 256
             frameHeight: 256
       health_2:
@@ -1108,7 +1129,7 @@ client:
             frames: 4
             frameRate: 6
             repeat: -1
-            path: /assets/images/sprites/health_2/idle.webp
+            path: /images/sprites/health_2/idle.webp
             frameWidth: 256
             frameHeight: 256
       health_3:
@@ -1118,7 +1139,7 @@ client:
             frames: 4
             frameRate: 6
             repeat: -1
-            path: /assets/images/sprites/health_3/idle.webp
+            path: /images/sprites/health_3/idle.webp
             frameWidth: 256
             frameHeight: 256
       health_4:
@@ -1128,7 +1149,7 @@ client:
             frames: 4
             frameRate: 6
             repeat: -1
-            path: /assets/images/sprites/health_4/idle.webp
+            path: /images/sprites/health_4/idle.webp
             frameWidth: 256
             frameHeight: 256
       health_5:
@@ -1138,7 +1159,7 @@ client:
             frames: 4
             frameRate: 6
             repeat: -1
-            path: /assets/images/sprites/health_5/idle.webp
+            path: /images/sprites/health_5/idle.webp
             frameWidth: 256
             frameHeight: 256
       powerup_1:
@@ -1148,7 +1169,7 @@ client:
             frames: 4
             frameRate: 6
             repeat: -1
-            path: /assets/images/sprites/powerup_1/idle.webp
+            path: /images/sprites/powerup_1/idle.webp
             frameWidth: 256
             frameHeight: 256
       powerup_2:
@@ -1158,7 +1179,7 @@ client:
             frames: 4
             frameRate: 6
             repeat: -1
-            path: /assets/images/sprites/powerup_2/idle.webp
+            path: /images/sprites/powerup_2/idle.webp
             frameWidth: 256
             frameHeight: 256
       powerup_3:
@@ -1168,7 +1189,7 @@ client:
             frames: 4
             frameRate: 6
             repeat: -1
-            path: /assets/images/sprites/powerup_3/idle.webp
+            path: /images/sprites/powerup_3/idle.webp
             frameWidth: 256
             frameHeight: 256
       powerup_4:
@@ -1178,7 +1199,7 @@ client:
             frames: 4
             frameRate: 6
             repeat: -1
-            path: /assets/images/sprites/powerup_4/idle.webp
+            path: /images/sprites/powerup_4/idle.webp
             frameWidth: 256
             frameHeight: 256
       powerup_5:
@@ -1188,10 +1209,10 @@ client:
             frames: 4
             frameRate: 6
             repeat: -1
-            path: /assets/images/sprites/powerup_5/idle.webp
+            path: /images/sprites/powerup_5/idle.webp
             frameWidth: 256
             frameHeight: 256
     # Static images (no animation)
     statics: []
     # - name: example
-    #   path: /assets/images/sprites/example.webp
+    #   path: /images/sprites/example.webp

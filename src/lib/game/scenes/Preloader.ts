@@ -485,7 +485,7 @@ export class Preloader extends Phaser.Scene {
     // Start audio IMMEDIATELY to preserve the browser's user-gesture autoplay
     // window. If the user preference (fetched async below) says to skip, we
     // stop the already-playing audio afterward.
-    this.introAudio = new Audio("/assets/audio/narration/intro.webm");
+    this.introAudio = new Audio("/audio/narration/intro.webm");
     this.introAudio.volume = 1.0;
     this.introEndedHandler = () => {
       this.introFinished = true;
@@ -610,7 +610,7 @@ export class Preloader extends Phaser.Scene {
     assets.sfx.forEach((sfx: string) => {
       const isCore = corePrefixes.some((prefix) => sfx.startsWith(prefix));
       if (isCore) {
-        this.load.audio(sfx, `/assets/audio/sfx/${sfx}.webm`);
+        this.load.audio(sfx, `/audio/sfx/${sfx}.webm`);
       }
     });
 
@@ -624,7 +624,7 @@ export class Preloader extends Phaser.Scene {
     log.info(COMPONENT_NAME, `Selected wallpaper: ${selected}`);
     this.registry.set("selected_wallpaper", selected);
     this.wallpaperKey = selected;
-    this.load.image(selected, `/assets/images/wallpapers/${selected}.webp`);
+    this.load.image(selected, `/images/wallpapers/${selected}.webp`);
   }
 
   create() {
