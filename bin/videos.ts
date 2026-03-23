@@ -17,7 +17,7 @@
  *   static-source/videos/
  *
  * They will be converted to WebM and placed in:
- *   static/assets/videos/
+ *   storage/videos/
  *
  * Source files are left untouched.
  * Audio is preserved during conversion.
@@ -34,7 +34,7 @@ const stat = promisify(fs.stat);
 
 // ── Paths ───────────────────────────────────────────────────────────
 const SOURCE_DIR = "static-source/videos/";
-const OUTPUT_DIR = "static/assets/videos/";
+const OUTPUT_DIR = "storage/videos/";
 
 const SOURCE_EXT = ".mp4";
 const OUTPUT_EXT = ".webm";

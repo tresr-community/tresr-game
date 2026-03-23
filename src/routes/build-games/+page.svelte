@@ -59,7 +59,7 @@
               <figure class="px-4 pt-4">
                 <!-- svelte-ignore a11y-media-has-caption -->
                 <video
-                  src="/assets/videos/stage-1.webm"
+                  src="/videos/stage-1.webm"
                   controls
                   playsinline
                   preload="metadata"
@@ -196,7 +196,7 @@
               <figure class="px-4 pt-4">
                 <!-- svelte-ignore a11y-media-has-caption -->
                 <video
-                  src="/assets/videos/stage-2.webm"
+                  src="/videos/stage-2.webm"
                   controls
                   playsinline
                   preload="metadata"

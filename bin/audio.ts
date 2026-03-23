@@ -17,9 +17,9 @@
  *   static-source/audio/sfx/
  *
  * They will be converted to WebM and placed in:
- *   static/assets/audio/music/
- *   static/assets/audio/narration/
- *   static/assets/audio/sfx/
+ *   storage/audio/music/
+ *   storage/audio/narration/
+ *   storage/audio/sfx/
  *
  * Source files are deleted after successful conversion.
  */
@@ -35,7 +35,7 @@ const unlink = promisify(fs.unlink);
 
 // ── Paths ───────────────────────────────────────────────────────────
 const SOURCE_BASE_DIR = "static-source/audio/";
-const OUTPUT_BASE_DIR = "static/assets/audio/";
+const OUTPUT_BASE_DIR = "storage/audio/";
 
 const CATEGORIES = ["music", "narration", "sfx"] as const;
 const SOURCE_EXTS = [".mp3", ".opus", ".wav"] as const;
@@ -197,9 +197,9 @@ ${c.bold}Details:${c.reset}
     static-source/audio/sfx/
 
   They will be converted to WebM and placed in:
-    static/assets/audio/music/
-    static/assets/audio/narration/
-    static/assets/audio/sfx/
+    storage/audio/music/
+    storage/audio/narration/
+    storage/audio/sfx/
 
   Source files are deleted after successful conversion.
   Existing destination files are overwritten if the name matches.

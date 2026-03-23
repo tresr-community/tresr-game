@@ -235,9 +235,9 @@ interface PendingWrite {
     }
 
     // Scan for audio files
-    const musicDir = path.join(projectRoot, "static/assets/audio/music");
-    const sfxDir = path.join(projectRoot, "static/assets/audio/sfx");
-    const imagesDir = path.join(projectRoot, "static/assets/images/wallpapers");
+    const musicDir = path.join(projectRoot, "storage/audio/music");
+    const sfxDir = path.join(projectRoot, "storage/audio/sfx");
+    const imagesDir = path.join(projectRoot, "storage/images/wallpapers");
 
     const assets: {music?: string[]; sfx?: string[]; wallpapers?: string[]} =
       {};
@@ -554,7 +554,7 @@ interface PendingWrite {
     // Audio: SFX only — music is streamed via HTMLAudioElement, not SW cache (OOM fix)
     if (assets.sfx) {
       for (const s of assets.sfx) {
-        precacheAssets.push(`/assets/audio/sfx/${s}.webm`);
+        precacheAssets.push(`/audio/sfx/${s}.webm`);
       }
     }
 

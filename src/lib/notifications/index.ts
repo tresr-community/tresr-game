@@ -91,11 +91,15 @@ class NotificationManager {
       const principalText = user.key;
       const userDoc = await this.getUserDoc(principalText);
       this.notifications =
-        userDoc?.notifications?.map((n) => ({
-          key: n.key,
-          data: n.data,
-          version: 0n, // Not used for nested
-        })) || [];
+        userDoc?.notifications
+          ?.map((n) => ({
+            key: n.key,
+            data: n.data,
+            version: 0n, // Not used for nested
+          }))
+          // Deduplicate by key — heals corrupted profiles with duplicate keys
+          .filter((n, i, arr) => arr.findIndex((a) => a.key === n.key) === i) ||
+        [];
       this.initialized = true;
       this.notify();
     } catch (e) {
@@ -114,7 +118,11 @@ class NotificationManager {
     const timestamp = Date.now();
 
     // Build the in-memory notification (always — guest or logged-in)
-    const existing = this.notifications.find((n) => n.data.type === data.type);
+    // Dedup by type AND message — prevents reusing keys across distinct notifications
+    // that share a generic type like "info"
+    const existing = this.notifications.find(
+      (n) => n.data.type === data.type && n.data.message === data.message
+    );
     const notificationKey = existing?.key || crypto.randomUUID();
     const doc: NotificationDoc = {
       key: notificationKey,

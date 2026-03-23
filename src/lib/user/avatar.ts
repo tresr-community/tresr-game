@@ -52,12 +52,12 @@ export async function uploadAvatar(
   log.info(COMPONENT_NAME, `Processed to WebP (${blob.size} bytes)`);
 
   // --- Upload to Juno Storage ---
-  const fullPath = `/images/avatars/${principal}.webp`;
+  const fullPath = `/avatars/${principal}.webp`;
 
   const result = await uploadBlob({
     data: blob,
     filename: `${principal}.webp`,
-    collection: "images",
+    collection: "avatars",
     fullPath,
     ...getSatelliteConfig(),
   });

@@ -130,11 +130,23 @@ runs:
       shell: devenv shell --quiet bash -- -e {0}
       run: bun run build -- --mode ${{ inputs.mode }}
 
+    - id: deploy_storage
+      name: Deploy Juno Storage
+      uses: junobuild/juno-action@main
+      with:
+        args: run --src bin/juno-storage.ts --mode ${{ inputs.mode }} -- deploy
+
     - id: deploy_hosting
       name: Deploy Juno Hosting
       uses: junobuild/juno-action@main
       with:
         args: hosting deploy --mode ${{ inputs.mode }}
+
+    - id: prune_storage
+      name: Prune Juno Storage
+      uses: junobuild/juno-action@main
+      with:
+        args: run --src bin/juno-storage.ts --mode ${{ inputs.mode }} -- prune
 
     - id: prune_hosting
       name: Prune Juno Hosting

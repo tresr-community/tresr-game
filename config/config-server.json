@@ -58,10 +58,31 @@
       ],
       "storage": [
         {
-          "collection": "images",
+          "collection": "avatars",
           "read": "public",
           "write": "managed",
           "memory": "stable"
+        },
+        {
+          "collection": "audio",
+          "read": "public",
+          "write": "managed",
+          "memory": "stable",
+          "source": "storage/audio"
+        },
+        {
+          "collection": "images",
+          "read": "public",
+          "write": "managed",
+          "memory": "stable",
+          "source": "storage/images"
+        },
+        {
+          "collection": "videos",
+          "read": "public",
+          "write": "managed",
+          "memory": "stable",
+          "source": "storage/videos"
         }
       ]
     }

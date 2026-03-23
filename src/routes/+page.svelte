@@ -54,7 +54,7 @@
         wallpaperBgUrl = `url('${img.src}')`;
         isWallpaperReady = true;
       };
-      img.src = `/assets/images/wallpapers/${wallpaper}.webp`;
+      img.src = `/images/wallpapers/${wallpaper}.webp`;
     }
   });
 </script>

@@ -133,6 +133,17 @@ function cmd_juno_config() {
 	log_success "✅ Juno config applied."
 }
 
+# Upload assets to Juno storage collections (game data, images, etc.)
+function cmd_juno_storage_deploy() {
+	local mode="${1:-development}"
+	log_info "📦 Juno storage deploy (mode=$mode)..."
+	if ! juno run --src bin/juno-storage.ts --mode "$mode" -- deploy; then
+		log_error "Storage deploy failed!"
+		return 1
+	fi
+	log_success "✅ Storage deploy done."
+}
+
 function cmd_juno_deploy() {
 	local mode="${1:-development}"
 	local skip_build="${2:-false}"
@@ -147,17 +158,29 @@ function cmd_juno_deploy() {
 		return 1
 	fi
 
-	log_info "🗑️  Pruning stale assets (mode=$mode)..."
-	if ! juno hosting prune --mode "$mode"; then
-		log_error "Hosting prune failed!"
-		return 1
-	fi
-
 	local url satellite_id
 	satellite_id=$(jq -r '.juno.development.satellite_id' config/config-server.json)
 	url="http://${satellite_id}.localhost:5987/"
 	log_success "Satellite live: $url"
 	echo "$url" # For piping
+}
+
+# Prune stale assets from both storage and hosting.
+function cmd_juno_prune() {
+	local mode="${1:-development}"
+	log_info "🗑️  Pruning stale assets (mode=$mode)..."
+
+	if ! juno run --src bin/juno-storage.ts --mode "$mode" -- prune; then
+		log_error "Storage prune failed!"
+		return 1
+	fi
+
+	if ! juno hosting prune --mode "$mode"; then
+		log_error "Hosting prune failed!"
+		return 1
+	fi
+
+	log_success "✅ Prune done."
 }
 
 # =============================================================================
@@ -541,6 +564,7 @@ AGENT_DOC_SOURCES=(
 	"bits-ui|https://bits-ui.com/llms.txt"
 	"cloudflare|https://developers.cloudflare.com/llms.txt"
 	"foundry|https://getfoundry.sh/llms-full.txt"
+	"icp-cli|https://cli.internetcomputer.org/llms.txt"
 	"juno|https://juno.build/llms-full.txt"
 	"oisy|https://docs.oisy.com/llms-full.txt"
 	"reown|https://docs.reown.com/llms-full.txt"
@@ -828,7 +852,9 @@ function usage() {
 	row "deploy" "d" "Deploy frontend to Juno (default: development)"
 	row "deploy:prod" "" "Deploy frontend to Juno production"
 	row "deploy-functions" "df" "Build + deploy serverless functions"
+	row "storage-deploy" "sd" "Deploy assets to Juno storage collections"
 	row "config" "[mode]" "Apply Juno satellite config only (no file upload)"
+	row "prune" "" "Prune stale assets from storage + hosting"
 	row "oneshot" "loop" "Full clean → lint → test → build → deploy cycle"
 
 	echo -e "\n  ${GREEN}Emulator${NC}"
@@ -1009,18 +1035,27 @@ oneshot | loop)
 		log_error "Build failed."
 		exit 9
 	}
+	cmd_functions_deploy development || {
+		log_error "Could not deploy serverless functions."
+		exit 2
+	}
+	# Deploy order: config → storage → hosting → prune
+	cmd_juno_config development || {
+		log_error "Could not apply Juno config."
+		exit 23
+	}
+	cmd_juno_storage_deploy development || {
+		log_error "Could not deploy storage assets."
+		exit 24
+	}
 	# skip_build=true: Astro build already completed above.
 	cmd_juno_deploy development true || {
 		log_error "Could not deploy to Juno."
 		exit 13
 	}
-	cmd_functions_deploy development || {
-		log_error "Could not deploy serverless functions."
-		exit 2
-	}
-	cmd_juno_config development || {
-		log_error "Could not apply Juno config."
-		exit 23
+	cmd_juno_prune development || {
+		log_error "Could not prune stale assets."
+		exit 25
 	}
 	;;
 
@@ -1061,6 +1096,22 @@ config)
 	cmd_juno_config development || {
 		log_error "Could not apply Juno config."
 		exit 23
+	}
+	;;
+
+# Deploy assets to Juno storage collections
+storage-deploy | sd)
+	cmd_juno_storage_deploy development || {
+		log_error "Could not deploy storage assets."
+		exit 24
+	}
+	;;
+
+# Prune stale assets from storage + hosting
+prune)
+	cmd_juno_prune development || {
+		log_error "Could not prune stale assets."
+		exit 25
 	}
 	;;
 

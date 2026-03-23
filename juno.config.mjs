@@ -58,12 +58,7 @@ export default defineConfig(({mode}) => ({
           source: "fonts/**/*.woff2",
           headers: [["Cache-Control", "public, max-age=31536000, immutable"]],
         },
-        // Image assets — 1 year, immutable (Vite hashes filenames)
-        {
-          source: "assets/images/**",
-          headers: [["Cache-Control", "public, max-age=31536000, immutable"]],
-        },
-        // Icons and static assets
+        // Icons and static assets (remain in hosting)
         {
           source: "assets/icons/**",
           headers: [["Cache-Control", "public, max-age=31536000, immutable"]],
@@ -106,7 +101,18 @@ export default defineConfig(({mode}) => ({
     ...(process.env.CI || process.env.SKIP_PREDEPLOY
       ? {}
       : {predeploy: [`bun run build --mode ${mode}`]}),
-    collections: junoConfig.collections,
+    // Juno Datastore and Storage collections.
+    collections: {
+      datastore: junoConfig.collections.datastore,
+      storage: junoConfig.collections.storage.map(
+        ({collection, read, write, memory}) => ({
+          collection,
+          read,
+          write,
+          memory,
+        })
+      ),
+    },
   },
   orbiter: {
     ids: {

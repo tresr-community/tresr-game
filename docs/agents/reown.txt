@@ -15646,7 +15646,7 @@ const themeMode = modal.getThemeMode();
 
 ## Wallet Buttons
 
-Using wallet buttons ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to the top 20 wallets, WalletConnect QR and also all the social logins.
+Using wallet buttons ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to more than 40 of the top wallets globally, WalletConnect QR, and all the social logins.
 This feature allows to customize dApps, enabling users to connect their wallets effortlessly, all without the need for the traditional modal.
 
 Follow these steps to use the component:
@@ -15749,11 +15749,11 @@ You can specify a blockchain namespace to target specific chains:
 
 Change the string parameter `name` from `appKitWalletButton.connect(name)` in order to open a different wallet.
 
-| Type          | Options                                                                                                                                                                                                                                                                                                                                                                       |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| QR Code       | `walletConnect`                                                                                                                                                                                                                                                                                                                                                               |
-| Wallets       | `metamask`, `trust`, `coinbase`, `rainbow`, `coinbase`, `jupiter`, `solflare`, `coin98`, `magic-eden`, `backpack`, `frontier`, `xverse`, `okx`, `bitget`, `leather`, `binance`, `uniswap`, `safepal`, `bybit`, `phantom`, `ledger`, `timeless-x`, `safe`, `zerion`, `oneinch`, `crypto-com`, `imtoken`, `kraken`, `ronin`, `robinhood`, `exodus`, `argent`, and `tokenpocket` |
-| Social logins | `google`, `github`, `apple`, `facebook`, `x`, `discord`, and `farcaster`                                                                                                                                                                                                                                                                                                      |
+| Type          | Options                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| QR Code       | `walletConnect`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Wallets       | `metamask`, `trust`, `coinbase`, `rainbow`, `jupiter`, `solflare`, `coin98`, `magic-eden`, `backpack`, `frontier`, `xverse`, `okx`, `bitget`, `leather`, `binance`, `uniswap`, `safepal`, `bybit`, `phantom`, `ledger`, `timeless-x`, `safe`, `zerion`, `oneinch`, `crypto-com`, `imtoken`, `kraken`, `ronin`, `robinhood`, `exodus`, `argent`, `tokenpocket`, `haha`, `ambire-wallet`, `bitpay`, `blade-wallet`, `brave`, `coinstats`, `kresus-superapp`, `plena-app`, `status`, `tomo-wallet`, `valora`, and `zengo-wallet` |
+| Social logins | `google`, `github`, `apple`, `facebook`, `x`, `discord`, and `farcaster`                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 #### Options for namespace property
 
@@ -21076,7 +21076,7 @@ All React components support the same properties as their HTML element counterpa
   <img />
 </Frame>
 
-Using the wallet button components ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to the top 20 wallets, WalletConnect QR and also all the social logins.
+Using the wallet button components ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to more than 40 of the top wallets globally, WalletConnect QR, and all the social logins.
 This component allows to customize dApps, enabling users to connect their wallets effortlessly, all without the need for the traditional modal.
 
 Follow these steps to use the component:
@@ -21160,11 +21160,11 @@ export function WalletButtons() {
 
 #### Options for wallet property
 
-| Type          | Options                                                                                                                                                                                                                                                                                                                                                                       |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| QR Code       | `walletConnect`                                                                                                                                                                                                                                                                                                                                                               |
-| Wallets       | `metamask`, `trust`, `coinbase`, `rainbow`, `coinbase`, `jupiter`, `solflare`, `coin98`, `magic-eden`, `backpack`, `frontier`, `xverse`, `okx`, `bitget`, `leather`, `binance`, `uniswap`, `safepal`, `bybit`, `phantom`, `ledger`, `timeless-x`, `safe`, `zerion`, `oneinch`, `crypto-com`, `imtoken`, `kraken`, `ronin`, `robinhood`, `exodus`, `argent`, and `tokenpocket` |
-| Social logins | `google`, `github`, `apple`, `facebook`, `x`, `discord`, and `farcaster`                                                                                                                                                                                                                                                                                                      |
+| Type          | Options                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| QR Code       | `walletConnect`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Wallets       | `metamask`, `trust`, `coinbase`, `rainbow`, `jupiter`, `solflare`, `coin98`, `magic-eden`, `backpack`, `frontier`, `xverse`, `okx`, `bitget`, `leather`, `binance`, `uniswap`, `safepal`, `bybit`, `phantom`, `ledger`, `timeless-x`, `safe`, `zerion`, `oneinch`, `crypto-com`, `imtoken`, `kraken`, `ronin`, `robinhood`, `exodus`, `argent`, `tokenpocket`, `haha`, `ambire-wallet`, `bitpay`, `blade-wallet`, `brave`, `coinstats`, `kresus-superapp`, `plena-app`, `status`, `tomo-wallet`, `valora`, and `zengo-wallet` |
+| Social logins | `google`, `github`, `apple`, `facebook`, `x`, `discord`, and `farcaster`                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 #### Options for namespace property
 
@@ -21566,7 +21566,7 @@ This is particularly useful when you need to access Bitcoin public keys for tran
 
 The direct wallet connection hook that enables connectivity to specific wallets without opening the modal. Use this hook when you want to provide direct wallet buttons, create a customized wallet selection interface, or implement social login options.
 
-Using the wallet button hooks ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to the top 20 wallets, WalletConnect QR and also all the social logins.
+Using the wallet button hooks ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to more than 40 of the top wallets globally, WalletConnect QR, and all the social logins.
 This hook allows to customize dApps, enabling users to connect their wallets effortlessly, all without the need to open the traditional modal.
 Execute this command to install the library for use it:
 
@@ -21617,14 +21617,14 @@ const { isReady, isPending, connect } = useAppKitWallet({
 
 #### Options for the connect parameter
 
-AppKit supports the [top 32 wallets](https://github.com/reown-com/appkit/blob/main/packages/wallet-button/src/utils/ConstantsUtil.ts#L11-L44), WalletConnect, social logins, and email authentication:
+AppKit supports more than 40 of the top wallets globally ([see full list](https://github.com/reown-com/appkit/blob/main/packages/wallet-button/src/utils/ConstantsUtil.ts#L11-L55)), WalletConnect, social logins, and email authentication:
 
-| Type          | Options                                                                                                                                                                                                                                                                                                                                                           |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| QR Code       | `walletConnect`                                                                                                                                                                                                                                                                                                                                                   |
-| Wallets       | `metamask`, `trust`, `coinbase`, `rainbow`, `jupiter`, `solflare`, `coin98`, `magic-eden`, `backpack`, `frontier`, `xverse`, `okx`, `bitget`, `leather`, `binance`, `uniswap`, `safepal`, `bybit`, `phantom`, `ledger`, `timeless-x`, `safe`, `zerion`, `oneinch`, `crypto-com`, `imtoken`, `kraken`, `ronin`, `robinhood`, `exodus`, `argent`, and `tokenpocket` |
-| Social logins | `google`, `github`, `apple`, `facebook`, `x`, `discord`, and `farcaster`                                                                                                                                                                                                                                                                                          |
-| Email         | `email`                                                                                                                                                                                                                                                                                                                                                           |
+| Type          | Options                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| QR Code       | `walletConnect`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Wallets       | `metamask`, `trust`, `coinbase`, `rainbow`, `jupiter`, `solflare`, `coin98`, `magic-eden`, `backpack`, `frontier`, `xverse`, `okx`, `bitget`, `leather`, `binance`, `uniswap`, `safepal`, `bybit`, `phantom`, `ledger`, `timeless-x`, `safe`, `zerion`, `oneinch`, `crypto-com`, `imtoken`, `kraken`, `ronin`, `robinhood`, `exodus`, `argent`, `tokenpocket`, `haha`, `ambire-wallet`, `bitpay`, `blade-wallet`, `brave`, `coinstats`, `kresus-superapp`, `plena-app`, `status`, `tomo-wallet`, `valora`, and `zengo-wallet` |
+| Social logins | `google`, `github`, `apple`, `facebook`, `x`, `discord`, and `farcaster`                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Email         | `email`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 #### Use Cases
 
@@ -25739,7 +25739,7 @@ The following list shows the theme variables you can override:
 
 ## Wallet Buttons
 
-Wallet buttons are components that allow users to connect their wallets to your dApp. They provide a simple and easy way to connect to the top 20 wallets, WalletConnect QR, and all the social logins.
+Wallet buttons are components that allow users to connect their wallets to your dApp. They provide a simple and easy way to connect to more than 40 of the top wallets globally, WalletConnect QR, and all the social logins.
 You can also call them directly using hooks. Please check the [components](/appkit/next/core/components#walletButtons) and [hooks](/appkit/next/core/hooks#useappkitwallet) documentation for more information.
 
 <Frame>
@@ -29100,7 +29100,7 @@ Source: https://docs.reown.com/appkit/nuxt/core/wallet-buttons
   <img />
 </Frame>
 
-Using the wallet button composable ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to the top 20 wallets, WalletConnect QR, and all the social logins.
+Using the wallet button composable ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to more than 40 of the top wallets globally, WalletConnect QR, and all the social logins.
 
 Follow these steps to use the composable:
 
@@ -29204,11 +29204,11 @@ onMounted(() => {
 
 #### Options for wallet property
 
-| Type          | Options                                                                                                                                                                                                                                                                                                                                                                 |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| QR Code       | `walletConnect`                                                                                                                                                                                                                                                                                                                                                         |
-| Wallets       | `metamask`, `trust`, `coinbase`, `rainbow`, `jupiter`, `solflare`, `coin98`, `magic-eden`, `backpack`, `frontier`, `xverse`, `okx`, `bitget`, `leather`, `binance`, `uniswap`, `safepal`, `bybit`, `phantom`, `ledger`, `timeless-x`, `safe`, `zerion`, `oneinch`, `crypto-com`, `imtoken`, `kraken`, `ronin`, `robinhood`, `exodus`, `argent`, `tokenpocket`, and more |
-| Social logins | `google`, `github`, `apple`, `facebook`, `x`, `discord`, and `farcaster`                                                                                                                                                                                                                                                                                                |
+| Type          | Options                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| QR Code       | `walletConnect`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Wallets       | `metamask`, `trust`, `coinbase`, `rainbow`, `jupiter`, `solflare`, `coin98`, `magic-eden`, `backpack`, `frontier`, `xverse`, `okx`, `bitget`, `leather`, `binance`, `uniswap`, `safepal`, `bybit`, `phantom`, `ledger`, `timeless-x`, `safe`, `zerion`, `oneinch`, `crypto-com`, `imtoken`, `kraken`, `ronin`, `robinhood`, `exodus`, `argent`, `tokenpocket`, `haha`, `ambire-wallet`, `bitpay`, `blade-wallet`, `brave`, `coinstats`, `kresus-superapp`, `plena-app`, `status`, `tomo-wallet`, `valora`, and `zengo-wallet` |
+| Social logins | `google`, `github`, `apple`, `facebook`, `x`, `discord`, and `farcaster`                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 
 # On-Ramp
@@ -34039,7 +34039,7 @@ Both components accept the following optional props:
   <img />
 </Frame>
 
-Using the wallet button components ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to the top 20 wallets, WalletConnect QR, and all the social logins.
+Using the wallet button components ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to more than 40 of the top wallets globally, WalletConnect QR, and all the social logins.
 This component allows to customize dApps, enabling users to connect their wallets effortlessly, all without the need to open the traditional modal.
 
 Follow these steps to use the component:
@@ -34125,11 +34125,11 @@ export function WalletConnector() {
 
 #### Options for wallet property
 
-| Type          | Options                                                                                                                                                                                                                                                                                                    |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| QR Code       | walletConnect                                                                                                                                                                                                                                                                                              |
-| Wallets       | metamask, trust, coinbase, rainbow, coinbase, jupiter, solflare, coin98, magic-eden, backpack, frontier, xverse, okx, bitget, leather, binance, uniswap, safepal, bybit, phantom, ledger, timeless-x, safe, zerion, oneinch, crypto-com, imtoken, kraken, ronin, robinhood, exodus, argent and tokenpocket |
-| Social logins | google, github, apple, facebook, x, discord and farcaster                                                                                                                                                                                                                                                  |
+| Type          | Options                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| QR Code       | walletConnect                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Wallets       | metamask, trust, coinbase, rainbow, jupiter, solflare, coin98, magic-eden, backpack, frontier, xverse, okx, bitget, leather, binance, uniswap, safepal, bybit, phantom, ledger, timeless-x, safe, zerion, oneinch, crypto-com, imtoken, kraken, ronin, robinhood, exodus, argent, tokenpocket, haha, ambire-wallet, bitpay, blade-wallet, brave, coinstats, kresus-superapp, plena-app, status, tomo-wallet, valora, and zengo-wallet |
+| Social logins | google, github, apple, facebook, x, discord and farcaster                                                                                                                                                                                                                                                                                                                                                                             |
 
 #### Options for namespace property
 
@@ -34928,7 +34928,7 @@ This is particularly useful when you need to access Bitcoin public keys for tran
 
 The direct wallet connection hook that enables connectivity to specific wallets without opening the modal. Use this hook when you want to provide direct wallet buttons, create a customized wallet selection interface, or implement social login options.
 
-Using the wallet button hooks ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to the top 20 wallets, WalletConnect QR and also all the social logins.
+Using the wallet button hooks ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to more than 40 of the top wallets globally, WalletConnect QR, and all the social logins.
 This hook allows to customize dApps, enabling users to connect their wallets effortlessly, all without the need to open the traditional modal.
 Execute this command to install the library for use it:
 
@@ -34979,14 +34979,14 @@ const { isReady, isPending, connect } = useAppKitWallet({
 
 #### Options for the connect parameter
 
-AppKit supports the [top 32 wallets](https://github.com/reown-com/appkit/blob/main/packages/wallet-button/src/utils/ConstantsUtil.ts#L11-L44), WalletConnect, social logins, and email authentication:
+AppKit supports more than 40 of the top wallets globally ([see full list](https://github.com/reown-com/appkit/blob/main/packages/wallet-button/src/utils/ConstantsUtil.ts#L11-L55)), WalletConnect, social logins, and email authentication:
 
-| Type          | Options                                                                                                                                                                                                                                                                                                    |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| QR Code       | walletConnect                                                                                                                                                                                                                                                                                              |
-| Wallets       | metamask, trust, coinbase, rainbow, coinbase, jupiter, solflare, coin98, magic-eden, backpack, frontier, xverse, okx, bitget, leather, binance, uniswap, safepal, bybit, phantom, ledger, timeless-x, safe, zerion, oneinch, crypto-com, imtoken, kraken, ronin, robinhood, exodus, argent and tokenpocket |
-| Social logins | google, github, apple, facebook, x, discord and farcaster                                                                                                                                                                                                                                                  |
-| Email         | email                                                                                                                                                                                                                                                                                                      |
+| Type          | Options                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| QR Code       | walletConnect                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Wallets       | metamask, trust, coinbase, rainbow, jupiter, solflare, coin98, magic-eden, backpack, frontier, xverse, okx, bitget, leather, binance, uniswap, safepal, bybit, phantom, ledger, timeless-x, safe, zerion, oneinch, crypto-com, imtoken, kraken, ronin, robinhood, exodus, argent, tokenpocket, haha, ambire-wallet, bitpay, blade-wallet, brave, coinstats, kresus-superapp, plena-app, status, tomo-wallet, valora, and zengo-wallet |
+| Social logins | google, github, apple, facebook, x, discord and farcaster                                                                                                                                                                                                                                                                                                                                                                             |
+| Email         | email                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 #### Enhanced Multichain Examples
 
@@ -39457,7 +39457,7 @@ The following list shows the theme variables you can override:
 
 ## Wallet Buttons
 
-Wallet buttons are components that allow users to connect their wallets to your dApp. They provide a simple and easy way to connect to the top 20 wallets, WalletConnect QR, and all the social logins.
+Wallet buttons are components that allow users to connect their wallets to your dApp. They provide a simple and easy way to connect to more than 40 of the top wallets globally, WalletConnect QR, and all the social logins.
 You can also call them directly using hooks. Please check the [components](/appkit/react/core/components#walletButtons) and [hooks](/appkit/react/core/hooks#useappkitwallet) documentation for more information.
 
 <Frame>
@@ -42225,7 +42225,7 @@ Let's dive in!
 
 ## What are wallet buttons?
 
-Using the wallet button components ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to the top 20 wallets, WalletConnect QR, and all the social logins. This component allows you to customize your dApp, enabling users to connect their wallets effortlessly, all without the need to open the traditional modal.
+Using the wallet button components ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to more than 40 of the top wallets globally, WalletConnect QR, and all the social logins. This component allows you to customize your dApp, enabling users to connect their wallets effortlessly, all without the need to open the traditional modal.
 
 ## Installation
 
@@ -42334,11 +42334,11 @@ export default WalletConnection;
 
 You can use the wallet button component with any of the following options:
 
-| Type          | Options                                                                                                                                                                                                                                                                                          |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| QR Code       | walletConnect                                                                                                                                                                                                                                                                                    |
-| Wallets       | metamask, trust, coinbase, rainbow, jupiter, solflare, coin98, magic-eden, backpack, frontier, xverse, okx, bitget, leather, binance, uniswap, safepal, bybit, phantom, ledger, timeless-x, safe, zerion, oneinch, crypto-com, imtoken, kraken, ronin, robinhood, exodus, argent and tokenpocket |
-| Social logins | google, github, apple, facebook, x, discord and farcaster                                                                                                                                                                                                                                        |
+| Type          | Options                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| QR Code       | walletConnect                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Wallets       | metamask, trust, coinbase, rainbow, jupiter, solflare, coin98, magic-eden, backpack, frontier, xverse, okx, bitget, leather, binance, uniswap, safepal, bybit, phantom, ledger, timeless-x, safe, zerion, oneinch, crypto-com, imtoken, kraken, ronin, robinhood, exodus, argent, tokenpocket, haha, ambire-wallet, bitpay, blade-wallet, brave, coinstats, kresus-superapp, plena-app, status, tomo-wallet, valora, and zengo-wallet |
+| Social logins | google, github, apple, facebook, x, discord and farcaster                                                                                                                                                                                                                                                                                                                                                                             |
 
 ## Namespace options
 
@@ -42482,7 +42482,7 @@ export const appKitStore = writable(appKit);
   <img />
 </Frame>
 
-Using the wallet button functions ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to the top 20 wallets, WalletConnect QR, and all the social logins.
+Using the wallet button functions ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to more than 40 of the top wallets globally, WalletConnect QR, and all the social logins.
 This allows to customize dApps, enabling users to connect their wallets effortlessly, all without the need to open the traditional modal.
 
 Follow these steps to use wallet buttons:
@@ -42582,11 +42582,11 @@ You can specify a blockchain namespace to target specific chains:
 
 #### Options for wallet property
 
-| Type          | Options                                                                                                                                                                                                                                                                                                                                                                 |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| QR Code       | `walletConnect`                                                                                                                                                                                                                                                                                                                                                         |
-| Wallets       | `metamask`, `trust`, `coinbase`, `rainbow`, `jupiter`, `solflare`, `coin98`, `magic-eden`, `backpack`, `frontier`, `xverse`, `okx`, `bitget`, `leather`, `binance`, `uniswap`, `safepal`, `bybit`, `phantom`, `ledger`, `timeless-x`, `safe`, `zerion`, `oneinch`, `crypto-com`, `imtoken`, `kraken`, `ronin`, `robinhood`, `exodus`, `argent`, `tokenpocket`, and more |
-| Social logins | `google`, `github`, `apple`, `facebook`, `x`, `discord`, and `farcaster`                                                                                                                                                                                                                                                                                                |
+| Type          | Options                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| QR Code       | `walletConnect`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Wallets       | `metamask`, `trust`, `coinbase`, `rainbow`, `jupiter`, `solflare`, `coin98`, `magic-eden`, `backpack`, `frontier`, `xverse`, `okx`, `bitget`, `leather`, `binance`, `uniswap`, `safepal`, `bybit`, `phantom`, `ledger`, `timeless-x`, `safe`, `zerion`, `oneinch`, `crypto-com`, `imtoken`, `kraken`, `ronin`, `robinhood`, `exodus`, `argent`, `tokenpocket`, `haha`, `ambire-wallet`, `bitpay`, `blade-wallet`, `brave`, `coinstats`, `kresus-superapp`, `plena-app`, `status`, `tomo-wallet`, `valora`, and `zengo-wallet` |
+| Social logins | `google`, `github`, `apple`, `facebook`, `x`, `discord`, and `farcaster`                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 #### Options for namespace property
 
@@ -56256,7 +56256,7 @@ Source: https://docs.reown.com/appkit/vue/core/wallet-buttons
   <img />
 </Frame>
 
-Using the wallet button composable ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to the top 20 wallets, WalletConnect QR, and all the social logins.
+Using the wallet button composable ([Demo in our Lab](https://appkit-lab.reown.com/appkit/?name=wagmi)), you can directly connect to more than 40 of the top wallets globally, WalletConnect QR, and all the social logins.
 
 Follow these steps to use the composable:
 
@@ -56316,11 +56316,11 @@ onMounted(() => {
 
 #### Options for wallet property
 
-| Type          | Options                                                                                                                                                                                                                                                                                                                                                                 |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| QR Code       | `walletConnect`                                                                                                                                                                                                                                                                                                                                                         |
-| Wallets       | `metamask`, `trust`, `coinbase`, `rainbow`, `jupiter`, `solflare`, `coin98`, `magic-eden`, `backpack`, `frontier`, `xverse`, `okx`, `bitget`, `leather`, `binance`, `uniswap`, `safepal`, `bybit`, `phantom`, `ledger`, `timeless-x`, `safe`, `zerion`, `oneinch`, `crypto-com`, `imtoken`, `kraken`, `ronin`, `robinhood`, `exodus`, `argent`, `tokenpocket`, and more |
-| Social logins | `google`, `github`, `apple`, `facebook`, `x`, `discord`, and `farcaster`                                                                                                                                                                                                                                                                                                |
+| Type          | Options                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| QR Code       | `walletConnect`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Wallets       | `metamask`, `trust`, `coinbase`, `rainbow`, `jupiter`, `solflare`, `coin98`, `magic-eden`, `backpack`, `frontier`, `xverse`, `okx`, `bitget`, `leather`, `binance`, `uniswap`, `safepal`, `bybit`, `phantom`, `ledger`, `timeless-x`, `safe`, `zerion`, `oneinch`, `crypto-com`, `imtoken`, `kraken`, `ronin`, `robinhood`, `exodus`, `argent`, `tokenpocket`, `haha`, `ambire-wallet`, `bitpay`, `blade-wallet`, `brave`, `coinstats`, `kresus-superapp`, `plena-app`, `status`, `tomo-wallet`, `valora`, and `zengo-wallet` |
+| Social logins | `google`, `github`, `apple`, `facebook`, `x`, `discord`, and `farcaster`                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 #### Options for namespace property
 
