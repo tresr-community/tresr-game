@@ -35,7 +35,7 @@
     "@reown/appkit-adapter-wagmi": "1.8.19",
     "@tanstack/query-core": "5.95.0",
     "@types/seedrandom": "3.0.8",
-    "@wagmi/core": "3.4.0",
+    "@wagmi/core": "3.4.1",
     "bits-ui": "2.16.3",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
