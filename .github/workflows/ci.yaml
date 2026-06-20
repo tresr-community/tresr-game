@@ -65,7 +65,7 @@ jobs:
     steps:
       - id: checkout_repository
         name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
@@ -94,7 +94,7 @@ jobs:
     steps:
       - id: checkout_repository
         name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
@@ -173,7 +173,7 @@ jobs:
     steps:
       - id: checkout_repository
         name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - id: write_summary
         name: Write Results Summary

@@ -85,7 +85,7 @@ jobs:
 
       - id: checkout_repository
         name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
           fetch-depth: 0
