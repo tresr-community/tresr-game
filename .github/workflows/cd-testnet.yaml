@@ -270,7 +270,10 @@ jobs:
   deploy-juno:
     name: Deploy Juno
     needs: pre-release
-    if: always() && needs.pre-release.result == 'success' && needs.pre-release.outputs.skip != 'true'
+    if: >-
+      always() &&
+      needs.pre-release.result == 'success' &&
+      needs.pre-release.outputs.skip != 'true'
 
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -325,7 +328,10 @@ jobs:
   deploy-foundry:
     name: Deploy Contracts
     needs: pre-release
-    if: always() && needs.pre-release.result == 'success' && needs.pre-release.outputs.skip != 'true'
+    if: >-
+      always() &&
+      needs.pre-release.result == 'success' &&
+      needs.pre-release.outputs.skip != 'true'
 
     runs-on: ubuntu-latest
     timeout-minutes: 120
