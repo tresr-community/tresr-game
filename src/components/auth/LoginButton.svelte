@@ -232,9 +232,8 @@
         const {isSatelliteInSync} = await import("@/lib/satellite/config-hash");
         const inSync = await isSatelliteInSync({quiet: true});
         if (inSync) {
-          const {maintenanceState} = await import(
-            "@/lib/utils/maintenance-state"
-          );
+          const {maintenanceState} =
+            await import("@/lib/utils/maintenance-state");
           maintenanceState.deactivate();
           isMaintenance = false;
           log.info(

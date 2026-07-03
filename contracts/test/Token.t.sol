@@ -13,7 +13,6 @@ contract RonTokenTest is Test {
     address lp = makeAddr("liquidityPool");
 
     function setUp() public {
-        vm.prank(owner);
         token = new RonToken(owner, "Ron Token", "tRON");
     }
 

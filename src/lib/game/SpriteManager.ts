@@ -31,8 +31,10 @@ export type SpriteAnimConfig = SpritesConfig["hero"]["anims"][number];
 export type EnemySpriteConfig = SpritesConfig["enemies"];
 export type EnemyAnimConfig = SpritesConfig["enemies"]["anims"][number];
 
-export interface ExtendedAnimConfig
-  extends Omit<EnemyAnimConfig, "pathTemplate" | "path"> {
+export interface ExtendedAnimConfig extends Omit<
+  EnemyAnimConfig,
+  "pathTemplate" | "path"
+> {
   path?: string;
   pathTemplate?: string;
 }

@@ -1550,7 +1550,7 @@ async fn on_game_session_update(context: OnSetDocContext) -> Result<(), String> 
         }
 
         // Sort descending and truncate to top 50
-        timer.top_scores.sort_by(|a, b| b.score.cmp(&a.score));
+        timer.top_scores.sort_by_key(|b| std::cmp::Reverse(b.score));
         if timer.top_scores.len() > 50 {
             timer.top_scores.truncate(50);
         }

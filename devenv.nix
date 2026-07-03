@@ -56,7 +56,7 @@ let
       yq-go
 
       # Frontend
-      nodePackages.postcss
+      postcss
       tailwindcss_4
       npm-check-updates
       nodejs
@@ -123,13 +123,12 @@ in
   });
 
   cachix = {
-    enable = true;
+    enable = false;
     pull = [
       "tresr-community"
       "pre-commit-hooks"
-      "devenv.cachix.org"
-      "cache.nixos.org"
-      "nix-community.cachix.org"
+      "devenv"
+      "nix-community"
     ];
     push = "tresr-community";
   };

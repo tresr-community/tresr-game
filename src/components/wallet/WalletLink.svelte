@@ -125,9 +125,8 @@
         balanceDisplay = formatBalance(balance);
         addressDisplay = shortenAddress(currentAddress);
 
-        const {getVaultCurrentBalance} = await import(
-          "@/lib/blockchain/contracts/vault"
-        );
+        const {getVaultCurrentBalance} =
+          await import("@/lib/blockchain/contracts/vault");
         const vaultBal = await getVaultCurrentBalance();
         document.dispatchEvent(
           new CustomEvent("tresr:blockchain-synced", {
@@ -157,9 +156,8 @@
       const balance = await getTresrBalance(address, false);
       balanceDisplay = formatBalance(balance);
 
-      const {getVaultCurrentBalance} = await import(
-        "@/lib/blockchain/contracts/vault"
-      );
+      const {getVaultCurrentBalance} =
+        await import("@/lib/blockchain/contracts/vault");
       const vaultBal = await getVaultCurrentBalance();
       document.dispatchEvent(
         new CustomEvent("tresr:blockchain-synced", {
