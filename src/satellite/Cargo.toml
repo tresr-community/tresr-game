@@ -18,7 +18,7 @@ crate-type = ["cdylib", "rlib"]
 getrandom = "0.3"
 
 # Juno SDK
-junobuild-satellite = { version = "0.5.1", default-features = false, features = [
+junobuild-satellite = { version = "0.6.0", default-features = false, features = [
     "assert_set_doc",
     "assert_delete_doc",
     "on_set_doc",
