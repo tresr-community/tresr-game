@@ -58,7 +58,7 @@ tiny-keccak = { version = "2.0.2", features = ["keccak"] }
 libsecp256k1 = "0.7.1"
 
 # Additional dependencies
-tokio = { version = "1.0", features = ["sync", "macros", "io-util", "rt", "time"] }
+tokio = { version = "1.51", features = ["sync", "macros", "io-util", "rt", "time"] }
 sha2 = "0.10"
 lazy_static = "1.4"
 futures = { version = "0.3", default-features = false, features = ["executor"] }
