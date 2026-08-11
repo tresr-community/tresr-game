@@ -64,7 +64,7 @@
     "@junobuild/config": "2.15.0",
     "@junobuild/vite-plugin": "4.7.1",
     "@sveltejs/adapter-static": "3.0.10",
-    "@sveltejs/kit": "2.55.0",
+    "@sveltejs/kit": "2.60.1",
     "@sveltejs/vite-plugin-svelte": "7.0.0",
     "@tailwindcss/postcss": "4.2.2",
     "@tailwindcss/typography": "0.5.19",
